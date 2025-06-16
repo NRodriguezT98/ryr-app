@@ -21,20 +21,30 @@ const ListarViviendas = () => {
     const [cerrandoModal, setCerrandoModal] = useState(false);
     const [claveAEliminar, setClaveAEliminar] = useState(null);
     const [animandoFila, setAnimandoFila] = useState(null);
+    const [mostrarAdvertenciaAsignada, setMostrarAdvertenciaAsignada] = useState(false);
+    const [mensajeAdvertencia, setMensajeAdvertencia] = useState("");
 
-    // 🔄 Cargar viviendas ordenadas
+
     useEffect(() => {
-        const data = localStorage.getItem("viviendas");
-        if (data) {
-            const viviendasOrdenadas = JSON.parse(data).sort((a, b) => {
-                const manzanaOrden = a.manzana.localeCompare(b.manzana);
-                return manzanaOrden !== 0 ? manzanaOrden : a.numeroCasa - b.numeroCasa;
-            });
-            setViviendas(viviendasOrdenadas);
-        }
+        const dataViviendas = JSON.parse(localStorage.getItem("viviendas")) || [];
+        const dataClientes = JSON.parse(localStorage.getItem("clientes")) || [];
+
+        const viviendasConCliente = dataViviendas.map((v) => {
+            const clienteAsignado = dataClientes.find((c) => c.id === v.clienteId);
+            return {
+                ...v,
+                cliente: clienteAsignado ? clienteAsignado.nombre : null,
+            };
+        });
+
+        const viviendasOrdenadas = viviendasConCliente.sort((a, b) => {
+            const manzanaOrden = a.manzana.localeCompare(b.manzana);
+            return manzanaOrden !== 0 ? manzanaOrden : a.numeroCasa - b.numeroCasa;
+        });
+
+        setViviendas(viviendasOrdenadas);
     }, []);
 
-    // 🔍 Generar clave única
     const obtenerClave = (v) => `${v.manzana}-${v.numeroCasa}`;
 
     const abrirModalEditar = (clave) => {
@@ -57,6 +67,7 @@ const ListarViviendas = () => {
         const nuevas = viviendas.map((v) =>
             obtenerClave(v) === claveEditando
                 ? {
+                    ...v,
                     manzana: formData.manzana,
                     numeroCasa: parseInt(formData.numero),
                     matricula: formData.matricula,
@@ -66,14 +77,13 @@ const ListarViviendas = () => {
                 : v
         );
 
-        // Ordenar por manzana (alfabéticamente) y número de casa (ascendente)
         const ordenadas = nuevas.sort((a, b) => {
             const cmp = a.manzana.localeCompare(b.manzana);
             return cmp !== 0 ? cmp : a.numeroCasa - b.numeroCasa;
         });
 
         setViviendas(ordenadas);
-        localStorage.setItem("viviendas", JSON.stringify(ordenadas));
+        localStorage.setItem("viviendas", JSON.stringify(ordenadas.map(({ cliente, ...v }) => v)));
 
         setCerrandoModal(true);
         setTimeout(() => {
@@ -86,18 +96,29 @@ const ListarViviendas = () => {
         setTimeout(() => setMensajeExito(false), 3000);
     };
 
-
-    const iniciarEliminacion = (clave) => {
-        setClaveAEliminar(clave);
+    const iniciarEliminacion = (claveVivienda) => {
+        // Encuentra la vivienda correspondiente
+        const vivienda = viviendas.find((v) => `${v.manzana}-${v.numeroCasa}` === claveVivienda);
+        if (vivienda && vivienda.clienteId) {
+            setMensajeAdvertencia(
+                "Esta vivienda está asignada a un cliente. " +
+                "Recuerde que solo se pueden eliminar viviendas que aún no se encuentren asignadas."
+            );
+            setMostrarAdvertenciaAsignada(true);
+            return;
+        }
+        // Si no tiene cliente asignado, continúa el flujo normal
+        setClaveAEliminar(claveVivienda);
         setMostrarConfirmacionEliminar(true);
     };
+
 
     const confirmarEliminar = () => {
         setAnimandoFila(claveAEliminar);
         setTimeout(() => {
             const nuevas = viviendas.filter((v) => obtenerClave(v) !== claveAEliminar);
             setViviendas(nuevas);
-            localStorage.setItem("viviendas", JSON.stringify(nuevas));
+            localStorage.setItem("viviendas", JSON.stringify(nuevas.map(({ cliente, ...v }) => v)));
             setMostrarConfirmacionEliminar(false);
             setMensajeEliminado(true);
             setClaveAEliminar(null);
@@ -108,7 +129,7 @@ const ListarViviendas = () => {
     return (
         <>
             <AnimatedPage>
-                <div className="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-md mt-10 relative">
+                <div className="w-fit mx-auto bg-white p-6 rounded-xl shadow-md mt-10 relative">
                     <h2 className="text-2xl font-bold mb-4 text-[#c62828] text-center">
                         🏠 Viviendas Registradas
                     </h2>
@@ -122,47 +143,58 @@ const ListarViviendas = () => {
                     {viviendas.length === 0 ? (
                         <p className="text-center text-gray-600">No hay viviendas registradas.</p>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="table-auto w-full border text-sm text-center">
+                        <div className="w-fit mx-auto">
+                            <table className="table-auto border text-sm text-center rounded-xl overflow-hidden shadow-lg">
                                 <thead className="bg-[#c62828] text-white">
-                                    <tr>
-                                        <th className="px-4 py-2">Manzana</th>
-                                        <th className="px-4 py-2">Número</th>
-                                        <th className="px-4 py-2">Matrícula</th>
-                                        <th className="px-4 py-2">Nomenclatura</th>
-                                        <th className="px-4 py-2">Valor</th>
-                                        <th className="px-4 py-2">Acciones</th>
+                                    <tr className="uppercase tracking-wide text-xs font-semibold">
+                                        <th className="px-4 py-3 whitespace-nowrap">Manzana</th>
+                                        <th className="px-4 py-3 whitespace-nowrap">Casa Número</th>
+                                        <th className="px-4 py-3 whitespace-nowrap">Cliente asignado</th>
+                                        <th className="px-4 py-3 whitespace-nowrap">Matrícula Inm.</th>
+                                        <th className="px-4 py-3 whitespace-nowrap">Nomenclatura</th>
+                                        <th className="px-4 py-3 whitespace-nowrap">Valor Total vivienda</th>
+                                        <th className="px-4 py-3 whitespace-nowrap">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {viviendas.map((v) => {
+                                    {viviendas.map((v, index) => {
                                         const clave = obtenerClave(v);
                                         return (
-                                            <tr key={clave} className={`border-b ${animandoFila === clave ? "animate-fade-out" : "animate-fade-in"}`}>
-                                                <td className="px-4 py-2">{v.manzana}</td>
-                                                <td className="px-4 py-2">{v.numeroCasa}</td>
-                                                <td className="px-4 py-2">{v.matricula}</td>
-                                                <td className="px-4 py-2">{v.nomenclatura}</td>
-                                                <td className="px-4 py-2">
+                                            <tr
+                                                key={clave}
+                                                className={`border-b transition duration-200 ${animandoFila === clave ? "animate-fade-out" : "animate-fade-in"
+                                                    } ${index % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-gray-100`}
+                                            >
+                                                <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{v.manzana}</td>
+                                                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.numeroCasa}</td>
+                                                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">
+                                                    {v.cliente || <span className="text-green-600 font-semibold">Vivienda disponible para asignar ✅</span>}
+                                                </td>
+                                                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.matricula}</td>
+                                                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{v.nomenclatura}</td>
+                                                <td
+                                                    className="px-4 py-3 text-gray-800 font-semibold whitespace-nowrap"
+                                                    title={v.valorTotal?.toLocaleString("es-CO") || ""}
+                                                >
                                                     {v.valorTotal?.toLocaleString("es-CO", {
                                                         style: "currency",
                                                         currency: "COP",
                                                         minimumFractionDigits: 0,
                                                     })}
                                                 </td>
-                                                <td className="px-4 py-2 space-x-2">
+                                                <td className="px-4 py-2 whitespace-nowrap">
                                                     <button
                                                         onClick={() => abrirModalEditar(clave)}
-                                                        className="inline-flex items-center gap-2 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-400 shadow-sm font-semibold px-4 py-1.5 rounded-full transition"
+                                                        className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300 px-3 py-1.5 text-sm rounded-full transition-all duration-200 hover:shadow-sm"
                                                     >
-                                                        <Pencil size={16} strokeWidth={2} />
+                                                        <Pencil size={16} />
                                                         Editar
                                                     </button>
                                                     <button
                                                         onClick={() => iniciarEliminacion(clave)}
-                                                        className="inline-flex items-center gap-2 bg-red-50 text-red-700 hover:bg-red-100 border border-red-400 shadow-sm font-semibold px-4 py-1.5 rounded-full transition"
+                                                        className="inline-flex items-center gap-2 bg-red-100 text-red-800 hover:bg-red-200 border border-red-300 px-3 py-1.5 text-sm rounded-full transition-all duration-200 hover:shadow-sm ml-2"
                                                     >
-                                                        <Trash size={16} strokeWidth={2} />
+                                                        <Trash size={16} />
                                                         Eliminar
                                                     </button>
                                                 </td>
@@ -306,6 +338,25 @@ const ListarViviendas = () => {
                     </div>
                 </div>
             )}
+
+            {/* ADVERTENCIA AL CLIENTE DE CASA ASIGNADA */}
+            {mostrarAdvertenciaAsignada && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-white p-7 rounded-2xl shadow-2xl max-w-md w-full text-center">
+                        <h3 className="text-xl font-bold text-red-600 mb-4">
+                            No se puede eliminar la vivienda
+                        </h3>
+                        <p className="mb-6 text-gray-700">{mensajeAdvertencia}</p>
+                        <button
+                            onClick={() => setMostrarAdvertenciaAsignada(false)}
+                            className="bg-[#c62828] hover:bg-red-700 text-white font-semibold px-6 py-2 rounded-full shadow transition"
+                        >
+                            Entendido
+                        </button>
+                    </div>
+                </div>
+            )}
+
         </>
     );
 };
