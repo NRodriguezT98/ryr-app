@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Select from "react-select";
 import AnimatedPage from "../../components/AnimatedPage";
 import { normalizarViviendas } from "../../utils/storage";
+import { useToast } from "../../components/ToastContext";
 
 const CrearCliente = () => {
     const [formData, setFormData] = useState({
@@ -15,9 +16,9 @@ const CrearCliente = () => {
     });
 
     const [viviendasDisponibles, setViviendasDisponibles] = useState([]);
-    const [mensajeExito, setMensajeExito] = useState(false);
     const [enviando, setEnviando] = useState(false);
     const navigate = useNavigate();
+    const { showToast } = useToast(); // Desestructuramos para usar showToast
 
     useEffect(() => {
         normalizarViviendas();
@@ -25,6 +26,8 @@ const CrearCliente = () => {
         const disponibles = viviendas.filter((v) => v.clienteId === null);
         setViviendasDisponibles(disponibles);
     }, []);
+
+    const noHayViviendas = viviendasDisponibles.length === 0;
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -48,15 +51,13 @@ const CrearCliente = () => {
         );
         localStorage.setItem("viviendas", JSON.stringify(actualizadas));
 
-        setMensajeExito(true);
+        showToast("✅ Cliente registrado exitosamente.", "success"); // Usamos showToast con tipo success
+
         setTimeout(() => {
-            setMensajeExito(false);
             setEnviando(false);
             navigate("/clientes/listar");
         }, 2000);
     };
-
-    const noHayViviendas = viviendasDisponibles.length === 0;
 
     return (
         <AnimatedPage>
@@ -65,15 +66,10 @@ const CrearCliente = () => {
                     🧍 Crear Cliente
                 </h2>
 
-                {mensajeExito && (
-                    <div className="mb-4 text-green-600 font-medium text-center">
-                        ✅ Cliente registrado exitosamente.
-                    </div>
-                )}
-
                 {noHayViviendas ? (
                     <div className="bg-yellow-100 text-yellow-800 p-4 rounded text-center font-semibold">
-                        ⚠️ No hay viviendas disponibles para asignar.<br />
+                        ⚠️ No hay viviendas disponibles para asignar.
+                        <br />
                         Por favor crea nuevas viviendas antes de registrar clientes.
                     </div>
                 ) : (
@@ -149,9 +145,7 @@ const CrearCliente = () => {
                             <button
                                 type="submit"
                                 disabled={enviando}
-                                className={`px-5 py-2.5 rounded-full transition text-white ${enviando
-                                    ? "bg-gray-400 cursor-not-allowed"
-                                    : "bg-[#1976d2] hover:bg-blue-700"
+                                className={`px-5 py-2.5 rounded-full transition text-white ${enviando ? "bg-gray-400 cursor-not-allowed" : "bg-[#1976d2] hover:bg-blue-700"
                                     }`}
                             >
                                 {enviando ? "Guardando..." : "Registrar Cliente"}

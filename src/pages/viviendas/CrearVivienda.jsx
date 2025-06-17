@@ -1,8 +1,8 @@
-// src/pages/CrearVivienda.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NumericFormat } from "react-number-format";
 import AnimatedPage from "../../components/AnimatedPage";
+import { useToast } from "../../components/ToastContext"; // Importa el hook de toast
 
 const CrearVivienda = () => {
     const [formData, setFormData] = useState({
@@ -13,9 +13,9 @@ const CrearVivienda = () => {
         valor: "",
     });
 
-    const [mensajeExito, setMensajeExito] = useState(false);
     const [enviando, setEnviando] = useState(false);
     const navigate = useNavigate();
+    const { showToast } = useToast(); // Hook para mostrar toasts
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -28,7 +28,7 @@ const CrearVivienda = () => {
             matricula: formData.matricula,
             nomenclatura: formData.nomenclatura,
             valorTotal: parseInt(formData.valor),
-            clienteId: null
+            clienteId: null,
         });
 
         localStorage.setItem("viviendas", JSON.stringify(nuevasViviendas));
@@ -40,10 +40,9 @@ const CrearVivienda = () => {
             valor: "",
         });
 
-        setMensajeExito(true);
+        showToast("Vivienda registrada exitosamente.", "success"); // Usamos toast global
 
         setTimeout(() => {
-            setMensajeExito(false);
             setEnviando(false);
             navigate("/viviendas/listar");
         }, 2000);
@@ -55,12 +54,6 @@ const CrearVivienda = () => {
                 <h2 className="text-2xl font-bold mb-6 text-center text-[#c62828]">
                     🏠 Crear Nueva Vivienda
                 </h2>
-
-                {mensajeExito && (
-                    <div className="mb-4 text-green-600 font-medium text-center">
-                        ✅ Vivienda registrada exitosamente.
-                    </div>
-                )}
 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -129,10 +122,7 @@ const CrearVivienda = () => {
                         <button
                             type="submit"
                             disabled={enviando}
-                            className={`px-5 py-2.5 rounded-full transition text-white ${enviando
-                                ? "bg-gray-400 cursor-not-allowed"
-                                : "bg-[#28a745] hover:bg-green-700"
-                                }`}
+                            className={`px-5 py-2.5 rounded-full transition text-white ${enviando ? "bg-gray-400 cursor-not-allowed" : "bg-[#28a745] hover:bg-green-700"}`}
                         >
                             {enviando ? "Guardando..." : "Guardar Vivienda"}
                         </button>
