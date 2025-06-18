@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Trash } from "lucide-react";
+import { Trash, Pencil } from "lucide-react";
 import AnimatedPage from "../../components/AnimatedPage";
 import EditarVivienda from "./EditarVivienda";
 import { useToast } from "../../components/ToastContext";
@@ -54,8 +54,9 @@ const ListarViviendas = () => {
     const handleGuardarVivienda = (viviendaActualizada) => {
         const dataViviendas = JSON.parse(localStorage.getItem("viviendas")) || [];
 
+        // Buscar por id para actualizar
         const idx = dataViviendas.findIndex(
-            (v) => v.manzana === viviendaActualizada.manzana && v.numeroCasa === viviendaActualizada.numeroCasa
+            (v) => v.id === viviendaActualizada.id
         );
         if (idx !== -1) {
             dataViviendas[idx] = viviendaActualizada;
@@ -77,7 +78,7 @@ const ListarViviendas = () => {
         });
 
         setViviendas(viviendasConCliente);
-        showToast("✅ Se guardaron los cambios", "success");
+        showToast("Se guardaron los cambios", "success");
     };
 
     const iniciarEliminacion = (clave) => {
@@ -160,9 +161,7 @@ const ListarViviendas = () => {
                                                         onClick={() => abrirModalEditar(clave)}
                                                         className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300 px-3 py-1.5 text-sm rounded-full transition-all duration-200 hover:shadow-sm"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" />
-                                                        </svg>
+                                                        <Pencil size={16} />
                                                         Editar
                                                     </button>
                                                     <button

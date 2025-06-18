@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Trash } from "lucide-react";
+import { Trash, Pencil } from "lucide-react"; // Importamos Pencil
 import AnimatedPage from "../../components/AnimatedPage";
 import EditarCliente from "./EditarCliente";
-import Toast from "../../components/Toast"; // <--- NUEVO
+import Toast from "../../components/Toast";
 
 function formatID(cedula) {
     if (/^\d+$/.test(cedula)) {
@@ -18,7 +18,6 @@ const ListarClientes = () => {
     const [clienteEditando, setClienteEditando] = useState(null);
     const [desmontarEditarModal, setDesmontarEditarModal] = useState(false);
 
-    // Toast state
     const [toast, setToast] = useState({
         show: false,
         message: "",
@@ -128,7 +127,6 @@ const ListarClientes = () => {
         }, 300);
     };
 
-    // Modal solo se desmonta después del fade-out
     const handleCerrarEditar = () => setDesmontarEditarModal(true);
     const handleCierreFinalizado = () => {
         setClaveEditando(null);
@@ -154,8 +152,6 @@ const ListarClientes = () => {
                             Clientes Registrados
                         </span>
                     </h2>
-
-                    {/* NOTA: Eliminado el mensaje antiguo de éxito/eliminado */}
 
                     {clientes.length === 0 ? (
                         <p className="text-center text-gray-600">No hay clientes registrados.</p>
@@ -206,9 +202,7 @@ const ListarClientes = () => {
                                                         onClick={() => abrirModalEditar(clave)}
                                                         className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300 px-3 py-1.5 text-sm rounded-full transition-all duration-200 hover:shadow-sm"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536M9 13h3l8-8a2.828 2.828 0 00-4-4l-8 8v3z" />
-                                                        </svg>
+                                                        <Pencil size={16} />
                                                         Editar
                                                     </button>
                                                     <button
@@ -229,7 +223,6 @@ const ListarClientes = () => {
                 </div>
             </AnimatedPage>
 
-            {/* MODAL EDITAR CLIENTE */}
             {claveEditando && clienteEditando && !desmontarEditarModal && (
                 <EditarCliente
                     isOpen={!!claveEditando}
@@ -241,7 +234,6 @@ const ListarClientes = () => {
                 />
             )}
 
-            {/* Modal confirmación eliminar */}
             {mostrarConfirmacionEliminar && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
                     <div className="bg-white p-7 rounded-2xl shadow-2xl max-w-sm w-full">

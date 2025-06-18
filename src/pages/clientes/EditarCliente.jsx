@@ -1,91 +1,116 @@
-import { useEffect, useState, useMemo } from "react";
-import Select from "react-select";
+import { useEffect, useState } from "react";
+import { NumericFormat } from "react-number-format";
 import { useToast } from "../../components/ToastContext";
 
+const MANZANAS = ["A", "B", "C", "D", "E", "F"];
+
 const camposMostrar = [
-    { key: "nombre", label: "Nombre" },
-    { key: "cedula", label: "Cédula" },
-    { key: "telefono", label: "Teléfono" },
-    { key: "correo", label: "Correo" },
-    { key: "direccion", label: "Dirección" },
-    { key: "viviendaId", label: "Vivienda asignada" },
+    { key: "manzana", label: "Manzana" },
+    { key: "numero", label: "Número de casa" },
+    { key: "matricula", label: "Matrícula" },
+    { key: "nomenclatura", label: "Nomenclatura" },
+    { key: "valor", label: "Valor total" },
 ];
 
-const EditarCliente = ({
+const EditarVivienda = ({
     isOpen,
     onClose,
     onCierreFinalizado,
     onGuardar,
-    cliente,
-    viviendas,
+    vivienda,
 }) => {
     const [formData, setFormData] = useState({
-        nombre: "",
-        cedula: "",
-        telefono: "",
-        correo: "",
-        direccion: "",
-        viviendaId: "",
+        manzana: "",
+        numero: "",
+        matricula: "",
+        nomenclatura: "",
+        valor: "",
     });
+    const [errors, setErrors] = useState({});
     const [cerrandoModal, setCerrandoModal] = useState(false);
     const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
-    const { showToast } = useToast();  // Corrección aquí
-
-    // Opciones de vivienda (solo disponibles o la actual)
-    const viviendasDisponibles = useMemo(() => {
-        if (!viviendas) return [];
-        return viviendas.filter(
-            (v) => v.clienteId == null || v.clienteId === cliente?.id
-        );
-    }, [viviendas, cliente]);
-
-    const opcionesVivienda = viviendasDisponibles.map((v) => ({
-        value: String(v.numeroCasa),
-        label: `Manzana ${v.manzana} - Casa ${v.numeroCasa}`,
-    }));
-
-    const selectedOption =
-        opcionesVivienda.find(
-            (opt) => String(opt.value) === String(formData.viviendaId)
-        ) || null;
+    const { showToast } = useToast();
 
     useEffect(() => {
-        if (cliente) {
-            let viviendaId = "";
-            if (
-                cliente.vivienda &&
-                typeof cliente.vivienda.numeroCasa !== "undefined" &&
-                cliente.vivienda.numeroCasa !== null
-            ) {
-                viviendaId = String(cliente.vivienda.numeroCasa);
-            } else if (
-                typeof cliente.viviendaId !== "undefined" &&
-                cliente.viviendaId !== null &&
-                cliente.viviendaId !== ""
-            ) {
-                viviendaId = String(cliente.viviendaId);
-            }
+        if (vivienda) {
             setFormData({
-                nombre: cliente.nombre || "",
-                cedula: cliente.cedula || "",
-                telefono: cliente.telefono || "",
-                correo: cliente.correo || "",
-                direccion: cliente.direccion || "",
-                viviendaId: viviendaId || "",
+                manzana: vivienda.manzana || "",
+                numero: vivienda.numeroCasa?.toString() || "",
+                matricula: vivienda.matricula || "",
+                nomenclatura: vivienda.nomenclatura || "",
+                valor: vivienda.valorTotal?.toString() || "",
             });
+            setErrors({}); // Limpiar errores al cargar datos
         }
-    }, [cliente]);
+    }, [vivienda]);
+
+    const validar = (fieldValues = formData) => {
+        const temp = { ...errors };
+
+        if ("manzana" in fieldValues) {
+            temp.manzana = fieldValues.manzana ? "" : "La manzana es obligatoria.";
+        }
+
+        if ("numero" in fieldValues) {
+            if (!fieldValues.numero || !fieldValues.numero.trim()) {
+                temp.numero = "El número de casa es obligatorio.";
+            } else if (!/^\d+$/.test(fieldValues.numero.trim())) {
+                temp.numero = "El número debe ser un valor numérico válido.";
+            } else {
+                temp.numero = "";
+            }
+        }
+
+        if ("matricula" in fieldValues) {
+            if (!fieldValues.matricula || !fieldValues.matricula.trim()) {
+                temp.matricula = "La matrícula es obligatoria.";
+            } else {
+                temp.matricula = "";
+            }
+        }
+
+        if ("nomenclatura" in fieldValues) {
+            if (!fieldValues.nomenclatura || !fieldValues.nomenclatura.trim()) {
+                temp.nomenclatura = "La nomenclatura es obligatoria.";
+            } else {
+                temp.nomenclatura = "";
+            }
+        }
+
+        if ("valor" in fieldValues) {
+            if (!fieldValues.valor || !fieldValues.valor.trim()) {
+                temp.valor = "El valor es obligatorio.";
+            } else if (!/^\d+$/.test(fieldValues.valor.trim())) {
+                temp.valor = "El valor debe ser un número válido.";
+            } else {
+                temp.valor = "";
+            }
+        }
+
+        setErrors({
+            ...temp,
+        });
+
+        if (fieldValues === formData) {
+            return (
+                temp.manzana === "" &&
+                temp.numero === "" &&
+                temp.matricula === "" &&
+                temp.nomenclatura === "" &&
+                temp.valor === ""
+            );
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((f) => ({ ...f, [name]: value }));
+        validar({ [name]: value });
     };
 
-    const handleSelectChange = (selected) => {
-        setFormData((f) => ({
-            ...f,
-            viviendaId: selected?.value ? String(selected.value) : "",
-        }));
+    const handleValorChange = (values) => {
+        setFormData((f) => ({ ...f, valor: values.value }));
+        validar({ valor: values.value });
     };
 
     const cerrarAnimado = () => {
@@ -99,58 +124,45 @@ const EditarCliente = ({
 
     const handleGuardar = (e) => {
         e.preventDefault();
-        setMostrarConfirmacion(true);
+
+        if (validar()) {
+            setMostrarConfirmacion(true);
+        }
     };
 
     const obtenerCambios = () => {
-        if (!cliente) return [];
+        if (!vivienda) return [];
         return camposMostrar
             .map((campo) => {
-                if (campo.key === "viviendaId") {
-                    let idAnt = "";
-                    if (
-                        cliente.vivienda &&
-                        typeof cliente.vivienda.numeroCasa !== "undefined" &&
-                        cliente.vivienda.numeroCasa !== null
-                    ) {
-                        idAnt = String(cliente.vivienda.numeroCasa);
-                    } else if (
-                        typeof cliente.viviendaId !== "undefined" &&
-                        cliente.viviendaId !== null &&
-                        cliente.viviendaId !== ""
-                    ) {
-                        idAnt = String(cliente.viviendaId);
-                    }
-                    const idAct = formData.viviendaId ? String(formData.viviendaId) : "";
+                let anterior = vivienda[campo.key];
+                let actual = formData[campo.key];
 
-                    const vivAnt = viviendas?.find((v) => String(v.numeroCasa) === idAnt);
-                    const vivAct = viviendas?.find((v) => String(v.numeroCasa) === idAct);
-
-                    const anterior = vivAnt
-                        ? `Manzana ${vivAnt.manzana} - Casa ${vivAnt.numeroCasa}`
-                        : "No asignada";
-                    const actual = vivAct
-                        ? `Manzana ${vivAct.manzana} - Casa ${vivAct.numeroCasa}`
-                        : "No asignada";
-
-                    if (idAnt !== idAct) {
-                        return {
-                            campo: campo.label,
-                            anterior,
-                            actual,
-                        };
-                    }
-                    return null;
+                if (campo.key === "numero") {
+                    anterior = vivienda.numeroCasa?.toString() || "";
                 }
-
-                let anterior = cliente[campo.key] ?? "";
-                let actual = formData[campo.key] ?? "";
+                if (campo.key === "valor") {
+                    anterior = vivienda.valorTotal?.toString() || "";
+                }
 
                 if (String(anterior) !== String(actual)) {
                     return {
                         campo: campo.label,
-                        anterior,
-                        actual,
+                        anterior:
+                            campo.key === "valor"
+                                ? Number(anterior || 0).toLocaleString("es-CO", {
+                                    style: "currency",
+                                    currency: "COP",
+                                    minimumFractionDigits: 0,
+                                })
+                                : anterior,
+                        actual:
+                            campo.key === "valor"
+                                ? Number(actual || 0).toLocaleString("es-CO", {
+                                    style: "currency",
+                                    currency: "COP",
+                                    minimumFractionDigits: 0,
+                                })
+                                : actual,
                     };
                 }
                 return null;
@@ -163,11 +175,14 @@ const EditarCliente = ({
         setMostrarConfirmacion(false);
         setTimeout(() => {
             onGuardar({
-                ...cliente,
-                ...formData,
-                viviendaId: formData.viviendaId ? parseInt(formData.viviendaId) : null,
+                ...vivienda,
+                manzana: formData.manzana,
+                numeroCasa: parseInt(formData.numero),
+                matricula: formData.matricula,
+                nomenclatura: formData.nomenclatura,
+                valorTotal: parseInt(formData.valor),
             });
-            showToast("Cambios guardados correctamente.", "success");  // Aquí la notificación toast
+            showToast("Cambios guardados correctamente.", "success");
             setCerrandoModal(false);
             if (onClose) onClose();
             if (onCierreFinalizado) onCierreFinalizado();
@@ -185,72 +200,118 @@ const EditarCliente = ({
                     }`}
             >
                 <h2 className="text-3xl font-bold text-[#c62828] text-center mb-8">
-                    ✏️ Editar Cliente
+                    ✏️ Editar Vivienda
                 </h2>
-                <form onSubmit={handleGuardar} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form
+                    onSubmit={handleGuardar}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                    noValidate
+                >
                     <div>
-                        <label className="block font-semibold mb-1">Nombre</label>
-                        <input
-                            type="text"
-                            name="nombre"
-                            value={formData.nombre}
+                        <label className="block font-medium mb-1" htmlFor="manzana">
+                            Manzana <span className="text-red-600">*</span>
+                        </label>
+                        <select
+                            name="manzana"
+                            id="manzana"
+                            value={formData.manzana}
                             onChange={handleChange}
-                            className="w-full border border-gray-300 p-2 rounded-lg"
+                            className={`w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-[#c62828] ${errors.manzana ? "border-red-600" : "border-gray-300"
+                                }`}
+                            required
+                        >
+                            <option value="">Selecciona</option>
+                            {MANZANAS.map((m) => (
+                                <option key={m} value={m}>
+                                    {m}
+                                </option>
+                            ))}
+                        </select>
+                        {errors.manzana && (
+                            <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block font-medium mb-1" htmlFor="numero">
+                            Número <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                            id="numero"
+                            name="numero"
+                            type="number"
+                            value={formData.numero}
+                            onChange={handleChange}
+                            className={`w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-[#c62828] ${errors.numero ? "border-red-600" : "border-gray-300"
+                                }`}
                             required
                         />
+                        {errors.numero && (
+                            <p className="text-red-600 text-sm mt-1">{errors.numero}</p>
+                        )}
                     </div>
+
                     <div>
-                        <label className="block font-semibold mb-1">Cédula</label>
+                        <label className="block font-medium mb-1" htmlFor="matricula">
+                            Matrícula <span className="text-red-600">*</span>
+                        </label>
                         <input
+                            id="matricula"
+                            name="matricula"
                             type="text"
-                            name="cedula"
-                            value={formData.cedula}
+                            value={formData.matricula}
                             onChange={handleChange}
-                            className="w-full border border-gray-300 p-2 rounded-lg"
+                            className={`w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-[#c62828] ${errors.matricula ? "border-red-600" : "border-gray-300"
+                                }`}
                             required
                         />
+                        {errors.matricula && (
+                            <p className="text-red-600 text-sm mt-1">{errors.matricula}</p>
+                        )}
                     </div>
+
                     <div>
-                        <label className="block font-semibold mb-1">Teléfono</label>
+                        <label className="block font-medium mb-1" htmlFor="nomenclatura">
+                            Nomenclatura <span className="text-red-600">*</span>
+                        </label>
                         <input
+                            id="nomenclatura"
+                            name="nomenclatura"
                             type="text"
-                            name="telefono"
-                            value={formData.telefono}
+                            value={formData.nomenclatura}
                             onChange={handleChange}
-                            className="w-full border border-gray-300 p-2 rounded-lg"
+                            className={`w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-[#c62828] ${errors.nomenclatura ? "border-red-600" : "border-gray-300"
+                                }`}
+                            required
                         />
+                        {errors.nomenclatura && (
+                            <p className="text-red-600 text-sm mt-1">{errors.nomenclatura}</p>
+                        )}
                     </div>
-                    <div>
-                        <label className="block font-semibold mb-1">Correo</label>
-                        <input
-                            type="email"
-                            name="correo"
-                            value={formData.correo}
-                            onChange={handleChange}
-                            className="w-full border border-gray-300 p-2 rounded-lg"
-                        />
-                    </div>
+
                     <div className="md:col-span-2">
-                        <label className="block font-semibold mb-1">Dirección</label>
-                        <input
-                            type="text"
-                            name="direccion"
-                            value={formData.direccion}
-                            onChange={handleChange}
-                            className="w-full border border-gray-300 p-2 rounded-lg"
+                        <label className="block font-medium mb-1" htmlFor="valor">
+                            Valor <span className="text-red-600">*</span>
+                        </label>
+                        <NumericFormat
+                            id="valor"
+                            value={formData.valor}
+                            onValueChange={handleValorChange}
+                            thousandSeparator="."
+                            decimalSeparator=","
+                            prefix="$ "
+                            allowNegative={false}
+                            decimalScale={0}
+                            className={`w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-[#c62828] ${errors.valor ? "border-red-600" : "border-gray-300"
+                                }`}
+                            required
                         />
+                        {errors.valor && (
+                            <p className="text-red-600 text-sm mt-1">{errors.valor}</p>
+                        )}
                     </div>
-                    <div className="md:col-span-2">
-                        <label className="block font-semibold mb-1">Vivienda asignada</label>
-                        <Select
-                            options={opcionesVivienda}
-                            value={selectedOption}
-                            onChange={handleSelectChange}
-                            placeholder="Buscar vivienda disponible..."
-                            isClearable
-                        />
-                    </div>
-                    <div className="md:col-span-2 flex justify-end mt-6">
+
+                    <div className="md:col-span-2 flex justify-end mt-8 space-x-4">
                         <button
                             type="button"
                             onClick={cerrarAnimado}
@@ -260,22 +321,24 @@ const EditarCliente = ({
                         </button>
                         <button
                             type="submit"
-                            className="ml-4 px-5 py-2.5 rounded-full text-white bg-[#c62828] hover:bg-red-700 transition"
+                            className="bg-[#28a745] hover:bg-green-700 text-white px-5 py-2.5 rounded-full transition"
                         >
                             Guardar Cambios
                         </button>
                     </div>
                 </form>
 
-                {/* MODAL CONFIRMAR GUARDADO */}
                 {mostrarConfirmacion && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fade-in">
                         <div className="bg-white p-6 rounded-xl shadow-xl max-w-sm w-full">
-                            <h3 className="text-lg font-semibold text-center mb-4">Confirmar cambios</h3>
+                            <h3 className="text-lg font-semibold text-center mb-4">
+                                Confirmar cambios
+                            </h3>
                             <div className="text-left mb-5">
                                 {cambios.length === 0 ? (
                                     <div className="text-sm text-yellow-600 text-center mb-2">
-                                        No hay cambios detectados, pero puedes guardar igualmente si lo deseas.
+                                        No hay cambios detectados, pero puedes guardar igualmente si lo
+                                        deseas.
                                     </div>
                                 ) : (
                                     <ul className="text-sm text-gray-700">
@@ -290,7 +353,9 @@ const EditarCliente = ({
                                     </ul>
                                 )}
                             </div>
-                            <p className="text-center mb-6">¿Deseas guardar los cambios de este cliente?</p>
+                            <p className="text-center mb-6">
+                                ¿Deseas guardar los cambios de esta vivienda?
+                            </p>
                             <div className="flex justify-end gap-4">
                                 <button
                                     onClick={() => setMostrarConfirmacion(false)}
@@ -313,4 +378,4 @@ const EditarCliente = ({
     );
 };
 
-export default EditarCliente;
+export default EditarVivienda;
