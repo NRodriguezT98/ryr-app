@@ -3,6 +3,7 @@ import { Trash, Pencil } from "lucide-react"; // Importamos Pencil
 import AnimatedPage from "../../components/AnimatedPage";
 import EditarCliente from "./EditarCliente";
 import Toast from "../../components/Toast";
+import { getClientes, saveClientes, getViviendas, saveViviendas } from "../../utils/storage"; // Importar funciones de storage
 
 function formatID(cedula) {
     if (/^\d+$/.test(cedula)) {
@@ -13,10 +14,14 @@ function formatID(cedula) {
 
 const ListarClientes = () => {
     const [clientes, setClientes] = useState([]);
-    const [viviendas, setViviendas] = useState([]);
-    const [claveEditando, setClaveEditando] = useState(null);
-    const [clienteEditando, setClienteEditando] = useState(null);
-    const [desmontarEditarModal, setDesmontarEditarModal] = useState(false);
+    const [viviendas, setViviendas] = useState([]); // Mantener si necesitas las viviendas en este componente para algo más
+
+    const [selectedCliente, setSelectedCliente] = useState(null); // Cliente que se está editando
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false); // Controla la visibilidad real del modal
+
+    // Este es el estado clave para manejar la transición de salida del modal principal
+    // Debe estar en el padre para decidir cuándo desmontar EditarCliente
+    const [shouldRenderEditModal, setShouldRenderEditModal] = useState(false);
 
     const [toast, setToast] = useState({
         show: false,
@@ -28,9 +33,11 @@ const ListarClientes = () => {
     const [mostrarConfirmacionEliminar, setMostrarConfirmacionEliminar] = useState(false);
     const [animandoFila, setAnimandoFila] = useState(null);
 
-    useEffect(() => {
-        const dataClientes = JSON.parse(localStorage.getItem("clientes")) || [];
-        const dataViviendas = JSON.parse(localStorage.getItem("viviendas")) || [];
+    // Función para cargar los clientes y viviendas con sus asignaciones
+    const cargarDatosClientes = () => {
+        const dataClientes = getClientes(); // Usa la función de storage
+        const dataViviendas = getViviendas(); // Usa la función de storage
+
         const clientesConVivienda = dataClientes.map((cliente) => {
             const viviendaAsignada = dataViviendas.find((v) => v.clienteId === cliente.id);
             return {
@@ -41,60 +48,47 @@ const ListarClientes = () => {
 
         const ordenados = clientesConVivienda.sort((a, b) => a.nombre.localeCompare(b.nombre));
         setClientes(ordenados);
-        setViviendas(dataViviendas);
+        setViviendas(dataViviendas); // Actualiza también el estado de viviendas si es necesario aquí
+    };
+
+    useEffect(() => {
+        cargarDatosClientes();
     }, []);
+
+    // Asegura que el modal de edición se monte/desmonte con animación
+    useEffect(() => {
+        if (isEditModalOpen) {
+            setShouldRenderEditModal(true); // Monta el componente
+        } else {
+            // El desmontaje se retrasará por la animación dentro de EditarCliente.jsx
+            // No hacemos nada aquí, ya que EditarCliente se desmontará solo cuando su animación interna termine
+        }
+    }, [isEditModalOpen]);
+
 
     const obtenerClave = (cliente) => `${cliente.nombre}-${cliente.id}`;
 
     // Abrir modal editar
     const abrirModalEditar = (clave) => {
         const cliente = clientes.find((c) => obtenerClave(c) === clave);
-        setClienteEditando(cliente);
-        setClaveEditando(clave);
-        setDesmontarEditarModal(false);
+        setSelectedCliente(cliente);
+        setIsEditModalOpen(true); // Esto activa la apertura del modal
     };
 
-    // Guardar cambios desde modal editar
+    // Guardar cambios desde modal editar (Simplificado porque la lógica de storage está en EditarCliente)
     const handleGuardarCliente = (datosActualizados) => {
-        const clientes = JSON.parse(localStorage.getItem("clientes")) || [];
-        const viviendas = JSON.parse(localStorage.getItem("viviendas")) || [];
-
-        const idxCliente = clientes.findIndex(c => c.id === datosActualizados.id);
-
-        clientes[idxCliente] = {
-            ...clientes[idxCliente],
-            ...datosActualizados,
-        };
-
-        const viviendasActualizadas = viviendas.map((v) => {
-            if (v.clienteId === datosActualizados.id && v.numeroCasa !== datosActualizados.viviendaId) {
-                return { ...v, clienteId: null };
-            }
-            if (v.numeroCasa === datosActualizados.viviendaId) {
-                return { ...v, clienteId: datosActualizados.id };
-            }
-            return v;
-        });
-
-        localStorage.setItem("clientes", JSON.stringify(clientes));
-        localStorage.setItem("viviendas", JSON.stringify(viviendasActualizadas));
-
-        const clientesConVivienda = clientes.map((c) => {
-            const vivienda = viviendasActualizadas.find((v) => v.clienteId === c.id);
-            return { ...c, vivienda: vivienda || null };
-        });
-
-        setClientes(clientesConVivienda);
-        setViviendas(viviendasActualizadas);
+        // La lógica de guardado y asignación/desasignación de viviendas ya se manejó en EditarCliente.
+        cargarDatosClientes();
 
         setToast({
             show: true,
             message: "Se guardaron los cambios en el cliente",
             type: "success"
         });
+        //setIsEditModalOpen(false); // Esto lo manejará la función onClose de EditarCliente
     };
 
-    // ELIMINAR
+    // ELIMINAR (Esta lógica ya la tienes y es funcional)
     const iniciarEliminacion = (clave) => {
         setClaveAEliminar(clave);
         setMostrarConfirmacionEliminar(true);
@@ -106,14 +100,16 @@ const ListarClientes = () => {
             const clienteEliminado = clientes.find((c) => obtenerClave(c) === claveAEliminar);
             const nuevosClientes = clientes.filter((c) => obtenerClave(c) !== claveAEliminar);
             setClientes(nuevosClientes);
-            localStorage.setItem("clientes", JSON.stringify(nuevosClientes));
+            saveClientes(nuevosClientes); // Usa saveClientes del storage
+
             // Liberar vivienda asignada
-            const viviendas = JSON.parse(localStorage.getItem("viviendas")) || [];
-            const viviendasActualizadas = viviendas.map((v) =>
+            let currentViviendas = getViviendas(); // Obtener las viviendas actuales
+            const viviendasActualizadas = currentViviendas.map((v) =>
                 v.clienteId === clienteEliminado.id ? { ...v, clienteId: null } : v
             );
-            localStorage.setItem("viviendas", JSON.stringify(viviendasActualizadas));
-            setViviendas(viviendasActualizadas);
+            saveViviendas(viviendasActualizadas); // Usa saveViviendas del storage
+            setViviendas(viviendasActualizadas); // Actualiza el estado local de viviendas
+
             setMostrarConfirmacionEliminar(false);
             setClaveAEliminar(null);
 
@@ -127,11 +123,11 @@ const ListarClientes = () => {
         }, 300);
     };
 
-    const handleCerrarEditar = () => setDesmontarEditarModal(true);
+    const handleCerrarEditar = () => setIsEditModalOpen(false); // Directamente cierra el modal
     const handleCierreFinalizado = () => {
-        setClaveEditando(null);
-        setClienteEditando(null);
-        setDesmontarEditarModal(false);
+        setShouldRenderEditModal(false); // Solo entonces desmontamos completamente el componente
+        setSelectedCliente(null); // Limpiar el cliente seleccionado
+        cargarDatosClientes(); // Recargar datos para asegurarse de que la lista esté actualizada
     };
 
     return (
@@ -156,8 +152,8 @@ const ListarClientes = () => {
                     {clientes.length === 0 ? (
                         <p className="text-center text-gray-600">No hay clientes registrados.</p>
                     ) : (
-                        <div className="w-fit mx-auto">
-                            <table className="table-auto border-collapse shadow-lg rounded-2xl overflow-hidden text-center">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full table-auto border-collapse shadow-lg rounded-2xl overflow-hidden text-center">
                                 <thead className="bg-[#c62828] text-white">
                                     <tr className="uppercase tracking-wide text-xs font-semibold text-center">
                                         <th className="px-5 py-3 whitespace-nowrap rounded-tl-xl text-center">Nombre</th>
@@ -223,14 +219,13 @@ const ListarClientes = () => {
                 </div>
             </AnimatedPage>
 
-            {claveEditando && clienteEditando && !desmontarEditarModal && (
+            {shouldRenderEditModal && (
                 <EditarCliente
-                    isOpen={!!claveEditando}
-                    onClose={handleCerrarEditar}
+                    isOpen={isEditModalOpen}
+                    onClose={handleCloseEditModalRequest}
                     onCierreFinalizado={handleCierreFinalizado}
                     onGuardar={handleGuardarCliente}
-                    cliente={clienteEditando}
-                    viviendas={viviendas}
+                    clienteAEditar={selectedCliente} // Renombrado de 'cliente' a 'clienteAEditar' para consistencia
                 />
             )}
 

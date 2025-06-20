@@ -9,6 +9,7 @@ import ListarViviendas from './pages/viviendas/ListarViviendas';
 import EditarVivienda from './pages/viviendas/EditarVivienda';
 import CrearCliente from "./pages/clientes/CrearCliente";
 import ListarClientes from './pages/clientes/ListarClientes';
+import AbonosPage from './pages/abonos/AbonosPage';
 import { ToastProvider } from './components/ToastContext';  // IMPORTA EL PROVEEDOR
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -23,6 +24,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="viviendas/editar/:id" element={<EditarVivienda />} />
             <Route path="/clientes/crear" element={<CrearCliente />} />
             <Route path="/clientes/listar" element={<ListarClientes />} />
+            <Route path="/abonos" element={<AbonosPage />} />
           </Route>
         </Routes>
       </ToastProvider>
