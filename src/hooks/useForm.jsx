@@ -30,7 +30,7 @@ export const useForm = (initialState, validate, onSubmit, options = {}) => {
 
         // --- CORRECCIÓN CRÍTICA: Añadir chequeo de tipo de 'validate' ---
         if (typeof validate !== 'function') {
-            console.error("useForm: Error crítico - La función 'validate' no es válida o no está definida.");
+            console.error("useForm: Error crítico - La función 'validate' no es válida o no está definida.", validate); // Agregado 'validate' para ver el valor
             setErrors({ _form: "Error interno del formulario: La lógica de validación no está definida." });
             return; // Detener la ejecución si validate no es una función
         }

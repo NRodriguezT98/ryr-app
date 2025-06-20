@@ -1,5 +1,7 @@
 // Ruta: src/pages/abonos/abonoValidation.js
 
+import { getClientes } from '../../utils/storage';
+
 export const validateAbono = (formData, selectedViviendaId, resumenPago, allViviendasData) => {
     const errors = {};
 

@@ -35,8 +35,8 @@ const CrearCliente = () => {
 
     // Lógica de validación para CrearCliente (AHORA FUNCIÓN DIRECTA)
     // Se pasa `false` para `isEditing` ya que es un formulario de creación.
-    const validateForm = (formData) => { // Removido useCallback
-        return validateCliente(formData, false);
+    const validateForm = (formData) => {
+        return validateCliente(formData, false); // `false` para no edición
     };
 
     // Lógica que se ejecuta cuando el formulario es válido y se envía (useCallback para estabilidad)
