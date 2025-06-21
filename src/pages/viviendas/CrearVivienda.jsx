@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { NumericFormat } from "react-number-format";
 import AnimatedPage from "../../components/AnimatedPage";
 import { useToast } from "../../components/ToastContext";
 import { useForm } from "../../hooks/useForm.jsx";
-import { createViviendaValidator } from "./viviendaValidation.js";
+import { validateVivienda } from "./viviendaValidation.js";
+import { addVivienda, getViviendas } from "../../utils/storage";
 
 const initialState = {
     manzana: "",
@@ -19,24 +21,26 @@ const inputFilters = {
     nomenclatura: { regex: /^[a-zA-Z0-9\s#-]*$/ }
 };
 
-const validateVivienda = createViviendaValidator();
-
 const CrearVivienda = () => {
     const navigate = useNavigate();
     const { showToast } = useToast();
 
+    // Obtenemos todas las viviendas una sola vez para pasarlas a la validación.
+    const todasLasViviendas = useMemo(() => getViviendas(), []);
+
     const onSubmitLogic = (formData) => {
-        const nuevasViviendas = JSON.parse(localStorage.getItem("viviendas")) || [];
-        nuevasViviendas.push({
+        const nuevaVivienda = {
             id: Date.now(),
             manzana: formData.manzana,
             numeroCasa: parseInt(formData.numero, 10),
             matricula: formData.matricula.trim(),
             nomenclatura: formData.nomenclatura.trim(),
-            valorTotal: parseInt(formData.valor, 10),
+            valorTotal: parseInt(formData.valor.replace(/\D/g, ''), 10),
             clienteId: null,
-        });
-        localStorage.setItem("viviendas", JSON.stringify(nuevasViviendas));
+        };
+
+        addVivienda(nuevaVivienda);
+
         showToast("✅ Vivienda registrada exitosamente.", "success");
         setTimeout(() => navigate("/viviendas/listar"), 1500);
     };
@@ -48,9 +52,12 @@ const CrearVivienda = () => {
         handleInputChange,
         handleValueChange,
         handleSubmit,
-    } = useForm(initialState, validateVivienda, onSubmitLogic, {
-        inputFilters,
-        resetOnSubmit: true
+    } = useForm({
+        initialState: initialState,
+        // Pasamos una función que llama a nuestra validación pura con los datos necesarios.
+        validate: (formData) => validateVivienda(formData, todasLasViviendas, null),
+        onSubmit: onSubmitLogic,
+        options: { inputFilters }
     });
 
     return (
@@ -60,6 +67,7 @@ const CrearVivienda = () => {
                     🏠 Crear Nueva Vivienda
                 </h2>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6" noValidate>
+                    {/* El JSX del formulario no cambia, ya estaba correcto. */}
                     <div>
                         <label className="block font-semibold mb-1" htmlFor="manzana">Manzana <span className="text-red-600">*</span></label>
                         <select id="manzana" name="manzana" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.manzana ? "border-red-600" : "border-gray-300"}`}>
