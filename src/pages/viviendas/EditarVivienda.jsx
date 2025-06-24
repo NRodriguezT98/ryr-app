@@ -18,9 +18,28 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [detectedChanges, setDetectedChanges] = useState([]);
 
-    const todasLasViviendas = useMemo(() => getViviendas(), []);
+    // --- CAMBIO 1: Estados para cargar datos asíncronamente ---
+    const [isLoading, setIsLoading] = useState(true);
+    const [todasLasViviendas, setTodasLasViviendas] = useState([]);
 
-    // --- CORRECCIÓN DE ORDEN 1: El hook useForm se declara ANTES de ser usado. ---
+    // --- CAMBIO 2: useEffect para cargar los datos necesarios cuando se abre el modal ---
+    useEffect(() => {
+        if (isOpen) {
+            const cargarDatosParaValidacion = async () => {
+                setIsLoading(true);
+                try {
+                    const viviendasData = await getViviendas();
+                    setTodasLasViviendas(viviendasData);
+                } catch (error) {
+                    toast.error("No se pudieron cargar datos para la validación.");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            cargarDatosParaValidacion();
+        }
+    }, [isOpen]);
+
     const {
         formData,
         setFormData,
@@ -31,12 +50,12 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
         handleSubmit,
     } = useForm({
         initialState: INITIAL_VIVIENDA_STATE,
+        // La validación ahora usa los datos del estado
         validate: (data) => validateVivienda(data, todasLasViviendas, vivienda.id),
         onSubmit: (data) => handleSubmitWithConfirmation(data),
         options: { resetOnSuccess: false }
     });
 
-    // --- CORRECCIÓN DE ORDEN 2: Las funciones y memos que usan `formData` se declaran DESPUÉS. ---
     const hayCambios = useMemo(() => {
         if (!vivienda) return false;
         return formData.manzana !== (vivienda.manzana || '') ||
@@ -46,7 +65,8 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
             formData.valor !== (vivienda.valorTotal?.toString() || '');
     }, [formData, vivienda]);
 
-    const handleFinalSave = useCallback(() => {
+    // --- CAMBIO 3: La función de guardado ahora es asíncrona ---
+    const handleFinalSave = useCallback(async () => {
         const datosActualizados = {
             manzana: formData.manzana,
             numeroCasa: parseInt(formData.numero, 10),
@@ -54,14 +74,16 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
             nomenclatura: formData.nomenclatura.trim(),
             valorTotal: parseInt(String(formData.valor).replace(/\D/g, ''), 10),
         };
-        if (updateVivienda(vivienda.id, datosActualizados)) {
+        try {
+            await updateVivienda(vivienda.id, datosActualizados);
             toast.success('Vivienda actualizada correctamente.');
             onGuardar();
-        } else {
+        } catch (error) {
             toast.error('Error al actualizar la vivienda.');
+        } finally {
+            setIsConfirmOpen(false);
+            onClose();
         }
-        setIsConfirmOpen(false);
-        onClose();
     }, [formData, vivienda, onGuardar, onClose]);
 
     const handleSubmitWithConfirmation = useCallback((formData) => {
@@ -83,7 +105,7 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
             setDetectedChanges(cambios);
             setIsConfirmOpen(true);
         } else {
-            toast.success("No se detectaron cambios.", { icon: 'ℹ️' });
+            toast("No se detectaron cambios.", { icon: 'ℹ️' });
             onClose();
         }
     }, [vivienda, onClose]);
@@ -100,54 +122,57 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
         }
     }, [vivienda, setFormData]);
 
-    if (!isOpen) {
-        return null;
-    }
+    if (!isOpen) return null;
 
     return (
         <>
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
                 <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl mx-4">
                     <h2 className="text-3xl font-bold text-[#c62828] text-center mb-8">✏️ Editar Vivienda</h2>
-                    <form onSubmit={handleSubmit} noValidate>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* ... El JSX del formulario ... */}
-                            <div>
-                                <label className="block font-medium mb-1" htmlFor="manzana-edit">Manzana</label>
-                                <select name="manzana" id="manzana-edit" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.manzana ? "border-red-600" : "border-gray-300"}`}>
-                                    <option value="">Selecciona</option>
-                                    {["A", "B", "C", "D", "E", "F"].map((m) => (<option key={m} value={m}>{m}</option>))}
-                                </select>
-                                {errors.manzana && <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>}
+
+                    {/* CAMBIO 4: Mostramos 'cargando' o el formulario */}
+                    {isLoading ? (
+                        <div className="text-center py-10 text-gray-500">Cargando...</div>
+                    ) : (
+                        <form onSubmit={handleSubmit} noValidate>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block font-medium mb-1" htmlFor="manzana-edit">Manzana</label>
+                                    <select name="manzana" id="manzana-edit" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.manzana ? "border-red-600" : "border-gray-300"}`}>
+                                        <option value="">Selecciona</option>
+                                        {["A", "B", "C", "D", "E", "F"].map((m) => (<option key={m} value={m}>{m}</option>))}
+                                    </select>
+                                    {errors.manzana && <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>}
+                                </div>
+                                <div>
+                                    <label className="block font-medium mb-1" htmlFor="numero-edit">Número</label>
+                                    <input id="numero-edit" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.numero ? "border-red-600" : "border-gray-300"}`} />
+                                    {errors.numero && <p className="text-red-600 text-sm mt-1">{errors.numero}</p>}
+                                </div>
+                                <div>
+                                    <label className="block font-medium mb-1" htmlFor="matricula-edit">Matrícula</label>
+                                    <input id="matricula-edit" name="matricula" type="text" value={formData.matricula} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.matricula ? "border-red-600" : "border-gray-300"}`} />
+                                    {errors.matricula && <p className="text-red-600 text-sm mt-1">{errors.matricula}</p>}
+                                </div>
+                                <div>
+                                    <label className="block font-medium mb-1" htmlFor="nomenclatura-edit">Nomenclatura</label>
+                                    <input id="nomenclatura-edit" name="nomenclatura" type="text" value={formData.nomenclatura} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.nomenclatura ? "border-red-600" : "border-gray-300"}`} />
+                                    {errors.nomenclatura && <p className="text-red-600 text-sm mt-1">{errors.nomenclatura}</p>}
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block font-medium mb-1" htmlFor="valor-edit">Valor</label>
+                                    <NumericFormat id="valor-edit" name="valor" value={formData.valor} onValueChange={(values) => handleValueChange('valor', values.value)} thousandSeparator="." decimalSeparator="," prefix="$ " className={`w-full border p-2.5 rounded-lg ${errors.valor ? "border-red-600" : "border-gray-300"}`} />
+                                    {errors.valor && <p className="text-red-600 text-sm mt-1">{errors.valor}</p>}
+                                </div>
                             </div>
-                            <div>
-                                <label className="block font-medium mb-1" htmlFor="numero-edit">Número</label>
-                                <input id="numero-edit" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.numero ? "border-red-600" : "border-gray-300"}`} />
-                                {errors.numero && <p className="text-red-600 text-sm mt-1">{errors.numero}</p>}
+                            <div className="md:col-span-2 flex justify-end mt-8 space-x-4">
+                                <button type="button" onClick={onClose} className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-5 py-2.5 rounded-full transition">Cancelar</button>
+                                <button type="submit" disabled={isSubmitting || !hayCambios} className={`text-white px-5 py-2.5 rounded-full transition ${isSubmitting || !hayCambios ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#28a745] hover:bg-green-700'}`}>
+                                    {isSubmitting ? "Validando..." : "Guardar Cambios"}
+                                </button>
                             </div>
-                            <div>
-                                <label className="block font-medium mb-1" htmlFor="matricula-edit">Matrícula</label>
-                                <input id="matricula-edit" name="matricula" type="text" value={formData.matricula} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.matricula ? "border-red-600" : "border-gray-300"}`} />
-                                {errors.matricula && <p className="text-red-600 text-sm mt-1">{errors.matricula}</p>}
-                            </div>
-                            <div>
-                                <label className="block font-medium mb-1" htmlFor="nomenclatura-edit">Nomenclatura</label>
-                                <input id="nomenclatura-edit" name="nomenclatura" type="text" value={formData.nomenclatura} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.nomenclatura ? "border-red-600" : "border-gray-300"}`} />
-                                {errors.nomenclatura && <p className="text-red-600 text-sm mt-1">{errors.nomenclatura}</p>}
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="block font-medium mb-1" htmlFor="valor-edit">Valor</label>
-                                <NumericFormat id="valor-edit" name="valor" value={formData.valor} onValueChange={(values) => handleValueChange('valor', values.value)} thousandSeparator="." decimalSeparator="," prefix="$ " className={`w-full border p-2.5 rounded-lg ${errors.valor ? "border-red-600" : "border-gray-300"}`} />
-                                {errors.valor && <p className="text-red-600 text-sm mt-1">{errors.valor}</p>}
-                            </div>
-                        </div>
-                        <div className="md:col-span-2 flex justify-end mt-8 space-x-4">
-                            <button type="button" onClick={onClose} className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-5 py-2.5 rounded-full transition">Cancelar</button>
-                            <button type="submit" disabled={isSubmitting || !hayCambios} className={`text-white px-5 py-2.5 rounded-full transition ${isSubmitting || !hayCambios ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#28a745] hover:bg-green-700'}`}>
-                                {isSubmitting ? "Validando..." : "Guardar Cambios"}
-                            </button>
-                        </div>
-                    </form>
+                        </form>
+                    )}
                 </div>
             </div>
 

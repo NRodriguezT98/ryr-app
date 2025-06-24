@@ -22,7 +22,7 @@ const ResumenAbonos = ({ resumen }) => {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-center bg-gray-50 p-6 rounded-lg shadow-inner">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
             <div>
                 <p className="text-sm font-medium text-gray-600">Valor Total Vivienda</p>
                 <p className="text-lg font-bold text-gray-800">

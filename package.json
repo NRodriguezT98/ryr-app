@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
+    "date-fns": "^4.1.0",
+    "firebase": "^11.9.1",
     "lodash.isequal": "^4.5.0",
     "lucide-react": "^0.515.0",
     "react": "^19.1.0",

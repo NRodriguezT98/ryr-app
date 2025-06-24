@@ -1,179 +1,124 @@
-// Ruta: src/utils/storage.js
+// Importamos la instancia de la base de datos (db) y el storage (para archivos) desde nuestra configuración de Firebase
+import { db, storage } from '../firebase/config';
+// Importamos las funciones que necesitamos de Firestore SDK
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
 
-export const getViviendas = () => {
-    return JSON.parse(localStorage.getItem("viviendas")) || [];
+// --- FUNCIONES PARA VIVIENDAS ---
+
+// Obtiene TODAS las viviendas de la colección 'viviendas' en Firestore
+export const getViviendas = async () => {
+    // 1. Obtenemos una referencia a nuestra colección
+    const viviendasRef = collection(db, "viviendas");
+    // 2. Pedimos los documentos de esa colección
+    const querySnapshot = await getDocs(viviendasRef);
+    // 3. Mapeamos los resultados para convertirlos en un array de objetos como los que ya usamos
+    const viviendas = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return viviendas;
 };
 
-export const saveViviendas = (viviendas) => {
-    localStorage.setItem("viviendas", JSON.stringify(viviendas));
+// Añade UNA vivienda nueva a la colección 'viviendas'
+export const addVivienda = async (viviendaData) => {
+    const viviendasRef = collection(db, "viviendas");
+    // addDoc es como hacer .push() pero en la base de datos. Firestore genera el ID automáticamente.
+    const newDocRef = await addDoc(viviendasRef, viviendaData);
+    return newDocRef.id; // Devolvemos el ID del nuevo documento creado
 };
 
-export const getClientes = () => {
-    return JSON.parse(localStorage.getItem("clientes")) || [];
+// Actualiza UNA vivienda existente por su ID
+export const updateVivienda = async (id, datosActualizados) => {
+    // Obtenemos la referencia al documento específico usando su ID
+    const viviendaDocRef = doc(db, "viviendas", id);
+    // Actualizamos el documento con los nuevos datos
+    await updateDoc(viviendaDocRef, datosActualizados);
 };
 
-export const saveClientes = (clientes) => {
-    localStorage.setItem("clientes", JSON.stringify(clientes));
-};
-
-export const getAbonos = () => {
-    return JSON.parse(localStorage.getItem("abonos")) || [];
-};
-
-export const saveAbonos = (abonos) => {
-    localStorage.setItem("abonos", JSON.stringify(abonos));
-};
-
-// ... (justo después de tus otras funciones de save/get de viviendas)
-
-export const addVivienda = (vivienda) => {
-    // Esta función encapsula toda la lógica de localStorage para añadir una vivienda.
-    const viviendas = getViviendas(); // Reutilizamos getViviendas
-    viviendas.push(vivienda);
-    saveViviendas(viviendas); // Reutilizamos saveViviendas
-};
-
-export const updateVivienda = (id, datosActualizados) => {
-    const viviendas = getViviendas();
-    const viviendaIndex = viviendas.findIndex(v => v.id === id);
-    if (viviendaIndex > -1) {
-        viviendas[viviendaIndex] = { ...viviendas[viviendaIndex], ...datosActualizados };
-        saveViviendas(viviendas);
-        return true;
-    }
-    return false;
-};
-
-export const deleteVivienda = (viviendaId) => {
-    let viviendas = getViviendas();
-    let clientes = getClientes();
-
-    // Comprobar si algún cliente está asignado a esta vivienda
+// Elimina UNA vivienda por su ID
+export const deleteVivienda = async (viviendaId) => {
+    // Primero, desvinculamos al cliente si existe
+    const clientes = await getClientes();
     const clienteAsignado = clientes.find(c => c.viviendaId === viviendaId);
-
-    // Si hay un cliente, desvincularlo
     if (clienteAsignado) {
-        const clientesActualizados = clientes.map(c =>
-            c.id === clienteAsignado.id ? { ...c, viviendaId: null } : c
-        );
-        saveClientes(clientesActualizados);
+        const clienteDocRef = doc(db, "clientes", clienteAsignado.id);
+        await updateDoc(clienteDocRef, { viviendaId: null });
     }
-
-    // Filtrar y guardar la nueva lista de viviendas
-    const viviendasActualizadas = viviendas.filter(v => v.id !== viviendaId);
-    saveViviendas(viviendasActualizadas);
-
-    return true; // Indicar que la operación fue exitosa
+    // Luego, eliminamos el documento de la vivienda
+    const viviendaDocRef = doc(db, "viviendas", viviendaId);
+    await deleteDoc(viviendaDocRef);
 };
 
-export const addClienteAndAssignVivienda = (clienteData) => {
-    // --- Lógica para crear el cliente ---
-    const clientes = getClientes();
-    const nuevoCliente = {
-        ...clienteData,
-        id: Date.now(), // Asignamos un ID único
-    };
-    clientes.push(nuevoCliente);
-    saveClientes(clientes);
 
-    // --- Lógica para asignar la vivienda ---
-    // Si se seleccionó una vivienda, la actualizamos.
-    if (nuevoCliente.viviendaId) {
-        const viviendas = getViviendas();
-        const viviendaIndex = viviendas.findIndex(v => v.id === nuevoCliente.viviendaId);
+// --- FUNCIONES PARA CLIENTES --- (Siguen el mismo patrón)
 
-        if (viviendaIndex > -1) {
-            viviendas[viviendaIndex].clienteId = nuevoCliente.id;
-            saveViviendas(viviendas);
-        }
-    }
-
-    return nuevoCliente; // Devolvemos el cliente creado por si se necesita
+export const getClientes = async () => {
+    const clientesRef = collection(db, "clientes");
+    const querySnapshot = await getDocs(clientesRef);
+    const clientes = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return clientes;
 };
 
-export const updateCliente = (clienteId, datosActualizados) => {
-    let clientes = getClientes();
-    let viviendas = getViviendas();
+export const addClienteAndAssignVivienda = async (clienteData) => {
+    const clientesRef = collection(db, "clientes");
+    const newDocRef = await addDoc(clientesRef, clienteData);
 
-    const clienteIndex = clientes.findIndex(c => c.id === clienteId);
-    if (clienteIndex === -1) return false; // No se encontró el cliente
+    if (clienteData.viviendaId) {
+        const viviendaDocRef = doc(db, "viviendas", clienteData.viviendaId);
+        await updateDoc(viviendaDocRef, { clienteId: newDocRef.id });
+    }
+    return newDocRef.id;
+};
 
-    const clienteOriginal = clientes[clienteIndex];
+export const updateCliente = async (clienteId, datosActualizados) => {
+    const clientes = await getClientes();
+    const clienteOriginal = clientes.find(c => c.id === clienteId);
+    if (!clienteOriginal) return;
 
-    // 1. Desvincular la vivienda ANTIGUA si ha cambiado
+    // Lógica para desvincular/vincular viviendas
     if (clienteOriginal.viviendaId && clienteOriginal.viviendaId !== datosActualizados.viviendaId) {
-        const viviendaAntiguaIndex = viviendas.findIndex(v => v.id === clienteOriginal.viviendaId);
-        if (viviendaAntiguaIndex > -1) {
-            viviendas[viviendaAntiguaIndex].clienteId = null;
-        }
+        const viviendaAntiguaRef = doc(db, "viviendas", clienteOriginal.viviendaId);
+        await updateDoc(viviendaAntiguaRef, { clienteId: null });
     }
-
-    // 2. Vincular la vivienda NUEVA si se ha asignado una
     if (datosActualizados.viviendaId) {
-        const viviendaNuevaIndex = viviendas.findIndex(v => v.id === datosActualizados.viviendaId);
-        if (viviendaNuevaIndex > -1) {
-            viviendas[viviendaNuevaIndex].clienteId = clienteId;
-        }
+        const viviendaNuevaRef = doc(db, "viviendas", datosActualizados.viviendaId);
+        await updateDoc(viviendaNuevaRef, { clienteId: clienteId });
     }
 
-    // 3. Actualizar los datos del cliente
-    clientes[clienteIndex] = { ...clienteOriginal, ...datosActualizados };
-
-    // 4. Guardar ambos arrays actualizados
-    saveClientes(clientes);
-    saveViviendas(viviendas);
-
-    return true;
+    const clienteDocRef = doc(db, "clientes", clienteId);
+    await updateDoc(clienteDocRef, datosActualizados);
 };
 
-export const deleteCliente = (clienteId) => {
-    // Primero, desvinculamos la vivienda que pudiera tener el cliente.
-    let viviendas = getViviendas();
-    const viviendaIndex = viviendas.findIndex(v => v.clienteId === clienteId);
-    if (viviendaIndex > -1) {
-        viviendas[viviendaIndex].clienteId = null;
-        saveViviendas(viviendas);
+export const deleteCliente = async (clienteId) => {
+    const viviendas = await getViviendas();
+    const viviendaAsignada = viviendas.find(v => v.clienteId === clienteId);
+    if (viviendaAsignada) {
+        const viviendaDocRef = doc(db, "viviendas", viviendaAsignada.id);
+        await updateDoc(viviendaDocRef, { clienteId: null });
     }
-
-    // Luego, eliminamos al cliente.
-    let clientes = getClientes();
-    const clientesActualizados = clientes.filter(c => c.id !== clienteId);
-    saveClientes(clientesActualizados);
-
-    return true; // Indicar que la operación fue exitosa
+    const clienteDocRef = doc(db, "clientes", clienteId);
+    await deleteDoc(clienteDocRef);
 };
 
-export const addAbono = (abono) => {
-    const abonos = getAbonos();
-    abonos.push(abono);
-    saveAbonos(abonos);
+
+// --- FUNCIONES PARA ABONOS --- (Siguen el mismo patrón)
+
+export const getAbonos = async () => {
+    const abonosRef = collection(db, "abonos");
+    const querySnapshot = await getDocs(abonosRef);
+    const abonos = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return abonos;
 };
 
-// ... (tus otras funciones: getAbonos, addAbono, deleteAbono)
-
-export const updateAbono = (id, datosActualizados) => {
-    const abonos = getAbonos();
-    const abonoIndex = abonos.findIndex(abono => abono.id === id);
-
-    if (abonoIndex > -1) {
-        // La lógica de actualización está perfecta.
-        abonos[abonoIndex] = { ...abonos[abonoIndex], ...datosActualizados };
-
-        // --- CORRECCIÓN AQUÍ ---
-        // Reutilizamos la función saveAbonos para asegurar consistencia.
-        saveAbonos(abonos);
-
-        return true;
-    }
-    return false;
+export const addAbono = async (abonoData) => {
+    const abonosRef = collection(db, "abonos");
+    const newDocRef = await addDoc(abonosRef, abonoData);
+    return newDocRef.id;
 };
 
-export const deleteAbono = (abonoId) => {
-    let abonos = getAbonos();
-    const filteredAbonos = abonos.filter(a => a.id !== abonoId);
-    if (filteredAbonos.length < abonos.length) { // Si se eliminó al menos uno
-        saveAbonos(filteredAbonos);
-        return true; // Indica éxito
-    }
-    return false; // Indica que no se encontró o eliminó
+export const updateAbono = async (id, datosActualizados) => {
+    const abonoDocRef = doc(db, "abonos", id);
+    await updateDoc(abonoDocRef, datosActualizados);
+};
+
+export const deleteAbono = async (id) => {
+    const abonoDocRef = doc(db, "abonos", id);
+    await deleteDoc(abonoDocRef);
 };
