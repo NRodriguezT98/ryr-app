@@ -1,69 +1,70 @@
-import React from 'react';
-import { Trash, Pencil } from "lucide-react";
+import React, { Fragment } from 'react';
+import { Trash, Pencil, ArrowDown, ArrowUp, MoreVertical } from "lucide-react";
+import { Menu, Transition } from '@headlessui/react';
 
-/**
- * Componente de presentación que renderiza la tabla de viviendas.
- * @param {object} props
- * @param {Array} props.viviendas - La lista de viviendas a mostrar.
- * @param {Function} props.onEdit - Callback a ejecutar cuando se presiona el botón de editar.
- * @param {Function} props.onDelete - Callback a ejecutar cuando se presiona el botón de eliminar.
- */
-const TablaViviendas = ({ viviendas, onEdit, onDelete }) => {
+const TablaViviendas = ({ viviendas, onEdit, onDelete, onSort, sortConfig }) => {
+    const SortIndicator = ({ columnKey }) => {
+        if (!sortConfig || sortConfig.key !== columnKey) return null;
+        return sortConfig.direction === 'ascending' ? <ArrowUp size={14} className="ml-1 inline" /> : <ArrowDown size={14} className="ml-1 inline" />;
+    };
+
     return (
         <div className="overflow-x-auto">
-            <table className="min-w-full table-auto border-collapse rounded-2xl overflow-hidden text-center">
+            <table className="min-w-full table-auto border-collapse text-center">
                 <thead className="bg-slate-700 text-white">
                     <tr className="uppercase tracking-wide text-xs font-semibold">
-                        <th className="px-5 py-3">Manzana</th>
-                        <th className="px-5 py-3">Casa</th>
+                        <th className="px-5 py-3"><button onClick={() => onSort('manzana')} className="flex items-center justify-center w-full">Manzana <SortIndicator columnKey="manzana" /></button></th>
+                        <th className="px-5 py-3"><button onClick={() => onSort('numeroCasa')} className="flex items-center justify-center w-full">Casa <SortIndicator columnKey="numeroCasa" /></button></th>
                         <th className="px-5 py-3">Matrícula</th>
                         <th className="px-5 py-3">Nomenclatura</th>
-                        <th className="px-5 py-3">Valor Total</th>
-                        <th className="px-5 py-3">Cliente Asignado</th>
+                        <th className="px-5 py-3"><button onClick={() => onSort('valorTotal')} className="flex items-center justify-center w-full">Valor Total <SortIndicator columnKey="valorTotal" /></button></th>
+                        <th className="px-5 py-3"><button onClick={() => onSort('cliente')} className="flex items-center justify-center w-full">Cliente Asignado <SortIndicator columnKey="cliente" /></button></th>
                         <th className="px-5 py-3">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {viviendas.map((vivienda, idx) => (
-                        <tr
-                            key={vivienda.id}
-                            className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-yellow-50 transition-colors duration-200`}
-                        >
+                    {viviendas.map((vivienda) => (
+                        <tr key={vivienda.id} className="bg-white hover:bg-gray-50 border-b border-gray-200">
                             <td className="px-5 py-3">{vivienda.manzana}</td>
                             <td className="px-5 py-3">{vivienda.numeroCasa}</td>
                             <td className="px-5 py-3">{vivienda.matricula}</td>
                             <td className="px-5 py-3">{vivienda.nomenclatura}</td>
-                            <td className="px-5 py-3">
-                                {Number(vivienda.valorTotal).toLocaleString("es-CO", {
-                                    style: "currency",
-                                    currency: "COP",
-                                    minimumFractionDigits: 0,
-                                })}
-                            </td>
+                            <td className="px-5 py-3">{Number(vivienda.valorTotal).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}</td>
                             <td className="px-5 py-3">
                                 {vivienda.cliente ? (
-                                    vivienda.cliente.nombre
+                                    <span className="inline-block rounded-full bg-green-100 text-green-800 px-3 py-1 text-xs font-semibold">{vivienda.cliente.nombre}</span>
                                 ) : (
-                                    <span className="inline-block rounded-lg bg-red-50 text-red-700 px-2 py-0.5 text-xs font-semibold">
-                                        No asignado
-                                    </span>
+                                    <span className="inline-block rounded-full bg-red-100 text-red-800 px-3 py-1 text-xs font-semibold">Disponible</span>
                                 )}
                             </td>
-                            <td className="px-5 py-3 whitespace-nowrap">
-                                <button
-                                    onClick={() => onEdit(vivienda)}
-                                    className="p-2 text-yellow-500 hover:text-yellow-700 transition-colors duration-200"
-                                    aria-label="Editar"
-                                >
-                                    <Pencil size={16} />
-                                </button>
-                                <button
-                                    onClick={() => onDelete(vivienda)}
-                                    className="p-2 text-red-600 hover:text-red-800 transition-colors duration-200"
-                                    aria-label="Eliminar"
-                                >
-                                    <Trash size={16} />
-                                </button>
+                            <td className="px-5 py-3 whitespace-nowrap text-right relative">
+                                <Menu as="div" className="relative inline-block text-left">
+                                    <div>
+                                        <Menu.Button className="inline-flex justify-center w-full rounded-full p-2 text-sm font-medium text-gray-500 hover:bg-gray-200">
+                                            <MoreVertical size={20} />
+                                        </Menu.Button>
+                                    </div>
+                                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                                        <Menu.Items className="absolute right-0 bottom-0 mr-10 w-40 origin-right bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                                            <div className="px-1 py-1 ">
+                                                <Menu.Item>
+                                                    {({ active }) => (
+                                                        <button onClick={() => onEdit(vivienda)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}>
+                                                            <Pencil className="w-5 h-5 mr-2" /> Editar
+                                                        </button>
+                                                    )}
+                                                </Menu.Item>
+                                                <Menu.Item>
+                                                    {({ active }) => (
+                                                        <button onClick={() => onDelete(vivienda)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}>
+                                                            <Trash className="w-5 h-5 mr-2" /> Eliminar
+                                                        </button>
+                                                    )}
+                                                </Menu.Item>
+                                            </div>
+                                        </Menu.Items>
+                                    </Transition>
+                                </Menu>
                             </td>
                         </tr>
                     ))}

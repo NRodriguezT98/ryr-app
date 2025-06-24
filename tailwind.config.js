@@ -25,6 +25,9 @@ export default {
           '0%': { opacity: '1', transform: 'translateY(0)' },
           '100%': { opacity: '0', transform: 'translateY(-10px)' }, // Corregido: translateY a -10px para que desaparezca hacia arriba
         },
+        fontFamily: {
+          poppins: ['Montserrat', 'sans-serif'],
+        },
       },
       animation: {
         "fade-in": "fade-in 0.3s ease-out",

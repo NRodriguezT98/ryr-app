@@ -66,6 +66,83 @@ export const deleteVivienda = (viviendaId) => {
     return true; // Indicar que la operación fue exitosa
 };
 
+export const addClienteAndAssignVivienda = (clienteData) => {
+    // --- Lógica para crear el cliente ---
+    const clientes = getClientes();
+    const nuevoCliente = {
+        ...clienteData,
+        id: Date.now(), // Asignamos un ID único
+    };
+    clientes.push(nuevoCliente);
+    saveClientes(clientes);
+
+    // --- Lógica para asignar la vivienda ---
+    // Si se seleccionó una vivienda, la actualizamos.
+    if (nuevoCliente.viviendaId) {
+        const viviendas = getViviendas();
+        const viviendaIndex = viviendas.findIndex(v => v.id === nuevoCliente.viviendaId);
+
+        if (viviendaIndex > -1) {
+            viviendas[viviendaIndex].clienteId = nuevoCliente.id;
+            saveViviendas(viviendas);
+        }
+    }
+
+    return nuevoCliente; // Devolvemos el cliente creado por si se necesita
+};
+
+export const updateCliente = (clienteId, datosActualizados) => {
+    let clientes = getClientes();
+    let viviendas = getViviendas();
+
+    const clienteIndex = clientes.findIndex(c => c.id === clienteId);
+    if (clienteIndex === -1) return false; // No se encontró el cliente
+
+    const clienteOriginal = clientes[clienteIndex];
+
+    // 1. Desvincular la vivienda ANTIGUA si ha cambiado
+    if (clienteOriginal.viviendaId && clienteOriginal.viviendaId !== datosActualizados.viviendaId) {
+        const viviendaAntiguaIndex = viviendas.findIndex(v => v.id === clienteOriginal.viviendaId);
+        if (viviendaAntiguaIndex > -1) {
+            viviendas[viviendaAntiguaIndex].clienteId = null;
+        }
+    }
+
+    // 2. Vincular la vivienda NUEVA si se ha asignado una
+    if (datosActualizados.viviendaId) {
+        const viviendaNuevaIndex = viviendas.findIndex(v => v.id === datosActualizados.viviendaId);
+        if (viviendaNuevaIndex > -1) {
+            viviendas[viviendaNuevaIndex].clienteId = clienteId;
+        }
+    }
+
+    // 3. Actualizar los datos del cliente
+    clientes[clienteIndex] = { ...clienteOriginal, ...datosActualizados };
+
+    // 4. Guardar ambos arrays actualizados
+    saveClientes(clientes);
+    saveViviendas(viviendas);
+
+    return true;
+};
+
+export const deleteCliente = (clienteId) => {
+    // Primero, desvinculamos la vivienda que pudiera tener el cliente.
+    let viviendas = getViviendas();
+    const viviendaIndex = viviendas.findIndex(v => v.clienteId === clienteId);
+    if (viviendaIndex > -1) {
+        viviendas[viviendaIndex].clienteId = null;
+        saveViviendas(viviendas);
+    }
+
+    // Luego, eliminamos al cliente.
+    let clientes = getClientes();
+    const clientesActualizados = clientes.filter(c => c.id !== clienteId);
+    saveClientes(clientesActualizados);
+
+    return true; // Indicar que la operación fue exitosa
+};
+
 export const addAbono = (abono) => {
     const abonos = getAbonos();
     abonos.push(abono);

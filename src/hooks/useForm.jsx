@@ -45,7 +45,6 @@ export const useForm = ({ initialState, validate, onSubmit, options = {} }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         const validationErrors = validate(formData);
         setErrors(validationErrors);
 
@@ -56,7 +55,13 @@ export const useForm = ({ initialState, validate, onSubmit, options = {} }) => {
             try {
                 if (typeof onSubmit === 'function') {
                     await onSubmit(formData);
-                    resetForm();
+
+                    // --- MEJORA AQUÍ ---
+                    // Leemos la opción `resetOnSuccess`. Si no se define, por defecto es true.
+                    const { resetOnSuccess = true } = options;
+                    if (resetOnSuccess) {
+                        resetForm();
+                    }
                 } else {
                     console.warn("useForm: La función 'onSubmit' no está definida.");
                 }

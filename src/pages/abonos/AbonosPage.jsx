@@ -1,147 +1,140 @@
-// --- VERSIÓN FINAL Y ULTRA-LIMPIA DE ABONOSPAGE.JSX ---
-
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import Select from "react-select";
-
-import ModalConfirmacion from '../../components/ModalConfirmacion.jsx'; // Ajusta la ruta si es necesario
-import { useToast } from "../../components/ToastContext";
+import toast from 'react-hot-toast'; // --> 1. USAMOS LA NUEVA LIBRERÍA
 import AnimatedPage from "../../components/AnimatedPage";
 import ResumenAbonos from './ResumenAbonos.jsx';
 import HistorialAbonos from './HistorialAbonos.jsx';
 import FormularioAbono from './FormularioAbono.jsx';
-import EditarAbonoModal from './EditarAbonoModal.jsx';
-import { getViviendas, getClientes, getAbonos, addAbono, deleteAbono } from "../../utils/storage";
+import EditarAbonoModal from "./EditarAbonoModal"; // Asegúrate que la ruta a tu modal de edición sea correcta
+import ModalConfirmacion from "../../components/ModalConfirmacion.jsx";
+import { getViviendas, getClientes, getAbonos, deleteAbono } from "../../utils/storage";
 
 const AbonosPage = () => {
-    const { showToast } = useToast();
-
-    const [allViviendasData, setAllViviendasData] = useState([]);
-    const [allAbonosData, setAllAbonosData] = useState([]);
+    // --> 2. ELIMINAMOS const { showToast } = useToast();
+    const [allAbonos, setAllAbonos] = useState([]);
+    const [allViviendas, setAllViviendas] = useState([]);
     const [selectedViviendaId, setSelectedViviendaId] = useState(null);
-
-    const [abonoEditando, setAbonoEditando] = useState(null);
+    const [abonoAEditar, setAbonoAEditar] = useState(null);
     const [abonoAEliminar, setAbonoAEliminar] = useState(null);
 
-    const loadAllData = useCallback(() => {
-        const viviendas = getViviendas();
-        const clientes = getClientes();
-        const abonos = getAbonos();
-        const viviendasConCliente = viviendas.map(v => ({
+    const loadData = useCallback(() => {
+        const viviendasData = getViviendas();
+        const clientesData = getClientes();
+        const abonosData = getAbonos();
+        const viviendasConCliente = viviendasData.map(v => ({
             ...v,
-            cliente: clientes.find(c => c.id === v.clienteId) || null,
+            cliente: clientesData.find(c => c.id === v.clienteId) || null,
         }));
-        setAllViviendasData(viviendasConCliente);
-        setAllAbonosData(abonos);
+        setAllViviendas(viviendasConCliente);
+        setAllAbonos(abonosData);
     }, []);
 
     useEffect(() => {
-        loadAllData();
-    }, [loadAllData]);
+        loadData();
+    }, [loadData]);
 
     const viviendaOptions = useMemo(() =>
-        allViviendasData
+        allViviendas
             .filter(v => v.clienteId)
             .map(v => ({
                 value: v.id,
-                label: `Manzana ${v.manzana} - Casa ${v.numeroCasa} (${v.cliente?.nombre || 'No Asignada'})`,
+                label: `Manzana ${v.manzana} - Casa ${v.numeroCasa} (${v.cliente?.nombre || 'N/A'})`,
             })),
-        [allViviendasData]
+        [allViviendas]
+    );
+
+    const viviendaSeleccionada = useMemo(() =>
+        allViviendas.find(v => v.id === selectedViviendaId),
+        [allViviendas, selectedViviendaId]
     );
 
     const datosViviendaSeleccionada = useMemo(() => {
-        if (!selectedViviendaId) return null;
-        const vivienda = allViviendasData.find(v => v.id === selectedViviendaId);
-        if (!vivienda) return null;
-
-        const historial = allAbonosData
-            .filter(a => a.viviendaId === selectedViviendaId)
+        if (!viviendaSeleccionada) return null;
+        const historial = allAbonos
+            .filter(a => a.viviendaId === viviendaSeleccionada.id)
             .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
-
         const totalAbonado = historial.reduce((sum, abono) => sum + (abono.monto || 0), 0);
-
+        const valorTotal = viviendaSeleccionada.valorTotal;
         return {
-            vivienda,
             historial,
             resumen: {
-                valorTotal: vivienda.valorTotal,
-                totalAbonado: totalAbonado,
-                saldoPendiente: vivienda.valorTotal - totalAbonado,
-            }
+                valorTotal,
+                totalAbonado,
+                saldoPendiente: valorTotal - totalAbonado,
+            },
         };
-    }, [selectedViviendaId, allViviendasData, allAbonosData]);
+    }, [allAbonos, viviendaSeleccionada]);
 
-    const confirmarEliminarAbono = () => {
+    const handleSelectVivienda = (option) => {
+        setSelectedViviendaId(option ? option.value : null);
+    };
+
+    const confirmarEliminarAbono = useCallback(() => {
         if (abonoAEliminar) {
             deleteAbono(abonoAEliminar.id);
-            showToast("🗑️ Abono eliminado correctamente.", "success");
-            loadAllData();
+            // --> 3. USAMOS LA NUEVA SINTAXIS DE TOAST
+            toast.success("Abono eliminado correctamente.");
             setAbonoAEliminar(null);
+            loadData();
         }
-    };
+    }, [abonoAEliminar, loadData]);
 
     return (
         <AnimatedPage>
             <div className="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-md mt-10">
                 <h2 className="text-3xl font-extrabold text-[#1976d2] uppercase text-center pb-4 mb-10">
-                    💰 Gestión de Abonos
+                    <span className="inline-flex items-center gap-4">💰 Gestión de Abonos</span>
                 </h2>
 
                 <div className="mb-8">
-                    <label className="block font-semibold mb-2" htmlFor="select-vivienda">Seleccionar Vivienda <span className="text-red-600">*</span></label>
+                    <label className="block font-semibold mb-2" htmlFor="select-vivienda">Seleccionar Vivienda</label>
                     <Select
                         id="select-vivienda"
                         options={viviendaOptions}
-                        onChange={(option) => setSelectedViviendaId(option ? option.value : null)}
-                        value={viviendaOptions.find(opt => opt.value === selectedViviendaId) || null}
+                        onChange={handleSelectVivienda}
                         placeholder="Buscar o seleccionar vivienda..."
                         isClearable
+                        value={viviendaOptions.find(opt => opt.value === selectedViviendaId) || null}
                         noOptionsMessage={() => "No hay viviendas con clientes asignados."}
                     />
                 </div>
 
-                {datosViviendaSeleccionada && (
+                {viviendaSeleccionada && datosViviendaSeleccionada && (
                     <div className="animate-fade-in">
                         <ResumenAbonos resumen={datosViviendaSeleccionada.resumen} />
                         <FormularioAbono
-                            vivienda={datosViviendaSeleccionada.vivienda}
-                            resumen={datosViviendaSeleccionada.resumen}
-                            onAbonoRegistrado={loadAllData}
+                            vivienda={viviendaSeleccionada}
+                            resumenPago={datosViviendaSeleccionada.resumen}
+                            onAbonoRegistrado={loadData}
                         />
                         <HistorialAbonos
                             titulo="Historial de Abonos de esta Vivienda"
                             abonos={datosViviendaSeleccionada.historial}
-                            onEdit={setAbonoEditando}
+                            onEdit={setAbonoAEditar}
                             onDelete={setAbonoAEliminar}
                         />
                     </div>
                 )}
             </div>
-            {/* ... justo antes de </AnimatedPage> ... */}
+
+            {/* Modales */}
+            {abonoAEditar && (
+                <EditarAbonoModal
+                    isOpen={!!abonoAEditar}
+                    onClose={() => setAbonoAEditar(null)}
+                    onSave={loadData}
+                    abonoAEditar={abonoAEditar}
+                />
+            )}
             {abonoAEliminar && (
                 <ModalConfirmacion
                     isOpen={!!abonoAEliminar}
                     onClose={() => setAbonoAEliminar(null)}
                     onConfirm={confirmarEliminarAbono}
                     titulo="¿Eliminar Abono?"
-                    mensaje={
-                        <p>
-                            ¿Estás seguro de que quieres eliminar este abono?
-                            <br />
-                            <strong className="text-red-500">Esta acción no se puede deshacer.</strong>
-                        </p>
-                    }
+                    mensaje="¿Estás seguro de que quieres eliminar este abono? Esta acción es irreversible."
                 />
             )}
-
-            {abonoEditando && (
-                <EditarAbonoModal
-                    isOpen={!!abonoEditando}
-                    onClose={() => setAbonoEditando(null)}
-                    onSave={loadAllData} // Pasamos loadAllData para que la lista se refresque al guardar
-                    abonoAEditar={abonoEditando}
-                />
-            )}
-
         </AnimatedPage>
     );
 };
