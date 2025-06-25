@@ -9,13 +9,11 @@ import ActivityItem from '../components/dashboard/ActivityItem';
 import BarChartIngresos from '../components/dashboard/BarChartIngresos';
 
 const DashboardPage = () => {
-    // Estados para los datos y para el estado de carga
     const [isLoading, setIsLoading] = useState(true);
     const [viviendas, setViviendas] = useState([]);
     const [clientes, setClientes] = useState([]);
     const [abonos, setAbonos] = useState([]);
 
-    // useEffect para cargar todos los datos de forma asíncrona
     useEffect(() => {
         const fetchAllData = async () => {
             setIsLoading(true);
@@ -38,7 +36,6 @@ const DashboardPage = () => {
         fetchAllData();
     }, []);
 
-    // La lógica de 'useMemo' ahora funciona perfectamente porque depende de los estados
     const stats = useMemo(() => {
         const totalViviendas = viviendas.length;
         const viviendasOcupadas = viviendas.filter(v => v.clienteId !== null).length;
@@ -131,5 +128,4 @@ const DashboardPage = () => {
         </AnimatedPage>
     );
 };
-
 export default DashboardPage;

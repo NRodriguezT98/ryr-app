@@ -8,18 +8,31 @@ import EditarAbonoModal from './EditarAbonoModal.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 
 const ListarAbonos = () => {
+    const [isLoading, setIsLoading] = useState(true);
     const [abonos, setAbonos] = useState([]);
     const [clientes, setClientes] = useState([]);
     const [viviendas, setViviendas] = useState([]);
 
-    // --- NUEVO: Estados para manejar los modales ---
     const [abonoAEditar, setAbonoAEditar] = useState(null);
     const [abonoAEliminar, setAbonoAEliminar] = useState(null);
 
-    const cargarDatos = useCallback(() => {
-        setAbonos(getAbonos());
-        setClientes(getClientes());
-        setViviendas(getViviendas());
+    const cargarDatos = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const [abonosData, clientesData, viviendasData] = await Promise.all([
+                getAbonos(),
+                getClientes(),
+                getViviendas()
+            ]);
+            setAbonos(abonosData);
+            setClientes(clientesData);
+            setViviendas(viviendasData);
+        } catch (error) {
+            console.error("Error cargando datos de abonos:", error);
+            toast.error("No se pudieron cargar los datos.");
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
 
     useEffect(() => {
@@ -37,22 +50,30 @@ const ListarAbonos = () => {
                     viviendaLabel: vivienda ? `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}` : 'Desconocida',
                 };
             })
-            .sort((a, b) => b.id - a.id)
+            .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))
             .slice(0, 20);
     }, [abonos, clientes, viviendas]);
 
-    // --- NUEVO: Handlers para las acciones ---
     const handleGuardado = useCallback(() => {
         cargarDatos();
     }, [cargarDatos]);
 
-    const confirmarEliminar = () => {
+    const confirmarEliminar = async () => {
         if (!abonoAEliminar) return;
-        deleteAbono(abonoAEliminar.id);
-        toast.success("Abono eliminado correctamente.");
-        cargarDatos();
-        setAbonoAEliminar(null);
+        try {
+            await deleteAbono(abonoAEliminar.id);
+            toast.success("Abono eliminado correctamente.");
+            cargarDatos();
+        } catch (error) {
+            toast.error("No se pudo eliminar el abono.");
+        } finally {
+            setAbonoAEliminar(null);
+        }
     };
+
+    if (isLoading) {
+        return <div className="text-center p-10 animate-pulse">Cargando abonos...</div>;
+    }
 
     return (
         <AnimatedPage>
@@ -70,19 +91,16 @@ const ListarAbonos = () => {
                         </button>
                     </Link>
                 </div>
-
                 {abonosRecientes.length === 0 ? (
                     <p className="text-center text-gray-500 py-10">No hay abonos registrados todavía.</p>
                 ) : (
                     <TablaAbonos
                         abonos={abonosRecientes}
-                        onEdit={setAbonoAEditar} // Pasamos la función para abrir el modal de edición
-                        onDelete={setAbonoAEliminar} // Pasamos la función para abrir el modal de eliminación
+                        onEdit={setAbonoAEditar}
+                        onDelete={setAbonoAEliminar}
                     />
                 )}
             </div>
-
-            {/* --- NUEVO: Integración de los modales --- */}
             {abonoAEditar && (
                 <EditarAbonoModal
                     isOpen={!!abonoAEditar}

@@ -1,31 +1,42 @@
-// Ruta: src/pages/Abonos/EditarAbonoModal.jsx
-
 import React, { useEffect } from 'react';
 import { NumericFormat } from 'react-number-format';
 import { useForm } from '../../hooks/useForm.jsx';
 import { validateAbono } from './abonoValidation.js';
 import { updateAbono } from '../../utils/storage.js';
-import toast from 'react-hot-toast'; // <-- 1. Importamos la nueva librería
+import toast from 'react-hot-toast';
 
-// --- LA SOLUCIÓN: La constante se define aquí, una sola vez. ---
-const INITIAL_EDIT_STATE = { monto: '', metodoPago: '' };
+// Helper para obtener la fecha de hoy en formato YYYY-MM-DD
+const getTodayString = () => new Date().toISOString().split('T')[0];
+
+// 1. Añadimos fechaPago al estado inicial
+const INITIAL_EDIT_STATE = {
+    monto: '',
+    metodoPago: '',
+    fechaPago: getTodayString(),
+};
 
 const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
-    // 2. Eliminamos la llamada a useToast()
 
     const { formData, setFormData, handleSubmit, handleInputChange, handleValueChange, errors, isSubmitting } = useForm({
         initialState: INITIAL_EDIT_STATE,
-        validate: (data) => validateAbono(data, null),
+        validate: (data) => validateAbono(data, null), // Para editar no necesitamos el resumen de saldo
         onSubmit: async (data) => {
-            const montoNumerico = parseInt(String(data.monto).replace(/\D/g, ''));
-            const datosParaGuardar = { ...data, monto: montoNumerico };
+            const montoNumerico = parseInt(String(data.monto).replace(/\D/g, '')) || 0;
 
-            if (updateAbono(abonoAEditar.id, datosParaGuardar)) {
-                // 3. USAMOS LA NUEVA SINTAXIS DE TOAST
+            // 2. Nos aseguramos de incluir la fecha en los datos a guardar
+            const datosParaGuardar = {
+                monto: montoNumerico,
+                metodoPago: data.metodoPago,
+                fechaPago: data.fechaPago,
+            };
+
+            try {
+                await updateAbono(abonoAEditar.id, datosParaGuardar);
                 toast.success('Abono actualizado correctamente.');
                 onSave();
-            } else {
+            } catch (error) {
                 toast.error('Error al actualizar el abono.');
+                console.error("Error al actualizar abono:", error);
             }
             onClose();
         }
@@ -33,24 +44,39 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
 
     useEffect(() => {
         if (abonoAEditar) {
+            // 3. Poblamos el formulario incluyendo la fecha del abono
             setFormData({
-                monto: abonoAEditar.monto,
-                metodoPago: abonoAEditar.metodoPago,
+                monto: abonoAEditar.monto || '',
+                metodoPago: abonoAEditar.metodoPago || '',
+                fechaPago: abonoAEditar.fechaPago || getTodayString(),
             });
         }
     }, [abonoAEditar, setFormData]);
 
-    if (!isOpen) {
-        return null;
-    }
+    if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
-            {/* ... El JSX del modal no cambia ... */}
             <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-lg mx-4">
                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Editar Abono</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 gap-6">
+
+                        {/* 4. AÑADIMOS EL CAMPO DE FECHA AL FORMULARIO */}
+                        <div>
+                            <label className="block font-semibold mb-1" htmlFor="fechaPago-edit">Fecha del Abono</label>
+                            <input
+                                type="date"
+                                id="fechaPago-edit"
+                                name="fechaPago"
+                                value={formData.fechaPago}
+                                onChange={handleInputChange}
+                                max={getTodayString()} // No permite seleccionar fechas futuras
+                                className={`w-full border p-2 rounded-lg ${errors.fechaPago ? "border-red-600" : "border-gray-300"}`}
+                            />
+                            {errors.fechaPago && <p className="text-red-600 text-sm mt-1">{errors.fechaPago}</p>}
+                        </div>
+
                         <div>
                             <label className="block font-semibold mb-1" htmlFor="monto-edit">Monto del Abono</label>
                             <NumericFormat

@@ -10,7 +10,7 @@ import Select from 'react-select';
 const ListarClientes = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [clientes, setClientes] = useState([]);
-    const [viviendas, setViviendas] = useState([]); // Necesitamos las viviendas para el filtro
+    const [viviendas, setViviendas] = useState([]);
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -26,7 +26,7 @@ const ListarClientes = () => {
                 return { ...cliente, vivienda: viviendaAsignada || null };
             });
             setClientes(clientesConVivienda);
-            setViviendas(dataViviendas); // Guardamos las viviendas para el filtro
+            setViviendas(dataViviendas);
         } catch (error) {
             console.error("Error al cargar datos:", error);
             toast.error("No se pudieron cargar los datos.");
@@ -47,9 +47,7 @@ const ListarClientes = () => {
 
     const clientesFiltradosYOrdenados = useMemo(() => {
         let itemsProcesados = [...clientes];
-        if (manzanaFilter && manzanaFilter.value) {
-            itemsProcesados = itemsProcesados.filter(c => c.vivienda?.manzana === manzanaFilter.value);
-        }
+        if (manzanaFilter && manzanaFilter.value) { itemsProcesados = itemsProcesados.filter(c => c.vivienda?.manzana === manzanaFilter.value); }
         if (searchTerm) {
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
             itemsProcesados = itemsProcesados.filter(c => c.nombre.toLowerCase().includes(lowerCaseSearchTerm) || c.cedula.includes(lowerCaseSearchTerm));
@@ -89,9 +87,7 @@ const ListarClientes = () => {
         finally { setClienteAEliminar(null); }
     };
 
-    if (isLoading) {
-        return <div className="text-center p-10 animate-pulse">Cargando clientes...</div>;
-    }
+    if (isLoading) { return <div className="text-center p-10 animate-pulse">Cargando clientes...</div>; }
 
     return (
         <AnimatedPage>
@@ -104,7 +100,7 @@ const ListarClientes = () => {
                     <div className="w-24 h-1 bg-[#1976d2] mx-auto rounded-full mt-2"></div>
                 </div>
                 <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
-                    <div className="w-full md:w-1/4">
+                    <div className="w-full md:w-auto md:min-w-[200px]">
                         <Select options={manzanaOptions} onChange={setManzanaFilter} value={manzanaFilter} placeholder="Filtrar por Manzana..." isClearable={false} />
                     </div>
                     <div className="w-full md:w-1/3">
@@ -113,12 +109,8 @@ const ListarClientes = () => {
                 </div>
                 <TablaClientes clientes={clientesFiltradosYOrdenados} onEdit={setClienteAEditar} onDelete={setClienteAEliminar} onSort={handleSort} sortConfig={sortConfig} />
             </div>
-            {clienteAEliminar && (
-                <ModalConfirmacion isOpen={!!clienteAEliminar} onClose={() => setClienteAEliminar(null)} onConfirm={confirmarEliminar} titulo="¿Eliminar Cliente?" mensaje="Esta acción es permanente y desvinculará la vivienda asignada." />
-            )}
-            {clienteAEditar && (
-                <EditarCliente isOpen={!!clienteAEditar} onClose={() => setClienteAEditar(null)} onGuardar={handleGuardado} clienteAEditar={clienteAEditar} />
-            )}
+            {clienteAEliminar && (<ModalConfirmacion isOpen={!!clienteAEliminar} onClose={() => setClienteAEliminar(null)} onConfirm={confirmarEliminar} titulo="¿Eliminar Cliente?" mensaje="Esta acción es permanente y desvinculará la vivienda asignada." />)}
+            {clienteAEditar && (<EditarCliente isOpen={!!clienteAEditar} onClose={() => setClienteAEditar(null)} onGuardar={handleGuardado} clienteAEditar={clienteAEditar} />)}
         </AnimatedPage>
     );
 };

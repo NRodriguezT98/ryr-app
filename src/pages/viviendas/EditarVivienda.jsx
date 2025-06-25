@@ -17,12 +17,9 @@ const INITIAL_VIVIENDA_STATE = {
 const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [detectedChanges, setDetectedChanges] = useState([]);
-
-    // --- CAMBIO 1: Estados para cargar datos asíncronamente ---
     const [isLoading, setIsLoading] = useState(true);
     const [todasLasViviendas, setTodasLasViviendas] = useState([]);
 
-    // --- CAMBIO 2: useEffect para cargar los datos necesarios cuando se abre el modal ---
     useEffect(() => {
         if (isOpen) {
             const cargarDatosParaValidacion = async () => {
@@ -50,7 +47,6 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
         handleSubmit,
     } = useForm({
         initialState: INITIAL_VIVIENDA_STATE,
-        // La validación ahora usa los datos del estado
         validate: (data) => validateVivienda(data, todasLasViviendas, vivienda.id),
         onSubmit: (data) => handleSubmitWithConfirmation(data),
         options: { resetOnSuccess: false }
@@ -65,14 +61,13 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
             formData.valor !== (vivienda.valorTotal?.toString() || '');
     }, [formData, vivienda]);
 
-    // --- CAMBIO 3: La función de guardado ahora es asíncrona ---
     const handleFinalSave = useCallback(async () => {
         const datosActualizados = {
             manzana: formData.manzana,
-            numeroCasa: parseInt(formData.numero, 10),
+            numeroCasa: parseInt(formData.numero, 10) || 0,
             matricula: formData.matricula.trim(),
             nomenclatura: formData.nomenclatura.trim(),
-            valorTotal: parseInt(String(formData.valor).replace(/\D/g, ''), 10),
+            valorTotal: parseInt(String(formData.valor).replace(/\D/g, ''), 10) || 0,
         };
         try {
             await updateVivienda(vivienda.id, datosActualizados);
@@ -80,6 +75,7 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
             onGuardar();
         } catch (error) {
             toast.error('Error al actualizar la vivienda.');
+            console.error("Error al guardar en Firestore:", error);
         } finally {
             setIsConfirmOpen(false);
             onClose();
@@ -122,7 +118,9 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
         }
     }, [vivienda, setFormData]);
 
-    if (!isOpen) return null;
+    if (!isOpen) {
+        return null;
+    }
 
     return (
         <>
@@ -130,7 +128,6 @@ const EditarVivienda = ({ isOpen, onClose, onGuardar, vivienda }) => {
                 <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl mx-4">
                     <h2 className="text-3xl font-bold text-[#c62828] text-center mb-8">✏️ Editar Vivienda</h2>
 
-                    {/* CAMBIO 4: Mostramos 'cargando' o el formulario */}
                     {isLoading ? (
                         <div className="text-center py-10 text-gray-500">Cargando...</div>
                     ) : (

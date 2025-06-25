@@ -44,7 +44,7 @@ const CrearCliente = () => {
     }, []);
 
     const { formData, errors, enviando, handleInputChange, handleSubmit, setFormData } = useForm({
-        initialState: initialState,
+        initialState,
         validate: (formData) => validateCliente(formData, todosLosClientes, null),
         onSubmit: onSubmitLogic,
         options: { inputFilters }
@@ -70,15 +70,25 @@ const CrearCliente = () => {
 
     return (
         <AnimatedPage>
-            <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-md mt-10">
+            <div className="max-w-4xl mx-auto">
                 {isSuccess ? (
-                    <div className="text-center py-10">...</div>
+                    <div className="bg-white p-8 rounded-xl shadow-lg text-center py-10">
+                        <div className="text-green-500 w-24 h-24 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <h2 className="text-3xl font-bold text-gray-800 mt-6">¡Cliente Registrado!</h2>
+                        <p className="text-gray-500 mt-2">Serás redirigido a la lista de clientes...</p>
+                    </div>
                 ) : (
-                    <>
-                        <h2 className="text-2xl font-bold mb-6 text-center text-[#1976d2]">🧍 Crear Cliente</h2>
+                    <div className="bg-white p-8 rounded-xl shadow-lg">
+                        <h2 className="text-2xl font-bold mb-6 text-center text-[#1976d2]">
+                            🧍 Crear Cliente
+                        </h2>
                         {viviendasDisponibles.length === 0 ? (
                             <div className="bg-yellow-100 text-yellow-800 p-4 rounded text-center font-semibold">
                                 ⚠️ No hay viviendas disponibles para asignar.
+                                <br />
+                                Por favor crea nuevas viviendas antes de registrar clientes.
                             </div>
                         ) : (
                             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6" noValidate>
@@ -109,7 +119,13 @@ const CrearCliente = () => {
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="block font-semibold mb-1">Vivienda a asignar <span className="text-red-600">*</span></label>
-                                    <Select options={selectOptions} onChange={handleSelectChange} placeholder="Buscar vivienda disponible..." isClearable value={selectOptions.find(op => op.value === formData.viviendaId) || null} />
+                                    <Select
+                                        options={selectOptions}
+                                        onChange={handleSelectChange}
+                                        placeholder="Buscar vivienda disponible..."
+                                        isClearable
+                                        value={selectOptions.find(op => op.value === formData.viviendaId) || null}
+                                    />
                                     {errors.viviendaId && <p className="text-red-600 text-sm mt-1">{errors.viviendaId}</p>}
                                 </div>
                                 <div className="md:col-span-2 flex justify-end">
@@ -117,10 +133,11 @@ const CrearCliente = () => {
                                 </div>
                             </form>
                         )}
-                    </>
+                    </div>
                 )}
             </div>
         </AnimatedPage>
     );
 };
+
 export default CrearCliente;
