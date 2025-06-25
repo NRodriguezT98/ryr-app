@@ -1,140 +1,135 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useReducer, useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import Select from "react-select";
-import AnimatedPage from "../../components/AnimatedPage";
-import toast from "react-hot-toast";
-import { useForm } from "../../hooks/useForm.jsx";
-import { getViviendas, addClienteAndAssignVivienda, getClientes } from "../../utils/storage";
-import { validateCliente } from "./clienteValidation.js";
+import AnimatedPage from '../../components/AnimatedPage';
+import Step1_SelectVivienda from './wizard/Step1_SelectVivienda';
+import Step2_ClientInfo from './wizard/Step2_ClientInfo';
+import Step3_Financial from './wizard/Step3_Financial';
+import { validateCliente, validateFinancialStep } from './clienteValidation.js';
+import { getClientes, addClienteAndAssignVivienda } from '../../utils/storage.js';
+import toast from 'react-hot-toast';
 
-const initialState = { nombre: "", cedula: "", telefono: "", correo: "", direccion: "", viviendaId: "" };
-const inputFilters = { nombre: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/ }, cedula: { regex: /^[0-9]*$/ }, telefono: { regex: /^[0-9]*$/ } };
+const initialState = {
+    viviendaSeleccionada: { id: null, valorTotal: 0, label: '' },
+    datosCliente: { nombres: '', apellidos: '', cedula: '', telefono: '', correo: '', direccion: '' },
+    financiero: {
+        aplicaCuotaInicial: false, cuotaInicial: { metodo: '', monto: 0 },
+        aplicaCredito: false, credito: { banco: '', monto: 0 },
+        aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
+        aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 }
+    },
+    seguimiento: { fechaEnvioAvaluo: null, /* ...otros campos... */ },
+    errors: {}
+};
+
+// --- REDUCER MEJORADO Y MÁS ROBUSTO ---
+function formReducer(state, action) {
+    switch (action.type) {
+        case 'UPDATE_FIELD':
+            const { section, field, value } = action.payload;
+            return { ...state, [section]: { ...state[section], [field]: value } };
+        case 'UPDATE_FINANCIAL_FIELD':
+            const { section: financialSection, field: financialField, value: financialValue } = action.payload;
+            return { ...state, financiero: { ...state.financiero, [financialSection]: { ...state.financiero[financialSection], [financialField]: financialValue } } };
+        case 'TOGGLE_FINANCIAL_OPTION':
+            return { ...state, financiero: { ...state.financiero, [action.payload.field]: action.payload.value } };
+        case 'UPDATE_VIVIENDA_SELECCIONADA':
+            return { ...state, viviendaSeleccionada: action.payload };
+        case 'SET_ERRORS':
+            return { ...state, errors: action.payload };
+        default:
+            return state;
+    }
+}
 
 const CrearCliente = () => {
-    const navigate = useNavigate();
-    const [isLoading, setIsLoading] = useState(true);
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [viviendasDisponibles, setViviendasDisponibles] = useState([]);
+    const [step, setStep] = useState(1);
+    const [formData, dispatch] = useReducer(formReducer, initialState);
     const [todosLosClientes, setTodosLosClientes] = useState([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const cargarDatosNecesarios = async () => {
-            setIsLoading(true);
-            try {
-                const [dataViviendas, dataClientes] = await Promise.all([getViviendas(), getClientes()]);
-                const disponibles = dataViviendas.filter((v) => v.clienteId === null);
-                setViviendasDisponibles(disponibles);
-                setTodosLosClientes(dataClientes);
-            } catch (error) {
-                toast.error("No se pudieron cargar los datos necesarios.");
-            } finally {
-                setIsLoading(false);
-            }
+        const fetchClientes = async () => {
+            const clientesData = await getClientes();
+            setTodosLosClientes(clientesData);
         };
-        cargarDatosNecesarios();
+        fetchClientes();
     }, []);
 
-    const onSubmitLogic = useCallback(async (formData) => {
-        try {
-            await addClienteAndAssignVivienda(formData);
-            setIsSuccess(true);
-        } catch (error) {
-            toast.error("No se pudo registrar el cliente.");
+    const nextStep = () => setStep(prev => prev + 1);
+    const prevStep = () => setStep(prev => prev - 1);
+
+    const handleNext = () => {
+        let errors = {};
+        let isValid = true;
+
+        if (step === 2) {
+            errors = validateCliente(formData.datosCliente, todosLosClientes, null);
         }
-    }, []);
+        if (step === 3) {
+            const { financiero, viviendaSeleccionada } = formData;
+            const montoCuota = financiero.aplicaCuotaInicial ? (financiero.cuotaInicial.monto || 0) : 0;
+            const montoCredito = financiero.aplicaCredito ? (financiero.credito.monto || 0) : 0;
+            const montoSubVivienda = financiero.aplicaSubsidioVivienda ? (financiero.subsidioVivienda.monto || 0) : 0;
+            const montoSubCaja = financiero.aplicaSubsidioCaja ? (financiero.subsidioCaja.monto || 0) : 0;
+            const totalAportado = montoCuota + montoCredito + montoSubVivienda + montoSubCaja;
+            errors = validateFinancialStep(formData.financiero, viviendaSeleccionada.valorTotal, totalAportado);
+        }
 
-    const { formData, errors, enviando, handleInputChange, handleSubmit, setFormData } = useForm({
-        initialState,
-        validate: (formData) => validateCliente(formData, todosLosClientes, null),
-        onSubmit: onSubmitLogic,
-        options: { inputFilters }
-    });
+        isValid = Object.keys(errors).length === 0;
+        dispatch({ type: 'SET_ERRORS', payload: errors });
 
-    const selectOptions = useMemo(() => {
-        return viviendasDisponibles.map((v) => ({ value: v.id, label: `Manzana ${v.manzana} - Casa ${v.numeroCasa}` }));
-    }, [viviendasDisponibles]);
-
-    const handleSelectChange = (selectedOption) => {
-        setFormData(prev => ({ ...prev, viviendaId: selectedOption ? selectedOption.value : "" }));
+        if (isValid) {
+            nextStep();
+        }
     };
 
-    useEffect(() => {
-        if (isSuccess) {
-            toast.success("Cliente registrado exitosamente.");
-            const timer = setTimeout(() => navigate("/clientes/listar"), 2500);
-            return () => clearTimeout(timer);
+    const handleSave = useCallback(async () => {
+        try {
+            await addClienteAndAssignVivienda(formData);
+            toast.success("Cliente y proceso guardados exitosamente!");
+            navigate("/clientes/listar");
+        } catch (error) {
+            toast.error("Error al guardar el cliente.");
+            console.error("Error al guardar:", error);
         }
-    }, [isSuccess, navigate]);
+    }, [formData, navigate]);
 
-    if (isLoading) return <div className="text-center p-10 animate-pulse">Cargando...</div>;
+    const steps = [
+        <Step1_SelectVivienda key="step1" formData={formData} dispatch={dispatch} />,
+        <Step2_ClientInfo key="step2" formData={formData} dispatch={dispatch} errors={formData.errors} />,
+        <Step3_Financial key="step3" formData={formData} dispatch={dispatch} errors={formData.errors} />,
+        <p key="step4">Aquí irá el Paso 4: Seguimiento</p>
+    ];
 
     return (
         <AnimatedPage>
-            <div className="max-w-4xl mx-auto">
-                {isSuccess ? (
-                    <div className="bg-white p-8 rounded-xl shadow-lg text-center py-10">
-                        <div className="text-green-500 w-24 h-24 mx-auto rounded-full bg-green-100 flex items-center justify-center">
-                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <h2 className="text-3xl font-bold text-gray-800 mt-6">¡Cliente Registrado!</h2>
-                        <p className="text-gray-500 mt-2">Serás redirigido a la lista de clientes...</p>
+            <div className="max-w-5xl mx-auto">
+                <div className="bg-white p-8 rounded-xl shadow-lg">
+                    <h2 className="text-3xl font-bold mb-2 text-center text-[#1976d2]">Registro de Nuevo Cliente y Proceso de Venta</h2>
+                    <p className="text-center text-gray-500 mb-8">Paso {step} de 4</p>
+                    <div>
+                        {steps[step - 1]}
                     </div>
-                ) : (
-                    <div className="bg-white p-8 rounded-xl shadow-lg">
-                        <h2 className="text-2xl font-bold mb-6 text-center text-[#1976d2]">
-                            🧍 Crear Cliente
-                        </h2>
-                        {viviendasDisponibles.length === 0 ? (
-                            <div className="bg-yellow-100 text-yellow-800 p-4 rounded text-center font-semibold">
-                                ⚠️ No hay viviendas disponibles para asignar.
-                                <br />
-                                Por favor crea nuevas viviendas antes de registrar clientes.
-                            </div>
+                    <div className="mt-8 flex justify-between">
+                        {step > 1 ? (
+                            <button onClick={prevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Anterior</button>
+                        ) : (<div></div>)}
+
+                        {step < 4 ? (
+                            <button
+                                onClick={handleNext}
+                                // --- CORRECCIÓN AQUÍ: Se elimina la validación de la diferencia del 'disabled' ---
+                                disabled={step === 1 && !formData.viviendaSeleccionada.id}
+                                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:bg-gray-300 ml-auto">
+                                Siguiente
+                            </button>
                         ) : (
-                            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6" noValidate>
-                                <div>
-                                    <label className="block font-semibold mb-1" htmlFor="nombre">Nombre <span className="text-red-600">*</span></label>
-                                    <input id="nombre" name="nombre" type="text" value={formData.nombre} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.nombre ? "border-red-600" : "border-gray-300"}`} />
-                                    {errors.nombre && <p className="text-red-600 text-sm mt-1">{errors.nombre}</p>}
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1" htmlFor="cedula">Cédula <span className="text-red-600">*</span></label>
-                                    <input id="cedula" name="cedula" type="text" value={formData.cedula} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.cedula ? "border-red-600" : "border-gray-300"}`} />
-                                    {errors.cedula && <p className="text-red-600 text-sm mt-1">{errors.cedula}</p>}
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1" htmlFor="telefono">Teléfono <span className="text-red-600">*</span></label>
-                                    <input id="telefono" name="telefono" type="text" value={formData.telefono} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.telefono ? "border-red-600" : "border-gray-300"}`} />
-                                    {errors.telefono && <p className="text-red-600 text-sm mt-1">{errors.telefono}</p>}
-                                </div>
-                                <div>
-                                    <label className="block font-semibold mb-1" htmlFor="correo">Correo <span className="text-red-600">*</span></label>
-                                    <input id="correo" name="correo" type="email" value={formData.correo} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.correo ? "border-red-600" : "border-gray-300"}`} />
-                                    {errors.correo && <p className="text-red-600 text-sm mt-1">{errors.correo}</p>}
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block font-semibold mb-1" htmlFor="direccion">Dirección <span className="text-red-600">*</span></label>
-                                    <input id="direccion" name="direccion" type="text" value={formData.direccion} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.direccion ? "border-red-600" : "border-gray-300"}`} />
-                                    {errors.direccion && <p className="text-red-600 text-sm mt-1">{errors.direccion}</p>}
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block font-semibold mb-1">Vivienda a asignar <span className="text-red-600">*</span></label>
-                                    <Select
-                                        options={selectOptions}
-                                        onChange={handleSelectChange}
-                                        placeholder="Buscar vivienda disponible..."
-                                        isClearable
-                                        value={selectOptions.find(op => op.value === formData.viviendaId) || null}
-                                    />
-                                    {errors.viviendaId && <p className="text-red-600 text-sm mt-1">{errors.viviendaId}</p>}
-                                </div>
-                                <div className="md:col-span-2 flex justify-end">
-                                    <button type="submit" disabled={enviando} className={`px-5 py-2.5 rounded-full transition text-white ${enviando ? "bg-gray-400 cursor-not-allowed" : "bg-[#1976d2] hover:bg-blue-700"}`}>{enviando ? "Guardando..." : "Registrar Cliente"}</button>
-                                </div>
-                            </form>
+                            <button onClick={handleSave} className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-2 rounded-lg transition ml-auto">
+                                Guardar Cliente y Proceso
+                            </button>
                         )}
                     </div>
-                )}
+                </div>
             </div>
         </AnimatedPage>
     );
