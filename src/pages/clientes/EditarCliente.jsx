@@ -1,210 +1,166 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import Select from 'react-select';
-import { useForm } from '../../hooks/useForm.jsx';
-import { validateCliente } from './clienteValidation.js';
-import { getViviendas, getClientes, updateCliente } from '../../utils/storage.js';
+import React, { useReducer, useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
+import Step1_SelectVivienda from './wizard/Step1_SelectVivienda';
+import Step2_ClientInfo from './wizard/Step2_ClientInfo';
+import Step3_Financial from './wizard/Step3_Financial';
+import { validateCliente, validateFinancialStep } from './clienteValidation.js';
+import { getClientes, getViviendas, updateCliente } from '../../utils/storage.js';
 
-const INITIAL_CLIENTE_STATE = {
-    nombre: '',
-    cedula: '',
-    telefono: '',
-    correo: '',
-    direccion: '',
-    viviendaId: '',
+// Usamos el mismo reducer que en CrearCliente, pero con una acción nueva para inicializar
+function formReducer(state, action) {
+    switch (action.type) {
+        case 'INITIALIZE_FORM':
+            return { ...action.payload, errors: {} };
+        case 'UPDATE_FIELD':
+            const { section, field, value } = action.payload;
+            return { ...state, [section]: { ...state[section], [field]: value } };
+        case 'UPDATE_FINANCIAL_FIELD':
+            const { section: financialSection, field: financialField, value: financialValue } = action.payload;
+            return { ...state, financiero: { ...state.financiero, [financialSection]: { ...state.financiero[financialSection], [financialField]: financialValue } } };
+        case 'TOGGLE_FINANCIAL_OPTION':
+            return { ...state, financiero: { ...state.financiero, [action.payload.field]: action.payload.value } };
+        case 'UPDATE_VIVIENDA_SELECCIONADA':
+            return { ...state, viviendaSeleccionada: action.payload };
+        case 'SET_ERRORS':
+            return { ...state, errors: action.payload };
+        default:
+            return state;
+    }
+}
+
+const blankInitialState = {
+    viviendaSeleccionada: { id: null, valorTotal: 0, label: '' },
+    datosCliente: { nombres: '', apellidos: '', cedula: '', telefono: '', correo: '', direccion: '' },
+    financiero: { aplicaCuotaInicial: false, cuotaInicial: { metodo: '', monto: 0 }, aplicaCredito: false, credito: { banco: '', monto: 0 }, aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 }, aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 } },
+    seguimiento: {},
+    errors: {}
 };
 
 const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
-    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-    const [detectedChanges, setDetectedChanges] = useState([]);
-
-    // Estados para cargar los datos necesarios de forma asíncrona
-    const [isLoading, setIsLoading] = useState(true);
+    const [step, setStep] = useState(1);
+    const [formData, dispatch] = useReducer(formReducer, blankInitialState);
     const [todosLosClientes, setTodosLosClientes] = useState([]);
-    const [viviendasDisponibles, setViviendasDisponibles] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (isOpen) {
-            const cargarDatosNecesarios = async () => {
+        const initializeForm = async () => {
+            if (clienteAEditar) {
                 setIsLoading(true);
-                try {
-                    // Pedimos los datos a Firebase
-                    const [dataClientes, dataViviendas] = await Promise.all([getClientes(), getViviendas()]);
+                const todasLasViviendas = await getViviendas();
+                const todosLosClientesData = await getClientes();
+                const viviendaAsignada = todasLasViviendas.find(v => v.id === clienteAEditar.viviendaId);
 
-                    // Preparamos los datos para la validación y el selector
-                    setTodosLosClientes(dataClientes);
-                    const disponibles = dataViviendas.filter(v => v.clienteId === null || v.clienteId === clienteAEditar.id);
-                    setViviendasDisponibles(disponibles);
+                const initialStateForEdit = {
+                    ...blankInitialState,
+                    ...clienteAEditar,
+                    viviendaSeleccionada: {
+                        id: viviendaAsignada?.id || null,
+                        valorTotal: viviendaAsignada?.valorTotal || 0,
+                        label: viviendaAsignada ? `Mz ${viviendaAsignada.manzana} - Casa ${viviendaAsignada.numeroCasa} (${(viviendaAsignada.valorTotal || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })})` : ''
+                    },
+                    errors: {}
+                };
 
-                } catch (error) {
-                    toast.error("No se pudieron cargar los datos para editar.");
-                    console.error("Error cargando datos en EditarCliente:", error);
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            cargarDatosNecesarios();
+                dispatch({ type: 'INITIALIZE_FORM', payload: initialStateForEdit });
+                setTodosLosClientes(todosLosClientesData);
+                setIsLoading(false);
+                setStep(1);
+            }
+        };
+
+        if (isOpen) {
+            initializeForm();
         }
-    }, [isOpen, clienteAEditar]); // Se ejecuta cada vez que el modal se abre
+    }, [isOpen, clienteAEditar]);
 
-    const { formData, setFormData, errors, isSubmitting, handleInputChange, handleSubmit } = useForm({
-        initialState: INITIAL_CLIENTE_STATE,
-        validate: (data) => validateCliente(data, todosLosClientes, clienteAEditar.id),
-        onSubmit: (data) => handleSubmitWithConfirmation(data),
-        options: { resetOnSuccess: false }
-    });
+    const nextStep = () => setStep(prev => prev < 3 ? prev + 1 : 3);
+    const prevStep = () => setStep(prev => prev > 1 ? prev - 1 : 1);
 
-    const hayCambios = useMemo(() => {
-        if (!clienteAEditar) return false;
-        return formData.nombre.trim() !== (clienteAEditar.nombre || '') ||
-            formData.cedula.trim() !== (clienteAEditar.cedula || '') ||
-            formData.telefono.trim() !== (clienteAEditar.telefono || '') ||
-            formData.correo.trim() !== (clienteAEditar.correo || '') ||
-            formData.direccion.trim() !== (clienteAEditar.direccion || '') ||
-            (formData.viviendaId || null) !== (clienteAEditar.viviendaId || null);
-    }, [formData, clienteAEditar]);
+    const handleNext = () => {
+        let errors = {};
+        if (step === 2) { errors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar.id); }
+        if (step === 3) {
+            const { financiero, viviendaSeleccionada } = formData;
+            const montoCuota = financiero.aplicaCuotaInicial ? (financiero.cuotaInicial.monto || 0) : 0;
+            const montoCredito = financiero.aplicaCredito ? (financiero.credito.monto || 0) : 0;
+            const montoSubVivienda = financiero.aplicaSubsidioVivienda ? (financiero.subsidioVivienda.monto || 0) : 0;
+            const montoSubCaja = financiero.aplicaSubsidioCaja ? (financiero.subsidioCaja.monto || 0) : 0;
+            const totalAportado = montoCuota + montoCredito + montoSubVivienda + montoSubCaja;
+            errors = validateFinancialStep(formData.financiero, viviendaSeleccionada.valorTotal, totalAportado);
+        }
+        const isValid = Object.keys(errors).length === 0;
+        dispatch({ type: 'SET_ERRORS', payload: errors });
+        if (isValid) { nextStep(); }
+    };
 
-    const handleFinalSave = useCallback(async () => {
+    const handleUpdate = useCallback(async () => {
+        const { financiero, viviendaSeleccionada } = formData;
+        const finalErrors = validateFinancialStep(financiero, viviendaSeleccionada.valorTotal);
+        if (Object.keys(finalErrors).length > 0) {
+            dispatch({ type: 'SET_ERRORS', payload: finalErrors });
+            toast.error("Por favor, corrige los errores en la estructura financiera.");
+            return;
+        }
+        const clienteParaActualizar = {
+            datosCliente: formData.datosCliente,
+            financiero: formData.financiero,
+            seguimiento: formData.seguimiento,
+            viviendaId: formData.viviendaSeleccionada.id
+        };
         try {
-            await updateCliente(clienteAEditar.id, formData);
-            toast.success('Cliente actualizado correctamente.');
+            await updateCliente(clienteAEditar.id, clienteParaActualizar);
+            toast.success("Cliente actualizado con éxito!");
             onGuardar();
-        } catch (error) {
-            toast.error('Error al actualizar el cliente.');
-            console.error("Error al guardar cliente:", error);
-        } finally {
-            setIsConfirmOpen(false);
             onClose();
+        } catch (error) {
+            console.error("Error al actualizar el cliente:", error);
+            toast.error("Hubo un error al actualizar los datos.");
         }
     }, [formData, clienteAEditar, onGuardar, onClose]);
 
-    const handleSubmitWithConfirmation = useCallback((formData) => {
-        const viviendaOriginal = viviendasDisponibles.find(v => v.id === clienteAEditar.viviendaId);
-        const viviendaNueva = viviendasDisponibles.find(v => v.id === formData.viviendaId);
-        const campos = [
-            { key: 'nombre', label: 'Nombre', original: clienteAEditar.nombre },
-            { key: 'cedula', label: 'Cédula', original: clienteAEditar.cedula },
-            { key: 'telefono', label: 'Teléfono', original: clienteAEditar.telefono },
-            { key: 'correo', label: 'Correo', original: clienteAEditar.correo },
-            { key: 'direccion', label: 'Dirección', original: clienteAEditar.direccion },
-            { key: 'viviendaId', label: 'Vivienda Asignada', original: viviendaOriginal ? `Mz ${viviendaOriginal.manzana} - Casa ${viviendaOriginal.numeroCasa}` : 'No asignada', actual: viviendaNueva ? `Mz ${viviendaNueva.manzana} - Casa ${viviendaNueva.numeroCasa}` : 'No asignada' },
-        ];
-        const cambios = campos.map(campo => {
-            const vOriginal = (campo.original || "").toString().trim();
-            const vActual = (campo.actual !== undefined ? campo.actual : (formData[campo.key] || "")).toString().trim();
-            if (vOriginal !== vActual) return { campo: campo.label, anterior: vOriginal, actual: vActual };
-            return null;
-        }).filter(Boolean);
-        if (cambios.length > 0) {
-            setDetectedChanges(cambios);
-            setIsConfirmOpen(true);
-        } else {
-            toast("No se detectaron cambios.", { icon: 'ℹ️' });
-            onClose();
-        }
-    }, [clienteAEditar, onClose, formData, viviendasDisponibles]);
-
-    useEffect(() => {
-        if (clienteAEditar) {
-            setFormData({
-                nombre: clienteAEditar.nombre || '',
-                cedula: clienteAEditar.cedula || '',
-                telefono: clienteAEditar.telefono || '',
-                correo: clienteAEditar.correo || '',
-                direccion: clienteAEditar.direccion || '',
-                viviendaId: clienteAEditar.viviendaId || null,
-            });
-        }
-    }, [clienteAEditar, setFormData]);
-
-    const selectOptions = useMemo(() =>
-        viviendasDisponibles.map(v => ({
-            value: v.id,
-            label: `Manzana ${v.manzana} - Casa ${v.numeroCasa}`,
-        })),
-        [viviendasDisponibles]);
+    const steps = [
+        <Step1_SelectVivienda key="step1" formData={formData} dispatch={dispatch} isEditing={true} />,
+        <Step2_ClientInfo key="step2" formData={formData} dispatch={dispatch} errors={formData.errors} />,
+        <Step3_Financial key="step3" formData={formData} dispatch={dispatch} errors={formData.errors} />,
+    ];
 
     if (!isOpen) return null;
 
     return (
-        <>
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
-                <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl mx-4">
-                    <h2 className="text-3xl font-bold text-[#1976d2] text-center mb-8">✏️ Editar Cliente</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+            <div className="max-w-5xl mx-auto w-full">
+                <div className="bg-white p-8 rounded-xl shadow-lg m-4">
                     {isLoading ? (
-                        <div className="text-center py-10 text-gray-500 animate-pulse">Cargando...</div>
+                        <div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos del cliente...</div>
                     ) : (
-                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6" noValidate>
+                        <>
+                            <h2 className="text-3xl font-bold mb-2 text-center text-[#1976d2]">
+                                Editar Cliente y Proceso de Venta
+                            </h2>
+                            <p className="text-center text-gray-500 mb-8">Paso {step} de 3</p>
                             <div>
-                                <label className="block font-medium mb-1">Nombre</label>
-                                <input name="nombre" value={formData.nombre} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.nombre ? 'border-red-600' : 'border-gray-300'}`} />
-                                {errors.nombre && <p className="text-red-600 text-sm mt-1">{errors.nombre}</p>}
+                                {steps[step - 1]}
                             </div>
-                            <div>
-                                <label className="block font-medium mb-1">Cédula</label>
-                                <input name="cedula" value={formData.cedula} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.cedula ? 'border-red-600' : 'border-gray-300'}`} />
-                                {errors.cedula && <p className="text-red-600 text-sm mt-1">{errors.cedula}</p>}
+                            <div className="mt-8 flex justify-between">
+                                {step > 1 ? (
+                                    <button onClick={prevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Anterior</button>
+                                ) : (
+                                    <div>
+                                        <button onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>
+                                    </div>
+                                )}
+
+                                {step < 3 ? (
+                                    <button onClick={handleNext} disabled={step === 1 && !formData.viviendaSeleccionada.id} className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:bg-gray-300 ml-auto">Siguiente</button>
+                                ) : (
+                                    <button onClick={handleUpdate} className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-2 rounded-lg transition ml-auto">Guardar Cambios</button>
+                                )}
                             </div>
-                            <div>
-                                <label className="block font-medium mb-1">Teléfono</label>
-                                <input name="telefono" value={formData.telefono} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.telefono ? 'border-red-600' : 'border-gray-300'}`} />
-                                {errors.telefono && <p className="text-red-600 text-sm mt-1">{errors.telefono}</p>}
-                            </div>
-                            <div>
-                                <label className="block font-medium mb-1">Correo</label>
-                                <input name="correo" type="email" value={formData.correo} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.correo ? 'border-red-600' : 'border-gray-300'}`} />
-                                {errors.correo && <p className="text-red-600 text-sm mt-1">{errors.correo}</p>}
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="block font-medium mb-1">Dirección</label>
-                                <input name="direccion" value={formData.direccion} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.direccion ? 'border-red-600' : 'border-gray-300'}`} />
-                                {errors.direccion && <p className="text-red-600 text-sm mt-1">{errors.direccion}</p>}
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="block font-medium mb-1">Vivienda Asignada</label>
-                                <Select
-                                    options={selectOptions}
-                                    onChange={(option) => setFormData(prev => ({ ...prev, viviendaId: option ? option.value : null }))}
-                                    value={selectOptions.find(op => op.value === formData.viviendaId) || null}
-                                    placeholder="Seleccionar vivienda..."
-                                    isClearable
-                                />
-                            </div>
-                            <div className="md:col-span-2 flex justify-end mt-8 space-x-4">
-                                <button type="button" onClick={onClose} className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-5 py-2.5 rounded-full transition">Cancelar</button>
-                                <button type="submit" disabled={isSubmitting || !hayCambios} className={`text-white px-5 py-2.5 rounded-full transition ${isSubmitting || !hayCambios ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#28a745] hover:bg-green-700'}`}>
-                                    {isSubmitting ? "Validando..." : "Guardar Cambios"}
-                                </button>
-                            </div>
-                        </form>
+                        </>
                     )}
                 </div>
             </div>
-            <ModalConfirmacion
-                isOpen={isConfirmOpen}
-                onClose={() => setIsConfirmOpen(false)}
-                onConfirm={handleFinalSave}
-                titulo="Confirmar Cambios"
-                mensaje={
-                    <div>
-                        <p className="mb-4">¿Deseas guardar los siguientes cambios?</p>
-                        <ul className="text-left text-sm bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">
-                            {detectedChanges.map(c => (
-                                <li key={c.campo} className="mb-2">
-                                    <strong className="font-medium text-gray-700">{c.campo}:</strong>
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="text-red-600 bg-red-100 px-2 py-1 rounded">{c.anterior || 'No asignada'}</span>
-                                        <span className="font-bold text-gray-400 mx-1">→</span>
-                                        <span className="text-green-700 bg-green-100 px-2 py-1 rounded">{c.actual || 'No asignada'}</span>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                }
-            />
-        </>
+        </div>
     );
 };
 

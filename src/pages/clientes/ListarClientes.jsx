@@ -14,17 +14,20 @@ const ListarClientes = () => {
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [sortConfig, setSortConfig] = useState({ key: 'nombre', direction: 'ascending' });
+    const [sortConfig, setSortConfig] = useState({ key: 'nombres', direction: 'ascending' });
     const [manzanaFilter, setManzanaFilter] = useState(null);
 
     const cargarDatos = useCallback(async () => {
         setIsLoading(true);
         try {
             const [dataClientes, dataViviendas] = await Promise.all([getClientes(), getViviendas()]);
+
+
             const clientesConVivienda = dataClientes.map((cliente) => {
-                const viviendaAsignada = dataViviendas.find((v) => v.clienteId === cliente.id);
+                const viviendaAsignada = dataViviendas.find((v) => v.id === cliente.viviendaId);
                 return { ...cliente, vivienda: viviendaAsignada || null };
             });
+
             setClientes(clientesConVivienda);
             setViviendas(dataViviendas);
         } catch (error) {
@@ -35,9 +38,7 @@ const ListarClientes = () => {
         }
     }, []);
 
-    useEffect(() => {
-        cargarDatos();
-    }, [cargarDatos]);
+    useEffect(() => { cargarDatos(); }, [cargarDatos]);
 
     const manzanaOptions = useMemo(() => {
         const manzanasUnicas = [...new Set(viviendas.map(v => v.manzana))];
@@ -50,15 +51,23 @@ const ListarClientes = () => {
         if (manzanaFilter && manzanaFilter.value) { itemsProcesados = itemsProcesados.filter(c => c.vivienda?.manzana === manzanaFilter.value); }
         if (searchTerm) {
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
-            itemsProcesados = itemsProcesados.filter(c => c.nombre.toLowerCase().includes(lowerCaseSearchTerm) || c.cedula.includes(lowerCaseSearchTerm));
+            itemsProcesados = itemsProcesados.filter(c =>
+                `${c.datosCliente?.nombres || ''} ${c.datosCliente?.apellidos || ''}`.toLowerCase().includes(lowerCaseSearchTerm) ||
+                (c.datosCliente?.cedula || '').includes(searchTerm)
+            );
         }
         if (sortConfig.key) {
             itemsProcesados.sort((a, b) => {
                 const key = sortConfig.key;
                 const direction = sortConfig.direction === 'ascending' ? 1 : -1;
-                let valA = a[key];
-                let valB = b[key];
-                if (key === 'vivienda') { valA = a.vivienda ? `${a.vivienda.manzana}-${a.vivienda.numeroCasa}` : 'ZZZ'; valB = b.vivienda ? `${b.vivienda.manzana}-${b.vivienda.numeroCasa}` : 'ZZZ'; }
+                let valA, valB;
+                if (key === 'vivienda') {
+                    valA = a.vivienda ? `${a.vivienda.manzana}-${a.vivienda.numeroCasa}` : 'ZZZ';
+                    valB = b.vivienda ? `${b.vivienda.manzana}-${b.vivienda.numeroCasa}` : 'ZZZ';
+                } else {
+                    valA = a.datosCliente?.[key] || '';
+                    valB = b.datosCliente?.[key] || '';
+                }
                 if (typeof valA === 'string') valA = valA.toLowerCase();
                 if (typeof valB === 'string') valB = valB.toLowerCase();
                 if (valA < valB) return -1 * direction;
@@ -114,5 +123,4 @@ const ListarClientes = () => {
         </AnimatedPage>
     );
 };
-
 export default ListarClientes;

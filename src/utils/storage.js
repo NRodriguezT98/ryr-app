@@ -51,21 +51,34 @@ export const deleteVivienda = async (viviendaId) => {
     await deleteDoc(viviendaDocRef);
 };
 
-export const updateCliente = async (clienteId, datosActualizados) => {
-    const clientes = await getClientes();
-    const clienteOriginal = clientes.find(c => String(c.id) === String(clienteId));
-    if (!clienteOriginal) return;
+export const updateCliente = async (clienteId, clienteActualizado) => {
+    // clienteActualizado ahora es el objeto completo con la estructura anidada
 
-    if (clienteOriginal.viviendaId && clienteOriginal.viviendaId !== datosActualizados.viviendaId) {
-        const viviendaAntiguaRef = doc(db, "viviendas", String(clienteOriginal.viviendaId));
-        await updateDoc(viviendaAntiguaRef, { clienteId: null });
+    const clientes = await getClientes();
+    const clienteOriginal = clientes.find(c => c.id === clienteId);
+    if (!clienteOriginal) {
+        console.error("No se encontró el cliente original para actualizar.");
+        return false;
     }
-    if (datosActualizados.viviendaId) {
-        const viviendaNuevaRef = doc(db, "viviendas", String(datosActualizados.viviendaId));
-        await updateDoc(viviendaNuevaRef, { clienteId: String(clienteId) });
+
+    // Lógica para reasignar vivienda si cambió
+    if (clienteOriginal.viviendaId !== clienteActualizado.viviendaId) {
+        // Liberar la vivienda antigua
+        if (clienteOriginal.viviendaId) {
+            const viviendaAntiguaRef = doc(db, "viviendas", String(clienteOriginal.viviendaId));
+            await updateDoc(viviendaAntiguaRef, { clienteId: null });
+        }
+        // Asignar la nueva vivienda
+        if (clienteActualizado.viviendaId) {
+            const clienteDocRef = doc(db, "clientes", String(clienteId));
+            await updateDoc(clienteDocRef, clienteActualizado);
+        };
     }
+
+    // Actualizamos el documento del cliente con el objeto completo
     const clienteDocRef = doc(db, "clientes", String(clienteId));
-    await updateDoc(clienteDocRef, datosActualizados);
+    await updateDoc(clienteDocRef, clienteActualizado);
+    return true;
 };
 
 export const deleteCliente = async (clienteId) => {

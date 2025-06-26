@@ -42,7 +42,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                     <p className="text-lg font-bold text-blue-600">{formatCurrency(viviendaSeleccionada.valorTotal)}</p>
                 </div>
                 <div>
-                    <p className="text-sm font-semibold text-gray-500">Total Aportado</p>
+                    <p className="text-sm font-semibold text-gray-500">Total Recursos propios</p>
                     <p className="text-lg font-bold text-gray-800">{formatCurrency(resumenFinanciero.totalAportado)}</p>
                 </div>
                 <div>
@@ -55,7 +55,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
 
             {errors.financiero &&
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-r-lg" role="alert">
-                    <p className="font-bold">Error de Concordancia</p>
+                    <p className="font-bold">Error de diferencia entre los valores.</p>
                     <p>{errors.financiero}</p>
                 </div>
             }

@@ -115,7 +115,7 @@ export const validateFinancialStep = (financiero, valorVivienda) => {
 
     // Validación final de la suma total
     if (totalAportado !== valorVivienda) {
-        errors.financiero = `La suma de los aportes (${totalAportado.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}) debe ser igual al valor de la vivienda.`;
+        errors.financiero = `La suma de los recursos propios (${totalAportado.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}) debe ser igual al valor de la vivienda.`;
     }
 
     return errors;
