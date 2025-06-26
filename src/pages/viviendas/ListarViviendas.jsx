@@ -18,14 +18,22 @@ const ListarViviendas = () => {
     const cargarDatos = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [dataViviendas, dataClientes, dataAbonos] = await Promise.all([
-                getViviendas(), getClientes(), getAbonos()
-            ]);
+            const [dataViviendas, dataClientes, dataAbonos] = await Promise.all([getViviendas(), getClientes(), getAbonos()]);
             const viviendasConDatosCompletos = dataViviendas.map(vivienda => {
                 const clienteAsignado = dataClientes.find(c => c.id === vivienda.clienteId);
                 const abonosDeLaVivienda = dataAbonos.filter(a => a.viviendaId === vivienda.id);
                 const totalAbonado = abonosDeLaVivienda.reduce((sum, abono) => sum + (abono.monto || 0), 0);
-                return { ...vivienda, cliente: clienteAsignado || null, totalAbonado, saldoPendiente: vivienda.valorTotal - totalAbonado };
+
+                // --- LÓGICA DE CÁLCULO MEJORADA ---
+                const valorFinal = (vivienda.valorTotal || 0) - (vivienda.descuentoMonto || 0);
+
+                return {
+                    ...vivienda,
+                    cliente: clienteAsignado || null,
+                    totalAbonado: totalAbonado,
+                    valorFinal: valorFinal, // Guardamos el valor final para usarlo en la tabla
+                    saldoPendiente: valorFinal - totalAbonado,
+                };
             });
             setViviendas(viviendasConDatosCompletos);
         } catch (error) {
@@ -36,9 +44,7 @@ const ListarViviendas = () => {
         }
     }, []);
 
-    useEffect(() => {
-        cargarDatos();
-    }, [cargarDatos]);
+    useEffect(() => { cargarDatos(); }, [cargarDatos]);
 
     const viviendasFiltradasYOrdenadas = useMemo(() => {
         let itemsProcesados = [...viviendas];
@@ -54,7 +60,7 @@ const ListarViviendas = () => {
                 const direction = sortConfig.direction === 'ascending' ? 1 : -1;
                 let valA = a[key];
                 let valB = b[key];
-                if (key === 'cliente') { valA = a.cliente?.nombre || 'ZZZ'; valB = b.cliente?.nombre || 'ZZZ'; }
+                if (key === 'cliente') { valA = a.cliente?.datosCliente?.nombres || 'ZZZ'; valB = b.cliente?.datosCliente?.nombres || 'ZZZ'; }
                 if (typeof valA === 'string') valA = valA.toLowerCase();
                 if (typeof valB === 'string') valB = valB.toLowerCase();
                 if (valA < valB) return -1 * direction;
@@ -69,9 +75,7 @@ const ListarViviendas = () => {
 
     const handleSort = (key) => {
         let direction = 'ascending';
-        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-            direction = 'descending';
-        }
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') { direction = 'descending'; }
         setSortConfig({ key, direction });
     };
 
@@ -87,9 +91,7 @@ const ListarViviendas = () => {
         finally { setViviendaAEliminar(null); }
     };
 
-    if (isLoading) {
-        return <div className="text-center p-10 animate-pulse">Cargando viviendas...</div>;
-    }
+    if (isLoading) return <div className="text-center p-10 animate-pulse">Cargando viviendas...</div>;
 
     return (
         <AnimatedPage>
@@ -117,4 +119,5 @@ const ListarViviendas = () => {
         </AnimatedPage>
     );
 };
+
 export default ListarViviendas;

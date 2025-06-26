@@ -6,21 +6,23 @@ import { useState, useEffect, useCallback } from 'react';
  * Hook de React para gestionar el estado, validación y envío de formularios.
  * @param {object} config - Objeto de configuración.
  * @param {object} config.initialState - El estado inicial del formulario.
- * @param {function} config.validate - Función que recibe formData y devuelve un objeto de errores.
+ * @param {function} [config.validate] - (Opcional) Función que recibe formData y devuelve un objeto de errores.
  * @param {function} config.onSubmit - Función (async) a ejecutar en un envío válido.
  * @param {object} config.options - Opciones adicionales como inputFilters.
  */
-// --- LA CORRECCIÓN ESTÁ EN ESTA LÍNEA ---
-export const useForm = ({ initialState, validate, onSubmit, options = {} }) => {
+// CAMBIO CLAVE: Se añade un valor por defecto a 'validate'. Si no se pasa la función,
+// se usará una función vacía que no dará errores.
+export const useForm = ({ initialState, validate = () => ({}), onSubmit, options = {} }) => {
     const [formData, setFormData] = useState(initialState);
     const [errors, setErrors] = useState({});
-    const [enviando, setEnviando] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [initialData, setInitialData] = useState(initialState);
 
-    // El resto del código no cambia, ya estaba correcto.
-    const { inputFilters = {} } = options;
+    const { inputFilters = {}, resetOnSuccess = true } = options;
 
     useEffect(() => {
         setFormData(initialState);
+        setInitialData(initialState);
         setErrors({});
     }, [initialState]);
 
@@ -44,21 +46,19 @@ export const useForm = ({ initialState, validate, onSubmit, options = {} }) => {
 
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
+
+        // Esta línea ahora es segura, incluso si 'validate' no se proporciona.
         const validationErrors = validate(formData);
         setErrors(validationErrors);
 
         const isValid = Object.keys(validationErrors).length === 0;
 
         if (isValid) {
-            setEnviando(true);
+            setIsSubmitting(true);
             try {
                 if (typeof onSubmit === 'function') {
                     await onSubmit(formData);
-
-                    // --- MEJORA AQUÍ ---
-                    // Leemos la opción `resetOnSuccess`. Si no se define, por defecto es true.
-                    const { resetOnSuccess = true } = options;
                     if (resetOnSuccess) {
                         resetForm();
                     }
@@ -68,7 +68,7 @@ export const useForm = ({ initialState, validate, onSubmit, options = {} }) => {
             } catch (error) {
                 console.error("useForm: Ocurrió un error durante la ejecución de onSubmit.", error);
             } finally {
-                setEnviando(false);
+                setIsSubmitting(false);
             }
         }
     };
@@ -76,8 +76,10 @@ export const useForm = ({ initialState, validate, onSubmit, options = {} }) => {
     return {
         formData,
         setFormData,
+        initialData,
         errors,
-        enviando,
+        setErrors,
+        isSubmitting,
         handleInputChange,
         handleValueChange,
         handleSubmit,
