@@ -5,12 +5,15 @@ import { getViviendas, getClientes, getAbonos, deleteVivienda } from "../../util
 import TablaViviendas from './TablaViviendas.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarVivienda from "./EditarVivienda.jsx";
+import DescuentoModal from './DescuentoModal.jsx';
 
 const ListarViviendas = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [viviendas, setViviendas] = useState([]);
     const [viviendaAEditar, setViviendaAEditar] = useState(null);
     const [viviendaAEliminar, setViviendaAEliminar] = useState(null);
+    // --- ESTADO FALTANTE AÑADIDO AQUÍ ---
+    const [viviendaConDescuento, setViviendaConDescuento] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'manzana', direction: 'ascending' });
     const [statusFilter, setStatusFilter] = useState('todas');
@@ -23,25 +26,12 @@ const ListarViviendas = () => {
                 const clienteAsignado = dataClientes.find(c => c.id === vivienda.clienteId);
                 const abonosDeLaVivienda = dataAbonos.filter(a => a.viviendaId === vivienda.id);
                 const totalAbonado = abonosDeLaVivienda.reduce((sum, abono) => sum + (abono.monto || 0), 0);
-
-                // --- LÓGICA DE CÁLCULO MEJORADA ---
                 const valorFinal = (vivienda.valorTotal || 0) - (vivienda.descuentoMonto || 0);
-
-                return {
-                    ...vivienda,
-                    cliente: clienteAsignado || null,
-                    totalAbonado: totalAbonado,
-                    valorFinal: valorFinal, // Guardamos el valor final para usarlo en la tabla
-                    saldoPendiente: valorFinal - totalAbonado,
-                };
+                return { ...vivienda, cliente: clienteAsignado || null, totalAbonado, valorFinal, saldoPendiente: valorFinal - totalAbonado };
             });
             setViviendas(viviendasConDatosCompletos);
-        } catch (error) {
-            console.error("Error al cargar datos:", error);
-            toast.error("No se pudieron cargar los datos.");
-        } finally {
-            setIsLoading(false);
-        }
+        } catch (error) { toast.error("No se pudieron cargar los datos."); }
+        finally { setIsLoading(false); }
     }, []);
 
     useEffect(() => { cargarDatos(); }, [cargarDatos]);
@@ -112,10 +102,25 @@ const ListarViviendas = () => {
                         <input type="text" placeholder="Buscar por manzana, casa o matrícula..." className="w-full p-3 border border-gray-300 rounded-lg ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
                 </div>
-                <TablaViviendas viviendas={viviendasFiltradasYOrdenadas} onEdit={setViviendaAEditar} onDelete={setViviendaAEliminar} onSort={handleSort} sortConfig={sortConfig} />
+                <TablaViviendas
+                    viviendas={viviendasFiltradasYOrdenadas}
+                    onEdit={setViviendaAEditar}
+                    onDelete={setViviendaAEliminar}
+                    onApplyDiscount={setViviendaConDescuento} // 3. Pasamos la nueva función
+                    onSort={handleSort}
+                    sortConfig={sortConfig}
+                />
             </div>
             {viviendaAEliminar && (<ModalConfirmacion isOpen={!!viviendaAEliminar} onClose={() => setViviendaAEliminar(null)} onConfirm={confirmarEliminar} titulo="¿Eliminar Vivienda?" mensaje="Esta acción es permanente..." />)}
             {viviendaAEditar && (<EditarVivienda isOpen={!!viviendaAEditar} onClose={() => setViviendaAEditar(null)} onGuardar={handleGuardado} vivienda={viviendaAEditar} />)}
+            {viviendaConDescuento && (
+                <DescuentoModal
+                    isOpen={!!viviendaConDescuento}
+                    onClose={() => setViviendaConDescuento(null)}
+                    onSave={handleGuardado}
+                    vivienda={viviendaConDescuento}
+                />
+            )}
         </AnimatedPage>
     );
 };
