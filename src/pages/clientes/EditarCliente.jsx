@@ -40,6 +40,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
     const [step, setStep] = useState(1);
     const [formData, dispatch] = useReducer(formReducer, blankInitialState);
     const [todosLosClientes, setTodosLosClientes] = useState([]);
+    const [viviendaOriginalId, setViviendaOriginalId] = useState(null); // Estado para guardar el ID original
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -49,6 +50,9 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                 const todasLasViviendas = await getViviendas();
                 const todosLosClientesData = await getClientes();
                 const viviendaAsignada = todasLasViviendas.find(v => v.id === clienteAEditar.viviendaId);
+
+                // --- Guardamos el ID de la vivienda original ---
+                setViviendaOriginalId(clienteAEditar.viviendaId);
 
                 const initialStateForEdit = {
                     ...blankInitialState,
@@ -64,7 +68,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                 dispatch({ type: 'INITIALIZE_FORM', payload: initialStateForEdit });
                 setTodosLosClientes(todosLosClientesData);
                 setIsLoading(false);
-                setStep(1);
+                setStep(1); // Siempre empezamos en el paso 1 al abrir
             }
         };
 
@@ -78,37 +82,41 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
 
     const handleNext = () => {
         let errors = {};
-        if (step === 2) { errors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar.id); }
-        if (step === 3) {
-            const { financiero, viviendaSeleccionada } = formData;
-            const montoCuota = financiero.aplicaCuotaInicial ? (financiero.cuotaInicial.monto || 0) : 0;
-            const montoCredito = financiero.aplicaCredito ? (financiero.credito.monto || 0) : 0;
-            const montoSubVivienda = financiero.aplicaSubsidioVivienda ? (financiero.subsidioVivienda.monto || 0) : 0;
-            const montoSubCaja = financiero.aplicaSubsidioCaja ? (financiero.subsidioCaja.monto || 0) : 0;
-            const totalAportado = montoCuota + montoCredito + montoSubVivienda + montoSubCaja;
-            errors = validateFinancialStep(formData.financiero, viviendaSeleccionada.valorTotal, totalAportado);
+        if (step === 2) {
+            errors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar.id);
         }
-        const isValid = Object.keys(errors).length === 0;
-        dispatch({ type: 'SET_ERRORS', payload: errors });
-        if (isValid) { nextStep(); }
+
+        if (Object.keys(errors).length > 0) {
+            dispatch({ type: 'SET_ERRORS', payload: errors });
+            return;
+        }
+
+        dispatch({ type: 'SET_ERRORS', payload: {} });
+        nextStep();
     };
 
     const handleUpdate = useCallback(async () => {
-        const { financiero, viviendaSeleccionada } = formData;
-        const finalErrors = validateFinancialStep(financiero, viviendaSeleccionada.valorTotal);
-        if (Object.keys(finalErrors).length > 0) {
-            dispatch({ type: 'SET_ERRORS', payload: finalErrors });
-            toast.error("Por favor, corrige los errores en la estructura financiera.");
+        const clientErrors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar.id);
+        const financialErrors = validateFinancialStep(formData.financiero, formData.viviendaSeleccionada.valorTotal);
+        const totalErrors = { ...clientErrors, ...financialErrors };
+
+        if (Object.keys(totalErrors).length > 0) {
+            dispatch({ type: 'SET_ERRORS', payload: totalErrors });
+            toast.error("Por favor, corrige los errores en el formulario.");
             return;
         }
+
         const clienteParaActualizar = {
             datosCliente: formData.datosCliente,
             financiero: formData.financiero,
             seguimiento: formData.seguimiento,
             viviendaId: formData.viviendaSeleccionada.id
         };
+
         try {
-            await updateCliente(clienteAEditar.id, clienteParaActualizar);
+            // --- LLAMADA A LA FUNCIÓN ACTUALIZADA ---
+            // Pasamos el ID del cliente, el objeto actualizado y el ID de la vivienda original
+            await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
             toast.success("Cliente actualizado con éxito!");
             onGuardar();
             onClose();
@@ -116,7 +124,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
             console.error("Error al actualizar el cliente:", error);
             toast.error("Hubo un error al actualizar los datos.");
         }
-    }, [formData, clienteAEditar, onGuardar, onClose]);
+    }, [formData, clienteAEditar, onGuardar, onClose, todosLosClientes, viviendaOriginalId]);
 
     const steps = [
         <Step1_SelectVivienda key="step1" formData={formData} dispatch={dispatch} isEditing={true} />,
@@ -129,7 +137,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
             <div className="max-w-5xl mx-auto w-full">
-                <div className="bg-white p-8 rounded-xl shadow-lg m-4">
+                <div className="bg-white p-8 rounded-xl shadow-lg m-4 max-h-[90vh] overflow-y-auto">
                     {isLoading ? (
                         <div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos del cliente...</div>
                     ) : (
@@ -145,9 +153,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                                 {step > 1 ? (
                                     <button onClick={prevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Anterior</button>
                                 ) : (
-                                    <div>
-                                        <button onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>
-                                    </div>
+                                    // Botón de cancelar solo en el primer paso
+                                    <button onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>
                                 )}
 
                                 {step < 3 ? (

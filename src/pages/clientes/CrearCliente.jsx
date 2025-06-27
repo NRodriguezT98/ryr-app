@@ -58,39 +58,36 @@ const CrearCliente = () => {
 
     const handleNext = () => {
         let errors = {};
-        let isValid = true;
         if (step === 2) {
             errors = validateCliente(formData.datosCliente, todosLosClientes, null);
         }
-        if (step === 3) {
-            const { financiero, viviendaSeleccionada } = formData;
-            const montoCuota = financiero.aplicaCuotaInicial ? (financiero.cuotaInicial.monto || 0) : 0;
-            const montoCredito = financiero.aplicaCredito ? (financiero.credito.monto || 0) : 0;
-            const montoSubVivienda = financiero.aplicaSubsidioVivienda ? (financiero.subsidioVivienda.monto || 0) : 0;
-            const montoSubCaja = financiero.aplicaSubsidioCaja ? (financiero.subsidioCaja.monto || 0) : 0;
-            const totalAportado = montoCuota + montoCredito + montoSubVivienda + montoSubCaja;
-            errors = validateFinancialStep(formData.financiero, viviendaSeleccionada.valorTotal, totalAportado);
-        }
-        isValid = Object.keys(errors).length === 0;
-        dispatch({ type: 'SET_ERRORS', payload: errors });
-        if (isValid) { nextStep(); }
-    };
-
-    // --- FUNCIÓN DE GUARDADO CORREGIDA ---
-    const handleSave = useCallback(async () => {
-        const { financiero, viviendaSeleccionada, datosCliente } = formData;
-        const finalErrors = validateFinancialStep(financiero, viviendaSeleccionada.valorTotal);
-        if (Object.keys(finalErrors).length > 0) {
-            dispatch({ type: 'SET_ERRORS', payload: finalErrors });
-            toast.error("Por favor, corrige los errores en la estructura financiera.");
+        if (Object.keys(errors).length > 0) {
+            dispatch({ type: 'SET_ERRORS', payload: errors });
             return;
         }
 
-        // Construimos el objeto final para guardar en la base de datos
+        // Si el paso actual es válido, limpia los errores y avanza
+        dispatch({ type: 'SET_ERRORS', payload: {} });
+        nextStep();
+    };
+
+    const handleSave = useCallback(async () => {
+        // Valida el paso de información personal y financiera antes de guardar
+        const clientErrors = validateCliente(formData.datosCliente, todosLosClientes, null);
+        const financialErrors = validateFinancialStep(formData.financiero, formData.viviendaSeleccionada.valorTotal);
+        const totalErrors = { ...clientErrors, ...financialErrors };
+
+        if (Object.keys(totalErrors).length > 0) {
+            dispatch({ type: 'SET_ERRORS', payload: totalErrors });
+            toast.error("Por favor, corrige los errores antes de guardar.");
+            return;
+        }
+
+        // --- ESTRUCTURA DEL OBJETO A GUARDAR ---
+        // Este objeto tiene la forma que nuestra función `addClienteAndAssignVivienda` espera
         const clienteParaGuardar = {
-            datosCliente: datosCliente,
-            financiero: financiero,
-            // Creamos el objeto de seguimiento explícitamente con valores nulos
+            datosCliente: formData.datosCliente,
+            financiero: formData.financiero,
             seguimiento: {
                 fechaEnvioAvaluo: null, fechaEstudioTitulos: null, escrituraEnviada: null,
                 escrituraFirmada: null, actaEntrega: null, boletaRegistro: null,
@@ -98,7 +95,7 @@ const CrearCliente = () => {
                 marcacionPagoSubsidio: null, desembolsoSubsidioVivienda: null,
                 desembolsoCajaCompensacion: null
             },
-            viviendaId: viviendaSeleccionada.id
+            viviendaId: formData.viviendaSeleccionada.id
         };
 
         try {
@@ -109,7 +106,7 @@ const CrearCliente = () => {
             console.error("Error al guardar el cliente:", error);
             toast.error("Hubo un error al guardar los datos.");
         }
-    }, [formData, navigate]);
+    }, [formData, navigate, todosLosClientes]);
 
     const steps = [
         <Step1_SelectVivienda key="step1" formData={formData} dispatch={dispatch} />,
@@ -127,9 +124,16 @@ const CrearCliente = () => {
                     <div>{steps[step - 1]}</div>
 
                     <div className="mt-8 flex justify-between">
-                        {step > 1 ? (<button onClick={prevStep} className="bg-gray-200 hover:bg-gray-300 ...">Anterior</button>) : (<div></div>)}
+                        {step > 1 ? (
+                            <button onClick={prevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Anterior</button>
+                        ) : (
+                            <div /> // Espaciador para mantener el botón de siguiente a la derecha
+                        )}
+
                         {step < 3 ? (
-                            <button onClick={handleNext} disabled={step === 1 && !formData.viviendaSeleccionada.id} className="px-5 py-2.5 rounded-full transition text-white bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400">Siguiente</button>
+                            <button onClick={handleNext} disabled={step === 1 && !formData.viviendaSeleccionada.id} className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:bg-gray-300 ml-auto">
+                                Siguiente
+                            </button>
                         ) : (
                             <button onClick={handleSave} className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-2 rounded-lg transition ml-auto">
                                 Guardar Cliente y Proceso

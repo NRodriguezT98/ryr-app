@@ -31,12 +31,27 @@ const CrearVivienda = () => {
     }, []);
 
     const onSubmitLogic = useCallback(async (formData) => {
-        const nuevaVivienda = { manzana: formData.manzana, numeroCasa: parseInt(formData.numero, 10), matricula: formData.matricula.trim(), nomenclatura: formData.nomenclatura.trim(), valorTotal: parseInt(formData.valor.replace(/\D/g, ''), 10), clienteId: null };
+        const valorNumerico = parseInt(formData.valor.replace(/\D/g, ''), 10);
+
+        // --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
+        // Construimos el objeto con la estructura completa, incluyendo los
+        // campos desnormalizados que ahora se inicializan en storage.js
+        const nuevaVivienda = {
+            manzana: formData.manzana,
+            numeroCasa: parseInt(formData.numero, 10),
+            matricula: formData.matricula.trim(),
+            nomenclatura: formData.nomenclatura.trim(),
+            valorTotal: valorNumerico,
+        };
+
         try {
+            // La función addVivienda en storage.js se encargará de añadir los campos
+            // restantes (clienteId, totalAbonado, saldoPendiente, etc.)
             await addVivienda(nuevaVivienda);
             setIsSuccess(true);
         } catch (error) {
             toast.error("No se pudo registrar la vivienda.");
+            console.error("Error al crear vivienda:", error);
         }
     }, []);
 
@@ -103,7 +118,7 @@ const CrearVivienda = () => {
                                 {errors.valor && <p className="text-red-600 text-sm mt-1">{errors.valor}</p>}
                             </div>
                             <div className="md:col-span-2 flex justify-end">
-                                <button type="submit" disabled={enviando} className={`px-5 py-2.5 rounded-full transition text-white ${enviando ? "bg-gray-400 cursor-not-allowed" : "bg-[#28a745] hover:bg-green-700"}`}>{enviando ? "Guardando..." : "Guardar Vivienda"}</button>
+                                <button type="submit" disabled={enviando || isLoading} className={`px-5 py-2.5 rounded-full transition text-white ${enviando || isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-[#28a745] hover:bg-green-700"}`}>{enviando ? "Guardando..." : "Guardar Vivienda"}</button>
                             </div>
                         </form>
                     </div>
