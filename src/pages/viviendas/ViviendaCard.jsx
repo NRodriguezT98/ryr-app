@@ -3,10 +3,8 @@ import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Tag, Pencil, Trash, Info, User, Home } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 
-// Helper para formatear moneda
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
-// Helper para capitalizar nombres
 const toTitleCase = (str) => {
     if (!str) return '';
     return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
@@ -23,8 +21,8 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
 
     return (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 flex flex-col transition-all duration-300 hover:shadow-xl hover:border-blue-500">
-            {/* Cabecera */}
-            <div className={`flex items-center justify-between p-4 border-b ${isDisponible ? 'bg-yellow-50' : 'bg-green-50'}`}>
+            {/* --- CORRECCIÓN AQUÍ: Añadimos rounded-t-2xl --- */}
+            <div className={`flex items-center justify-between p-4 border-b rounded-t-2xl ${isDisponible ? 'bg-yellow-50' : 'bg-green-50'}`}>
                 <div className="flex items-center gap-3">
                     <Home className={`w-6 h-6 ${isDisponible ? 'text-yellow-600' : 'text-green-700'}`} />
                     <h3 className="text-lg font-bold text-gray-800">
@@ -32,7 +30,7 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                     </h3>
                 </div>
                 <span className={`px-3 py-1 text-xs font-semibold rounded-full ${isDisponible ? 'bg-yellow-200 text-yellow-800' : 'bg-green-200 text-green-800'}`}>
-                    {isDisponible ? 'Disponible' : 'Ocupada'}
+                    {isDisponible ? 'Disponible' : 'Asignada'}
                 </span>
             </div>
 

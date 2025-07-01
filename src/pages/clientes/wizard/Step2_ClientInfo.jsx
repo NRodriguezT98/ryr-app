@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import FileUpload from '../../../components/FileUpload'; // Importamos el componente
 
 // 1. Recibimos 'errors' como una nueva prop
 const Step2_ClientInfo = ({ formData, dispatch, errors }) => {
@@ -14,11 +15,20 @@ const Step2_ClientInfo = ({ formData, dispatch, errors }) => {
         });
     }, [dispatch]);
 
+    const handleCedulaUpload = (url) => {
+        dispatch({ type: 'UPDATE_FIELD', payload: { section: 'datosCliente', field: 'urlCedula', value: url } });
+    };
+
+    const handleCedulaRemove = () => {
+        dispatch({ type: 'UPDATE_FIELD', payload: { section: 'datosCliente', field: 'urlCedula', value: null } });
+    };
+
+
     return (
         <div className="animate-fade-in space-y-6">
             <div>
                 <h3 className="text-2xl font-bold text-gray-800">2. Información del Cliente</h3>
-                <p className="text-sm text-gray-500 mt-1">Ingresa los datos personales del nuevo propietario.</p>
+                <p className="text-sm text-gray-500 mt-1">Ingresa los datos personales del nuevo cliente.</p>
             </div>
 
             {/* 2. El JSX ahora usa el objeto 'errors' para mostrar los mensajes */}
@@ -52,6 +62,15 @@ const Step2_ClientInfo = ({ formData, dispatch, errors }) => {
                     <label className="block font-semibold mb-1" htmlFor="direccion">Dirección <span className="text-red-600">*</span></label>
                     <input type="text" id="direccion" name="direccion" className={`w-full border p-2 rounded-lg ${errors.direccion ? 'border-red-500' : 'border-gray-300'}`} value={formData.datosCliente.direccion} onChange={handleChange} />
                     {errors.direccion && <p className="text-red-600 text-sm mt-1">{errors.direccion}</p>}
+                </div>
+                <div className="md:col-span-2">
+                    <FileUpload
+                        label="Cédula de Ciudadanía (PDF o Imagen)"
+                        filePath={(fileName) => `documentos_clientes/${formData.datosCliente.cedula || 'nuevo'}/cedula-${fileName}`}
+                        currentFileUrl={formData.datosCliente.urlCedula}
+                        onUploadSuccess={handleCedulaUpload}
+                        onRemove={handleCedulaRemove}
+                    />
                 </div>
             </div>
         </div>

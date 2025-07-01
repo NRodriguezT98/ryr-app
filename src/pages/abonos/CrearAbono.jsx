@@ -1,42 +1,20 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import Select from "react-select";
-import { NumericFormat } from "react-number-format";
 import AnimatedPage from "../../components/AnimatedPage";
 import toast from "react-hot-toast";
-import { useForm } from "../../hooks/useForm.jsx";
-import { getViviendas, getAbonos, addAbono } from "../../utils/storage";
-import { validateAbono } from "./abonoValidation.js";
-import ResumenAbonos from "./ResumenAbonos.jsx";
-import TablaAbonos from "./TablaAbonos.jsx";
-
-const getTodayString = () => new Date().toISOString().split('T')[0];
-
-const INITIAL_ABONO_STATE = { monto: "", metodoPago: "", fechaPago: getTodayString() };
+import { useData } from "../../context/DataContext"; // <-- 1. IMPORTAMOS NUESTRO HOOK
+import FuenteDePagoCard from "./FuenteDePagoCard";
+import AbonoCard from "./AbonoCard";
 
 const CrearAbono = () => {
-    const navigate = useNavigate();
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-    const [viviendas, setViviendas] = useState([]);
-    const [abonos, setAbonos] = useState([]);
+    // --- 2. CONSUMIMOS LOS DATOS DIRECTAMENTE DEL CONTEXTO ---
+    const { isLoading, viviendas, clientes, abonos, recargarDatos } = useData();
+
+    // El único estado local que necesitamos es para saber qué vivienda está seleccionada
     const [selectedViviendaId, setSelectedViviendaId] = useState(null);
 
-    const cargarDatos = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            // Ya no necesitamos getClientes aquí, la información está en `viviendas`
-            const [viviendasData, abonosData] = await Promise.all([getViviendas(), getAbonos()]);
-            setViviendas(viviendasData);
-            setAbonos(abonosData);
-        } catch (error) {
-            toast.error("No se pudieron cargar los datos de la página.");
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => { cargarDatos(); }, [cargarDatos]);
+    // --- ELIMINAMOS por completo las funciones 'cargarDatos' y el 'useEffect' que la llamaba ---
+    // Ya que el DataContext se encarga de todo esto de forma global.
 
     const datosViviendaSeleccionada = useMemo(() => {
         if (!selectedViviendaId) return null;
@@ -44,156 +22,115 @@ const CrearAbono = () => {
         const viviendaActual = viviendas.find(v => v.id === selectedViviendaId);
         if (!viviendaActual) return null;
 
+        // El estado 'clientes' del contexto ya viene con la información de la vivienda
+        const clienteActual = clientes.find(c => c.id === viviendaActual.clienteId);
+        if (!clienteActual || !clienteActual.financiero) {
+            return { vivienda: viviendaActual, fuentes: [], historial: [], resumenGeneral: {} };
+        }
+
         const historial = abonos
             .filter(a => a.viviendaId === selectedViviendaId)
-            .map(abono => ({
-                ...abono,
-                clienteNombre: viviendaActual.clienteNombre || 'Desconocido', // Usamos el campo desnormalizado
-                viviendaLabel: `Mz ${viviendaActual.manzana} - Casa ${viviendaActual.numeroCasa}`,
-            }))
             .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
 
-        // El resumen ahora viene directamente de la vivienda, es más simple
-        const resumen = {
-            valorTotal: viviendaActual.valorTotal || 0,
-            descuento: viviendaActual.descuentoMonto || 0,
+        const fuentes = [];
+        const { financiero } = clienteActual;
+
+        if (financiero.aplicaCuotaInicial && financiero.cuotaInicial.monto > 0) {
+            fuentes.push({ titulo: "Cuota Inicial", fuente: "cuotaInicial", montoPactado: financiero.cuotaInicial.monto, abonos: historial.filter(a => a.fuente === 'cuotaInicial') });
+        }
+        if (financiero.aplicaCredito && financiero.credito.monto > 0) {
+            fuentes.push({ titulo: "Crédito Hipotecario", fuente: "credito", montoPactado: financiero.credito.monto, abonos: historial.filter(a => a.fuente === 'credito') });
+        }
+        if (financiero.aplicaSubsidioVivienda && financiero.subsidioVivienda.monto > 0) {
+            fuentes.push({ titulo: "Subsidio Mi Casa Ya", fuente: "subsidioVivienda", montoPactado: financiero.subsidioVivienda.monto, abonos: historial.filter(a => a.fuente === 'subsidioVivienda') });
+        }
+        if (financiero.aplicaSubsidioCaja && financiero.subsidioCaja.monto > 0) {
+            fuentes.push({ titulo: `Subsidio Caja (${financiero.subsidioCaja.caja})`, fuente: "subsidioCaja", montoPactado: financiero.subsidioCaja.monto, abonos: historial.filter(a => a.fuente === 'subsidioCaja') });
+        }
+
+        const resumenGeneral = {
             valorFinal: viviendaActual.valorFinal || 0,
             totalAbonado: viviendaActual.totalAbonado || 0,
-            saldoPendiente: viviendaActual.saldoPendiente || 0,
+            saldoPendiente: viviendaActual.saldoPendiente || 0
         };
 
-        return { historial, resumen };
-    }, [selectedViviendaId, abonos, viviendas]);
+        return { vivienda: viviendaActual, fuentes, historial, resumenGeneral };
+    }, [selectedViviendaId, viviendas, clientes, abonos]);
 
-    const onSubmitLogic = useCallback(async (formData) => {
-        const viviendaSeleccionada = viviendas.find(v => v.id === selectedViviendaId);
-        if (!viviendaSeleccionada) {
-            toast.error("Error: no se ha seleccionado una vivienda válida.");
-            return;
-        }
-
-        const nuevoAbono = {
-            fechaPago: formData.fechaPago,
-            monto: parseInt(String(formData.monto).replace(/\D/g, ''), 10) || 0,
-            metodoPago: formData.metodoPago,
-            viviendaId: selectedViviendaId,
-            clienteId: viviendaSeleccionada.clienteId,
-        };
-        try {
-            await addAbono(nuevoAbono); // La función de storage hace todo el trabajo pesado
-            setIsSuccess(true);
-        } catch (error) {
-            toast.error("No se pudo registrar el abono. Intenta de nuevo.");
-            console.error(error);
-        }
-    }, [viviendas, selectedViviendaId]);
-
-    const { formData, errors, handleInputChange, handleValueChange, handleSubmit, isSubmitting, resetForm } = useForm({
-        initialState: INITIAL_ABONO_STATE,
-        validate: (data) => validateAbono(data, datosViviendaSeleccionada?.resumen),
-        onSubmit: onSubmitLogic,
-        options: { resetOnSuccess: true } // Reseteamos el formulario de abono
-    });
-
-    useEffect(() => {
-        if (isSuccess) {
-            toast.success("Abono registrado exitosamente.");
-            const timer = setTimeout(() => {
-                setIsSuccess(false);
-                cargarDatos(); // Recargamos todos los datos para reflejar el cambio de saldo
-            }, 1500);
-            return () => clearTimeout(timer);
-        }
-    }, [isSuccess, cargarDatos]);
-
-    // Opciones para el selector, filtrando solo viviendas con cliente
     const viviendaOptions = useMemo(() =>
-        viviendas
-            .filter(v => v.clienteId)
-            .map(v => ({
-                value: v.id,
-                label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${v.clienteNombre || 'N/A'})`
-            })),
-        [viviendas]
-    );
-
-    const handleSelectVivienda = (option) => {
-        setSelectedViviendaId(option ? option.value : null);
-        resetForm(); // Limpia el formulario de abono al cambiar de vivienda
-    };
+        clientes
+            .filter(cliente => cliente.viviendaId) // Solo clientes con vivienda
+            .map(cliente => {
+                const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
+                if (!vivienda) return null;
+                return {
+                    value: vivienda.id,
+                    label: `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa} (${cliente.datosCliente.nombres})`
+                };
+            }).filter(Boolean),
+        [clientes, viviendas]);
 
     if (isLoading) return <div className="text-center p-10 animate-pulse">Cargando...</div>;
 
     return (
         <AnimatedPage>
             <div className="max-w-5xl mx-auto bg-white p-8 rounded-xl shadow-lg">
-                {isSuccess ? (
-                    <div className="text-center py-10 animate-fade-in">
-                        <div className="text-green-500 w-24 h-24 mx-auto rounded-full bg-green-100 flex items-center justify-center">
-                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <h2 className="text-3xl font-bold text-gray-800 mt-6">¡Abono Registrado!</h2>
-                        <p className="text-gray-500 mt-2">El historial ha sido actualizado.</p>
+                <div className="text-center">
+                    <h2 className="text-3xl font-bold text-[#1976d2] mb-2">Seguimiento de Pagos por Cliente</h2>
+                    <p className="text-gray-500 mb-8">Selecciona una vivienda para ver y registrar los abonos por cada fuente de pago.</p>
+                </div>
+                <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+                    <div className="mb-6">
+                        <label className="block font-semibold mb-2 text-gray-700">Seleccionar Vivienda Ocupada</label>
+                        <Select
+                            options={viviendaOptions}
+                            onChange={(option) => setSelectedViviendaId(option ? option.value : null)}
+                            placeholder="Buscar vivienda por cliente..."
+                            noOptionsMessage={() => "No hay clientes con viviendas asignadas."}
+                            isClearable
+                            value={viviendaOptions.find(op => op.value === selectedViviendaId) || null}
+                        />
                     </div>
-                ) : (
-                    <>
-                        <div className="text-center">
-                            <h2 className="text-3xl font-bold text-[#1976d2] mb-2">Registrar Nuevo Abono</h2>
-                            <p className="text-gray-500 mb-8">Selecciona una vivienda para ver su estado y añadir un pago.</p>
-                        </div>
-                        <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-                            <div className="mb-6">
-                                <label className="block font-semibold mb-2 text-gray-700">Seleccionar Vivienda</label>
-                                <Select options={viviendaOptions} onChange={handleSelectVivienda} placeholder="Buscar vivienda..." noOptionsMessage={() => "No hay viviendas con cliente asignado."} isClearable value={viviendaOptions.find(op => op.value === selectedViviendaId) || null} />
+                    {datosViviendaSeleccionada && (
+                        <div className="animate-fade-in mt-8 pt-6 border-t">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center p-4 bg-gray-50 rounded-lg border mb-8">
+                                <div><p className="text-sm font-semibold text-gray-500">Valor Final Vivienda</p><p className="text-lg font-bold text-blue-600">{formatCurrency(datosViviendaSeleccionada.resumenGeneral.valorFinal)}</p></div>
+                                <div><p className="text-sm font-semibold text-gray-500">Total General Abonado</p><p className="text-lg font-bold text-green-600">{formatCurrency(datosViviendaSeleccionada.resumenGeneral.totalAbonado)}</p></div>
+                                <div><p className="text-sm font-semibold text-gray-500">Saldo General Pendiente</p><p className="text-lg font-bold text-red-600">{formatCurrency(datosViviendaSeleccionada.resumenGeneral.saldoPendiente)}</p></div>
                             </div>
-                            {selectedViviendaId && datosViviendaSeleccionada && (
-                                <div className="animate-fade-in space-y-8">
-                                    <div className="bg-gray-50 p-6 rounded-lg">
-                                        <h3 className="text-xl font-bold mb-4 text-gray-800">Resumen Financiero</h3>
-                                        <ResumenAbonos resumen={datosViviendaSeleccionada.resumen} />
-                                    </div>
-                                    <div className="pt-6 border-t">
-                                        <h3 className="text-xl font-bold mb-4 text-gray-800">Registrar Pago</h3>
-                                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <label className="block font-semibold mb-1" htmlFor="fechaPago">Fecha del Abono <span className="text-red-600">*</span></label>
-                                                <input type="date" id="fechaPago" name="fechaPago" value={formData.fechaPago} onChange={handleInputChange} max={getTodayString()} className={`w-full border p-2 rounded-lg ${errors.fechaPago ? "border-red-600" : "border-gray-300"}`} />
-                                                {errors.fechaPago && <p className="text-red-600 text-sm mt-1">{errors.fechaPago}</p>}
-                                            </div>
-                                            <div>
-                                                <label className="block font-semibold mb-1" htmlFor="monto">Monto del Abono <span className="text-red-600">*</span></label>
-                                                <NumericFormat name="monto" value={formData.monto} onValueChange={(values) => handleValueChange('monto', values.value)} className={`w-full border p-2 rounded-lg ${errors.monto ? "border-red-600" : "border-gray-300"}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
-                                                {errors.monto && <p className="text-red-600 text-sm mt-1">{errors.monto}</p>}
-                                            </div>
-                                            <div className="md:col-span-2">
-                                                <label className="block font-semibold mb-1">Método de Pago <span className="text-red-600">*</span></label>
-                                                <select name="metodoPago" value={formData.metodoPago} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.metodoPago ? "border-red-600" : "border-gray-300"}`}>
-                                                    <option value="">Selecciona</option>
-                                                    <option value="Consignación Bancaria">Consignación Bancaria</option>
-                                                    <option value="Crédito Hipotecario">Crédito Hipotecario</option>
-                                                    <option value="Efectivo">Efectivo</option>
-                                                </select>
-                                                {errors.metodoPago && <p className="text-red-600 text-sm mt-1">{errors.metodoPago}</p>}
-                                            </div>
-                                            <div className="md:col-span-2 flex justify-end">
-                                                <button type="submit" disabled={isSubmitting || !selectedViviendaId} className="px-5 py-2.5 rounded-full transition text-white bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400">
-                                                    {isSubmitting ? "Registrando..." : "Registrar Abono"}
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                    <div className="pt-6 border-t">
-                                        <h3 className="text-xl font-bold mb-4 text-gray-800">Historial de Abonos de esta Vivienda</h3>
-                                        {datosViviendaSeleccionada.historial.length > 0 ? (<TablaAbonos abonos={datosViviendaSeleccionada.historial} onEdit={() => { }} onDelete={() => { }} />) : (<p className="text-center text-gray-500 py-4">Esta vivienda aún no tiene abonos registrados.</p>)}
-                                    </div>
+
+                            <h3 className="text-xl font-bold mb-4 text-gray-800">Fuentes de Pago</h3>
+                            {datosViviendaSeleccionada.fuentes.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {datosViviendaSeleccionada.fuentes.map(fuente => (
+                                        <FuenteDePagoCard key={fuente.fuente} {...fuente} vivienda={datosViviendaSeleccionada.vivienda} onAbonoRegistrado={recargarDatos} />
+                                    ))}
                                 </div>
+                            ) : (
+                                <p className="text-center text-gray-500 py-4">Este cliente no tiene una estructura financiera definida.</p>
                             )}
+
+                            <div className="mt-12 pt-6 border-t">
+                                <h3 className="text-xl font-bold mb-4 text-gray-800">Historial de Todos los Abonos</h3>
+                                {datosViviendaSeleccionada.historial.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {datosViviendaSeleccionada.historial.map(abono => (
+                                            <AbonoCard key={abono.id} abono={abono} />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-center text-gray-500 py-4">Esta vivienda aún no tiene abonos registrados.</p>
+                                )}
+                            </div>
                         </div>
-                    </>
-                )}
+                    )}
+                </div>
             </div>
         </AnimatedPage>
     );
 };
+
+// Helper de formato, solo por si acaso lo necesitas aquí
+const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
 export default CrearAbono;

@@ -1,22 +1,26 @@
-import React, { useReducer, useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useReducer, useState, useCallback, useEffect, Fragment } from 'react';
 import { useNavigate } from "react-router-dom";
 import AnimatedPage from '../../components/AnimatedPage';
-import Step1_SelectVivienda from './wizard/Step1_SelectVivienda';
-import Step2_ClientInfo from './wizard/Step2_ClientInfo';
-import Step3_Financial from './wizard/Step3_Financial';
+import FormularioCliente from './FormularioCliente'; // <-- Importamos nuestro nuevo formulario
 import { validateCliente, validateFinancialStep } from './clienteValidation.js';
 import { getClientes, addClienteAndAssignVivienda } from '../../utils/storage.js';
 import toast from 'react-hot-toast';
+import { Home, User, CircleDollarSign, Check } from 'lucide-react';
 
-const initialState = {
+const blankInitialState = {
     viviendaSeleccionada: { id: null, valorTotal: 0, label: '' },
-    datosCliente: { nombres: '', apellidos: '', cedula: '', telefono: '', correo: '', direccion: '' },
+    datosCliente: { nombres: '', apellidos: '', cedula: '', telefono: '', correo: '', direccion: '', urlCedula: null },
     financiero: {
-        aplicaCuotaInicial: false, cuotaInicial: { metodo: '', monto: 0 },
-        aplicaCredito: false, credito: { banco: '', monto: 0 },
-        aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
-        aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 }
+        aplicaCuotaInicial: false,
+        cuotaInicial: { metodo: '', monto: 0, urlSoportePago: null },
+        aplicaCredito: false,
+        credito: { banco: '', monto: 0, urlCartaAprobacion: null },
+        aplicaSubsidioVivienda: false,
+        subsidioVivienda: { monto: 0, urlSoporte: null },
+        aplicaSubsidioCaja: false,
+        subsidioCaja: { caja: '', monto: 0, urlSoporte: null }
     },
+    seguimiento: {},
     errors: {}
 };
 
@@ -41,7 +45,7 @@ function formReducer(state, action) {
 
 const CrearCliente = () => {
     const [step, setStep] = useState(1);
-    const [formData, dispatch] = useReducer(formReducer, initialState);
+    const [formData, dispatch] = useReducer(formReducer, blankInitialState);
     const [todosLosClientes, setTodosLosClientes] = useState([]);
     const navigate = useNavigate();
 
@@ -53,26 +57,27 @@ const CrearCliente = () => {
         fetchClientes();
     }, []);
 
-    const nextStep = () => setStep(prev => prev < 3 ? prev + 1 : 3);
-    const prevStep = () => setStep(prev => prev > 1 ? prev - 1 : 1);
-
-    const handleNext = () => {
+    const handleNextStep = () => {
         let errors = {};
+        let isValid = true;
+
         if (step === 2) {
             errors = validateCliente(formData.datosCliente, todosLosClientes, null);
-        }
-        if (Object.keys(errors).length > 0) {
-            dispatch({ type: 'SET_ERRORS', payload: errors });
-            return;
+            isValid = Object.keys(errors).length === 0;
+            if (!isValid) {
+                toast.error("Por favor, corrige los errores del formulario.");
+            }
         }
 
-        // Si el paso actual es válido, limpia los errores y avanza
-        dispatch({ type: 'SET_ERRORS', payload: {} });
-        nextStep();
+        dispatch({ type: 'SET_ERRORS', payload: errors });
+        if (isValid) {
+            setStep(s => s + 1);
+        }
     };
 
+    const handlePrevStep = () => setStep(s => s - 1);
+
     const handleSave = useCallback(async () => {
-        // Valida el paso de información personal y financiera antes de guardar
         const clientErrors = validateCliente(formData.datosCliente, todosLosClientes, null);
         const financialErrors = validateFinancialStep(formData.financiero, formData.viviendaSeleccionada.valorTotal);
         const totalErrors = { ...clientErrors, ...financialErrors };
@@ -83,8 +88,6 @@ const CrearCliente = () => {
             return;
         }
 
-        // --- ESTRUCTURA DEL OBJETO A GUARDAR ---
-        // Este objeto tiene la forma que nuestra función `addClienteAndAssignVivienda` espera
         const clienteParaGuardar = {
             datosCliente: formData.datosCliente,
             financiero: formData.financiero,
@@ -108,35 +111,58 @@ const CrearCliente = () => {
         }
     }, [formData, navigate, todosLosClientes]);
 
-    const steps = [
-        <Step1_SelectVivienda key="step1" formData={formData} dispatch={dispatch} />,
-        <Step2_ClientInfo key="step2" formData={formData} dispatch={dispatch} errors={formData.errors} />,
-        <Step3_Financial key="step3" formData={formData} dispatch={dispatch} errors={formData.errors} />,
+    const STEPS_CONFIG = [
+        { number: 1, title: 'Vivienda', icon: Home },
+        { number: 2, title: 'Datos Cliente', icon: User },
+        { number: 3, title: 'Finanzas', icon: CircleDollarSign },
     ];
 
     return (
         <AnimatedPage>
-            <div className="max-w-5xl mx-auto">
-                <div className="bg-white p-8 rounded-xl shadow-lg">
-                    <h2 className="text-3xl font-bold mb-2 text-center text-[#1976d2]">Registro de Nuevo Cliente y Proceso de Venta</h2>
-                    <p className="text-center text-gray-500 mb-8">Paso {step} de 3</p>
+            <div className="max-w-4xl mx-auto">
+                <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                    <h2 className="text-3xl font-extrabold mb-4 text-center text-[#1976d2]">
+                        👥 Registrar Nuevo Cliente
+                    </h2>
 
-                    <div>{steps[step - 1]}</div>
+                    <div className="flex items-center justify-center my-8">
+                        {STEPS_CONFIG.map((s, index) => (
+                            <Fragment key={s.number}>
+                                <div className="flex flex-col items-center text-center w-24">
+                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${step >= s.number ? 'bg-blue-500 border-blue-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                        {step > s.number ? <Check size={24} /> : <s.icon size={24} />}
+                                    </div>
+                                    <p className={`mt-2 text-xs font-semibold ${step >= s.number ? 'text-blue-500' : 'text-gray-400'}`}>{s.title}</p>
+                                </div>
+                                {index < STEPS_CONFIG.length - 1 && (
+                                    <div className={`flex-auto border-t-2 transition-all duration-300 mx-4 ${step > s.number ? 'border-blue-500' : 'border-gray-300'}`}></div>
+                                )}
+                            </Fragment>
+                        ))}
+                    </div>
 
-                    <div className="mt-8 flex justify-between">
+                    {/* El JSX del formulario ahora es mucho más limpio */}
+                    <FormularioCliente
+                        step={step}
+                        formData={formData}
+                        dispatch={dispatch}
+                        errors={formData.errors}
+                    />
+
+                    <div className="mt-10 flex justify-between">
                         {step > 1 ? (
-                            <button onClick={prevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Anterior</button>
-                        ) : (
-                            <div /> // Espaciador para mantener el botón de siguiente a la derecha
-                        )}
+                            <button onClick={handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">
+                                Anterior
+                            </button>
+                        ) : <div />}
 
                         {step < 3 ? (
-                            <button onClick={handleNext} disabled={step === 1 && !formData.viviendaSeleccionada.id} className="bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:bg-gray-300 ml-auto">
+                            <button onClick={handleNextStep} disabled={step === 1 && !formData.viviendaSeleccionada.id} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 ml-auto">
                                 Siguiente
                             </button>
                         ) : (
-                            <button onClick={handleSave} className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-2 rounded-lg transition ml-auto">
-                                Guardar Cliente y Proceso
+                            <button onClick={handleSave} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
+                                Finalizar y Guardar
                             </button>
                         )}
                     </div>

@@ -7,7 +7,8 @@ import './index.css';
 
 // 1. IMPORTAMOS el componente Toaster de la nueva librería
 import { Toaster } from 'react-hot-toast';
-
+// --- IMPORTAMOS NUESTRO NUEVO PROVEEDOR ---
+import { DataProvider } from './context/DataContext';
 // Tus componentes de página
 import Layout from './layout/Layout';
 import DashboardPage from './pages/DashboardPage';
@@ -16,6 +17,7 @@ import ListarViviendas from './pages/viviendas/ListarViviendas';
 import EditarVivienda from './pages/viviendas/EditarVivienda';
 import CrearCliente from "./pages/clientes/CrearCliente";
 import ListarClientes from './pages/clientes/ListarClientes';
+import DetalleCliente from './pages/clientes/DetalleCliente';
 import ListarAbonos from './pages/abonos/ListarAbonos';
 import CrearAbono from './pages/abonos/CrearAbono';
 
@@ -39,19 +41,21 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       />
 
       {/* Ya no necesitamos envolver todo en <ToastProvider> */}
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="/viviendas" element={<CrearVivienda />} />
-          <Route path="viviendas/listar" element={<ListarViviendas />} />
-          <Route path="viviendas/editar/:id" element={<EditarVivienda />} />
-          <Route path="/clientes/crear" element={<CrearCliente />} />
-          <Route path="/clientes/listar" element={<ListarClientes />} />
-          <Route path="/abonos" element={<ListarAbonos />} />
-          <Route path="/abonos/crear" element={<CrearAbono />} />
-        </Route>
-      </Routes>
-
+      <DataProvider>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="/viviendas" element={<CrearVivienda />} />
+            <Route path="viviendas/listar" element={<ListarViviendas />} />
+            <Route path="viviendas/editar/:id" element={<EditarVivienda />} />
+            <Route path="/clientes/crear" element={<CrearCliente />} />
+            <Route path="/clientes/listar" element={<ListarClientes />} />
+            <Route path="/clientes/detalle/:clienteId" element={<DetalleCliente />} />
+            <Route path="/abonos" element={<ListarAbonos />} />
+            <Route path="/abonos/crear" element={<CrearAbono />} />
+          </Route>
+        </Routes>
+      </DataProvider>
     </BrowserRouter>
   </React.StrictMode>
 );

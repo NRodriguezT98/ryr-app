@@ -1,12 +1,10 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { Tooltip } from "react-tooltip"; // <-- 1. Importa el componente
-import 'react-tooltip/dist/react-tooltip.css'; // <-- 2. Importa los estilos
-
+import { Tooltip } from "react-tooltip";
+import 'react-tooltip/dist/react-tooltip.css';
 
 export default function Layout() {
     return (
-        // El fondo gris ahora cubre toda la pantalla
         <div className="min-h-screen bg-gray-100">
             <Navbar />
             <main>
@@ -14,7 +12,13 @@ export default function Layout() {
                     <Outlet />
                 </div>
             </main>
-            <Tooltip id="discount-tooltip" style={{ backgroundColor: "#334155", color: "#ffffff", borderRadius: '8px' }} />
+
+            {/* --- TOOLTIP GLOBAL Y ÚNICO --- */}
+            {/* Este componente atenderá a todos los tooltips de la aplicación */}
+            <Tooltip
+                id="app-tooltip"
+                style={{ backgroundColor: "#334155", color: "#ffffff", borderRadius: '8px', zIndex: 100 }}
+            />
         </div>
     );
 }

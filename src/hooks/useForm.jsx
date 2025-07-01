@@ -52,6 +52,7 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         const validationErrors = validate(formData);
         setErrors(validationErrors);
 
+
         const isValid = Object.keys(validationErrors).length === 0;
 
         if (isValid) {
@@ -70,6 +71,7 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
             } finally {
                 setIsSubmitting(false);
             }
+        } else {
         }
     };
 

@@ -1,20 +1,35 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
-import { NumericFormat } from "react-number-format";
 import AnimatedPage from "../../components/AnimatedPage";
 import toast from 'react-hot-toast';
 import { useForm } from "../../hooks/useForm.jsx";
 import { validateVivienda } from "./viviendaValidation.js";
 import { addVivienda, getViviendas } from "../../utils/storage";
+import { MapPin, FileText, CircleDollarSign, Check } from 'lucide-react';
+import FormularioVivienda from "./FormularioVivienda"; // <-- Importamos nuestro formulario
 
-const initialState = { manzana: "", numero: "", matricula: "", nomenclatura: "", valor: "" };
-const inputFilters = { numero: { regex: /^[0-9]*$/ }, matricula: { regex: /^[0-9-]*$/ }, nomenclatura: { regex: /^[a-zA-Z0-9\s#-]*$/ } };
+const initialState = {
+    manzana: "",
+    numero: "",
+    matricula: "",
+    nomenclatura: "",
+    valorBase: "",
+    gastosNotariales: "",
+    esEsquinera: false,
+    recargoEsquinera: "0"
+};
+
+const inputFilters = {
+    numero: { regex: /^[0-9]*$/ },
+    matricula: { regex: /^[0-9-]*$/ },
+    nomenclatura: { regex: /^[a-zA-Z0-9\s#-]*$/ }
+};
 
 const CrearVivienda = () => {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(true);
-    const [isSuccess, setIsSuccess] = useState(false);
     const [todasLasViviendas, setTodasLasViviendas] = useState([]);
+    const [step, setStep] = useState(1);
 
     useEffect(() => {
         const cargarDatosParaValidacion = async () => {
@@ -30,99 +45,132 @@ const CrearVivienda = () => {
         cargarDatosParaValidacion();
     }, []);
 
-    const onSubmitLogic = useCallback(async (formData) => {
-        const valorNumerico = parseInt(formData.valor.replace(/\D/g, ''), 10);
-
-        // --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
-        // Construimos el objeto con la estructura completa, incluyendo los
-        // campos desnormalizados que ahora se inicializan en storage.js
-        const nuevaVivienda = {
-            manzana: formData.manzana,
-            numeroCasa: parseInt(formData.numero, 10),
-            matricula: formData.matricula.trim(),
-            nomenclatura: formData.nomenclatura.trim(),
-            valorTotal: valorNumerico,
-        };
-
-        try {
-            // La función addVivienda en storage.js se encargará de añadir los campos
-            // restantes (clienteId, totalAbonado, saldoPendiente, etc.)
-            await addVivienda(nuevaVivienda);
-            setIsSuccess(true);
-        } catch (error) {
-            toast.error("No se pudo registrar la vivienda.");
-            console.error("Error al crear vivienda:", error);
-        }
-    }, []);
-
-    const { formData, errors, enviando, handleInputChange, handleValueChange, handleSubmit } = useForm({
+    const { formData, errors, setErrors, isSubmitting, handleInputChange, handleValueChange, handleSubmit, setFormData } = useForm({
         initialState,
-        validate: (formData) => validateVivienda(formData, todasLasViviendas, null),
-        onSubmit: onSubmitLogic,
+        validate: (data) => validateVivienda(data, todasLasViviendas, null),
+        onSubmit: async (formData) => {
+            const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
+            const gastosNotarialesNum = parseInt(String(formData.gastosNotariales).replace(/\D/g, ''), 10) || 0;
+            const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
+
+            const nuevaVivienda = {
+                manzana: formData.manzana,
+                numeroCasa: parseInt(formData.numero, 10),
+                matricula: formData.matricula.trim(),
+                nomenclatura: formData.nomenclatura.trim(),
+                valorBase: valorBaseNum,
+                gastosNotariales: gastosNotarialesNum,
+                recargoEsquinera: recargoEsquineraNum,
+                valorTotal: valorBaseNum + gastosNotarialesNum + recargoEsquineraNum,
+            };
+            try {
+                await addVivienda(nuevaVivienda);
+                toast.success("¡Vivienda registrada con éxito!");
+                navigate("/viviendas/listar");
+            } catch (error) {
+                toast.error("No se pudo registrar la vivienda.");
+                console.error("Error al crear vivienda:", error);
+            }
+        },
         options: { inputFilters }
     });
 
-    useEffect(() => {
-        if (isSuccess) {
-            toast.success("Vivienda registrada exitosamente.");
-            const timer = setTimeout(() => navigate("/viviendas/listar"), 2500);
-            return () => clearTimeout(timer);
+    const valorTotalCalculado = useMemo(() => {
+        const valorBase = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
+        const gastosNotariales = parseInt(String(formData.gastosNotariales).replace(/\D/g, ''), 10) || 0;
+        const recargoEsquinera = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
+        return valorBase + gastosNotariales + recargoEsquinera;
+    }, [formData.valorBase, formData.gastosNotariales, formData.recargoEsquinera, formData.esEsquinera]);
+
+    const handleNextStep = () => {
+        const allErrors = validateVivienda(formData, todasLasViviendas, null);
+        let stepErrors = {};
+        if (step === 1) {
+            if (allErrors.manzana) stepErrors.manzana = allErrors.manzana;
+            if (allErrors.numero) stepErrors.numero = allErrors.numero;
+        } else if (step === 2) {
+            if (allErrors.matricula) stepErrors.matricula = allErrors.matricula;
+            if (allErrors.nomenclatura) stepErrors.nomenclatura = allErrors.nomenclatura;
         }
-    }, [isSuccess, navigate]);
+        setErrors(stepErrors);
+        if (Object.keys(stepErrors).length === 0) {
+            setStep(s => s + 1);
+        }
+    };
+
+    const handlePrevStep = () => setStep(s => s - 1);
+
+    const handleCheckboxChange = (e) => {
+        const { name, checked } = e.target;
+        setFormData(prev => {
+            const newState = { ...prev, [name]: checked };
+            if (name === 'esEsquinera') {
+                newState.recargoEsquinera = checked ? "5000000" : "0";
+            }
+            return newState;
+        });
+    };
+
+    const STEPS_CONFIG = [
+        { number: 1, title: 'Ubicación', icon: MapPin },
+        { number: 2, title: 'Info. Legal', icon: FileText },
+        { number: 3, title: 'Valor', icon: CircleDollarSign },
+    ];
 
     if (isLoading) return <div className="text-center p-10 animate-pulse">Preparando formulario...</div>;
 
     return (
         <AnimatedPage>
-            <div className="max-w-4xl mx-auto">
-                {isSuccess ? (
-                    <div className="bg-white p-8 rounded-xl shadow-lg text-center py-10">
-                        <div className="text-green-500 w-24 h-24 mx-auto rounded-full bg-green-100 flex items-center justify-center">
-                            <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+            <div className="max-w-2xl mx-auto">
+                <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                    <h2 className="text-3xl font-extrabold mb-4 text-center text-[#c62828]">
+                        🏠 Registrar Nueva Vivienda
+                    </h2>
+
+                    <div className="flex items-center justify-center my-8">
+                        {STEPS_CONFIG.map((s, index) => (
+                            <Fragment key={s.number}>
+                                <div className="flex flex-col items-center">
+                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${step >= s.number ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                        {step > s.number ? <Check size={24} /> : <s.icon size={24} />}
+                                    </div>
+                                    <p className={`mt-2 text-xs font-semibold ${step >= s.number ? 'text-red-500' : 'text-gray-400'}`}>{s.title}</p>
+                                </div>
+                                {index < STEPS_CONFIG.length - 1 && (
+                                    <div className={`flex-auto border-t-2 transition-all duration-300 mx-4 ${step > s.number ? 'border-red-500' : 'border-gray-300'}`}></div>
+                                )}
+                            </Fragment>
+                        ))}
+                    </div>
+
+                    <form onSubmit={handleSubmit} noValidate>
+                        <FormularioVivienda
+                            step={step}
+                            formData={formData}
+                            errors={errors}
+                            handleInputChange={handleInputChange}
+                            handleValueChange={handleValueChange}
+                            handleCheckboxChange={handleCheckboxChange}
+                            valorTotalCalculado={valorTotalCalculado}
+                        />
+
+                        <div className="mt-10 flex justify-between">
+                            {step > 1 ? (
+                                <button type="button" onClick={handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
+                            ) : <div />}
+
+                            {step < 3 ? (
+                                <button type="button" onClick={handleNextStep} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
+                                    Siguiente
+                                </button>
+                            ) : (
+                                <button type="submit" disabled={isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto">
+                                    {isSubmitting ? "Guardando..." : "Finalizar y Guardar"}
+                                </button>
+                            )}
                         </div>
-                        <h2 className="text-3xl font-bold text-gray-800 mt-6">¡Vivienda Registrada!</h2>
-                        <p className="text-gray-500 mt-2">Serás redirigido a la lista de viviendas...</p>
-                    </div>
-                ) : (
-                    <div className="bg-white p-8 rounded-xl shadow-lg">
-                        <h2 className="text-2xl font-bold mb-6 text-center text-[#c62828]">
-                            🏠 Crear Nueva Vivienda
-                        </h2>
-                        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6" noValidate>
-                            <div>
-                                <label className="block font-semibold mb-1" htmlFor="manzana">Manzana <span className="text-red-600">*</span></label>
-                                <select id="manzana" name="manzana" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.manzana ? "border-red-600" : "border-gray-300"}`}>
-                                    <option value="">Selecciona</option>
-                                    {["A", "B", "C", "D", "E", "F"].map((op) => (<option key={op} value={op}>{op}</option>))}
-                                </select>
-                                {errors.manzana && <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>}
-                            </div>
-                            <div>
-                                <label className="block font-semibold mb-1" htmlFor="numero">Número de casa <span className="text-red-600">*</span></label>
-                                <input id="numero" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.numero ? "border-red-600" : "border-gray-300"}`} maxLength={6} />
-                                {errors.numero && <p className="text-red-600 text-sm mt-1">{errors.numero}</p>}
-                            </div>
-                            <div>
-                                <label className="block font-semibold mb-1" htmlFor="matricula">Matrícula inmobiliaria <span className="text-red-600">*</span></label>
-                                <input id="matricula" name="matricula" type="text" value={formData.matricula} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.matricula ? "border-red-600" : "border-gray-300"}`} maxLength={15} />
-                                {errors.matricula && <p className="text-red-600 text-sm mt-1">{errors.matricula}</p>}
-                            </div>
-                            <div>
-                                <label className="block font-semibold mb-1" htmlFor="nomenclatura">Nomenclatura <span className="text-red-600">*</span></label>
-                                <input id="nomenclatura" name="nomenclatura" type="text" value={formData.nomenclatura} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.nomenclatura ? "border-red-600" : "border-gray-300"}`} maxLength={25} />
-                                {errors.nomenclatura && <p className="text-red-600 text-sm mt-1">{errors.nomenclatura}</p>}
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="block font-semibold mb-1" htmlFor="valor">Valor total <span className="text-red-600">*</span></label>
-                                <NumericFormat id="valor" name="valor" value={formData.valor} onValueChange={(values) => handleValueChange('valor', values.value)} thousandSeparator="." decimalSeparator="," prefix="$ " className={`w-full border p-2 rounded-lg ${errors.valor ? "border-red-600" : "border-gray-300"}`} />
-                                {errors.valor && <p className="text-red-600 text-sm mt-1">{errors.valor}</p>}
-                            </div>
-                            <div className="md:col-span-2 flex justify-end">
-                                <button type="submit" disabled={enviando || isLoading} className={`px-5 py-2.5 rounded-full transition text-white ${enviando || isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-[#28a745] hover:bg-green-700"}`}>{enviando ? "Guardando..." : "Guardar Vivienda"}</button>
-                            </div>
-                        </form>
-                    </div>
-                )}
+                    </form>
+                </div>
             </div>
         </AnimatedPage>
     );

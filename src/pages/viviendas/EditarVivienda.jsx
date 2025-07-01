@@ -1,166 +1,220 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { useForm } from '../../hooks/useForm.jsx';
-import { updateVivienda } from '../../utils/storage.js';
+import React, { useEffect, useState, useCallback, useMemo, Fragment } from "react";
+import { useForm } from "../../hooks/useForm.jsx";
+import { updateVivienda, getViviendas } from "../../utils/storage";
+import { validateVivienda } from "./viviendaValidation.js";
 import toast from 'react-hot-toast';
 import { NumericFormat } from 'react-number-format';
-import { validateVivienda } from './viviendaValidation.js';
-import { Tooltip } from 'react-tooltip';
+import { MapPin, FileText, CircleDollarSign, Check, Edit } from 'lucide-react';
+import FormularioVivienda from "./FormularioVivienda";
+import Modal from "../../components/Modal";
+import ModalConfirmacionCambios from '../../components/ModalConfirmacionCambios.jsx';
+import { Tooltip } from "react-tooltip";
 
-// Helper para dar formato de moneda
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
-const EditarVivienda = ({ isOpen, onClose, onSave, vivienda }) => {
-    // Estado para mostrar u ocultar la sección de descuento
-    const [showDiscountSection, setShowDiscountSection] = useState(false);
+const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }) => {
+    const [step, setStep] = useState(1);
+    const [isConfirming, setIsConfirming] = useState(false);
+    const [cambios, setCambios] = useState([]);
 
-    // Definimos el estado inicial del formulario dentro del componente
     const initialState = useMemo(() => ({
-        manzana: vivienda?.manzana || '',
-        numero: vivienda?.numeroCasa?.toString() || '',
-        matricula: vivienda?.matricula || '',
-        nomenclatura: vivienda?.nomenclatura || '',
-        descuentoMonto: vivienda?.descuentoMonto?.toString() || '0',
-        descuentoMotivo: vivienda?.descuentoMotivo || ''
+        manzana: vivienda?.manzana || "",
+        numero: vivienda?.numeroCasa?.toString() || "",
+        matricula: vivienda?.matricula || "",
+        nomenclatura: vivienda?.nomenclatura || "",
+        valorBase: vivienda?.valorBase?.toString() || "0",
+        gastosNotariales: vivienda?.gastosNotariales?.toString() || "0",
+        esEsquinera: vivienda?.recargoEsquinera > 0,
+        recargoEsquinera: vivienda?.recargoEsquinera?.toString() || "0",
     }), [vivienda]);
 
-    const {
-        formData,
-        setFormData,
-        handleSubmit,
-        handleInputChange,
-        handleValueChange,
-        errors,
-        isSubmitting,
-        initialData // Obtenemos los datos iniciales del hook para comparar cambios
-    } = useForm({
-        initialState: initialState,
-        validate: (data) => validateVivienda(data, [], vivienda), // Pasamos la vivienda para la validación de descuento
+    const { formData, errors, setErrors, isSubmitting, handleInputChange, handleValueChange, handleSubmit, setFormData, initialData } = useForm({
+        initialState,
         onSubmit: async (data) => {
+            const valorBaseNum = parseInt(String(data.valorBase).replace(/\D/g, ''), 10) || 0;
+            const gastosNotarialesNum = parseInt(String(data.gastosNotariales).replace(/\D/g, ''), 10) || 0;
+            const recargoEsquineraNum = data.esEsquinera ? parseInt(data.recargoEsquinera, 10) || 0 : 0;
             const datosActualizados = {
-                manzana: data.manzana,
-                numeroCasa: parseInt(data.numero, 10) || 0,
-                matricula: data.matricula.trim(),
-                nomenclatura: data.nomenclatura.trim(),
-                // Incluimos los datos del descuento para que storage.js haga la magia
-                descuentoMonto: parseInt(String(data.descuentoMonto).replace(/\D/g, ''), 10) || 0,
-                descuentoMotivo: data.descuentoMotivo.trim()
+                manzana: data.manzana, numeroCasa: parseInt(data.numero, 10),
+                matricula: data.matricula.trim(), nomenclatura: data.nomenclatura.trim(),
+                valorBase: valorBaseNum, gastosNotariales: gastosNotarialesNum,
+                recargoEsquinera: recargoEsquineraNum, valorTotal: valorBaseNum + gastosNotarialesNum + recargoEsquineraNum,
             };
-
             try {
-                // La función updateVivienda en storage.js recalculará los saldos automáticamente
                 await updateVivienda(vivienda.id, datosActualizados);
-                toast.success('Datos de la vivienda actualizados.');
-                onSave(); // Llama a la función para recargar la lista
-                onClose(); // Cierra el modal
+                toast.success("¡Vivienda actualizada con éxito!");
+                onSave();
+                onClose();
             } catch (error) {
-                toast.error('Error al actualizar la vivienda.');
-                console.error("Error en onSubmit de EditarVivienda:", error);
+                toast.error("No se pudo actualizar la vivienda.");
+                console.error("Error al actualizar vivienda:", error);
+            } finally {
+                setIsConfirming(false);
             }
         },
-        options: { resetOnSuccess: false } // No queremos que el formulario se resetee al guardar
+        options: { resetOnSuccess: false }
     });
 
     useEffect(() => {
-        // Cuando la vivienda a editar cambia (o se abre el modal),
-        // reseteamos el estado del formulario con los nuevos datos.
-        setFormData(initialState);
-        // Si la vivienda ya tiene un descuento, muestra la sección por defecto.
-        if (vivienda?.descuentoMonto > 0) {
-            setShowDiscountSection(true);
-        } else {
-            setShowDiscountSection(false);
+        if (isOpen) {
+            setFormData(initialState);
+            setErrors({});
+            setStep(1);
         }
-    }, [vivienda, initialState, setFormData]);
+    }, [isOpen, initialState, setFormData, setErrors]);
 
-    // Calculamos si hay cambios para habilitar/deshabilitar el botón de guardar
     const hayCambios = useMemo(() => JSON.stringify(formData) !== JSON.stringify(initialData), [formData, initialData]);
 
-    // Calculamos el valor final en tiempo real para mostrarlo en la UI
-    const valorFinalCalculado = useMemo(() => {
-        const valorTotal = vivienda?.valorTotal || 0;
-        const descuento = parseInt(String(formData.descuentoMonto).replace(/\D/g, ''), 10) || 0;
-        return valorTotal - descuento;
-    }, [vivienda, formData.descuentoMonto]);
+    const handlePreSave = useCallback(() => {
+        const validationErrors = validateVivienda(formData, todasLasViviendas, vivienda);
+        setErrors(validationErrors);
+        if (Object.keys(validationErrors).length > 0) {
+            toast.error("Por favor, corrige los errores del formulario.");
+            return;
+        }
+        const cambiosDetectados = [];
+        const campos = [
+            { key: 'manzana', label: 'Manzana' }, { key: 'numero', label: 'Número' },
+            { key: 'matricula', label: 'Matrícula' }, { key: 'nomenclatura', label: 'Nomenclatura' },
+            { key: 'valorBase', label: 'Valor Base', esMoneda: true },
+            { key: 'gastosNotariales', label: 'Gastos Notariales', esMoneda: true },
+            { key: 'esEsquinera', label: '¿Esquinera?' },
+            { key: 'recargoEsquinera', label: 'Recargo Esquinera', esMoneda: true }
+        ];
+        campos.forEach(campo => {
+            let valorAnterior = initialData[campo.key];
+            let valorActual = formData[campo.key];
+            if (String(valorAnterior) !== String(valorActual)) {
+                cambiosDetectados.push({
+                    campo: campo.label,
+                    anterior: campo.esMoneda ? formatCurrency(parseInt(String(valorAnterior).replace(/\D/g, ''))) : String(valorAnterior),
+                    actual: campo.esMoneda ? formatCurrency(parseInt(String(valorActual).replace(/\D/g, ''))) : String(valorActual)
+                });
+            }
+        });
+        if (cambiosDetectados.length === 0) {
+            toast('No se han detectado cambios para guardar.', { icon: 'ℹ️' });
+            return;
+        }
+        setCambios(cambiosDetectados);
+        setIsConfirming(true);
+    }, [formData, todasLasViviendas, vivienda, initialData, setErrors]);
+
+    // --- LÓGICA DE NAVEGACIÓN CORREGIDA ---
+    const handleNextStep = () => {
+        const allErrors = validateVivienda(formData, todasLasViviendas, vivienda);
+        let stepErrors = {};
+        if (step === 1) {
+            if (allErrors.manzana) stepErrors.manzana = allErrors.manzana;
+            if (allErrors.numero) stepErrors.numero = allErrors.numero;
+        } else if (step === 2) {
+            if (allErrors.matricula) stepErrors.matricula = allErrors.matricula;
+            if (allErrors.nomenclatura) stepErrors.nomenclatura = allErrors.nomenclatura;
+        }
+
+        setErrors(stepErrors);
+        if (Object.keys(stepErrors).length === 0) {
+            setStep(s => s + 1);
+        } else {
+            toast.error("Por favor, completa los campos requeridos.");
+        }
+    };
+
+    const handlePrevStep = () => setStep(s => s - 1);
+
+    const handleCheckboxChange = (e) => {
+        const { name, checked } = e.target;
+        setFormData(prev => {
+            const newState = { ...prev, [name]: checked };
+            if (name === 'esEsquinera') {
+                newState.recargoEsquinera = checked ? "5000000" : "0";
+            }
+            return newState;
+        });
+    };
+
+    const valorTotalCalculado = useMemo(() => {
+        const valorBase = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
+        const gastosNotariales = parseInt(String(formData.gastosNotariales).replace(/\D/g, ''), 10) || 0;
+        const recargoEsquinera = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
+        return valorBase + gastosNotariales + recargoEsquinera;
+    }, [formData.valorBase, formData.gastosNotariales, formData.recargoEsquinera, formData.esEsquinera]);
+
+    const STEPS_CONFIG = [
+        { number: 1, title: 'Ubicación', icon: MapPin },
+        { number: 2, title: 'Info. Legal', icon: FileText },
+        { number: 3, title: 'Valor', icon: CircleDollarSign },
+    ];
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-                <div className="text-center mb-6">
-                    <h2 className="text-3xl font-bold text-[#c62828]">✏️ Editar Vivienda</h2>
-                    <p className="text-lg text-gray-500 mt-1">
-                        Valor de Lista: <span className="font-bold text-gray-800">{formatCurrency(vivienda?.valorTotal)}</span>
-                    </p>
+        <>
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
+                title="Editar Vivienda"
+                icon={<Edit size={28} className="text-[#c62828]" />}
+            >
+                <div className="flex items-center justify-center my-6">
+                    {STEPS_CONFIG.map((s, index) => (
+                        <Fragment key={s.number}>
+                            <div className="flex flex-col items-center">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${step >= s.number ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                    {step > s.number ? <Check size={24} /> : <s.icon size={24} />}
+                                </div>
+                                <p className={`mt-2 text-xs font-semibold ${step >= s.number ? 'text-red-500' : 'text-gray-400'}`}>{s.title}</p>
+                            </div>
+                            {index < STEPS_CONFIG.length - 1 && (
+                                <div className={`flex-auto border-t-2 transition-all duration-300 mx-4 ${step > s.number ? 'border-red-500' : 'border-gray-300'}`}></div>
+                            )}
+                        </Fragment>
+                    ))}
                 </div>
 
-                <form onSubmit={handleSubmit} noValidate>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block font-medium mb-1" htmlFor="manzana-edit">Manzana</label>
-                            <select id="manzana-edit" name="manzana" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.manzana ? "border-red-600" : "border-gray-300"}`}>
-                                <option value="">Selecciona</option>
-                                {["A", "B", "C", "D", "E", "F"].map((m) => (<option key={m} value={m}>{m}</option>))}
-                            </select>
-                            {errors.manzana && <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>}
-                        </div>
-                        <div>
-                            <label className="block font-medium mb-1" htmlFor="numero-edit">Número</label>
-                            <input id="numero-edit" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.numero ? "border-red-600" : "border-gray-300"}`} />
-                            {errors.numero && <p className="text-red-600 text-sm mt-1">{errors.numero}</p>}
-                        </div>
-                        <div>
-                            <label className="block font-medium mb-1" htmlFor="matricula-edit">Matrícula</label>
-                            <input id="matricula-edit" name="matricula" type="text" value={formData.matricula} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.matricula ? "border-red-600" : "border-gray-300"}`} />
-                            {errors.matricula && <p className="text-red-600 text-sm mt-1">{errors.matricula}</p>}
-                        </div>
-                        <div>
-                            <label className="block font-medium mb-1" htmlFor="nomenclatura-edit">Nomenclatura</label>
-                            <input id="nomenclatura-edit" name="nomenclatura" type="text" value={formData.nomenclatura} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.nomenclatura ? "border-red-600" : "border-gray-300"}`} />
-                            {errors.nomenclatura && <p className="text-red-600 text-sm mt-1">{errors.nomenclatura}</p>}
-                        </div>
-                    </div>
+                <FormularioVivienda
+                    step={step}
+                    formData={formData}
+                    errors={errors}
+                    handleInputChange={handleInputChange}
+                    handleValueChange={handleValueChange}
+                    handleCheckboxChange={handleCheckboxChange}
+                    valorTotalCalculado={valorTotalCalculado}
+                />
 
-                    <div className="mt-6 pt-6 border-t">
-                        <button type="button" onClick={() => setShowDiscountSection(prev => !prev)} className="text-blue-600 hover:text-blue-800 font-semibold text-sm w-full text-left p-2 -ml-2">
-                            {showDiscountSection ? 'Ocultar sección de descuento' : 'Aplicar o Modificar Descuento...'}
+                <div className="mt-10 pt-6 border-t flex justify-between">
+                    {step > 1 ? (
+                        <button type="button" onClick={handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
+                    ) : <div />}
+
+                    {step < 3 ? (
+                        <button type="button" onClick={handleNextStep} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
+                            Siguiente
                         </button>
-                        {showDiscountSection && (
-                            <div className="space-y-6 mt-4 animate-fade-in p-4 bg-gray-50 rounded-lg">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label className="block font-medium mb-1" htmlFor="descuentoMonto">Monto del Descuento</label>
-                                        <NumericFormat id="descuentoMonto" name="descuentoMonto" value={formData.descuentoMonto} onValueChange={(values) => handleValueChange('descuentoMonto', values.value)} className={`w-full border p-2.5 rounded-lg ${errors.descuentoMonto ? "border-red-600" : "border-gray-300"}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
-                                        {errors.descuentoMonto && <p className="text-red-600 text-sm mt-1">{errors.descuentoMonto}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="block font-medium mb-1" htmlFor="descuentoMotivo">Motivo del Descuento</label>
-                                        <input type="text" id="descuentoMotivo" name="descuentoMotivo" value={formData.descuentoMotivo} onChange={handleInputChange} className={`w-full border p-2.5 rounded-lg ${errors.descuentoMotivo ? 'border-red-500' : 'border-gray-300'}`} />
-                                        {errors.descuentoMotivo && <p className="text-red-600 text-sm mt-1">{errors.descuentoMotivo}</p>}
-                                    </div>
-                                </div>
-                                <div className="mt-6 pt-6 border-t border-dashed space-y-2">
-                                    <div className="flex justify-between items-center text-gray-900 font-bold text-lg">
-                                        <span>Valor Final (con Descuento):</span>
-                                        <span className="text-green-600">{formatCurrency(valorFinalCalculado)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex justify-end mt-8 pt-6 border-t space-x-4">
-                        <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 hover:bg-gray-300 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>
-                        <span data-tooltip-id="save-button-tooltip" data-tooltip-content="No hay cambios para guardar">
-                            <button type="submit" disabled={!hayCambios || isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-2 rounded-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+                    ) : (
+                        <span className="ml-auto" data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
+                            <button
+                                type="button"
+                                onClick={handlePreSave}
+                                disabled={!hayCambios || isSubmitting}
+                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full"
+                            >
+                                {isSubmitting ? "Guardando..." : "Guardar Cambios"}
                             </button>
                         </span>
-                        {!hayCambios && <Tooltip id="save-button-tooltip" style={{ backgroundColor: "#334155", color: "#ffffff", borderRadius: '8px', zIndex: 100 }} />}
-                    </div>
-                </form>
-            </div>
-        </div>
+                    )}
+                </div>
+            </Modal>
+
+            <ModalConfirmacionCambios
+                isOpen={isConfirming}
+                onClose={() => setIsConfirming(false)}
+                onConfirm={handleSubmit}
+                titulo="Confirmar Cambios"
+                cambios={cambios}
+                isSaving={isSubmitting}
+            />
+        </>
     );
 };
 

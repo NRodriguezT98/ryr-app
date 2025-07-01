@@ -1,8 +1,8 @@
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch } from "firebase/firestore";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
 // --- LECTURA DE DATOS ---
-// Esta función genérica asegura que el ID de Firebase siempre se use.
 const getData = async (collectionName) => {
     const collectionRef = collection(db, collectionName);
     const querySnapshot = await getDocs(collectionRef);
@@ -19,18 +19,52 @@ export const getAbonos = () => getData("abonos");
 
 // --- CREACIÓN DE DATOS ---
 export const addVivienda = async (viviendaData) => {
-    // Al crear una vivienda, inicializamos los campos desnormalizados.
     const nuevaVivienda = {
         ...viviendaData,
         clienteId: null,
         clienteNombre: "",
         totalAbonado: 0,
-        saldoPendiente: viviendaData.valorTotal, // El saldo inicial es el valor total
+        saldoPendiente: viviendaData.valorTotal,
         valorFinal: viviendaData.valorTotal,
         descuentoMonto: 0,
         descuentoMotivo: ""
     };
     await addDoc(collection(db, "viviendas"), nuevaVivienda);
+};
+
+// --- NUEVA FUNCIÓN PARA SUBIR ARCHIVOS ---
+const storage = getStorage();
+
+/**
+ * Sube un archivo a Firebase Storage y devuelve su URL de descarga.
+ * @param {File} file - El objeto del archivo a subir.
+ * @param {string} path - La ruta donde se guardará en Storage (ej: "cedulas/clienteId.pdf").
+ * @param {function} onProgress - Una función callback para reportar el progreso de la subida.
+ * @returns {Promise<string>} La URL de descarga del archivo.
+ */
+export const uploadFile = (file, path, onProgress) => {
+    return new Promise((resolve, reject) => {
+        const storageRef = ref(storage, path);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                if (onProgress) {
+                    onProgress(progress);
+                }
+            },
+            (error) => {
+                console.error("Error al subir archivo:", error);
+                reject(error);
+            },
+            async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadURL);
+            }
+        );
+    });
 };
 
 export const addClienteAndAssignVivienda = async (clienteData) => {
@@ -115,18 +149,71 @@ export const updateVivienda = async (id, datosActualizados) => {
 
 export const deleteVivienda = async (viviendaId) => {
     const viviendaRef = doc(db, "viviendas", String(viviendaId));
+    const viviendaSnap = await getDoc(viviendaRef);
 
-    // Opcional: Eliminar los abonos asociados o simplemente dejar la vivienda eliminada.
-    // Por seguridad, este ejemplo no elimina abonos.
-
-    // Desvincular cliente si existe
-    const viviendaDoc = await getDoc(viviendaRef);
-    if (viviendaDoc.exists() && viviendaDoc.data().clienteId) {
-        const clienteRef = doc(db, "clientes", viviendaDoc.data().clienteId);
-        await updateDoc(clienteRef, { viviendaId: null });
+    if (!viviendaSnap.exists()) {
+        throw new Error("Esta vivienda ya no existe.");
     }
 
+    const viviendaData = viviendaSnap.data();
+
+    // --- ¡AQUÍ ESTÁ LA VALIDACIÓN CLAVE! ---
+    // Si el campo 'clienteId' existe y tiene un valor, lanzamos un error específico.
+    if (viviendaData.clienteId) {
+        throw new Error("CLIENTE_ASIGNADO"); // Usamos un mensaje clave que podamos identificar.
+    }
+
+    // Si la validación pasa (no hay cliente), procedemos con el borrado.
     await deleteDoc(viviendaRef);
+};
+
+export const renunciarAVivienda = async (clienteId, viviendaId) => {
+    // 1. Definimos las referencias a los documentos que vamos a modificar.
+    const clienteRef = doc(db, "clientes", clienteId);
+    const viviendaRef = doc(db, "viviendas", viviendaId);
+    const renunciaRef = doc(collection(db, "renuncias")); // Crea una referencia para el nuevo documento de renuncia.
+
+    // 2. Usamos una transacción para asegurar que todas las operaciones se completen o ninguna lo haga.
+    await runTransaction(db, async (transaction) => {
+        const clienteDoc = await transaction.get(clienteRef);
+        const viviendaDoc = await transaction.get(viviendaRef);
+
+        if (!clienteDoc.exists() || !viviendaDoc.exists()) {
+            throw new Error("El cliente o la vivienda ya no existen.");
+        }
+
+        const clienteData = clienteDoc.data();
+        const viviendaData = viviendaDoc.data();
+
+        // 3. Calculamos el total abonado por el cliente para esta vivienda.
+        // Esto es crucial para la devolución.
+        const totalAbonado = viviendaData.totalAbonado || 0;
+
+        // 4. Creamos el nuevo documento en la colección 'renuncias'.
+        const registroRenuncia = {
+            clienteId: clienteId,
+            clienteNombre: `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`.trim(),
+            viviendaId: viviendaId,
+            viviendaInfo: `Mz. ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`,
+            fechaRenuncia: new Date().toISOString(),
+            totalAbonadoParaDevolucion: totalAbonado,
+            estadoDevolucion: 'Pendiente' // Para seguimiento futuro
+        };
+        transaction.set(renunciaRef, registroRenuncia);
+
+        // 5. Actualizamos la vivienda para dejarla "como nueva".
+        transaction.update(viviendaRef, {
+            clienteId: null,
+            clienteNombre: "",
+            totalAbonado: 0,
+            saldoPendiente: viviendaData.valorFinal // El saldo vuelve a ser el valor final.
+        });
+
+        // 6. Actualizamos al cliente para desvincularlo de la vivienda.
+        transaction.update(clienteRef, {
+            viviendaId: null
+        });
+    });
 };
 
 export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId) => {
@@ -233,3 +320,5 @@ export const deleteAbono = async (abonoAEliminar) => {
         transaction.delete(abonoRef);
     });
 };
+
+export const getRenuncias = () => getData("renuncias");

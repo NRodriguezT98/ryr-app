@@ -1,95 +1,88 @@
-import React, { useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { NumericFormat } from 'react-number-format';
-import { useForm } from '../../hooks/useForm.jsx';
-import { validateVivienda } from './viviendaValidation.js';
-import { addVivienda, getViviendas } from '../../utils/storage.js';
-import toast from 'react-hot-toast';
+import AnimatedPage from '../../components/AnimatedPage';
 
-// --- CORRECCIÓN AQUÍ: Rellenamos las constantes ---
-const initialState = {
-    manzana: "",
-    numero: "",
-    matricula: "",
-    nomenclatura: "",
-    valor: "",
-};
-
-const inputFilters = {
-    numero: { regex: /^[0-9]*$/ },
-    matricula: { regex: /^[0-9-]*$/ },
-    nomenclatura: { regex: /^[a-zA-Z0-9\s#-]*$/ }
-};
-
-const FormularioVivienda = ({ onViviendaCreada }) => {
-    const navigate = useNavigate();
-    const todasLasViviendas = useMemo(() => getViviendas(), []);
-
-    const onSubmitLogic = useCallback((formData) => {
-        const nuevaVivienda = {
-            id: Date.now(),
-            manzana: formData.manzana,
-            numeroCasa: parseInt(formData.numero, 10),
-            matricula: formData.matricula.trim(),
-            nomenclatura: formData.nomenclatura.trim(),
-            valorTotal: parseInt(formData.valor.replace(/\D/g, ''), 10),
-            clienteId: null,
-        };
-        addVivienda(nuevaVivienda);
-
-        if (onViviendaCreada) {
-            onViviendaCreada();
-        }
-    }, [navigate, onViviendaCreada]);
-
-    const {
-        formData,
-        errors,
-        enviando,
-        handleInputChange,
-        handleValueChange,
-        handleSubmit,
-    } = useForm({
-        initialState: initialState,
-        validate: (formData) => validateVivienda(formData, todasLasViviendas, null),
-        onSubmit: onSubmitLogic,
-        options: { inputFilters }
-    });
-
+const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleValueChange, handleCheckboxChange, valorTotalCalculado }) => {
     return (
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6" noValidate>
-            <div>
-                <label className="block font-semibold mb-1" htmlFor="manzana">Manzana <span className="text-red-600">*</span></label>
-                <select id="manzana" name="manzana" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.manzana ? "border-red-600" : "border-gray-300"}`}>
-                    <option value="">Selecciona</option>
-                    {["A", "B", "C", "D", "E", "F"].map((op) => (<option key={op} value={op}>{op}</option>))}
-                </select>
-                {errors.manzana && <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>}
-            </div>
-            <div>
-                <label className="block font-semibold mb-1" htmlFor="numero">Número de casa <span className="text-red-600">*</span></label>
-                <input id="numero" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.numero ? "border-red-600" : "border-gray-300"}`} maxLength={6} />
-                {errors.numero && <p className="text-red-600 text-sm mt-1">{errors.numero}</p>}
-            </div>
-            <div>
-                <label className="block font-semibold mb-1" htmlFor="matricula">Matrícula inmobiliaria <span className="text-red-600">*</span></label>
-                <input id="matricula" name="matricula" type="text" value={formData.matricula} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.matricula ? "border-red-600" : "border-gray-300"}`} maxLength={15} />
-                {errors.matricula && <p className="text-red-600 text-sm mt-1">{errors.matricula}</p>}
-            </div>
-            <div>
-                <label className="block font-semibold mb-1" htmlFor="nomenclatura">Nomenclatura <span className="text-red-600">*</span></label>
-                <input id="nomenclatura" name="nomenclatura" type="text" value={formData.nomenclatura} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.nomenclatura ? "border-red-600" : "border-gray-300"}`} maxLength={25} />
-                {errors.nomenclatura && <p className="text-red-600 text-sm mt-1">{errors.nomenclatura}</p>}
-            </div>
-            <div className="md:col-span-2">
-                <label className="block font-semibold mb-1" htmlFor="valor">Valor total <span className="text-red-600">*</span></label>
-                <NumericFormat id="valor" value={formData.valor} onValueChange={(values) => handleValueChange('valor', values.value)} thousandSeparator="." decimalSeparator="," prefix="$ " className={`w-full border p-2 rounded-lg ${errors.valor ? "border-red-600" : "border-gray-300"}`} />
-                {errors.valor && <p className="text-red-600 text-sm mt-1">{errors.valor}</p>}
-            </div>
-            <div className="md:col-span-2 flex justify-end">
-                <button type="submit" disabled={enviando} className={`px-5 py-2.5 rounded-full transition text-white ${enviando ? "bg-gray-400 cursor-not-allowed" : "bg-[#28a745] hover:bg-green-700"}`}>{enviando ? "Guardando..." : "Guardar Vivienda"}</button>
-            </div>
-        </form>
+        <div className="space-y-6 min-h-[300px]">
+            {/* --- PASO 1: UBICACIÓN --- */}
+            {step === 1 && (
+                <AnimatedPage>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block font-semibold mb-1" htmlFor="manzana">Manzana <span className="text-red-600">*</span></label>
+                            <select id="manzana" name="manzana" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.manzana ? "border-red-500 ring-red-500" : "border-gray-300"}`}>
+                                <option value="">Selecciona</option>
+                                {["A", "B", "C", "D", "E", "F"].map((op) => (<option key={op} value={op}>{op}</option>))}
+                            </select>
+                            {errors.manzana && <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>}
+                        </div>
+                        <div>
+                            <label className="block font-semibold mb-1" htmlFor="numero">Número de casa <span className="text-red-600">*</span></label>
+                            <input id="numero" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.numero ? "border-red-500 ring-red-500" : "border-gray-300"}`} maxLength={6} />
+                            {errors.numero && <p className="text-red-600 text-sm mt-1">{errors.numero}</p>}
+                        </div>
+                    </div>
+                </AnimatedPage>
+            )}
+
+            {/* --- PASO 2: INFO LEGAL --- */}
+            {step === 2 && (
+                <AnimatedPage>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block font-semibold mb-1" htmlFor="matricula">Matrícula inmobiliaria <span className="text-red-600">*</span></label>
+                            <input id="matricula" name="matricula" type="text" value={formData.matricula} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.matricula ? "border-red-500 ring-red-500" : "border-gray-300"}`} maxLength={15} />
+                            {errors.matricula && <p className="text-red-600 text-sm mt-1">{errors.matricula}</p>}
+                        </div>
+                        <div>
+                            <label className="block font-semibold mb-1" htmlFor="nomenclatura">Nomenclatura <span className="text-red-600">*</span></label>
+                            <input id="nomenclatura" name="nomenclatura" type="text" value={formData.nomenclatura} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.nomenclatura ? "border-red-500 ring-red-500" : "border-gray-300"}`} maxLength={25} />
+                            {errors.nomenclatura && <p className="text-red-600 text-sm mt-1">{errors.nomenclatura}</p>}
+                        </div>
+                    </div>
+                </AnimatedPage>
+            )}
+
+            {/* --- PASO 3: VALOR --- */}
+            {step === 3 && (
+                <AnimatedPage>
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block font-semibold mb-1" htmlFor="valorBase">Valor Base Casa <span className="text-red-600">*</span></label>
+                                <NumericFormat id="valorBase" name="valorBase" value={formData.valorBase} onValueChange={(values) => handleValueChange('valorBase', values.value)} thousandSeparator="." decimalSeparator="," prefix="$ " className={`w-full border p-3 rounded-lg ${errors.valorBase ? "border-red-500" : "border-gray-300"}`} />
+                                {errors.valorBase && <p className="text-red-600 text-sm mt-1">{errors.valorBase}</p>}
+                            </div>
+                            <div>
+                                <label className="block font-semibold mb-1" htmlFor="gastosNotariales">Gastos Notariales <span className="text-red-600">*</span></label>
+                                <NumericFormat id="gastosNotariales" name="gastosNotariales" value={formData.gastosNotariales} onValueChange={(values) => handleValueChange('gastosNotariales', values.value)} thousandSeparator="." decimalSeparator="," prefix="$ " className={`w-full border p-3 rounded-lg ${errors.gastosNotariales ? "border-red-500" : "border-gray-300"}`} />
+                                {errors.gastosNotariales && <p className="text-red-600 text-sm mt-1">{errors.gastosNotariales}</p>}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" name="esEsquinera" checked={formData.esEsquinera} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-red-600 focus:ring-red-500" />
+                                <span className="font-semibold text-gray-700">¿Casa esquinera? (Aplica Recargo)</span>
+                            </label>
+                            {formData.esEsquinera && (
+                                <div className="mt-4 pl-8 animate-fade-in">
+                                    <label className="block font-semibold mb-1 text-sm" htmlFor="recargoEsquinera">Selecciona el recargo</label>
+                                    <select id="recargoEsquinera" name="recargoEsquinera" value={formData.recargoEsquinera} onChange={handleInputChange} className="w-full border p-3 rounded-lg border-gray-300">
+                                        <option value="5000000">$ 5.000.000</option>
+                                        <option value="10000000">$ 10.000.000</option>
+                                    </select>
+                                </div>
+                            )}
+                        </div>
+                        <div className="mt-8 pt-4 border-t-2 border-dashed">
+                            <label className="block font-semibold mb-1 text-gray-500">Valor Total Calculado</label>
+                            <NumericFormat value={valorTotalCalculado} thousandSeparator="." decimalSeparator="," prefix="$ " className="w-full border-0 bg-gray-100 p-3 rounded-lg font-bold text-lg text-green-600" disabled />
+                        </div>
+                    </div>
+                </AnimatedPage>
+            )}
+        </div>
     );
 };
 
