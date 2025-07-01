@@ -1,7 +1,7 @@
 import React, { useReducer, useState, useCallback, useEffect, Fragment } from 'react';
 import { useNavigate } from "react-router-dom";
 import AnimatedPage from '../../components/AnimatedPage';
-import FormularioCliente from './FormularioCliente'; // <-- Importamos nuestro nuevo formulario
+import FormularioCliente from './FormularioCliente';
 import { validateCliente, validateFinancialStep } from './clienteValidation.js';
 import { getClientes, addClienteAndAssignVivienda } from '../../utils/storage.js';
 import toast from 'react-hot-toast';
@@ -18,7 +18,9 @@ const blankInitialState = {
         aplicaSubsidioVivienda: false,
         subsidioVivienda: { monto: 0, urlSoporte: null },
         aplicaSubsidioCaja: false,
-        subsidioCaja: { caja: '', monto: 0, urlSoporte: null }
+        subsidioCaja: { caja: '', monto: 0, urlSoporte: null },
+        // --- CAMPO AÑADIDO AQUÍ ---
+        gastosNotariales: { aplica: true, monto: 5000000, urlSoportePago: null }
     },
     seguimiento: {},
     errors: {}
@@ -141,7 +143,6 @@ const CrearCliente = () => {
                         ))}
                     </div>
 
-                    {/* El JSX del formulario ahora es mucho más limpio */}
                     <FormularioCliente
                         step={step}
                         formData={formData}

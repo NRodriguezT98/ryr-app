@@ -67,55 +67,40 @@ export const validateFinancialStep = (financiero, valorVivienda) => {
         aplicaCuotaInicial, cuotaInicial,
         aplicaCredito, credito,
         aplicaSubsidioVivienda, subsidioVivienda,
-        aplicaSubsidioCaja, subsidioCaja
+        aplicaSubsidioCaja, subsidioCaja,
+        gastosNotariales
     } = financiero;
 
     let totalAportado = 0;
 
-    // Validación Cuota Inicial
     if (aplicaCuotaInicial) {
-        if (!cuotaInicial.metodo) {
-            errors.cuotaInicial_metodo = "Selecciona un método.";
-        }
-        if (!cuotaInicial.monto || cuotaInicial.monto <= 0) {
-            errors.cuotaInicial_monto = "El monto debe ser mayor a cero.";
-        }
+        if (!cuotaInicial.metodo) errors.cuotaInicial_metodo = "Selecciona un método.";
+        if (!cuotaInicial.monto || cuotaInicial.monto <= 0) errors.cuotaInicial_monto = "El monto debe ser mayor a cero.";
         totalAportado += cuotaInicial.monto || 0;
     }
 
-    // Validación Crédito Hipotecario
     if (aplicaCredito) {
-        if (!credito.banco) {
-            errors.credito_banco = "Selecciona un banco.";
-        }
-        if (!credito.monto || credito.monto <= 0) {
-            errors.credito_monto = "El monto debe ser mayor a cero.";
-        }
+        if (!credito.banco) errors.credito_banco = "Selecciona un banco.";
+        if (!credito.monto || credito.monto <= 0) errors.credito_monto = "El monto debe ser mayor a cero.";
         totalAportado += credito.monto || 0;
     }
 
-    // Validación Subsidio Mi Casa Ya
     if (aplicaSubsidioVivienda) {
-        if (!subsidioVivienda.monto || subsidioVivienda.monto <= 0) {
-            errors.subsidioVivienda_monto = "El monto debe ser mayor a cero.";
-        }
+        if (!subsidioVivienda.monto || subsidioVivienda.monto <= 0) errors.subsidioVivienda_monto = "El monto debe ser mayor a cero.";
         totalAportado += subsidioVivienda.monto || 0;
     }
 
-    // Validación Subsidio Caja de Compensación
     if (aplicaSubsidioCaja) {
-        if (!subsidioCaja.caja) {
-            errors.subsidioCaja_caja = "Selecciona una caja.";
-        }
-        if (!subsidioCaja.monto || subsidioCaja.monto <= 0) {
-            errors.subsidioCaja_monto = "El monto debe ser mayor a cero.";
-        }
+        if (!subsidioCaja.caja) errors.subsidioCaja_caja = "Selecciona una caja.";
+        if (!subsidioCaja.monto || subsidioCaja.monto <= 0) errors.subsidioCaja_monto = "El monto debe ser mayor a cero.";
         totalAportado += subsidioCaja.monto || 0;
     }
 
-    // Validación final de la suma total
+    // --- CÁLCULO DE VALIDACIÓN ACTUALIZADO ---
+    totalAportado += gastosNotariales?.monto || 0;
+
     if (totalAportado !== valorVivienda) {
-        errors.financiero = `La suma de los recursos propios (${totalAportado.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}) debe ser igual al valor de la vivienda.`;
+        errors.financiero = `La suma de los recursos (${totalAportado.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}) debe ser igual al valor de la vivienda.`;
     }
 
     return errors;

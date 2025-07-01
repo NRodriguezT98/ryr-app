@@ -2,19 +2,15 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import Select from "react-select";
 import AnimatedPage from "../../components/AnimatedPage";
 import toast from "react-hot-toast";
-import { useData } from "../../context/DataContext"; // <-- 1. IMPORTAMOS NUESTRO HOOK
+import { useData } from "../../context/DataContext";
 import FuenteDePagoCard from "./FuenteDePagoCard";
 import AbonoCard from "./AbonoCard";
 
+const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+
 const CrearAbono = () => {
-    // --- 2. CONSUMIMOS LOS DATOS DIRECTAMENTE DEL CONTEXTO ---
     const { isLoading, viviendas, clientes, abonos, recargarDatos } = useData();
-
-    // El único estado local que necesitamos es para saber qué vivienda está seleccionada
     const [selectedViviendaId, setSelectedViviendaId] = useState(null);
-
-    // --- ELIMINAMOS por completo las funciones 'cargarDatos' y el 'useEffect' que la llamaba ---
-    // Ya que el DataContext se encarga de todo esto de forma global.
 
     const datosViviendaSeleccionada = useMemo(() => {
         if (!selectedViviendaId) return null;
@@ -22,11 +18,8 @@ const CrearAbono = () => {
         const viviendaActual = viviendas.find(v => v.id === selectedViviendaId);
         if (!viviendaActual) return null;
 
-        // El estado 'clientes' del contexto ya viene con la información de la vivienda
         const clienteActual = clientes.find(c => c.id === viviendaActual.clienteId);
-        if (!clienteActual || !clienteActual.financiero) {
-            return { vivienda: viviendaActual, fuentes: [], historial: [], resumenGeneral: {} };
-        }
+        if (!clienteActual || !clienteActual.financiero) return { vivienda: viviendaActual, fuentes: [], historial: [], resumenGeneral: {} };
 
         const historial = abonos
             .filter(a => a.viviendaId === selectedViviendaId)
@@ -48,6 +41,16 @@ const CrearAbono = () => {
             fuentes.push({ titulo: `Subsidio Caja (${financiero.subsidioCaja.caja})`, fuente: "subsidioCaja", montoPactado: financiero.subsidioCaja.monto, abonos: historial.filter(a => a.fuente === 'subsidioCaja') });
         }
 
+        // --- NUEVA LÓGICA AQUÍ: Añadimos los gastos notariales como una fuente de pago ---
+        if (financiero.gastosNotariales && financiero.gastosNotariales.monto > 0) {
+            fuentes.push({
+                titulo: "Gastos Notariales",
+                fuente: "gastosNotariales",
+                montoPactado: financiero.gastosNotariales.monto,
+                abonos: historial.filter(a => a.fuente === 'gastosNotariales'),
+            });
+        }
+
         const resumenGeneral = {
             valorFinal: viviendaActual.valorFinal || 0,
             totalAbonado: viviendaActual.totalAbonado || 0,
@@ -59,7 +62,7 @@ const CrearAbono = () => {
 
     const viviendaOptions = useMemo(() =>
         clientes
-            .filter(cliente => cliente.viviendaId) // Solo clientes con vivienda
+            .filter(cliente => cliente.viviendaId)
             .map(cliente => {
                 const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
                 if (!vivienda) return null;
@@ -107,7 +110,7 @@ const CrearAbono = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-center text-gray-500 py-4">Este cliente no tiene una estructura financiera definida.</p>
+                                <p className="text-center text-gray-500 py-4">Este cliente no tiene una estructura financiera definida para hacerle seguimiento.</p>
                             )}
 
                             <div className="mt-12 pt-6 border-t">
@@ -129,8 +132,5 @@ const CrearAbono = () => {
         </AnimatedPage>
     );
 };
-
-// Helper de formato, solo por si acaso lo necesitas aquí
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
 export default CrearAbono;

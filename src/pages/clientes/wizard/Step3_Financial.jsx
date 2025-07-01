@@ -25,7 +25,10 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
         const montoCredito = financiero.aplicaCredito ? (financiero.credito.monto || 0) : 0;
         const montoSubVivienda = financiero.aplicaSubsidioVivienda ? (financiero.subsidioVivienda.monto || 0) : 0;
         const montoSubCaja = financiero.aplicaSubsidioCaja ? (financiero.subsidioCaja.monto || 0) : 0;
-        const totalAportado = montoCuota + montoCredito + montoSubVivienda + montoSubCaja;
+        // --- CÁLCULO ACTUALIZADO ---
+        const montoGastosNotariales = financiero.gastosNotariales?.monto || 0;
+
+        const totalAportado = montoCuota + montoCredito + montoSubVivienda + montoSubCaja + montoGastosNotariales;
         return { totalAportado, diferencia: viviendaSeleccionada.valorTotal - totalAportado };
     }, [financiero, viviendaSeleccionada.valorTotal]);
 
@@ -41,7 +44,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
         <div className="animate-fade-in space-y-6">
             <div className='text-center'>
                 <h3 className="text-2xl font-bold text-gray-800">3. Estructura Financiera</h3>
-                <p className="text-sm text-gray-500 mt-1 max-w-xl mx-auto">Define cómo el cliente cubrirá el valor de la vivienda. La suma de los recursos debe ser igual al valor de la vivienda.</p>
+                <p className="text-sm text-gray-500 mt-1 max-w-xl mx-auto">Define cómo el cliente cubrirá el valor de la vivienda.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center p-4 bg-gray-50 rounded-lg border">
@@ -50,7 +53,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                     <p className="text-lg font-bold text-blue-600">{formatCurrency(viviendaSeleccionada.valorTotal)}</p>
                 </div>
                 <div>
-                    <p className="text-sm font-semibold text-gray-500">Total Recursos</p>
+                    <p className="text-sm font-semibold text-gray-500">Total Recursos Propios</p>
                     <p className="text-lg font-bold text-gray-800">{formatCurrency(resumenFinanciero.totalAportado)}</p>
                 </div>
                 <div>
@@ -67,9 +70,35 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
             }
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 pt-6 border-t">
+                <div className="lg:col-span-2">
+                    <div className="p-4 border rounded-xl bg-gray-100">
+                        <label className="flex items-center space-x-3">
+                            <input type="checkbox" checked={true} disabled className="h-5 w-5 rounded text-blue-600" />
+                            <span className="font-semibold text-gray-700">Gastos Notariales (Obligatorio)</span>
+                        </label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-dashed animate-fade-in">
+                            <div className='space-y-1'>
+                                <label className="text-xs font-medium text-gray-500">Monto Fijo</label>
+                                <NumericFormat
+                                    value={financiero.gastosNotariales.monto}
+                                    className="w-full border p-2 rounded-lg bg-gray-200 cursor-not-allowed"
+                                    thousandSeparator="." decimalSeparator="," prefix="$ "
+                                    disabled
+                                />
+                            </div>
+                            <FileUpload
+                                label="Comprobante de Pago"
+                                filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/gastos_notariales-${fileName}`}
+                                currentFileUrl={financiero.gastosNotariales.urlSoportePago}
+                                onUploadSuccess={(url) => handleFileUpload('gastosNotariales', 'urlSoportePago', url)}
+                                onRemove={() => handleFileRemove('gastosNotariales', 'urlSoportePago')}
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 <div className="space-y-6">
-                    {/* Cuota Inicial */}
-                    <div className="p-4 border rounded-xl">
+                    <div className="p-4 border rounded-xl h-full">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaCuotaInicial" checked={financiero.aplicaCuotaInicial} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500" />
                             <span className="font-semibold text-gray-700">Cuota Inicial</span>
@@ -86,41 +115,14 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                                         <NumericFormat value={financiero.cuotaInicial.monto} onValueChange={(values) => handleFieldChange('cuotaInicial', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.cuotaInicial_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                     </div>
                                 </div>
-                                {/* --- FileUpload para Cuota Inicial --- */}
                                 <FileUpload label="Soporte de Pago" filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/cuota_inicial-${fileName}`} currentFileUrl={financiero.cuotaInicial.urlSoportePago} onUploadSuccess={(url) => handleFileUpload('cuotaInicial', 'urlSoportePago', url)} onRemove={() => handleFileRemove('cuotaInicial', 'urlSoportePago')} />
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Subsidio Mi Casa Ya */}
-                    <div className="p-4 border rounded-xl">
-                        <label className="flex items-center space-x-3 cursor-pointer">
-                            <input type="checkbox" name="aplicaSubsidioVivienda" checked={financiero.aplicaSubsidioVivienda} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500" />
-                            <span className="font-semibold text-gray-700">Subsidio Mi Casa Ya</span>
-                        </label>
-                        {financiero.aplicaSubsidioVivienda && (
-                            <div className="space-y-4 mt-4 pt-4 border-t border-dashed animate-fade-in">
-                                <div className='space-y-1'>
-                                    <label className="text-xs font-medium text-gray-500">Monto del Subsidio</label>
-                                    <NumericFormat value={financiero.subsidioVivienda.monto} onValueChange={(values) => handleFieldChange('subsidioVivienda', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioVivienda_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
-                                </div>
-                                <FileUpload
-                                    label="Carta de Aprobación del Subsidio"
-                                    filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/subsidio_vivienda-${fileName}`}
-                                    // --- CORRECCIÓN AQUÍ ---
-                                    currentFileUrl={financiero.subsidioVivienda.urlSoporte}
-                                    onUploadSuccess={(url) => handleFileUpload('subsidioVivienda', 'urlSoporte', url)}
-                                    onRemove={() => handleFileRemove('subsidioVivienda', 'urlSoporte')}
-                                />
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Columna Derecha */}
                 <div className="space-y-6">
-                    {/* Crédito Hipotecario */}
-                    <div className="p-4 border rounded-xl">
+                    <div className="p-4 border rounded-xl h-full">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaCredito" checked={financiero.aplicaCredito} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500" />
                             <span className="font-semibold text-gray-700">Crédito Hipotecario</span>
@@ -141,9 +143,25 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                             </div>
                         )}
                     </div>
+                </div>
 
-                    {/* Subsidio Caja de Compensación */}
-                    <div className="p-4 border rounded-xl">
+                <div className="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
+                    <div className="p-4 border rounded-xl h-full">
+                        <label className="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" name="aplicaSubsidioVivienda" checked={financiero.aplicaSubsidioVivienda} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500" />
+                            <span className="font-semibold text-gray-700">Subsidio Mi Casa Ya</span>
+                        </label>
+                        {financiero.aplicaSubsidioVivienda && (
+                            <div className="space-y-4 mt-4 pt-4 border-t border-dashed animate-fade-in">
+                                <div className='space-y-1'>
+                                    <label className="text-xs font-medium text-gray-500">Monto del Subsidio</label>
+                                    <NumericFormat value={financiero.subsidioVivienda.monto} onValueChange={(values) => handleFieldChange('subsidioVivienda', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioVivienda_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                </div>
+                                <FileUpload label="Carta de Aprobación" filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/subsidio_vivienda-${fileName}`} currentFileUrl={financiero.subsidioVivienda.urlSoporte} onUploadSuccess={(url) => handleFileUpload('subsidioVivienda', 'urlSoporte', url)} onRemove={() => handleFileRemove('subsidioVivienda', 'urlSoporte')} />
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-4 border rounded-xl h-full">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaSubsidioCaja" checked={financiero.aplicaSubsidioCaja} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600 focus:ring-blue-500" />
                             <span className="font-semibold text-gray-700">Subsidio Caja de Compensación</span>
@@ -160,14 +178,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                                         <NumericFormat value={financiero.subsidioCaja.monto} onValueChange={(values) => handleFieldChange('subsidioCaja', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioCaja_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                     </div>
                                 </div>
-                                {/* --- FileUpload para Caja de Compensación --- */}
-                                <FileUpload
-                                    label="Carta de Aprobación"
-                                    filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/subsidio_caja-${fileName}`}
-                                    currentFileUrl={financiero.subsidioCaja.urlSoporte} // <-- CAMBIADO
-                                    onUploadSuccess={(url) => handleFileUpload('subsidioCaja', 'urlSoporte', url)} // <-- CAMBIADO
-                                    onRemove={() => handleFileRemove('subsidioCaja', 'urlSoporte')} // <-- CAMBIADO
-                                />
+                                <FileUpload label="Carta de Aprobación" filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/subsidio_caja-${fileName}`} currentFileUrl={financiero.subsidioCaja.urlSoporte} onUploadSuccess={(url) => handleFileUpload('subsidioCaja', 'urlSoporte', url)} onRemove={() => handleFileRemove('subsidioCaja', 'urlSoporte')} />
                             </div>
                         )}
                     </div>

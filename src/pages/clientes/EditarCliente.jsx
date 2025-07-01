@@ -42,7 +42,8 @@ const blankInitialState = {
         aplicaSubsidioVivienda: false,
         subsidioVivienda: { monto: 0, urlSoporte: null },
         aplicaSubsidioCaja: false,
-        subsidioCaja: { caja: '', monto: 0, urlSoporte: null }
+        subsidioCaja: { caja: '', monto: 0, urlSoporte: null },
+        gastosNotariales: { aplica: true, monto: 5000000, urlSoportePago: null }
     },
     seguimiento: {},
     errors: {}

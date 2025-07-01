@@ -6,7 +6,7 @@ import { useForm } from "../../hooks/useForm.jsx";
 import { validateVivienda } from "./viviendaValidation.js";
 import { addVivienda, getViviendas } from "../../utils/storage";
 import { MapPin, FileText, CircleDollarSign, Check } from 'lucide-react';
-import FormularioVivienda from "./FormularioVivienda"; // <-- Importamos nuestro formulario
+import FormularioVivienda from "./FormularioVivienda";
 
 const initialState = {
     manzana: "",
@@ -95,6 +95,8 @@ const CrearVivienda = () => {
         setErrors(stepErrors);
         if (Object.keys(stepErrors).length === 0) {
             setStep(s => s + 1);
+        } else {
+            toast.error("Por favor, completa los campos requeridos.");
         }
     };
 
@@ -143,33 +145,34 @@ const CrearVivienda = () => {
                         ))}
                     </div>
 
-                    <form onSubmit={handleSubmit} noValidate>
-                        <FormularioVivienda
-                            step={step}
-                            formData={formData}
-                            errors={errors}
-                            handleInputChange={handleInputChange}
-                            handleValueChange={handleValueChange}
-                            handleCheckboxChange={handleCheckboxChange}
-                            valorTotalCalculado={valorTotalCalculado}
-                        />
+                    {/* La etiqueta <form> ya no está aquí */}
+                    <FormularioVivienda
+                        step={step}
+                        formData={formData}
+                        errors={errors}
+                        handleInputChange={handleInputChange}
+                        handleValueChange={handleValueChange}
+                        handleCheckboxChange={handleCheckboxChange}
+                        valorTotalCalculado={valorTotalCalculado}
+                        handleSubmit={handleSubmit} // Pasamos la función, pero no se usa en un <form>
+                    />
 
-                        <div className="mt-10 flex justify-between">
-                            {step > 1 ? (
-                                <button type="button" onClick={handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
-                            ) : <div />}
+                    <div className="mt-10 flex justify-between">
+                        {step > 1 ? (
+                            <button type="button" onClick={handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
+                        ) : <div />}
 
-                            {step < 3 ? (
-                                <button type="button" onClick={handleNextStep} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
-                                    Siguiente
-                                </button>
-                            ) : (
-                                <button type="submit" disabled={isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto">
-                                    {isSubmitting ? "Guardando..." : "Finalizar y Guardar"}
-                                </button>
-                            )}
-                        </div>
-                    </form>
+                        {step < 3 ? (
+                            <button type="button" onClick={handleNextStep} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
+                                Siguiente
+                            </button>
+                        ) : (
+                            // Este botón ahora es de tipo 'button' y llama a handleSubmit directamente
+                            <button type="button" onClick={handleSubmit} disabled={isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto">
+                                {isSubmitting ? "Guardando..." : "Finalizar y Guardar"}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </AnimatedPage>

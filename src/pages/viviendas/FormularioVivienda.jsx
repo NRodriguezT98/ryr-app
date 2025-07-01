@@ -2,10 +2,11 @@ import React from 'react';
 import { NumericFormat } from 'react-number-format';
 import AnimatedPage from '../../components/AnimatedPage';
 
+// Este componente ya no necesita la prop 'handleSubmit' ni la etiqueta <form>
 const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleValueChange, handleCheckboxChange, valorTotalCalculado }) => {
     return (
+        // La etiqueta <form> se ha eliminado de aquí
         <div className="space-y-6 min-h-[300px]">
-            {/* --- PASO 1: UBICACIÓN --- */}
             {step === 1 && (
                 <AnimatedPage>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -25,8 +26,6 @@ const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleV
                     </div>
                 </AnimatedPage>
             )}
-
-            {/* --- PASO 2: INFO LEGAL --- */}
             {step === 2 && (
                 <AnimatedPage>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -43,8 +42,6 @@ const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleV
                     </div>
                 </AnimatedPage>
             )}
-
-            {/* --- PASO 3: VALOR --- */}
             {step === 3 && (
                 <AnimatedPage>
                     <div className="space-y-6">

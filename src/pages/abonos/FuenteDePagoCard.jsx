@@ -3,24 +3,26 @@ import { useForm } from '../../hooks/useForm.jsx';
 import toast from 'react-hot-toast';
 import { NumericFormat } from 'react-number-format';
 import { addAbono } from '../../utils/storage';
-import { Banknote, Landmark, Gift, HandCoins } from 'lucide-react';
-import FileUpload from '../../components/FileUpload'; // <-- Importamos nuestro gestor de archivos
+import { Banknote, Landmark, Gift, HandCoins, FilePlus2 } from 'lucide-react'; // <-- Importamos el nuevo ícono
+import FileUpload from '../../components/FileUpload';
 
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
+// --- AÑADIMOS EL NUEVO ÍCONO AQUÍ ---
 const ICONS = {
     cuotaInicial: <HandCoins className="w-8 h-8 text-yellow-600" />,
     credito: <Landmark className="w-8 h-8 text-blue-600" />,
     subsidioVivienda: <Gift className="w-8 h-8 text-green-600" />,
     subsidioCaja: <Banknote className="w-8 h-8 text-purple-600" />,
+    gastosNotariales: <FilePlus2 className="w-8 h-8 text-slate-600" />
 };
 
 const initialAbonoFormState = {
     monto: '',
     fechaPago: getTodayString(),
-    observacion: '', // <-- Nuevo campo
-    urlComprobante: null // <-- Nuevo campo
+    observacion: '',
+    urlComprobante: null
 };
 
 const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAbonoRegistrado }) => {
@@ -38,8 +40,8 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAb
                 monto: parseInt(String(data.monto).replace(/\D/g, ''), 10) || 0,
                 metodoPago: titulo,
                 fuente: fuente,
-                observacion: data.observacion.trim(), // <-- Guardamos la observación
-                urlComprobante: data.urlComprobante,   // <-- Guardamos la URL del comprobante
+                observacion: data.observacion.trim(),
+                urlComprobante: data.urlComprobante,
                 viviendaId: vivienda.id,
                 clienteId: vivienda.clienteId,
             };
@@ -81,7 +83,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAb
     return (
         <div className="bg-white p-5 rounded-xl border border-gray-200">
             <div className="flex items-center gap-4">
-                {ICONS[fuente]}
+                {ICONS[fuente] || <HandCoins className="w-8 h-8 text-gray-500" />}
                 <div>
                     <h3 className="font-bold text-lg text-gray-800">{titulo}</h3>
                     <p className="text-sm text-gray-500">Pactado: {formatCurrency(montoPactado)}</p>
@@ -110,7 +112,6 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAb
                             <input type="date" name="fechaPago" value={formData.fechaPago} onChange={handleInputChange} max={getTodayString()} className="w-full border p-2 rounded-lg" />
                         </div>
                     </div>
-                    {/* --- NUEVO CAMPO DE OBSERVACIÓN --- */}
                     <div>
                         <label className="text-xs font-medium">Observación (Opcional)</label>
                         <textarea
@@ -119,10 +120,9 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAb
                             onChange={handleInputChange}
                             rows="2"
                             className="w-full border p-2 rounded-lg text-sm"
-                            placeholder="Ej: Pago parcial de la cuota de mayo"
+                            placeholder="Ej: Pago parcial..."
                         />
                     </div>
-                    {/* --- NUEVO CAMPO DE SUBIDA DE ARCHIVO --- */}
                     <div>
                         <FileUpload
                             label="Comprobante de Pago (Opcional)"

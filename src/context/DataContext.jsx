@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getViviendas, getClientes, getAbonos } from '../utils/storage';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { db } from '../firebase/config';
+import { collection, onSnapshot } from "firebase/firestore";
 import toast from 'react-hot-toast';
 
 // 1. Creamos el Contexto
@@ -20,59 +21,65 @@ export const DataProvider = ({ children }) => {
     const [viviendas, setViviendas] = useState([]);
     const [clientes, setClientes] = useState([]);
     const [abonos, setAbonos] = useState([]);
+    const [renuncias, setRenuncias] = useState([]);
 
-    const cargarDatosGenerales = useCallback(async () => {
-        // No mostramos el spinner en recargas de foco para una mejor UX
-        // setIsLoading(true); 
-        try {
-            const [viviendasData, clientesData, abonosData] = await Promise.all([
-                getViviendas(),
-                getClientes(),
-                getAbonos()
-            ]);
-
-            // Hacemos el cruce de datos aquí, una sola vez.
-            const clientesConVivienda = clientesData.map((cliente) => {
-                const viviendaAsignada = viviendasData.find((v) => v.id === cliente.viviendaId);
-                return { ...cliente, vivienda: viviendaAsignada || null };
-            });
-
-            setViviendas(viviendasData);
-            setClientes(clientesConVivienda); // Guardamos los clientes ya con su vivienda
-            setAbonos(abonosData);
-
-        } catch (error) {
-            toast.error("Error crítico: No se pudieron cargar los datos de la aplicación.");
-        } finally {
-            setIsLoading(false);
-        }
+    const recargarDatos = useCallback(() => {
+        // Con onSnapshot, la recarga es automática. Esta función se mantiene por si se necesita en el futuro.
+        console.log("Recarga manual invocada.");
     }, []);
 
     useEffect(() => {
-        cargarDatosGenerales();
+        setIsLoading(true);
 
-        // Lógica para recargar datos automáticamente que ya implementamos
-        window.addEventListener('focus', cargarDatosGenerales);
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') {
-                cargarDatosGenerales();
+        const dataLoaded = { viviendas: false, clientes: false, abonos: false, renuncias: false };
+
+        const checkLoadingComplete = () => {
+            if (Object.values(dataLoaded).every(Boolean)) {
+                setIsLoading(false);
             }
+        };
+
+        const collectionsToListen = {
+            viviendas: setViviendas,
+            clientes: setClientes,
+            abonos: setAbonos,
+            renuncias: setRenuncias
+        };
+
+        const subscriptions = Object.entries(collectionsToListen).map(([name, setter]) => {
+            return onSnapshot(collection(db, name), (snapshot) => {
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setter(data);
+                dataLoaded[name] = true;
+                checkLoadingComplete();
+            }, (error) => {
+                console.error(`Error al obtener ${name}:`, error);
+                toast.error(`No se pudieron cargar los datos de ${name}.`);
+            });
         });
 
         return () => {
-            window.removeEventListener('focus', cargarDatosGenerales);
-            document.removeEventListener('visibilitychange', cargarDatosGenerales);
+            subscriptions.forEach(unsub => unsub());
         };
-    }, [cargarDatosGenerales]);
+    }, []);
 
-    // Los valores que queremos que estén disponibles para toda la app
-    const value = {
-        isLoading,
-        viviendas,
-        clientes,
-        abonos,
-        recargarDatos: cargarDatosGenerales // Exponemos una función para recargar manualmente si es necesario
-    };
+    const value = useMemo(() => {
+        const clientesConVivienda = clientes.map((cliente) => {
+            const viviendaAsignada = viviendas.find((v) => v.id === cliente.viviendaId);
+            return { ...cliente, vivienda: viviendaAsignada || null };
+        });
+
+        const renunciasPendientes = renuncias.filter(r => r.estadoDevolucion === 'Pendiente');
+
+        return {
+            isLoading,
+            viviendas,
+            clientes: clientesConVivienda,
+            abonos,
+            renuncias: renunciasPendientes,
+            recargarDatos
+        };
+    }, [isLoading, viviendas, clientes, abonos, renuncias, recargarDatos]);
 
     return (
         <DataContext.Provider value={value}>
