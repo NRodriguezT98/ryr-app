@@ -1,7 +1,8 @@
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, User, Eye, Pencil, Trash, Tag, UserX, Phone, MapPin, Home } from 'lucide-react';
+// --- CORRECCIÓN AQUÍ: Añadimos UserX y los otros íconos que usamos ---
+import { MoreVertical, User, Eye, Pencil, Trash, Tag, Phone, MapPin, Home, UserX } from 'lucide-react';
 
 const getInitials = (nombres = '', apellidos = '') => {
     const n = nombres.charAt(0) || '';
@@ -13,6 +14,8 @@ function formatID(cedula) {
     if (!cedula) return '';
     return Number(cedula).toLocaleString("es-CO");
 }
+
+const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
 const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar }) => {
     const { datosCliente, vivienda } = cliente;
@@ -33,12 +36,14 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar }) => {
                     </p>
                 </div>
             </div>
+
             <div className="p-5 space-y-4 text-sm">
                 <div className="space-y-2">
                     <p className="flex items-center gap-3 text-gray-700"><Phone size={16} className="text-gray-400" /><span>{datosCliente?.telefono}</span></p>
                     <p className="flex items-center gap-3 text-gray-700"><User size={16} className="text-gray-400" /><span>C.C. {formatID(datosCliente?.cedula)}</span></p>
                     <p className="flex items-center gap-3 text-gray-700"><MapPin size={16} className="text-gray-400" /><span>{datosCliente?.direccion}</span></p>
                 </div>
+
                 <div className="pt-4 border-t space-y-2">
                     <p className="flex items-center gap-3 font-semibold">
                         <Home size={16} className={vivienda ? 'text-green-600' : 'text-gray-400'} />
@@ -54,8 +59,14 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar }) => {
                             <span className="font-semibold text-xs">Vivienda con descuento aplicado</span>
                         </div>
                     )}
+                    {vivienda && (
+                        <p className="text-xs text-gray-600 pt-2">
+                            Saldo Pendiente: <span className="font-bold text-red-600">{formatCurrency(vivienda.saldoPendiente)}</span>
+                        </p>
+                    )}
                 </div>
             </div>
+
             <div className="mt-auto p-2 border-t bg-gray-50 rounded-b-2xl flex justify-end">
                 <Menu as="div" className="relative">
                     <Menu.Button className="p-2 text-gray-500 hover:bg-gray-200 rounded-full">

@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar, DollarSign, Wallet, MessageSquare, Download } from 'lucide-react';
+import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home } from 'lucide-react';
 
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
@@ -30,7 +30,6 @@ const AbonoCard = ({ abono }) => {
                 </div>
             </div>
             <div className="w-full sm:w-auto flex-grow pl-0 sm:pl-4">
-                {/* --- NUEVA SECCIÓN DE OBSERVACIÓN Y COMPROBANTE --- */}
                 {abono.observacion && (
                     <p className="text-xs text-gray-600 italic flex items-start gap-2 mb-2">
                         <MessageSquare size={14} className="mt-0.5 flex-shrink-0" />
@@ -48,8 +47,14 @@ const AbonoCard = ({ abono }) => {
                     </a>
                 )}
             </div>
-            <div className="text-right text-xs text-gray-500 flex items-center gap-2 self-end sm:self-center">
-                <Calendar size={14} /> {formatDate(abono.fechaPago)}
+            <div className="text-right space-y-1">
+                <div className="text-xs text-gray-500 flex items-center justify-end gap-2">
+                    <Calendar size={14} /> {formatDate(abono.fechaPago)}
+                </div>
+                {/* --- CAMPO ACTUALIZADO AQUÍ --- */}
+                <div className="text-xs text-gray-500 font-semibold flex items-center justify-end gap-2">
+                    <Home size={14} /> {abono.clienteInfo}
+                </div>
             </div>
         </div>
     );

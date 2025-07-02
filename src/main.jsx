@@ -14,6 +14,7 @@ import Layout from './layout/Layout';
 import DashboardPage from './pages/DashboardPage';
 import CrearVivienda from './pages/viviendas/CrearVivienda';
 import ListarViviendas from './pages/viviendas/ListarViviendas';
+import DetalleVivienda from './pages/viviendas/DetalleVivienda';
 import EditarVivienda from './pages/viviendas/EditarVivienda';
 import CrearCliente from "./pages/clientes/CrearCliente";
 import ListarClientes from './pages/clientes/ListarClientes';
@@ -47,6 +48,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route index element={<DashboardPage />} />
             <Route path="/viviendas" element={<CrearVivienda />} />
             <Route path="viviendas/listar" element={<ListarViviendas />} />
+            <Route path="viviendas/detalle/:viviendaId" element={<DetalleVivienda />} />
             <Route path="viviendas/editar/:id" element={<EditarVivienda />} />
             <Route path="/clientes/crear" element={<CrearCliente />} />
             <Route path="/clientes/listar" element={<ListarClientes />} />

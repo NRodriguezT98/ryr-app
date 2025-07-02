@@ -1,11 +1,10 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { useData } from '../../context/DataContext'; // <-- 1. IMPORTAMOS EL HOOK DE DATOS
-import AbonoCard from './AbonoCard'; // <-- 2. IMPORTAMOS LA TARJETA DE ABONO
+import { useData } from '../../context/DataContext';
+import AbonoCard from './AbonoCard';
 
 const ListarAbonos = () => {
-    // --- 3. CONSUMIMOS LOS DATOS DIRECTAMENTE DEL CONTEXTO ---
     const { isLoading, abonos, clientes, viviendas } = useData();
 
     const abonosRecientes = useMemo(() => {
@@ -15,14 +14,20 @@ const ListarAbonos = () => {
             .map(abono => {
                 const cliente = clientes.find(c => c.id === abono.clienteId);
                 const vivienda = viviendas.find(v => v.id === abono.viviendaId);
+
+                // --- LÓGICA MEJORADA AQUÍ ---
+                // Ahora construimos la etiqueta con el nombre completo del cliente.
+                const clienteInfo = cliente && vivienda
+                    ? `${vivienda.manzana}${vivienda.numeroCasa} - ${cliente.datosCliente.nombres.toUpperCase()} ${cliente.datosCliente.apellidos.toUpperCase()}`
+                    : 'Información no disponible';
+
                 return {
                     ...abono,
-                    clienteNombre: cliente?.datosCliente?.nombres || 'N/A',
-                    viviendaLabel: vivienda ? `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}` : 'N/A',
+                    clienteInfo: clienteInfo,
                 };
             })
             .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))
-            .slice(0, 50); // Mostramos los últimos 50 abonos
+            .slice(0, 50);
     }, [abonos, clientes, viviendas]);
 
 
@@ -47,7 +52,6 @@ const ListarAbonos = () => {
                     </Link>
                 </div>
 
-                {/* --- 4. RENDERIZAMOS LAS TARJETAS EN LUGAR DE LA TABLA --- */}
                 {abonosRecientes.length > 0 ? (
                     <div className="space-y-4">
                         {abonosRecientes.map(abono => (
@@ -58,8 +62,6 @@ const ListarAbonos = () => {
                     <p className="text-center text-gray-500 py-10">No hay abonos registrados todavía.</p>
                 )}
             </div>
-
-            {/* Los modales de edición y eliminación ya no son necesarios en esta vista de solo lectura */}
         </AnimatedPage>
     );
 };
