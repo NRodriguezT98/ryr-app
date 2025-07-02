@@ -1,21 +1,29 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
+import { Link } from 'react-router-dom';
 import { User } from 'lucide-react';
 import { useData } from "../../context/DataContext";
 import { deleteCliente, renunciarAVivienda } from "../../utils/storage";
-import ResourcePageLayout from "../../layout/ResourcePageLayout"; // <-- IMPORTAMOS EL NUEVO LAYOUT
+import ResourcePageLayout from "../../layout/ResourcePageLayout";
 import ClienteCard from './ClienteCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
 import Select from 'react-select';
 import toast from "react-hot-toast";
+import UndoToast from '../../components/UndoToast.jsx'; // <-- 1. IMPORTAMOS EL TOAST
 
 const ListarClientes = () => {
     const { isLoading, clientes, viviendas, recargarDatos } = useData();
+
+    // Estados locales para la UI
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [clienteARenunciar, setClienteARenunciar] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [manzanaFilter, setManzanaFilter] = useState(null);
+
+    // --- NUEVOS ESTADOS PARA LA FUNCIÓN "DESHACER" ---
+    const [clientesOcultos, setClientesOcultos] = useState([]);
+    const deletionTimeouts = useRef({});
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
@@ -49,14 +57,41 @@ const ListarClientes = () => {
         return itemsProcesados;
     }, [clientes, searchTerm, manzanaFilter]);
 
-    const confirmarEliminar = async () => {
-        if (!clienteAEliminar) return;
+    // --- NUEVA LÓGICA DE ELIMINACIÓN CON "DESHACER" ---
+    const iniciarEliminacion = (cliente) => {
+        const id = cliente.id;
+        setClientesOcultos(prev => [...prev, id]);
+        toast.custom((t) => (
+            <UndoToast
+                t={t}
+                message="Cliente eliminado"
+                onUndo={() => deshacerEliminacion(id)}
+            />
+        ), { duration: 5000 });
+
+        const timeoutId = setTimeout(() => {
+            confirmarEliminarReal(id);
+        }, 5000);
+
+        deletionTimeouts.current[id] = timeoutId;
+        setClienteAEliminar(null);
+    };
+
+    const deshacerEliminacion = (id) => {
+        clearTimeout(deletionTimeouts.current[id]);
+        delete deletionTimeouts.current[id];
+        setClientesOcultos(prev => prev.filter(cId => cId !== id));
+        toast.success("Eliminación deshecha.");
+    };
+
+    const confirmarEliminarReal = async (id) => {
         try {
-            await deleteCliente(clienteAEliminar.id);
-            toast.success("Cliente eliminado correctamente.");
+            await deleteCliente(id);
             recargarDatos();
-        } catch (error) { toast.error("No se pudo eliminar el cliente."); }
-        finally { setClienteAEliminar(null); }
+        } catch (error) {
+            toast.error("No se pudo eliminar el cliente.");
+            setClientesOcultos(prev => prev.filter(cId => cId !== id));
+        }
     };
 
     const confirmarRenuncia = async () => {
@@ -72,6 +107,8 @@ const ListarClientes = () => {
             setClienteARenunciar(null);
         }
     };
+
+    const clientesVisibles = clientesFiltrados.filter(c => !clientesOcultos.includes(c.id));
 
     if (isLoading) { return <div className="text-center p-10 animate-pulse">Cargando clientes...</div>; }
 
@@ -91,9 +128,9 @@ const ListarClientes = () => {
                 </>
             }
         >
-            {clientesFiltrados.length > 0 ? (
+            {clientesVisibles.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {clientesFiltrados.map(cliente => (
+                    {clientesVisibles.map(cliente => (
                         <ClienteCard
                             key={cliente.id}
                             cliente={cliente}
@@ -109,7 +146,15 @@ const ListarClientes = () => {
                 </div>
             )}
 
-            {clienteAEliminar && (<ModalConfirmacion isOpen={!!clienteAEliminar} onClose={() => setClienteAEliminar(null)} onConfirm={confirmarEliminar} titulo="¿Eliminar Cliente?" mensaje="Esta acción es permanente y desvinculará la vivienda asignada." />)}
+            {clienteAEliminar && (
+                <ModalConfirmacion
+                    isOpen={!!clienteAEliminar}
+                    onClose={() => setClienteAEliminar(null)}
+                    onConfirm={() => iniciarEliminacion(clienteAEliminar)}
+                    titulo="¿Eliminar Cliente?"
+                    mensaje="Esta acción es permanente y desvinculará la vivienda asignada. Tendrás 5 segundos para deshacer."
+                />
+            )}
             {clienteAEditar && (<EditarCliente isOpen={!!clienteAEditar} onClose={() => setClienteAEditar(null)} onGuardar={handleGuardado} clienteAEditar={clienteAEditar} />)}
             {clienteARenunciar && (
                 <ModalConfirmacion

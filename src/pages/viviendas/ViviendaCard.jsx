@@ -22,7 +22,8 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
     const isPagada = saldoPendiente <= 0 && !isDisponible;
 
     return (
-        <div className={`bg-white rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 shadow-green-100' : 'border-gray-200'}`}>
+        <div className={`bg-white rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 shadow-green-100' : 'border-gray-200'} overflow-hidden`}>
+            {/* Cabecera de la Tarjeta */}
             <div className={`flex items-center justify-between p-4 border-b rounded-t-2xl ${isDisponible ? 'bg-yellow-50' : 'bg-green-50'}`}>
                 <div className="flex items-center gap-3">
                     <Home className={`w-6 h-6 ${isDisponible ? 'text-yellow-600' : 'text-green-700'}`} />
@@ -43,7 +44,8 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                 </div>
             </div>
 
-            <div className="p-5 space-y-4">
+            {/* Cuerpo de la Tarjeta */}
+            <div className="p-5 space-y-4 flex-grow">
                 <div className='text-sm text-gray-600'>
                     <p><strong className='font-medium text-gray-800'>Matrícula:</strong> {matricula}</p>
                     <p><strong className='font-medium text-gray-800'>Nomenclatura:</strong> {nomenclatura}</p>
@@ -71,7 +73,6 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                             )}
                         </div>
                     </div>
-                    {/* --- LÍNEA DE SALDO PENDIENTE CON ESTILO CONDICIONAL --- */}
                     <div className={`flex justify-between text-sm font-bold pt-2 border-t mt-2 ${saldoPendiente > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         <span>Saldo Pendiente:</span>
                         <span>{formatCurrency(saldoPendiente)}</span>
@@ -79,12 +80,14 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                 </div>
             </div>
 
-            <div className="mt-auto p-4 border-t bg-gray-50 rounded-b-2xl flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-gray-700 overflow-hidden">
+            {/* --- PIE DE TARJETA CON AJUSTE DE ESTILO --- */}
+            <div className="mt-auto p-4 border-t bg-gray-50 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm overflow-hidden">
                     {!isDisponible && (
                         <>
-                            <User size={16} className="text-gray-500 flex-shrink-0" />
-                            <span className='font-medium truncate' title={toTitleCase(clienteNombre)}>{toTitleCase(clienteNombre)}</span>
+                            <User size={16} className="text-gray-400 flex-shrink-0" />
+                            {/* Clases modificadas aquí para mayor énfasis */}
+                            <span className='font-bold text-gray-800 truncate' title={toTitleCase(clienteNombre)}>{toTitleCase(clienteNombre)}</span>
                         </>
                     )}
                 </div>
