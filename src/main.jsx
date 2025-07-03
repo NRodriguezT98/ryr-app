@@ -10,14 +10,14 @@ import DashboardPage from './pages/DashboardPage';
 import CrearVivienda from './pages/viviendas/CrearVivienda';
 import ListarViviendas from './pages/viviendas/ListarViviendas';
 import DetalleVivienda from './pages/viviendas/DetalleVivienda';
+import EditarVivienda from './pages/viviendas/EditarVivienda';
 import CrearCliente from "./pages/clientes/CrearCliente";
 import ListarClientes from './pages/clientes/ListarClientes';
 import DetalleCliente from './pages/clientes/DetalleCliente';
 import ListarAbonos from './pages/abonos/ListarAbonos';
 import CrearAbono from './pages/abonos/CrearAbono';
-import ListarRenuncias from './pages/renuncias/ListarRenuncias'; // <-- Importamos la nueva página
-import EditarVivienda from './pages/viviendas/EditarVivienda';
-
+import ListarRenuncias from './pages/renuncias/ListarRenuncias';
+import DetalleRenuncia from './pages/renuncias/DetalleRenuncia'; // <-- IMPORTAMOS LA NUEVA PÁGINA
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -50,6 +50,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/abonos/listar" element={<ListarAbonos />} />
 
             <Route path="/renuncias" element={<ListarRenuncias />} />
+            {/* --- NUEVA RUTA AQUÍ --- */}
+            <Route path="/renuncias/detalle/:renunciaId" element={<DetalleRenuncia />} />
           </Route>
         </Routes>
       </DataProvider>

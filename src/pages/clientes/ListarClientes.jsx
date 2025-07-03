@@ -1,29 +1,39 @@
-import React, { useState, useMemo, useCallback, useRef } from "react";
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import AnimatedPage from "../../components/AnimatedPage";
+import toast from 'react-hot-toast';
 import { User } from 'lucide-react';
 import { useData } from "../../context/DataContext";
-import { deleteCliente, renunciarAVivienda } from "../../utils/storage";
+import { deleteCliente, renunciarAVivienda, reactivarCliente } from "../../utils/storage";
 import ResourcePageLayout from "../../layout/ResourcePageLayout";
 import ClienteCard from './ClienteCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
 import Select from 'react-select';
-import toast from "react-hot-toast";
-import UndoToast from '../../components/UndoToast.jsx'; // <-- 1. IMPORTAMOS EL TOAST
+import UndoToast from '../../components/UndoToast.jsx';
+
+const CustomOption = (props) => {
+    const { innerProps, label, data } = props;
+    return (
+        <div {...innerProps} className="p-3 hover:bg-blue-50 cursor-pointer">
+            <p className="font-semibold text-gray-800">{label}</p>
+            {data.cliente && (
+                <p className="text-xs text-gray-500">{`C.C. ${data.cliente.datosCliente.cedula}`}</p>
+            )}
+        </div>
+    );
+};
 
 const ListarClientes = () => {
     const { isLoading, clientes, viviendas, recargarDatos } = useData();
-
-    // Estados locales para la UI
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [clienteARenunciar, setClienteARenunciar] = useState(null);
+    const [clienteAReactivar, setClienteAReactivar] = useState(null); // <-- Nuevo estado
     const [searchTerm, setSearchTerm] = useState('');
     const [manzanaFilter, setManzanaFilter] = useState(null);
-
-    // --- NUEVOS ESTADOS PARA LA FUNCIÓN "DESHACER" ---
+    const [statusFilter, setStatusFilter] = useState('activo');
     const [clientesOcultos, setClientesOcultos] = useState([]);
-    const deletionTimeouts = useRef({});
+    const deletionTimeouts = React.useRef({});
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
@@ -37,6 +47,13 @@ const ListarClientes = () => {
 
     const clientesFiltrados = useMemo(() => {
         let itemsProcesados = [...clientes];
+        if (statusFilter !== 'todos') {
+            if (statusFilter === 'activo') {
+                itemsProcesados = itemsProcesados.filter(c => c.status !== 'renunciado');
+            } else {
+                itemsProcesados = itemsProcesados.filter(c => c.status === statusFilter);
+            }
+        }
         if (manzanaFilter && manzanaFilter.value) {
             itemsProcesados = itemsProcesados.filter(c => c.vivienda?.manzana === manzanaFilter.value);
         }
@@ -55,20 +72,14 @@ const ListarClientes = () => {
             return 0;
         });
         return itemsProcesados;
-    }, [clientes, searchTerm, manzanaFilter]);
+    }, [clientes, searchTerm, manzanaFilter, statusFilter]);
 
-    // --- NUEVA LÓGICA DE ELIMINACIÓN CON "DESHACER" ---
     const iniciarEliminacion = (cliente) => {
         const id = cliente.id;
         setClientesOcultos(prev => [...prev, id]);
         toast.custom((t) => (
-            <UndoToast
-                t={t}
-                message="Cliente eliminado"
-                onUndo={() => deshacerEliminacion(id)}
-            />
+            <UndoToast t={t} message="Cliente eliminado" onUndo={() => deshacerEliminacion(id)} />
         ), { duration: 5000 });
-
         const timeoutId = setTimeout(() => {
             confirmarEliminarReal(id);
         }, 5000);
@@ -108,6 +119,19 @@ const ListarClientes = () => {
         }
     };
 
+    const confirmarReactivacion = async () => {
+        if (!clienteAReactivar) return;
+        try {
+            await reactivarCliente(clienteAReactivar.id);
+            toast.success("El cliente ha sido reactivado.");
+            recargarDatos();
+        } catch (error) {
+            toast.error("No se pudo reactivar el cliente.");
+        } finally {
+            setClienteAReactivar(null);
+        }
+    };
+
     const clientesVisibles = clientesFiltrados.filter(c => !clientesOcultos.includes(c.id));
 
     if (isLoading) { return <div className="text-center p-10 animate-pulse">Cargando clientes...</div>; }
@@ -119,6 +143,11 @@ const ListarClientes = () => {
             color="#1976d2"
             filterControls={
                 <>
+                    <div className="flex-shrink-0 bg-gray-100 p-1 rounded-lg">
+                        <button onClick={() => setStatusFilter('activo')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'activo' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200'}`}>Activos</button>
+                        <button onClick={() => setStatusFilter('renunciado')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'renunciado' ? 'bg-white shadow text-orange-600' : 'text-gray-600 hover:bg-gray-200'}`}>Renunciaron</button>
+                        <button onClick={() => setStatusFilter('todos')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'todos' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:bg-gray-200'}`}>Todos</button>
+                    </div>
                     <div className="w-full md:w-auto md:min-w-[200px]">
                         <Select options={manzanaOptions} onChange={setManzanaFilter} value={manzanaFilter} placeholder="Filtrar por Manzana..." isClearable={false} defaultValue={manzanaOptions[0]} />
                     </div>
@@ -137,32 +166,22 @@ const ListarClientes = () => {
                             onEdit={setClienteAEditar}
                             onDelete={setClienteAEliminar}
                             onRenunciar={setClienteARenunciar}
+                            onReactivar={setClienteAReactivar}
                         />
                     ))}
                 </div>
-            ) : (
-                <div className="text-center py-16">
-                    <p className="text-gray-500">No se encontraron clientes con los filtros actuales.</p>
-                </div>
-            )}
+            ) : (<div className="text-center py-16"><p className="text-gray-500">No se encontraron clientes con los filtros actuales.</p></div>)}
 
-            {clienteAEliminar && (
-                <ModalConfirmacion
-                    isOpen={!!clienteAEliminar}
-                    onClose={() => setClienteAEliminar(null)}
-                    onConfirm={() => iniciarEliminacion(clienteAEliminar)}
-                    titulo="¿Eliminar Cliente?"
-                    mensaje="Esta acción es permanente y desvinculará la vivienda asignada. Tendrás 5 segundos para deshacer."
-                />
-            )}
+            {clienteAEliminar && (<ModalConfirmacion isOpen={!!clienteAEliminar} onClose={() => setClienteAEliminar(null)} onConfirm={() => iniciarEliminacion(clienteAEliminar)} titulo="¿Eliminar Cliente?" mensaje="Esta acción es permanente y desvinculará la vivienda asignada. Tendrás 5 segundos para deshacer." />)}
             {clienteAEditar && (<EditarCliente isOpen={!!clienteAEditar} onClose={() => setClienteAEditar(null)} onGuardar={handleGuardado} clienteAEditar={clienteAEditar} />)}
-            {clienteARenunciar && (
+            {clienteARenunciar && (<ModalConfirmacion isOpen={!!clienteARenunciar} onClose={() => setClienteARenunciar(null)} onConfirm={confirmarRenuncia} titulo="¿Confirmar Renuncia?" mensaje={`¿Estás seguro de que deseas desvincular a ${clienteARenunciar.datosCliente.nombres} de su vivienda? Esta acción reiniciará los valores de la vivienda y creará un registro de renuncia para la devolución de los abonos.`} />)}
+            {clienteAReactivar && (
                 <ModalConfirmacion
-                    isOpen={!!clienteARenunciar}
-                    onClose={() => setClienteARenunciar(null)}
-                    onConfirm={confirmarRenuncia}
-                    titulo="¿Confirmar Renuncia?"
-                    mensaje={`¿Estás seguro de que deseas desvincular a ${clienteARenunciar.datosCliente.nombres} de su vivienda? Esta acción reiniciará los valores de la vivienda y creará un registro de renuncia para la devolución de los abonos.`}
+                    isOpen={!!clienteAReactivar}
+                    onClose={() => setClienteAReactivar(null)}
+                    onConfirm={confirmarReactivacion}
+                    titulo="¿Reactivar Cliente?"
+                    mensaje={`¿Estás seguro de que deseas reactivar a ${clienteAReactivar.datosCliente.nombres}? Volverá a la lista de clientes activos.`}
                 />
             )}
         </ResourcePageLayout>

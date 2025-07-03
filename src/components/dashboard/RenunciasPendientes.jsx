@@ -5,17 +5,21 @@ import { UserX, AlertTriangle } from 'lucide-react';
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
 const RenunciasPendientes = ({ renuncias }) => {
+    // --- LÓGICA DE FILTRADO AÑADIDA AQUÍ ---
+    // Este componente ahora es responsable de filtrar solo las pendientes.
+    const renunciasPendientes = renuncias.filter(r => r.estadoDevolucion === 'Pendiente');
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg h-full">
             <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
                 <AlertTriangle className="text-red-500" />
                 Devoluciones por Renuncia
             </h2>
-            {renuncias.length > 0 ? (
-                <ul className="space-y-3">
-                    {renuncias.map(renuncia => (
+            {renunciasPendientes.length > 0 ? (
+                <ul className="space-y-3 max-h-80 overflow-y-auto">
+                    {renunciasPendientes.map(renuncia => (
                         <li key={renuncia.id}>
-                            <Link to={`/clientes/detalle/${renuncia.clienteId}`} className="block p-3 rounded-lg hover:bg-gray-100 transition-colors">
+                            <Link to={`/renuncias/detalle/${renuncia.id}`} className="block p-3 rounded-lg hover:bg-gray-100 transition-colors">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="bg-red-100 p-2 rounded-full">

@@ -60,7 +60,7 @@ export const uploadFile = (file, path, onProgress) => {
 };
 
 export const addClienteAndAssignVivienda = async (clienteData) => {
-    const newClienteRef = doc(collection(db, "clientes", clienteData.datosCliente.cedula));
+    const newClienteRef = doc(db, "clientes", clienteData.datosCliente.cedula);
     const clienteParaGuardar = { ...clienteData, id: newClienteRef.id };
 
     if (clienteData.viviendaId) {
@@ -73,7 +73,7 @@ export const addClienteAndAssignVivienda = async (clienteData) => {
         });
         await batch.commit();
     } else {
-        await addDoc(collection(db, "clientes"), clienteParaGuardar);
+        await setDoc(newClienteRef, clienteParaGuardar);
     }
 };
 
@@ -189,13 +189,12 @@ export const renunciarAVivienda = async (clienteId, viviendaId) => {
         };
         transaction.set(renunciaRef, registroRenuncia);
         transaction.update(viviendaRef, {
-            clienteId: null,
-            clienteNombre: "",
-            totalAbonado: 0,
-            saldoPendiente: viviendaData.valorFinal
+            clienteId: null, clienteNombre: "",
+            totalAbonado: 0, saldoPendiente: viviendaData.valorFinal
         });
         transaction.update(clienteRef, {
-            viviendaId: null
+            viviendaId: null,
+            status: 'renunciado' // <-- ¡AÑADIMOS LA LÍNEA QUE FALTABA!
         });
     });
 };
@@ -240,5 +239,38 @@ export const deleteAbono = async (abonoAEliminar) => {
             saldoPendiente: nuevoSaldo
         });
         transaction.delete(abonoRef);
+    });
+};
+
+export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) => {
+    const renunciaRef = doc(db, "renuncias", renunciaId);
+
+    // Usamos una transacción para asegurar que ambas actualizaciones ocurran juntas
+    await runTransaction(db, async (transaction) => {
+        const renunciaDoc = await transaction.get(renunciaRef);
+        if (!renunciaDoc.exists()) {
+            throw new Error("El registro de renuncia no existe.");
+        }
+
+        const clienteId = renunciaDoc.data().clienteId;
+        const clienteRef = doc(db, "clientes", clienteId);
+
+        // 1. Actualizamos el documento de la renuncia
+        transaction.update(renunciaRef, {
+            estadoDevolucion: 'Pagada',
+            ...datosDevolucion
+        });
+
+        // 2. Actualizamos el estado del cliente a 'renunciado'
+        transaction.update(clienteRef, {
+            status: 'renunciado'
+        });
+    });
+};
+
+export const reactivarCliente = async (clienteId) => {
+    const clienteRef = doc(db, "clientes", clienteId);
+    await updateDoc(clienteRef, {
+        status: 'activo'
     });
 };

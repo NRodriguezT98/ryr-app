@@ -3,10 +3,8 @@ import { db } from '../firebase/config';
 import { collection, onSnapshot } from "firebase/firestore";
 import toast from 'react-hot-toast';
 
-// 1. Creamos el Contexto
 const DataContext = createContext(null);
 
-// 2. Creamos un Hook personalizado para consumir el contexto fácilmente
 export const useData = () => {
     const context = useContext(DataContext);
     if (!context) {
@@ -15,7 +13,6 @@ export const useData = () => {
     return context;
 };
 
-// 3. Creamos el Proveedor que contendrá toda la lógica
 export const DataProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [viviendas, setViviendas] = useState([]);
@@ -24,15 +21,12 @@ export const DataProvider = ({ children }) => {
     const [renuncias, setRenuncias] = useState([]);
 
     const recargarDatos = useCallback(() => {
-        // Con onSnapshot, la recarga es automática. Esta función se mantiene por si se necesita en el futuro.
         console.log("Recarga manual invocada.");
     }, []);
 
     useEffect(() => {
         setIsLoading(true);
-
         const dataLoaded = { viviendas: false, clientes: false, abonos: false, renuncias: false };
-
         const checkLoadingComplete = () => {
             if (Object.values(dataLoaded).every(Boolean)) {
                 setIsLoading(false);
@@ -69,14 +63,12 @@ export const DataProvider = ({ children }) => {
             return { ...cliente, vivienda: viviendaAsignada || null };
         });
 
-        const renunciasPendientes = renuncias.filter(r => r.estadoDevolucion === 'Pendiente');
-
         return {
             isLoading,
             viviendas,
             clientes: clientesConVivienda,
             abonos,
-            renuncias: renunciasPendientes,
+            renuncias, // <-- CORRECCIÓN: Ahora pasamos la lista completa, sin filtrar.
             recargarDatos
         };
     }, [isLoading, viviendas, clientes, abonos, renuncias, recargarDatos]);

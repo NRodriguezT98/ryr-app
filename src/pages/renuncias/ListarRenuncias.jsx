@@ -1,49 +1,38 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
-import { updateDoc, doc } from "firebase/firestore";
-import { db } from '../../firebase/config';
+import { marcarDevolucionComoPagada } from '../../utils/storage'; // <-- Usamos la función centralizada
 import ResourcePageLayout from '../../layout/ResourcePageLayout';
 import RenunciaCard from './components/RenunciaCard';
-import ModalConfirmacion from '../../components/ModalConfirmacion';
+import ModalGestionarDevolucion from './components/ModalGestionarDevolucion';
 import toast from 'react-hot-toast';
 import { UserX } from 'lucide-react';
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
 const ListarRenuncias = () => {
     const { isLoading, renuncias, recargarDatos } = useData();
     const [statusFilter, setStatusFilter] = useState('Pendiente');
-    const [renunciaAConfirmar, setRenunciaAConfirmar] = useState(null);
+    const [renunciaSeleccionada, setRenunciaSeleccionada] = useState(null);
 
+    // --- LÓGICA DE FILTRADO CORREGIDA Y ROBUSTA ---
     const renunciasFiltradas = useMemo(() => {
         const sortedRenuncias = [...renuncias].sort((a, b) => new Date(b.fechaRenuncia) - new Date(a.fechaRenuncia));
+
         if (statusFilter === 'Todas') {
             return sortedRenuncias;
         }
+
+        // Comparamos explícitamente con el estado que esperamos
         return sortedRenuncias.filter(r => r.estadoDevolucion === statusFilter);
+
     }, [renuncias, statusFilter]);
 
     const handleMarcarPagada = (renuncia) => {
-        setRenunciaAConfirmar(renuncia);
+        setRenunciaSeleccionada(renuncia);
     };
 
-    const confirmarPago = async () => {
-        if (!renunciaAConfirmar) return;
-        try {
-            const renunciaRef = doc(db, "renuncias", renunciaAConfirmar.id);
-            await updateDoc(renunciaRef, {
-                estadoDevolucion: 'Pagada',
-                fechaDevolucion: new Date().toISOString()
-            });
-            toast.success("Devolución marcada como pagada.");
-            recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo actualizar el estado de la renuncia.");
-            console.error("Error al marcar como pagada:", error);
-        } finally {
-            setRenunciaAConfirmar(null);
-        }
-    };
+    const handleSave = useCallback(() => {
+        recargarDatos();
+        setRenunciaSeleccionada(null);
+    }, [recargarDatos]);
 
     if (isLoading) {
         return <div className="text-center p-10 animate-pulse">Cargando renuncias...</div>;
@@ -80,13 +69,12 @@ const ListarRenuncias = () => {
                 )}
             </ResourcePageLayout>
 
-            {renunciaAConfirmar && (
-                <ModalConfirmacion
-                    isOpen={!!renunciaAConfirmar}
-                    onClose={() => setRenunciaAConfirmar(null)}
-                    onConfirm={confirmarPago}
-                    titulo="¿Confirmar Devolución?"
-                    mensaje={`¿Estás seguro de que deseas marcar la devolución de ${formatCurrency(renunciaAConfirmar.totalAbonadoParaDevolucion)} al cliente ${renunciaAConfirmar.clienteNombre} como pagada? Esta acción no se puede deshacer.`}
+            {renunciaSeleccionada && (
+                <ModalGestionarDevolucion
+                    isOpen={!!renunciaSeleccionada}
+                    onClose={() => setRenunciaSeleccionada(null)}
+                    onSave={handleSave}
+                    renuncia={renunciaSeleccionada}
                 />
             )}
         </>

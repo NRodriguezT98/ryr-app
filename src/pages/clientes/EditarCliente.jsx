@@ -114,7 +114,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
             datosCliente: formData.datosCliente,
             financiero: formData.financiero,
             seguimiento: formData.seguimiento,
-            viviendaId: formData.viviendaSeleccionada.id
+            viviendaId: formData.viviendaSeleccionada.id,
+            status: 'activo' // Se asegura de que el estado sea activo
         };
         try {
             await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
@@ -141,42 +142,19 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         }
 
         const cambiosDetectados = [];
-        const initial = initialData;
-        const current = formData;
+        const dataHasChanged = JSON.stringify(formData) !== JSON.stringify(initialData);
+        const isReassignment = initialData.viviendaId !== formData.viviendaSeleccionada.id;
 
-        // Comparar datos del cliente
-        for (const key in current.datosCliente) {
-            if (current.datosCliente[key] !== initial.datosCliente[key]) {
-                const label = key.charAt(0).toUpperCase() + key.slice(1);
-                cambiosDetectados.push({ campo: `Cliente: ${label}`, anterior: initial.datosCliente[key] || 'Vacío', actual: current.datosCliente[key] || 'Vacío' });
-            }
+        if (isReassignment) {
+            cambiosDetectados.push({
+                campo: "Asignación de Vivienda",
+                anterior: initialData.viviendaSeleccionada.label || "Ninguna",
+                actual: formData.viviendaSeleccionada.label
+            });
         }
 
-        // Comparar datos financieros
-        const finInicial = initial.financiero;
-        const finActual = current.financiero;
-
-        if (finInicial.aplicaCuotaInicial !== finActual.aplicaCuotaInicial) cambiosDetectados.push({ campo: '¿Aplica Cuota Inicial?', anterior: finInicial.aplicaCuotaInicial ? 'Sí' : 'No', actual: finActual.aplicaCuotaInicial ? 'Sí' : 'No' });
-        if (finActual.aplicaCuotaInicial) {
-            if (finInicial.cuotaInicial.metodo !== finActual.cuotaInicial.metodo) cambiosDetectados.push({ campo: 'Método Cuota Inicial', anterior: finInicial.cuotaInicial.metodo, actual: finActual.cuotaInicial.metodo });
-            if (finInicial.cuotaInicial.monto !== finActual.cuotaInicial.monto) cambiosDetectados.push({ campo: 'Monto Cuota Inicial', anterior: formatCurrency(finInicial.cuotaInicial.monto), actual: formatCurrency(finActual.cuotaInicial.monto) });
-        }
-
-        if (finInicial.aplicaCredito !== finActual.aplicaCredito) cambiosDetectados.push({ campo: '¿Aplica Crédito?', anterior: finInicial.aplicaCredito ? 'Sí' : 'No', actual: finActual.aplicaCredito ? 'Sí' : 'No' });
-        if (finActual.aplicaCredito) {
-            if (finInicial.credito.banco !== finActual.credito.banco) cambiosDetectados.push({ campo: 'Banco del Crédito', anterior: finInicial.credito.banco, actual: finActual.credito.banco });
-            if (finInicial.credito.monto !== finActual.credito.monto) cambiosDetectados.push({ campo: 'Monto del Crédito', anterior: formatCurrency(finInicial.credito.monto), actual: formatCurrency(finActual.credito.monto) });
-        }
-
-        if (finInicial.aplicaSubsidioVivienda !== finActual.aplicaSubsidioVivienda) cambiosDetectados.push({ campo: '¿Aplica Subsidio Mi Casa Ya?', anterior: finInicial.aplicaSubsidioVivienda ? 'Sí' : 'No', actual: finActual.aplicaSubsidioVivienda ? 'Sí' : 'No' });
-        if (finActual.aplicaSubsidioVivienda) {
-            if (finInicial.subsidioVivienda.monto !== finActual.subsidioVivienda.monto) cambiosDetectados.push({ campo: 'Monto Subsidio Mi Casa Ya', anterior: formatCurrency(finInicial.subsidioVivienda.monto), actual: formatCurrency(finActual.subsidioVivienda.monto) });
-        }
-
-        if (finInicial.aplicaSubsidioCaja !== finActual.aplicaSubsidioCaja) cambiosDetectados.push({ campo: '¿Aplica Subsidio Caja Comp.?', anterior: finInicial.aplicaSubsidioCaja ? 'Sí' : 'No', actual: finActual.aplicaSubsidioCaja ? 'Sí' : 'No' });
-        if (finActual.aplicaSubsidioCaja) {
-            if (finInicial.subsidioCaja.caja !== finActual.subsidioCaja.caja) cambiosDetectados.push({ campo: 'Caja de Compensación', anterior: finInicial.subsidioCaja.caja, actual: finActual.subsidioCaja.caja });
-            if (finInicial.subsidioCaja.monto !== finActual.subsidioCaja.monto) cambiosDetectados.push({ campo: 'Monto Subsidio Caja', anterior: formatCurrency(finInicial.subsidioCaja.monto), actual: formatCurrency(finActual.subsidioCaja.monto) });
+        if (dataHasChanged) {
+            cambiosDetectados.push({ campo: "Otros Datos", anterior: "Valores Originales", actual: "Valores Modificados" });
         }
 
         if (cambiosDetectados.length === 0) {
@@ -188,9 +166,12 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         setIsConfirming(true);
     }, [formData, todosLosClientes, clienteAEditar, initialData]);
 
+    // Lógica de 'hayCambios' ahora es más inteligente
     const hayCambios = useMemo(() => {
         if (!initialData) return false;
-        return JSON.stringify(formData) !== JSON.stringify(initialData);
+        // Hay cambios si los datos son diferentes O si la asignación de vivienda cambió.
+        return JSON.stringify(formData) !== JSON.stringify(initialData) ||
+            initialData.viviendaId !== formData.viviendaSeleccionada.id;
     }, [formData, initialData]);
 
     const steps = [
@@ -204,14 +185,6 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         { number: 2, title: 'Datos Cliente', icon: User },
         { number: 3, title: 'Finanzas', icon: CircleDollarSign },
     ];
-
-    // --- FUNCIÓN DE CIERRE INTELIGENTE ---
-    const handleMainModalClose = () => {
-        // Solo cierra el modal principal si el de confirmación NO está abierto.
-        if (!isConfirming) {
-            onClose();
-        }
-    };
 
     if (!isOpen) return null;
 
@@ -242,23 +215,15 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                                 </Fragment>
                             ))}
                         </div>
-
-                        <div className="mt-8">
-                            {steps[step - 1]}
-                        </div>
+                        <div className="mt-8">{steps[step - 1]}</div>
                         <div className="mt-10 pt-6 border-t flex justify-between">
                             {step > 1 ? (
-                                <button onClick={prevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
+                                <button type="button" onClick={prevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
                             ) : <div />}
-
                             {step < 3 ? (
-                                <button onClick={handleNext} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">Siguiente</button>
+                                <button type="button" onClick={handleNext} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">Siguiente</button>
                             ) : (
-                                <span
-                                    className="ml-auto"
-                                    data-tooltip-id="app-tooltip"
-                                    data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}
-                                >
+                                <span className="ml-auto" data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
                                     <button
                                         onClick={handlePreSave}
                                         disabled={!hayCambios}
@@ -275,7 +240,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
 
             <ModalConfirmacionCambios
                 isOpen={isConfirming}
-                onClose={() => setIsConfirming(false)} // <-- ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ ASÍ
+                onClose={() => setIsConfirming(false)}
                 onConfirm={executeSave}
                 titulo="Confirmar Cambios del Cliente"
                 cambios={cambios}

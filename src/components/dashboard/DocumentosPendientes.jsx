@@ -3,16 +3,18 @@ import { Link } from 'react-router-dom';
 import { User, AlertCircle, FileWarning } from 'lucide-react';
 
 const DocumentosPendientes = ({ clientes }) => {
-    // Lógica para encontrar clientes con documentos pendientes
-    const clientesConDocumentosPendientes = clientes.filter(cliente => {
-        if (!cliente.datosCliente.urlCedula) return true;
-        if (cliente.financiero?.aplicaCredito && !cliente.financiero.credito.urlCartaAprobacion) return true;
-        if (cliente.financiero?.aplicaSubsidioVivienda && !cliente.financiero.subsidioVivienda.urlSoporte) return true;
-        if (cliente.financiero?.aplicaSubsidioCaja && !cliente.financiero.subsidioCaja.urlSoporte) return true;
-        if (cliente.financiero?.aplicaCuotaInicial && !cliente.financiero.cuotaInicial.urlSoportePago) return true;
-        if (cliente.financiero?.gastosNotariales && !cliente.financiero.gastosNotariales.urlSoportePago) return true;
-        return false;
-    });
+    // --- LÓGICA DE FILTRADO MEJORADA ---
+    const clientesConDocumentosPendientes = clientes
+        .filter(cliente => cliente.status !== 'renunciado') // Solo consideramos clientes no renunciados
+        .filter(cliente => {
+            if (!cliente.datosCliente.urlCedula) return true;
+            if (cliente.financiero?.aplicaCredito && !cliente.financiero.credito.urlCartaAprobacion) return true;
+            if (cliente.financiero?.aplicaSubsidioVivienda && !cliente.financiero.subsidioVivienda.urlSoporte) return true;
+            if (cliente.financiero?.aplicaSubsidioCaja && !cliente.financiero.subsidioCaja.urlSoporte) return true;
+            if (cliente.financiero?.aplicaCuotaInicial && !cliente.financiero.cuotaInicial.urlSoportePago) return true;
+            if (cliente.financiero?.gastosNotariales && !cliente.financiero.gastosNotariales.urlSoportePago) return true;
+            return false;
+        });
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg h-full">
