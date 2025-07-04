@@ -10,6 +10,7 @@ import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
 import Select from 'react-select';
 import UndoToast from '../../components/UndoToast.jsx';
+import ModalMotivoRenuncia from "./components/ModalMotivoRenuncia";
 
 const CustomOption = (props) => {
     const { innerProps, label, data } = props;
@@ -25,13 +26,17 @@ const CustomOption = (props) => {
 
 const ListarClientes = () => {
     const { isLoading, clientes, viviendas, recargarDatos } = useData();
+
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [clienteARenunciar, setClienteARenunciar] = useState(null);
-    const [clienteAReactivar, setClienteAReactivar] = useState(null); // <-- Nuevo estado
+    const [clienteAReactivar, setClienteAReactivar] = useState(null);
+    const [datosRenuncia, setDatosRenuncia] = useState(null);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [manzanaFilter, setManzanaFilter] = useState(null);
     const [statusFilter, setStatusFilter] = useState('activo');
+
     const [clientesOcultos, setClientesOcultos] = useState([]);
     const deletionTimeouts = React.useRef({});
 
@@ -74,16 +79,48 @@ const ListarClientes = () => {
         return itemsProcesados;
     }, [clientes, searchTerm, manzanaFilter, statusFilter]);
 
+    const handleIniciarRenuncia = (cliente) => {
+        setClienteARenunciar(cliente);
+    };
+
+    const handleConfirmarMotivo = (motivo, observacion) => {
+        setDatosRenuncia({ cliente: clienteARenunciar, motivo, observacion });
+        setClienteARenunciar(null);
+    };
+
+    const confirmarRenunciaFinal = async () => {
+        if (!datosRenuncia || !datosRenuncia.cliente) return;
+        const { cliente, motivo, observacion } = datosRenuncia;
+        try {
+            await renunciarAVivienda(cliente.id, cliente.viviendaId, motivo, observacion);
+            toast.success("La renuncia se ha procesado correctamente.");
+            recargarDatos();
+        } catch (error) {
+            toast.error("No se pudo procesar la renuncia.");
+            console.error("Error al procesar renuncia:", error);
+        } finally {
+            setDatosRenuncia(null);
+        }
+    };
+
+    const confirmarReactivacion = async () => {
+        if (!clienteAReactivar) return;
+        try {
+            await reactivarCliente(clienteAReactivar.id);
+            toast.success("El cliente ha sido reactivado.");
+            recargarDatos();
+        } catch (error) {
+            toast.error("No se pudo reactivar el cliente.");
+        } finally {
+            setClienteAReactivar(null);
+        }
+    };
+
     const iniciarEliminacion = (cliente) => {
         const id = cliente.id;
         setClientesOcultos(prev => [...prev, id]);
-        toast.custom((t) => (
-            <UndoToast t={t} message="Cliente eliminado" onUndo={() => deshacerEliminacion(id)} />
-        ), { duration: 5000 });
-        const timeoutId = setTimeout(() => {
-            confirmarEliminarReal(id);
-        }, 5000);
-
+        toast.custom((t) => (<UndoToast t={t} message="Cliente eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
+        const timeoutId = setTimeout(() => { confirmarEliminarReal(id); }, 5000);
         deletionTimeouts.current[id] = timeoutId;
         setClienteAEliminar(null);
     };
@@ -102,33 +139,6 @@ const ListarClientes = () => {
         } catch (error) {
             toast.error("No se pudo eliminar el cliente.");
             setClientesOcultos(prev => prev.filter(cId => cId !== id));
-        }
-    };
-
-    const confirmarRenuncia = async () => {
-        if (!clienteARenunciar) return;
-        try {
-            await renunciarAVivienda(clienteARenunciar.id, clienteARenunciar.viviendaId);
-            toast.success("La renuncia se ha procesado correctamente.");
-            recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo procesar la renuncia.");
-            console.error("Error al procesar renuncia:", error);
-        } finally {
-            setClienteARenunciar(null);
-        }
-    };
-
-    const confirmarReactivacion = async () => {
-        if (!clienteAReactivar) return;
-        try {
-            await reactivarCliente(clienteAReactivar.id);
-            toast.success("El cliente ha sido reactivado.");
-            recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo reactivar el cliente.");
-        } finally {
-            setClienteAReactivar(null);
         }
     };
 
@@ -165,23 +175,37 @@ const ListarClientes = () => {
                             cliente={cliente}
                             onEdit={setClienteAEditar}
                             onDelete={setClienteAEliminar}
-                            onRenunciar={setClienteARenunciar}
+                            onRenunciar={handleIniciarRenuncia}
                             onReactivar={setClienteAReactivar}
                         />
                     ))}
                 </div>
-            ) : (<div className="text-center py-16"><p className="text-gray-500">No se encontraron clientes con los filtros actuales.</p></div>)}
+            ) : (
+                <div className="text-center py-16">
+                    <p className="text-gray-500">No se encontraron clientes con los filtros actuales.</p>
+                </div>
+            )}
 
-            {clienteAEliminar && (<ModalConfirmacion isOpen={!!clienteAEliminar} onClose={() => setClienteAEliminar(null)} onConfirm={() => iniciarEliminacion(clienteAEliminar)} titulo="¿Eliminar Cliente?" mensaje="Esta acción es permanente y desvinculará la vivienda asignada. Tendrás 5 segundos para deshacer." />)}
+            {clienteAEliminar && (<ModalConfirmacion isOpen={!!clienteAEliminar} onClose={() => setClienteAEliminar(null)} onConfirm={() => iniciarEliminacion(clienteAEliminar)} titulo="¿Eliminar Cliente?" mensaje="Esta acción es permanente. Tendrás 5 segundos para deshacer." />)}
             {clienteAEditar && (<EditarCliente isOpen={!!clienteAEditar} onClose={() => setClienteAEditar(null)} onGuardar={handleGuardado} clienteAEditar={clienteAEditar} />)}
-            {clienteARenunciar && (<ModalConfirmacion isOpen={!!clienteARenunciar} onClose={() => setClienteARenunciar(null)} onConfirm={confirmarRenuncia} titulo="¿Confirmar Renuncia?" mensaje={`¿Estás seguro de que deseas desvincular a ${clienteARenunciar.datosCliente.nombres} de su vivienda? Esta acción reiniciará los valores de la vivienda y creará un registro de renuncia para la devolución de los abonos.`} />)}
-            {clienteAReactivar && (
+            {clienteAReactivar && (<ModalConfirmacion isOpen={!!clienteAReactivar} onClose={() => setClienteAReactivar(null)} onConfirm={confirmarReactivacion} titulo="¿Reactivar Cliente?" mensaje={`¿Estás seguro de reactivar a ${clienteAReactivar.datosCliente.nombres}?`} />)}
+
+            {clienteARenunciar && (
+                <ModalMotivoRenuncia
+                    isOpen={!!clienteARenunciar}
+                    onClose={() => setClienteARenunciar(null)}
+                    onConfirm={handleConfirmarMotivo}
+                    cliente={clienteARenunciar}
+                />
+            )}
+
+            {datosRenuncia && (
                 <ModalConfirmacion
-                    isOpen={!!clienteAReactivar}
-                    onClose={() => setClienteAReactivar(null)}
-                    onConfirm={confirmarReactivacion}
-                    titulo="¿Reactivar Cliente?"
-                    mensaje={`¿Estás seguro de que deseas reactivar a ${clienteAReactivar.datosCliente.nombres}? Volverá a la lista de clientes activos.`}
+                    isOpen={!!datosRenuncia}
+                    onClose={() => setDatosRenuncia(null)}
+                    onConfirm={confirmarRenunciaFinal}
+                    titulo="¿Confirmar Renuncia?"
+                    mensaje={`¿Estás seguro de procesar la renuncia por el motivo "${datosRenuncia.motivo}"? Esta acción es irreversible.`}
                 />
             )}
         </ResourcePageLayout>

@@ -1,42 +1,30 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
-import { marcarDevolucionComoPagada } from '../../utils/storage'; // <-- Usamos la función centralizada
 import ResourcePageLayout from '../../layout/ResourcePageLayout';
 import RenunciaCard from './components/RenunciaCard';
 import ModalGestionarDevolucion from './components/ModalGestionarDevolucion';
-import toast from 'react-hot-toast';
+import ModalEditarRenuncia from './components/ModalEditarRenuncia'; // <-- Importamos el nuevo modal
 import { UserX } from 'lucide-react';
 
 const ListarRenuncias = () => {
     const { isLoading, renuncias, recargarDatos } = useData();
     const [statusFilter, setStatusFilter] = useState('Pendiente');
-    const [renunciaSeleccionada, setRenunciaSeleccionada] = useState(null);
+    const [renunciaADevolver, setRenunciaADevolver] = useState(null);
+    const [renunciaAEditar, setRenunciaAEditar] = useState(null); // <-- Nuevo estado
 
-    // --- LÓGICA DE FILTRADO CORREGIDA Y ROBUSTA ---
     const renunciasFiltradas = useMemo(() => {
         const sortedRenuncias = [...renuncias].sort((a, b) => new Date(b.fechaRenuncia) - new Date(a.fechaRenuncia));
-
-        if (statusFilter === 'Todas') {
-            return sortedRenuncias;
-        }
-
-        // Comparamos explícitamente con el estado que esperamos
+        if (statusFilter === 'Todas') return sortedRenuncias;
         return sortedRenuncias.filter(r => r.estadoDevolucion === statusFilter);
-
     }, [renuncias, statusFilter]);
-
-    const handleMarcarPagada = (renuncia) => {
-        setRenunciaSeleccionada(renuncia);
-    };
 
     const handleSave = useCallback(() => {
         recargarDatos();
-        setRenunciaSeleccionada(null);
+        setRenunciaADevolver(null);
+        setRenunciaAEditar(null); // Cerramos el modal de edición también
     }, [recargarDatos]);
 
-    if (isLoading) {
-        return <div className="text-center p-10 animate-pulse">Cargando renuncias...</div>;
-    }
+    if (isLoading) { return <div className="text-center p-10 animate-pulse">Cargando renuncias...</div>; }
 
     return (
         <>
@@ -46,9 +34,9 @@ const ListarRenuncias = () => {
                 color="#f97316"
                 filterControls={
                     <div className="flex-shrink-0 bg-gray-100 p-1 rounded-lg">
-                        <button onClick={() => setStatusFilter('Pendiente')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'Pendiente' ? 'bg-white shadow text-orange-600' : 'text-gray-600 hover:bg-gray-200'}`}>Pendientes</button>
-                        <button onClick={() => setStatusFilter('Pagada')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'Pagada' ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:bg-gray-200'}`}>Completadas</button>
-                        <button onClick={() => setStatusFilter('Todas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'Todas' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:bg-gray-200'}`}>Todas</button>
+                        <button onClick={() => setStatusFilter('Pendiente')} className={`px-4 py-1.5 text-sm font-semibold ...`}>Pendientes</button>
+                        <button onClick={() => setStatusFilter('Pagada')} className={`px-4 py-1.5 text-sm font-semibold ...`}>Completadas</button>
+                        <button onClick={() => setStatusFilter('Todas')} className={`px-4 py-1.5 text-sm font-semibold ...`}>Todas</button>
                     </div>
                 }
             >
@@ -58,23 +46,30 @@ const ListarRenuncias = () => {
                             <RenunciaCard
                                 key={renuncia.id}
                                 renuncia={renuncia}
-                                onMarcarPagada={handleMarcarPagada}
+                                onMarcarPagada={setRenunciaADevolver}
+                                onEditar={setRenunciaAEditar} // <-- Pasamos la nueva función
                             />
                         ))}
                     </div>
-                ) : (
-                    <div className="text-center py-16">
-                        <p className="text-gray-500">No hay renuncias que coincidan con el filtro actual.</p>
-                    </div>
-                )}
+                ) : (<div className="text-center py-16"><p className="text-gray-500">No hay renuncias que coincidan con el filtro actual.</p></div>)}
             </ResourcePageLayout>
 
-            {renunciaSeleccionada && (
+            {renunciaADevolver && (
                 <ModalGestionarDevolucion
-                    isOpen={!!renunciaSeleccionada}
-                    onClose={() => setRenunciaSeleccionada(null)}
+                    isOpen={!!renunciaADevolver}
+                    onClose={() => setRenunciaADevolver(null)}
                     onSave={handleSave}
-                    renuncia={renunciaSeleccionada}
+                    renuncia={renunciaADevolver}
+                />
+            )}
+
+            {/* --- RENDERIZAMOS EL NUEVO MODAL DE EDICIÓN --- */}
+            {renunciaAEditar && (
+                <ModalEditarRenuncia
+                    isOpen={!!renunciaAEditar}
+                    onClose={() => setRenunciaAEditar(null)}
+                    onSave={handleSave}
+                    renuncia={renunciaAEditar}
                 />
             )}
         </>

@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Menu, Transition } from '@headlessui/react';
 import { Link } from 'react-router-dom';
-import { UserX, Calendar, Home, MoreVertical, CheckCircle, DollarSign, Eye } from 'lucide-react';
+import { UserX, Calendar, Home, MoreVertical, CheckCircle, DollarSign, Eye, Pencil } from 'lucide-react';
 
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
@@ -11,13 +11,13 @@ const formatDate = (dateString) => {
     if (!dateString) return "Fecha inválida";
     try {
         const date = new Date(dateString);
-        return format(date, "d 'de' MMMM 'de' ibis", { locale: es });
+        return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
     } catch (error) {
         return "Fecha inválida";
     }
 };
 
-const RenunciaCard = ({ renuncia, onMarcarPagada }) => {
+const RenunciaCard = ({ renuncia, onMarcarPagada, onEditar }) => {
     const isPagada = renuncia.estadoDevolucion === 'Pagada';
 
     return (
@@ -38,7 +38,7 @@ const RenunciaCard = ({ renuncia, onMarcarPagada }) => {
                     <Calendar size={14} /> Fecha de Renuncia: {formatDate(renuncia.fechaRenuncia)}
                 </p>
                 <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                    <DollarSign size={14} /> Devolución Pendiente: <span className='text-red-600'>{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span>
+                    <DollarSign size={14} /> Devolución: <span className='text-red-600'>{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span>
                 </p>
             </div>
             <div className="flex items-center gap-4">
@@ -61,7 +61,14 @@ const RenunciaCard = ({ renuncia, onMarcarPagada }) => {
                                 </Menu.Item>
                             </div>
                             {!isPagada && (
-                                <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onMarcarPagada(renuncia)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><CheckCircle className="w-5 h-5 mr-2" /> Marcar como Pagada</button>)}</Menu.Item></div>
+                                <>
+                                    <div className="px-1 py-1">
+                                        <Menu.Item>{({ active }) => (<button onClick={() => onEditar(renuncia)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Pencil className="w-5 h-5 mr-2" /> Editar Motivo</button>)}</Menu.Item>
+                                    </div>
+                                    <div className="px-1 py-1">
+                                        <Menu.Item>{({ active }) => (<button onClick={() => onMarcarPagada(renuncia)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><CheckCircle className="w-5 h-5 mr-2" /> Marcar como Pagada</button>)}</Menu.Item>
+                                    </div>
+                                </>
                             )}
                         </Menu.Items>
                     </Transition>
