@@ -21,12 +21,13 @@ export const DataProvider = ({ children }) => {
     const [renuncias, setRenuncias] = useState([]);
 
     const recargarDatos = useCallback(() => {
-        console.log("Recarga manual invocada.");
+        console.log("Recarga manual invocada (actualmente no es necesaria con onSnapshot).");
     }, []);
 
     useEffect(() => {
         setIsLoading(true);
         const dataLoaded = { viviendas: false, clientes: false, abonos: false, renuncias: false };
+
         const checkLoadingComplete = () => {
             if (Object.values(dataLoaded).every(Boolean)) {
                 setIsLoading(false);
@@ -63,12 +64,15 @@ export const DataProvider = ({ children }) => {
             return { ...cliente, vivienda: viviendaAsignada || null };
         });
 
+        // --- CORRECCIÓN DEFINITIVA AQUÍ ---
+        // Ahora pasamos la lista COMPLETA de renuncias y clientes, sin ningún filtro.
+        // La lógica de filtrado se hará en cada componente que lo necesite.
         return {
             isLoading,
             viviendas,
             clientes: clientesConVivienda,
             abonos,
-            renuncias, // <-- CORRECCIÓN: Ahora pasamos la lista completa, sin filtrar.
+            renuncias, // <-- Se pasa la lista completa
             recargarDatos
         };
     }, [isLoading, viviendas, clientes, abonos, renuncias, recargarDatos]);

@@ -1,7 +1,7 @@
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, User, Eye, Pencil, Trash, Tag, Phone, MapPin, Home, UserX, CheckCircle2, RefreshCw } from 'lucide-react';
+import { MoreVertical, User, Eye, Pencil, Trash, Tag, Phone, MapPin, Home, UserX, CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react';
 
 const getInitials = (nombres = '', apellidos = '') => {
     const n = nombres.charAt(0) || '';
@@ -17,17 +17,30 @@ function formatID(cedula) {
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
 const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) => {
-    const { datosCliente, vivienda, status } = cliente;
+    const { datosCliente, vivienda, status, tieneRenunciaPendiente } = cliente;
 
     const tieneDescuento = vivienda && vivienda.descuentoMonto > 0;
     const isPagado = vivienda && vivienda.saldoPendiente <= 0;
     const puedeRenunciar = vivienda && vivienda.saldoPendiente > 0;
     const isRenunciado = status === 'renunciado';
 
+    // --- LÓGICA PARA ASIGNAR CLASE DE BORDE DINÁMICAMENTE ---
+    const cardBorderClass = isPagado
+        ? 'border-green-400 shadow-green-100'
+        : tieneRenunciaPendiente
+            ? 'border-orange-400 shadow-orange-100'
+            : 'border-gray-200';
+
+    const avatarBgClass = isPagado
+        ? 'bg-green-500'
+        : isRenunciado || tieneRenunciaPendiente
+            ? 'bg-orange-500'
+            : 'bg-blue-500';
+
     return (
-        <div className={`bg-white rounded-2xl shadow-lg border flex flex-col transition-all duration-300 ${isPagado ? 'border-green-400 shadow-green-100' : isRenunciado ? 'border-orange-300 bg-orange-50' : 'border-gray-200'}`}>
+        <div className={`bg-white rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${cardBorderClass}`}>
             <div className="flex items-center p-5 border-b">
-                <div className={`w-14 h-14 rounded-full text-white flex items-center justify-center font-bold text-2xl mr-4 flex-shrink-0 ${isPagado ? 'bg-green-500' : isRenunciado ? 'bg-orange-500' : 'bg-blue-500'}`}>
+                <div className={`w-14 h-14 rounded-full text-white flex items-center justify-center font-bold text-2xl mr-4 flex-shrink-0 ${avatarBgClass}`}>
                     {getInitials(datosCliente?.nombres, datosCliente?.apellidos)}
                 </div>
                 <div className="overflow-hidden">
@@ -53,7 +66,7 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) =>
                         {vivienda ? (
                             <span className="text-green-700">{`Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}</span>
                         ) : (
-                            cliente.status === 'renunciado' ?
+                            isRenunciado ?
                                 <span className="text-orange-600 font-semibold">Renunció al Proceso</span> :
                                 <span className="text-gray-500">Sin vivienda asignada</span>
                         )}
@@ -62,6 +75,12 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) =>
                         <div className="flex items-center gap-2 text-green-700 bg-green-100 p-2 rounded-md">
                             <CheckCircle2 size={16} />
                             <span className="font-semibold text-xs">¡A Paz y Salvo!</span>
+                        </div>
+                    )}
+                    {tieneRenunciaPendiente && (
+                        <div className="flex items-center gap-2 text-orange-700 bg-orange-100 p-2 rounded-md">
+                            <AlertTriangle size={16} />
+                            <span className="font-semibold text-xs">En Proceso de Renuncia</span>
                         </div>
                     )}
                     {tieneDescuento && !isPagado && (
@@ -80,13 +99,12 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) =>
 
             <div className="mt-auto p-2 border-t bg-gray-50 rounded-b-2xl flex justify-end">
                 <Menu as="div" className="relative">
-                    <Menu.Button className="p-2 text-gray-500 hover:bg-gray-200 rounded-full">
+                    <Menu.Button className="p-2 text-gray-500 hover:bg-gray-200 rounded-full" disabled={tieneRenunciaPendiente}>
                         <MoreVertical size={20} />
                     </Menu.Button>
                     <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                         <Menu.Items className="absolute bottom-full right-0 mb-2 w-56 origin-bottom-right bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10 focus:outline-none">
                             <div className="px-1 py-1"><Menu.Item>{({ active }) => (<Link to={`/clientes/detalle/${cliente.id}`} className={`${active ? 'bg-indigo-500 text-white' : 'text-gray-900'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Eye className="w-5 h-5 mr-2" /> Ver Detalle</Link>)}</Menu.Item></div>
-
                             {isRenunciado ? (
                                 <div className="px-1 py-1">
                                     <Menu.Item>{({ active }) => (<button onClick={() => onReactivar(cliente)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><RefreshCw className="w-5 h-5 mr-2" /> Reactivar Cliente</button>)}</Menu.Item>

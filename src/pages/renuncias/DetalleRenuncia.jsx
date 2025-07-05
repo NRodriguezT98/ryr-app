@@ -10,7 +10,6 @@ const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: 
 const DetalleRenuncia = () => {
     const { renunciaId } = useParams();
     const navigate = useNavigate();
-    // Solo necesitamos las renuncias y los clientes para info de contacto
     const { renuncias, clientes, isLoading } = useData();
 
     const datosDetalle = useMemo(() => {
@@ -21,8 +20,7 @@ const DetalleRenuncia = () => {
 
         const cliente = clientes.find(c => c.id === renuncia.clienteId);
 
-        // --- LÓGICA SIMPLIFICADA ---
-        // El historial de abonos ahora viene directamente del documento de la renuncia.
+        // Lógica final y robusta: El historial viene directamente del documento de renuncia.
         const historialAbonos = (renuncia.historialAbonos || []).map(abono => ({
             ...abono,
             clienteInfo: renuncia.clienteNombre,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import AnimatedPage from "../../components/AnimatedPage";
 import toast from 'react-hot-toast';
 import { User } from 'lucide-react';
@@ -25,7 +25,7 @@ const CustomOption = (props) => {
 };
 
 const ListarClientes = () => {
-    const { isLoading, clientes, viviendas, recargarDatos } = useData();
+    const { isLoading, clientes, viviendas, renuncias, recargarDatos } = useData();
 
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
@@ -38,7 +38,7 @@ const ListarClientes = () => {
     const [statusFilter, setStatusFilter] = useState('activo');
 
     const [clientesOcultos, setClientesOcultos] = useState([]);
-    const deletionTimeouts = React.useRef({});
+    const deletionTimeouts = useRef({});
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
@@ -51,7 +51,11 @@ const ListarClientes = () => {
     }, [viviendas]);
 
     const clientesFiltrados = useMemo(() => {
-        let itemsProcesados = [...clientes];
+        let itemsProcesados = clientes.map(cliente => {
+            const tieneRenunciaPendiente = renuncias.some(r => r.clienteId === cliente.id && r.estadoDevolucion === 'Pendiente');
+            return { ...cliente, tieneRenunciaPendiente };
+        });
+
         if (statusFilter !== 'todos') {
             if (statusFilter === 'activo') {
                 itemsProcesados = itemsProcesados.filter(c => c.status !== 'renunciado');
@@ -59,6 +63,7 @@ const ListarClientes = () => {
                 itemsProcesados = itemsProcesados.filter(c => c.status === statusFilter);
             }
         }
+
         if (manzanaFilter && manzanaFilter.value) {
             itemsProcesados = itemsProcesados.filter(c => c.vivienda?.manzana === manzanaFilter.value);
         }
@@ -69,6 +74,7 @@ const ListarClientes = () => {
                 (c.datosCliente?.cedula || '').includes(searchTerm)
             );
         }
+
         itemsProcesados.sort((a, b) => {
             const nameA = `${a.datosCliente?.nombres || ''} ${a.datosCliente?.apellidos || ''}`.toLowerCase();
             const nameB = `${b.datosCliente?.nombres || ''} ${b.datosCliente?.apellidos || ''}`.toLowerCase();
@@ -77,7 +83,38 @@ const ListarClientes = () => {
             return 0;
         });
         return itemsProcesados;
-    }, [clientes, searchTerm, manzanaFilter, statusFilter]);
+    }, [clientes, renuncias, searchTerm, manzanaFilter, statusFilter]);
+
+    const iniciarEliminacion = (cliente) => {
+        const id = cliente.id;
+        setClientesOcultos(prev => [...prev, id]);
+        toast.custom((t) => (
+            <UndoToast t={t} message="Cliente eliminado" onUndo={() => deshacerEliminacion(id)} />
+        ), { duration: 5000 });
+        const timeoutId = setTimeout(() => {
+            confirmarEliminarReal(id);
+        }, 5000);
+
+        deletionTimeouts.current[id] = timeoutId;
+        setClienteAEliminar(null);
+    };
+
+    const deshacerEliminacion = (id) => {
+        clearTimeout(deletionTimeouts.current[id]);
+        delete deletionTimeouts.current[id];
+        setClientesOcultos(prev => prev.filter(cId => cId !== id));
+        toast.success("Eliminación deshecha.");
+    };
+
+    const confirmarEliminarReal = async (id) => {
+        try {
+            await deleteCliente(id);
+            recargarDatos();
+        } catch (error) {
+            toast.error("No se pudo eliminar el cliente.");
+            setClientesOcultos(prev => prev.filter(cId => cId !== id));
+        }
+    };
 
     const handleIniciarRenuncia = (cliente) => {
         setClienteARenunciar(cliente);
@@ -113,32 +150,6 @@ const ListarClientes = () => {
             toast.error("No se pudo reactivar el cliente.");
         } finally {
             setClienteAReactivar(null);
-        }
-    };
-
-    const iniciarEliminacion = (cliente) => {
-        const id = cliente.id;
-        setClientesOcultos(prev => [...prev, id]);
-        toast.custom((t) => (<UndoToast t={t} message="Cliente eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
-        const timeoutId = setTimeout(() => { confirmarEliminarReal(id); }, 5000);
-        deletionTimeouts.current[id] = timeoutId;
-        setClienteAEliminar(null);
-    };
-
-    const deshacerEliminacion = (id) => {
-        clearTimeout(deletionTimeouts.current[id]);
-        delete deletionTimeouts.current[id];
-        setClientesOcultos(prev => prev.filter(cId => cId !== id));
-        toast.success("Eliminación deshecha.");
-    };
-
-    const confirmarEliminarReal = async (id) => {
-        try {
-            await deleteCliente(id);
-            recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo eliminar el cliente.");
-            setClientesOcultos(prev => prev.filter(cId => cId !== id));
         }
     };
 
@@ -188,26 +199,9 @@ const ListarClientes = () => {
 
             {clienteAEliminar && (<ModalConfirmacion isOpen={!!clienteAEliminar} onClose={() => setClienteAEliminar(null)} onConfirm={() => iniciarEliminacion(clienteAEliminar)} titulo="¿Eliminar Cliente?" mensaje="Esta acción es permanente. Tendrás 5 segundos para deshacer." />)}
             {clienteAEditar && (<EditarCliente isOpen={!!clienteAEditar} onClose={() => setClienteAEditar(null)} onGuardar={handleGuardado} clienteAEditar={clienteAEditar} />)}
-            {clienteAReactivar && (<ModalConfirmacion isOpen={!!clienteAReactivar} onClose={() => setClienteAReactivar(null)} onConfirm={confirmarReactivacion} titulo="¿Reactivar Cliente?" mensaje={`¿Estás seguro de reactivar a ${clienteAReactivar.datosCliente.nombres}?`} />)}
-
-            {clienteARenunciar && (
-                <ModalMotivoRenuncia
-                    isOpen={!!clienteARenunciar}
-                    onClose={() => setClienteARenunciar(null)}
-                    onConfirm={handleConfirmarMotivo}
-                    cliente={clienteARenunciar}
-                />
-            )}
-
-            {datosRenuncia && (
-                <ModalConfirmacion
-                    isOpen={!!datosRenuncia}
-                    onClose={() => setDatosRenuncia(null)}
-                    onConfirm={confirmarRenunciaFinal}
-                    titulo="¿Confirmar Renuncia?"
-                    mensaje={`¿Estás seguro de procesar la renuncia por el motivo "${datosRenuncia.motivo}"? Esta acción es irreversible.`}
-                />
-            )}
+            {clienteARenunciar && (<ModalMotivoRenuncia isOpen={!!clienteARenunciar} onClose={() => setClienteARenunciar(null)} onConfirm={handleConfirmarMotivo} cliente={clienteARenunciar} />)}
+            {datosRenuncia && (<ModalConfirmacion isOpen={!!datosRenuncia} onClose={() => setDatosRenuncia(null)} onConfirm={confirmarRenunciaFinal} titulo="¿Confirmar Renuncia?" mensaje={`¿Estás seguro de procesar la renuncia por el motivo "${datosRenuncia.motivo}"? Esta acción es irreversible.`} />)}
+            {clienteAReactivar && (<ModalConfirmacion isOpen={!!clienteAReactivar} onClose={() => setClienteAReactivar(null)} onConfirm={confirmarReactivacion} titulo="¿Reactivar Cliente?" mensaje={`¿Estás seguro de reactivar a ${clienteAReactivar.datosCliente.nombres}? Volverá a la lista de clientes activos.`} />)}
         </ResourcePageLayout>
     );
 };
