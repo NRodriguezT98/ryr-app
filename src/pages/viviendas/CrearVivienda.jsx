@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, Fragment } from "react";
+import React, { useEffect, useState, useMemo, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import AnimatedPage from "../../components/AnimatedPage";
 import toast from 'react-hot-toast';
@@ -13,8 +13,12 @@ const initialState = {
     numero: "",
     matricula: "",
     nomenclatura: "",
+    linderoNorte: "",
+    linderoSur: "",
+    linderoOriente: "",
+    linderoOccidente: "",
+    urlCertificadoTradicion: null,
     valorBase: "",
-    gastosNotariales: "",
     esEsquinera: false,
     recargoEsquinera: "0"
 };
@@ -22,7 +26,6 @@ const initialState = {
 const inputFilters = {
     numero: { regex: /^[0-9]*$/ },
     matricula: { regex: /^[0-9-]*$/ },
-    nomenclatura: { regex: /^[a-zA-Z0-9\s#-]*$/ }
 };
 
 const CrearVivienda = () => {
@@ -50,18 +53,20 @@ const CrearVivienda = () => {
         validate: (data) => validateVivienda(data, todasLasViviendas, null),
         onSubmit: async (formData) => {
             const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
-            const gastosNotarialesNum = parseInt(String(formData.gastosNotariales).replace(/\D/g, ''), 10) || 0;
             const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
-
             const nuevaVivienda = {
                 manzana: formData.manzana,
                 numeroCasa: parseInt(formData.numero, 10),
                 matricula: formData.matricula.trim(),
-                nomenclatura: formData.nomenclatura.trim(),
+                nomenclatura: formData.nomenclatura,
+                linderoNorte: formData.linderoNorte,
+                linderoSur: formData.linderoSur,
+                linderoOriente: formData.linderoOriente,
+                linderoOccidente: formData.linderoOccidente,
+                urlCertificadoTradicion: formData.urlCertificadoTradicion,
                 valorBase: valorBaseNum,
-                gastosNotariales: gastosNotarialesNum,
                 recargoEsquinera: recargoEsquineraNum,
-                valorTotal: valorBaseNum + gastosNotarialesNum + recargoEsquineraNum,
+                valorTotal: valorBaseNum + recargoEsquineraNum + 5000000,
             };
             try {
                 await addVivienda(nuevaVivienda);
@@ -77,10 +82,9 @@ const CrearVivienda = () => {
 
     const valorTotalCalculado = useMemo(() => {
         const valorBase = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
-        const gastosNotariales = parseInt(String(formData.gastosNotariales).replace(/\D/g, ''), 10) || 0;
         const recargoEsquinera = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
-        return valorBase + gastosNotariales + recargoEsquinera;
-    }, [formData.valorBase, formData.gastosNotariales, formData.recargoEsquinera, formData.esEsquinera]);
+        return valorBase + recargoEsquinera + 5000000;
+    }, [formData.valorBase, formData.esEsquinera, formData.recargoEsquinera]);
 
     const handleNextStep = () => {
         const allErrors = validateVivienda(formData, todasLasViviendas, null);
@@ -88,6 +92,10 @@ const CrearVivienda = () => {
         if (step === 1) {
             if (allErrors.manzana) stepErrors.manzana = allErrors.manzana;
             if (allErrors.numero) stepErrors.numero = allErrors.numero;
+            if (allErrors.linderoNorte) stepErrors.linderoNorte = allErrors.linderoNorte;
+            if (allErrors.linderoSur) stepErrors.linderoSur = allErrors.linderoSur;
+            if (allErrors.linderoOriente) stepErrors.linderoOriente = allErrors.linderoOriente;
+            if (allErrors.linderoOccidente) stepErrors.linderoOccidente = allErrors.linderoOccidente;
         } else if (step === 2) {
             if (allErrors.matricula) stepErrors.matricula = allErrors.matricula;
             if (allErrors.nomenclatura) stepErrors.nomenclatura = allErrors.nomenclatura;
@@ -114,7 +122,7 @@ const CrearVivienda = () => {
     };
 
     const STEPS_CONFIG = [
-        { number: 1, title: 'Ubicación', icon: MapPin },
+        { number: 1, title: 'Ubicación y Linderos', icon: MapPin },
         { number: 2, title: 'Info. Legal', icon: FileText },
         { number: 3, title: 'Valor', icon: CircleDollarSign },
     ];
@@ -145,7 +153,6 @@ const CrearVivienda = () => {
                         ))}
                     </div>
 
-                    {/* La etiqueta <form> ya no está aquí */}
                     <FormularioVivienda
                         step={step}
                         formData={formData}
@@ -154,7 +161,7 @@ const CrearVivienda = () => {
                         handleValueChange={handleValueChange}
                         handleCheckboxChange={handleCheckboxChange}
                         valorTotalCalculado={valorTotalCalculado}
-                        handleSubmit={handleSubmit} // Pasamos la función, pero no se usa en un <form>
+                        gastosNotarialesFijos={5000000}
                     />
 
                     <div className="mt-10 flex justify-between">
@@ -167,8 +174,12 @@ const CrearVivienda = () => {
                                 Siguiente
                             </button>
                         ) : (
-                            // Este botón ahora es de tipo 'button' y llama a handleSubmit directamente
-                            <button type="button" onClick={handleSubmit} disabled={isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto">
+                            <button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={isSubmitting}
+                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto"
+                            >
                                 {isSubmitting ? "Guardando..." : "Finalizar y Guardar"}
                             </button>
                         )}

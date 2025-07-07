@@ -12,8 +12,6 @@ const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar })
             try {
                 const todas = await getViviendas();
 
-                // Si estamos editando, mostramos todas las viviendas disponibles Y la que el cliente ya tiene asignada (si la tiene).
-                // Si estamos creando, solo mostramos las que no tienen cliente.
                 const disponibles = isEditing
                     ? todas.filter(v => v.clienteId === null || v.id === clienteAEditar?.viviendaId)
                     : todas.filter(v => v.clienteId === null);
@@ -28,16 +26,25 @@ const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar })
         cargarViviendas();
     }, [isEditing, clienteAEditar]);
 
+    // --- LÓGICA DE ORDENAMIENTO AÑADIDA AQUÍ ---
     const viviendaOptions = useMemo(() =>
-        viviendasDisponibles.map(v => {
-            // Usamos el valorFinal si existe, si no, el valorTotal.
-            const valorAMostrar = v.valorFinal !== undefined ? v.valorFinal : v.valorTotal;
-            return {
-                value: v.id,
-                label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${(valorAMostrar || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })})`,
-                valorTotal: valorAMostrar
-            }
-        }),
+        viviendasDisponibles
+            .sort((a, b) => {
+                // Primero, ordena por Manzana alfabéticamente
+                if (a.manzana < b.manzana) return -1;
+                if (a.manzana > b.manzana) return 1;
+
+                // Si la manzana es la misma, ordena por Número de Casa numéricamente
+                return a.numeroCasa - b.numeroCasa;
+            })
+            .map(v => {
+                const valorAMostrar = v.valorFinal !== undefined ? v.valorFinal : v.valorTotal;
+                return {
+                    value: v.id,
+                    label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${(valorAMostrar || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })})`,
+                    valorTotal: valorAMostrar
+                }
+            }),
         [viviendasDisponibles]);
 
     const handleSelectChange = useCallback((selectedOption) => {

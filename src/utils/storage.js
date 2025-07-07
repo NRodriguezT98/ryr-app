@@ -1,6 +1,7 @@
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch, setDoc, query, where } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { toSentenceCase } from './textFormatters';
 
 // --- LECTURA DE DATOS ---
 const getData = async (collectionName) => {
@@ -16,20 +17,26 @@ export const getAbonos = () => getData("abonos");
 export const getRenuncias = () => getData("renuncias");
 
 
-// --- CREACIÓN DE DATOS ---
+// --- FUNCIÓN MODIFICADA ---
 export const addVivienda = async (viviendaData) => {
     const nuevaVivienda = {
         ...viviendaData,
+        // --- APLICAMOS EL FORMATEO AUTOMÁTICO AQUÍ ---
+        nomenclatura: toSentenceCase(viviendaData.nomenclatura),
+        linderoNorte: toSentenceCase(viviendaData.linderoNorte),
+        linderoSur: toSentenceCase(viviendaData.linderoSur),
+        linderoOriente: toSentenceCase(viviendaData.linderoOriente),
+        linderoOccidente: toSentenceCase(viviendaData.linderoOccidente),
+        // Datos que ya estaban
         clienteId: null,
         clienteNombre: "",
         totalAbonado: 0,
         saldoPendiente: viviendaData.valorTotal,
         valorFinal: viviendaData.valorTotal,
-        descuentoMonto: 0,
-        descuentoMotivo: ""
     };
     await addDoc(collection(db, "viviendas"), nuevaVivienda);
 };
+
 
 const storage = getStorage();
 

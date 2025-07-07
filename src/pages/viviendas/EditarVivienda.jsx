@@ -1,14 +1,13 @@
-import React, { useEffect, useState, useCallback, useMemo, Fragment } from "react";
-import { useForm } from "../../hooks/useForm.jsx";
-import { updateVivienda, getViviendas } from "../../utils/storage";
-import { validateVivienda } from "./viviendaValidation.js";
+import React, { useEffect, useState, useMemo, Fragment, useCallback } from "react";
 import toast from 'react-hot-toast';
-import { NumericFormat } from 'react-number-format';
+import { useForm } from "../../hooks/useForm.jsx";
+import { validateVivienda } from "./viviendaValidation.js";
+import { updateVivienda } from "../../utils/storage";
 import { MapPin, FileText, CircleDollarSign, Check, Edit } from 'lucide-react';
 import FormularioVivienda from "./FormularioVivienda";
 import Modal from "../../components/Modal";
 import ModalConfirmacionCambios from '../../components/ModalConfirmacionCambios.jsx';
-import { Tooltip } from "react-tooltip";
+import { Tooltip } from 'react-tooltip';
 
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
@@ -22,8 +21,12 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
         numero: vivienda?.numeroCasa?.toString() || "",
         matricula: vivienda?.matricula || "",
         nomenclatura: vivienda?.nomenclatura || "",
+        linderoNorte: vivienda?.linderoNorte || "",
+        linderoSur: vivienda?.linderoSur || "",
+        linderoOriente: vivienda?.linderoOriente || "",
+        linderoOccidente: vivienda?.linderoOccidente || "",
+        urlCertificadoTradicion: vivienda?.urlCertificadoTradicion || null,
         valorBase: vivienda?.valorBase?.toString() || "0",
-        gastosNotariales: vivienda?.gastosNotariales?.toString() || "0",
         esEsquinera: vivienda?.recargoEsquinera > 0,
         recargoEsquinera: vivienda?.recargoEsquinera?.toString() || "0",
     }), [vivienda]);
@@ -32,13 +35,20 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
         initialState,
         onSubmit: async (data) => {
             const valorBaseNum = parseInt(String(data.valorBase).replace(/\D/g, ''), 10) || 0;
-            const gastosNotarialesNum = parseInt(String(data.gastosNotariales).replace(/\D/g, ''), 10) || 0;
             const recargoEsquineraNum = data.esEsquinera ? parseInt(data.recargoEsquinera, 10) || 0 : 0;
             const datosActualizados = {
-                manzana: data.manzana, numeroCasa: parseInt(data.numero, 10),
-                matricula: data.matricula.trim(), nomenclatura: data.nomenclatura.trim(),
-                valorBase: valorBaseNum, gastosNotariales: gastosNotarialesNum,
-                recargoEsquinera: recargoEsquineraNum, valorTotal: valorBaseNum + gastosNotarialesNum + recargoEsquineraNum,
+                manzana: data.manzana,
+                numeroCasa: parseInt(data.numero, 10),
+                matricula: data.matricula.trim(),
+                nomenclatura: data.nomenclatura,
+                linderoNorte: data.linderoNorte,
+                linderoSur: data.linderoSur,
+                linderoOriente: data.linderoOriente,
+                linderoOccidente: data.linderoOccidente,
+                urlCertificadoTradicion: data.urlCertificadoTradicion,
+                valorBase: valorBaseNum,
+                recargoEsquinera: recargoEsquineraNum,
+                valorTotal: valorBaseNum + recargoEsquineraNum + 5000000,
             };
             try {
                 await updateVivienda(vivienda.id, datosActualizados);
@@ -72,46 +82,68 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
             toast.error("Por favor, corrige los errores del formulario.");
             return;
         }
+
         const cambiosDetectados = [];
-        const campos = [
-            { key: 'manzana', label: 'Manzana' }, { key: 'numero', label: 'Número' },
-            { key: 'matricula', label: 'Matrícula' }, { key: 'nomenclatura', label: 'Nomenclatura' },
-            { key: 'valorBase', label: 'Valor Base', esMoneda: true },
-            { key: 'gastosNotariales', label: 'Gastos Notariales', esMoneda: true },
-            { key: 'esEsquinera', label: '¿Esquinera?' },
-            { key: 'recargoEsquinera', label: 'Recargo Esquinera', esMoneda: true }
-        ];
-        campos.forEach(campo => {
-            let valorAnterior = initialData[campo.key];
-            let valorActual = formData[campo.key];
+        const fieldLabels = {
+            manzana: 'Manzana', numero: 'Número de Casa', matricula: 'Matrícula', nomenclatura: 'Nomenclatura',
+            linderoNorte: 'Lindero Norte', linderoSur: 'Lindero Sur', linderoOriente: 'Lindero Oriente', linderoOccidente: 'Lindero Occidente',
+            valorBase: 'Valor Base', esEsquinera: '¿Esquinera?', recargoEsquinera: 'Recargo Esquinera'
+        };
+
+        const formatValue = (key, value) => {
+            if (key === 'valorBase' || key === 'recargoEsquinera') {
+                return formatCurrency(parseInt(String(value).replace(/\D/g, '')) || 0);
+            }
+            if (key === 'esEsquinera') {
+                return value ? 'Sí' : 'No';
+            }
+            return String(value);
+        };
+
+        for (const key in formData) {
+            if (key === 'urlCertificadoTradicion') continue;
+
+            const valorAnterior = initialData[key];
+            const valorActual = formData[key];
+
             if (String(valorAnterior) !== String(valorActual)) {
                 cambiosDetectados.push({
-                    campo: campo.label,
-                    anterior: campo.esMoneda ? formatCurrency(parseInt(String(valorAnterior).replace(/\D/g, ''))) : String(valorAnterior),
-                    actual: campo.esMoneda ? formatCurrency(parseInt(String(valorActual).replace(/\D/g, ''))) : String(valorActual)
+                    campo: fieldLabels[key] || key,
+                    anterior: formatValue(key, valorAnterior),
+                    actual: formatValue(key, valorActual)
                 });
             }
-        });
+        }
+
         if (cambiosDetectados.length === 0) {
             toast('No se han detectado cambios para guardar.', { icon: 'ℹ️' });
             return;
         }
+
         setCambios(cambiosDetectados);
         setIsConfirming(true);
     }, [formData, todasLasViviendas, vivienda, initialData, setErrors]);
 
-    // --- LÓGICA DE NAVEGACIÓN CORREGIDA ---
+    const valorTotalCalculado = useMemo(() => {
+        const valorBase = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
+        const recargoEsquinera = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
+        return valorBase + recargoEsquinera + 5000000;
+    }, [formData.valorBase, formData.esEsquinera, formData.recargoEsquinera]);
+
     const handleNextStep = () => {
         const allErrors = validateVivienda(formData, todasLasViviendas, vivienda);
         let stepErrors = {};
         if (step === 1) {
             if (allErrors.manzana) stepErrors.manzana = allErrors.manzana;
             if (allErrors.numero) stepErrors.numero = allErrors.numero;
+            if (allErrors.linderoNorte) stepErrors.linderoNorte = allErrors.linderoNorte;
+            if (allErrors.linderoSur) stepErrors.linderoSur = allErrors.linderoSur;
+            if (allErrors.linderoOriente) stepErrors.linderoOriente = allErrors.linderoOriente;
+            if (allErrors.linderoOccidente) stepErrors.linderoOccidente = allErrors.linderoOccidente;
         } else if (step === 2) {
             if (allErrors.matricula) stepErrors.matricula = allErrors.matricula;
             if (allErrors.nomenclatura) stepErrors.nomenclatura = allErrors.nomenclatura;
         }
-
         setErrors(stepErrors);
         if (Object.keys(stepErrors).length === 0) {
             setStep(s => s + 1);
@@ -133,15 +165,8 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
         });
     };
 
-    const valorTotalCalculado = useMemo(() => {
-        const valorBase = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
-        const gastosNotariales = parseInt(String(formData.gastosNotariales).replace(/\D/g, ''), 10) || 0;
-        const recargoEsquinera = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
-        return valorBase + gastosNotariales + recargoEsquinera;
-    }, [formData.valorBase, formData.gastosNotariales, formData.recargoEsquinera, formData.esEsquinera]);
-
     const STEPS_CONFIG = [
-        { number: 1, title: 'Ubicación', icon: MapPin },
+        { number: 1, title: 'Ubicación y Linderos', icon: MapPin },
         { number: 2, title: 'Info. Legal', icon: FileText },
         { number: 3, title: 'Valor', icon: CircleDollarSign },
     ];
@@ -180,6 +205,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                     handleValueChange={handleValueChange}
                     handleCheckboxChange={handleCheckboxChange}
                     valorTotalCalculado={valorTotalCalculado}
+                    gastosNotarialesFijos={5000000}
                 />
 
                 <div className="mt-10 pt-6 border-t flex justify-between">
@@ -192,7 +218,11 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                             Siguiente
                         </button>
                     ) : (
-                        <span className="ml-auto" data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
+                        <span
+                            className="ml-auto"
+                            data-tooltip-id="app-tooltip"
+                            data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}
+                        >
                             <button
                                 type="button"
                                 onClick={handlePreSave}
@@ -210,7 +240,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                 isOpen={isConfirming}
                 onClose={() => setIsConfirming(false)}
                 onConfirm={handleSubmit}
-                titulo="Confirmar Cambios"
+                titulo="Confirmar Cambios de la Vivienda"
                 cambios={cambios}
                 isSaving={isSubmitting}
             />

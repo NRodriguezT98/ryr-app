@@ -20,18 +20,6 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
         dispatch({ type: 'UPDATE_FINANCIAL_FIELD', payload: { section, field, value } });
     }, [dispatch]);
 
-    const resumenFinanciero = useMemo(() => {
-        const montoCuota = financiero.aplicaCuotaInicial ? (financiero.cuotaInicial.monto || 0) : 0;
-        const montoCredito = financiero.aplicaCredito ? (financiero.credito.monto || 0) : 0;
-        const montoSubVivienda = financiero.aplicaSubsidioVivienda ? (financiero.subsidioVivienda.monto || 0) : 0;
-        const montoSubCaja = financiero.aplicaSubsidioCaja ? (financiero.subsidioCaja.monto || 0) : 0;
-        // --- CÁLCULO ACTUALIZADO ---
-        const montoGastosNotariales = financiero.gastosNotariales?.monto || 0;
-
-        const totalAportado = montoCuota + montoCredito + montoSubVivienda + montoSubCaja + montoGastosNotariales;
-        return { totalAportado, diferencia: viviendaSeleccionada.valorTotal - totalAportado };
-    }, [financiero, viviendaSeleccionada.valorTotal]);
-
     const handleFileUpload = (section, field, url) => {
         dispatch({ type: 'UPDATE_FINANCIAL_FIELD', payload: { section, field, value: url } });
     };
@@ -40,21 +28,42 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
         dispatch({ type: 'UPDATE_FINANCIAL_FIELD', payload: { section, field, value: null } });
     };
 
+    const resumenFinanciero = useMemo(() => {
+        const montoCuota = financiero.aplicaCuotaInicial ? (financiero.cuotaInicial.monto || 0) : 0;
+        const montoCredito = financiero.aplicaCredito ? (financiero.credito.monto || 0) : 0;
+        const montoSubVivienda = financiero.aplicaSubsidioVivienda ? (financiero.subsidioVivienda.monto || 0) : 0;
+        const montoSubCaja = financiero.aplicaSubsidioCaja ? (financiero.subsidioCaja.monto || 0) : 0;
+
+        // El monto de gastos notariales es una fuente de pago fija.
+        const montoGastosNotariales = financiero.gastosNotariales?.monto || 0;
+
+        const totalRecursos = montoCuota + montoCredito + montoSubVivienda + montoSubCaja + montoGastosNotariales;
+
+        // El total que el cliente debe pagar ahora es el valor de la vivienda MÁS los gastos notariales.
+        const totalAPagar = (viviendaSeleccionada.valorTotal || 0) + montoGastosNotariales;
+
+        return {
+            totalRecursos,
+            totalAPagar,
+            diferencia: totalAPagar - totalRecursos
+        };
+    }, [financiero, viviendaSeleccionada.valorTotal]);
+
     return (
         <div className="animate-fade-in space-y-6">
             <div className='text-center'>
                 <h3 className="text-2xl font-bold text-gray-800">3. Estructura Financiera</h3>
-                <p className="text-sm text-gray-500 mt-1 max-w-xl mx-auto">Define cómo el cliente cubrirá el valor de la vivienda.</p>
+                <p className="text-sm text-gray-500 mt-1 max-w-xl mx-auto">Define cómo el cliente cubrirá el valor total de la operación.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center p-4 bg-gray-50 rounded-lg border">
                 <div>
-                    <p className="text-sm font-semibold text-gray-500">Valor Vivienda</p>
-                    <p className="text-lg font-bold text-blue-600">{formatCurrency(viviendaSeleccionada.valorTotal)}</p>
+                    <p className="text-sm font-semibold text-gray-500">Total a Pagar</p>
+                    <p className="text-lg font-bold text-blue-600">{formatCurrency(resumenFinanciero.totalAPagar)}</p>
                 </div>
                 <div>
-                    <p className="text-sm font-semibold text-gray-500">Total Recursos Propios</p>
-                    <p className="text-lg font-bold text-gray-800">{formatCurrency(resumenFinanciero.totalAportado)}</p>
+                    <p className="text-sm font-semibold text-gray-500">Total Recursos</p>
+                    <p className="text-lg font-bold text-gray-800">{formatCurrency(resumenFinanciero.totalRecursos)}</p>
                 </div>
                 <div>
                     <p className="text-sm font-semibold text-gray-500">Diferencia</p>
@@ -70,6 +79,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
             }
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 pt-6 border-t">
+                {/* Gastos Notariales como primera tarjeta, abarcando todo el ancho */}
                 <div className="lg:col-span-2">
                     <div className="p-4 border rounded-xl bg-gray-100">
                         <label className="flex items-center space-x-3">
@@ -97,6 +107,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                     </div>
                 </div>
 
+                {/* El resto de las fuentes de pago */}
                 <div className="space-y-6">
                     <div className="p-4 border rounded-xl h-full">
                         <label className="flex items-center space-x-3 cursor-pointer">

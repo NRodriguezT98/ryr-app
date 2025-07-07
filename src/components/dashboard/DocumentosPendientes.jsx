@@ -1,20 +1,44 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { User, AlertCircle, FileWarning } from 'lucide-react';
+import { User, FileWarning, FileText } from 'lucide-react';
+
+// Función de ayuda para obtener la lista de documentos faltantes
+const getDocumentosFaltantes = (cliente) => {
+    const faltantes = [];
+    if (!cliente.datosCliente.urlCedula) {
+        faltantes.push('Cédula');
+    }
+    if (cliente.financiero?.aplicaCredito && !cliente.financiero.credito.urlCartaAprobacion) {
+        faltantes.push('Carta Aprob. Crédito');
+    }
+    if (cliente.financiero?.aplicaSubsidioVivienda && !cliente.financiero.subsidioVivienda.urlSoporte) {
+        faltantes.push('Soporte Sub. Vivienda');
+    }
+    if (cliente.financiero?.aplicaSubsidioCaja && !cliente.financiero.subsidioCaja.urlSoporte) {
+        faltantes.push('Soporte Sub. Caja');
+    }
+    if (cliente.financiero?.aplicaCuotaInicial && !cliente.financiero.cuotaInicial.urlSoportePago) {
+        faltantes.push('Soporte Cuota Inicial');
+    }
+    if (cliente.financiero?.gastosNotariales && !cliente.financiero.gastosNotariales.urlSoportePago) {
+        faltantes.push('Soporte Gastos Notariales');
+    }
+    return faltantes;
+};
+
 
 const DocumentosPendientes = ({ clientes }) => {
-    // --- LÓGICA DE FILTRADO MEJORADA ---
-    const clientesConDocumentosPendientes = clientes
-        .filter(cliente => cliente.status !== 'renunciado') // Solo consideramos clientes no renunciados
-        .filter(cliente => {
-            if (!cliente.datosCliente.urlCedula) return true;
-            if (cliente.financiero?.aplicaCredito && !cliente.financiero.credito.urlCartaAprobacion) return true;
-            if (cliente.financiero?.aplicaSubsidioVivienda && !cliente.financiero.subsidioVivienda.urlSoporte) return true;
-            if (cliente.financiero?.aplicaSubsidioCaja && !cliente.financiero.subsidioCaja.urlSoporte) return true;
-            if (cliente.financiero?.aplicaCuotaInicial && !cliente.financiero.cuotaInicial.urlSoportePago) return true;
-            if (cliente.financiero?.gastosNotariales && !cliente.financiero.gastosNotariales.urlSoportePago) return true;
-            return false;
-        });
+
+    const clientesConPendientes = useMemo(() => {
+        return clientes
+            .filter(cliente => cliente.status !== 'renunciado') // Solo clientes activos
+            .map(cliente => ({
+                cliente,
+                documentosFaltantes: getDocumentosFaltantes(cliente)
+            }))
+            .filter(item => item.documentosFaltantes.length > 0); // Solo los que tienen al menos un documento faltante
+    }, [clientes]);
+
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg h-full">
@@ -23,9 +47,9 @@ const DocumentosPendientes = ({ clientes }) => {
                 Documentación Pendiente
             </h2>
             <div className='max-h-80 overflow-y-auto'>
-                {clientesConDocumentosPendientes.length > 0 ? (
+                {clientesConPendientes.length > 0 ? (
                     <ul className="space-y-3">
-                        {clientesConDocumentosPendientes.map(cliente => (
+                        {clientesConPendientes.map(({ cliente, documentosFaltantes }) => (
                             <li key={cliente.id}>
                                 <Link to={`/clientes/detalle/${cliente.id}`} className="block p-3 rounded-lg hover:bg-gray-100 transition-colors">
                                     <div className="flex items-center justify-between">
@@ -35,10 +59,13 @@ const DocumentosPendientes = ({ clientes }) => {
                                             </div>
                                             <p className="font-semibold text-gray-800">{cliente.datosCliente.nombres} {cliente.datosCliente.apellidos}</p>
                                         </div>
-                                        <div className="flex items-center gap-1 text-xs text-orange-600 font-semibold">
-                                            <AlertCircle size={14} />
-                                            <span>Revisar</span>
-                                        </div>
+                                    </div>
+                                    {/* --- LISTA DE DOCUMENTOS FALTANTES --- */}
+                                    <div className='mt-2 pl-11 text-xs'>
+                                        <p className='text-orange-700 font-semibold flex items-center gap-1.5'>
+                                            <FileText size={14} />
+                                            Falta: <span className='font-normal text-orange-600'>{documentosFaltantes.join(', ')}</span>
+                                        </p>
                                     </div>
                                 </Link>
                             </li>
@@ -47,7 +74,7 @@ const DocumentosPendientes = ({ clientes }) => {
                 ) : (
                     <div className="text-center py-10">
                         <p className="text-gray-500">¡Felicidades!</p>
-                        <p className="font-semibold text-green-600 mt-1">Todos los clientes tienen su documentación completa.</p>
+                        <p className="font-semibold text-green-600 mt-1">Todos los clientes activos tienen su documentación completa.</p>
                     </div>
                 )}
             </div>
