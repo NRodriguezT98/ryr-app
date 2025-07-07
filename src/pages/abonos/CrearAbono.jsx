@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useCallback } from "react";
 import AnimatedPage from "../../components/AnimatedPage";
+import toast from "react-hot-toast";
 import { useData } from "../../context/DataContext";
 import FuenteDePagoCard from "./FuenteDePagoCard";
 import AbonoCard from "./AbonoCard";
-import { Search, WalletCards } from "lucide-react"; // Importamos un nuevo ícono
+import { Search } from "lucide-react";
 
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
@@ -12,14 +13,10 @@ const CrearAbono = () => {
     const [selectedClienteId, setSelectedClienteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
-    const clientesConVivienda = useMemo(() =>
-        clientes.filter(c => c.vivienda),
-        [clientes]);
+    const clientesConVivienda = useMemo(() => clientes.filter(c => c.vivienda), [clientes]);
 
     const clientesFiltrados = useMemo(() => {
-        if (!searchTerm.trim()) {
-            return [];
-        }
+        if (!searchTerm.trim()) return clientesConVivienda;
         const lowerCaseSearchTerm = searchTerm.toLowerCase().replace(/\s/g, '');
         return clientesConVivienda.filter(c => {
             const nombreCompleto = `${c.datosCliente.nombres} ${c.datosCliente.apellidos}`.toLowerCase();
@@ -39,7 +36,12 @@ const CrearAbono = () => {
         const viviendaActual = clienteActual.vivienda;
         if (!viviendaActual) return null;
 
-        const historial = abonos.filter(a => a.viviendaId === viviendaActual.id).sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
+        // --- LÓGICA DE BÚSQUEDA DEFINITIVA ---
+        // Ahora solo nos interesan los abonos cuyo estado sea 'activo'
+        const historial = abonos
+            .filter(a => a.viviendaId === viviendaActual.id && a.estadoProceso === 'activo')
+            .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
+
         const fuentes = [];
         if (clienteActual.financiero) {
             const { financiero } = clienteActual;
@@ -91,7 +93,6 @@ const CrearAbono = () => {
                             )}
                         </ul>
                     </div>
-
                     <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg border border-gray-100 min-h-[70vh]">
                         {datosClienteSeleccionado ? (
                             <div className="animate-fade-in">
@@ -100,7 +101,6 @@ const CrearAbono = () => {
                                     <div><p className="text-sm font-semibold text-gray-500">Total Abonado</p><p className="text-lg font-bold text-green-600">{formatCurrency(datosClienteSeleccionado.vivienda.totalAbonado)}</p></div>
                                     <div><p className="text-sm font-semibold text-gray-500">Saldo Pendiente</p><p className="text-lg font-bold text-red-600">{formatCurrency(datosClienteSeleccionado.vivienda.saldoPendiente)}</p></div>
                                 </div>
-
                                 <h3 className="text-xl font-bold mb-4 text-gray-800">Fuentes de Pago</h3>
                                 {datosClienteSeleccionado.fuentes.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -109,7 +109,6 @@ const CrearAbono = () => {
                                         ))}
                                     </div>
                                 ) : <p className="text-center text-gray-500 py-4">Este cliente no tiene una estructura financiera definida.</p>}
-
                                 <div className="mt-12 pt-6 border-t">
                                     <h3 className="text-xl font-bold mb-4 text-gray-800">Historial de Abonos</h3>
                                     {datosClienteSeleccionado.historial.length > 0 ? (
@@ -122,13 +121,8 @@ const CrearAbono = () => {
                                 </div>
                             </div>
                         ) : (
-                            // --- NUEVO ESTADO VACÍO E INSTRUCTIVO ---
-                            <div className="text-center flex flex-col justify-center items-center h-full py-16">
-                                <WalletCards size={64} className="text-gray-300 mb-4" />
-                                <h3 className="text-xl font-bold text-gray-700">Centro de Gestión de Pagos</h3>
-                                <p className="text-gray-500 mt-2 max-w-sm">
-                                    Comienza escribiendo en el buscador para encontrar un cliente y ver su estado financiero detallado.
-                                </p>
+                            <div className="text-center flex flex-col justify-center items-center h-full">
+                                <p className="text-gray-500">Comienza buscando un cliente en el panel de la izquierda.</p>
                             </div>
                         )}
                     </div>

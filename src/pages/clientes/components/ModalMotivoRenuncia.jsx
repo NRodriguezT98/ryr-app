@@ -4,7 +4,6 @@ import Select from 'react-select';
 import { UserX } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// --- LISTA DE MOTIVOS ACTUALIZADA Y ESTRATÉGICA ---
 const motivosOptions = [
     {
         label: "Motivos Financieros",
@@ -37,9 +36,12 @@ const motivosOptions = [
     }
 ];
 
+const getTodayString = () => new Date().toISOString().split('T')[0];
+
 const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente }) => {
     const [motivo, setMotivo] = useState(null);
     const [observacion, setObservacion] = useState('');
+    const [fechaRenuncia, setFechaRenuncia] = useState(getTodayString());
 
     const handleConfirmar = () => {
         if (!motivo) {
@@ -50,12 +52,19 @@ const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente }) => {
             toast.error("Por favor, especifica el motivo en el campo de observación.");
             return;
         }
-        onConfirm(motivo.value, observacion);
+        if (!fechaRenuncia) {
+            toast.error("Por favor, selecciona una fecha de renuncia.");
+            return;
+        }
+        onConfirm(motivo.value, observacion, fechaRenuncia);
     };
 
     const portalStyles = {
         menuPortal: base => ({ ...base, zIndex: 9999 })
     };
+
+    // La fecha mínima es la fecha de creación del cliente
+    const minDate = cliente?.fechaCreacion ? cliente.fechaCreacion.split('T')[0] : null;
 
     return (
         <Modal
@@ -68,6 +77,17 @@ const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente }) => {
                 <p className="text-center text-gray-600 -mt-4 mb-4">
                     Estás iniciando el proceso de renuncia para el cliente <strong className='text-gray-800'>{cliente?.datosCliente?.nombres} {cliente?.datosCliente?.apellidos}</strong>.
                 </p>
+                <div>
+                    <label className="block font-medium mb-1">Fecha de Renuncia</label>
+                    <input
+                        type="date"
+                        value={fechaRenuncia}
+                        onChange={(e) => setFechaRenuncia(e.target.value)}
+                        min={minDate}
+                        max={getTodayString()}
+                        className="w-full border p-2 rounded-lg"
+                    />
+                </div>
                 <div>
                     <label className="block font-medium mb-1">Motivo Principal</label>
                     <Select
@@ -82,7 +102,7 @@ const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente }) => {
 
                 {motivo?.value === 'Otro' && (
                     <div className='animate-fade-in'>
-                        <label className="block font-medium mb-1">Por favor, especifica el motivo</label>
+                        <label className="block font-medium mb-1">Especifica el motivo</label>
                         <textarea
                             value={observacion}
                             onChange={(e) => setObservacion(e.target.value)}

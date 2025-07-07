@@ -2,77 +2,55 @@ import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { useData } from '../../context/DataContext';
+import { useAbonosFilters } from '../../hooks/useAbonosFilters';
 import AbonoCard from './AbonoCard';
 import { deleteAbono } from '../../utils/storage';
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import toast from 'react-hot-toast';
-import Select from 'react-select';
-import { Filter, Search } from 'lucide-react';
+import Select, { components } from 'react-select';
+import { Filter } from 'lucide-react';
 import UndoToast from '../../components/UndoToast';
 
-const ListarAbonos = () => {
-    const { isLoading, abonos, clientes, viviendas, recargarDatos } = useData();
+const CustomOption = (props) => {
+    const { innerProps, label, data } = props;
+    return (
+        <div {...innerProps} className="p-3 hover:bg-blue-50 cursor-pointer">
+            <p className="font-semibold text-gray-800">{label}</p>
+            {data.cliente?.datosCliente?.cedula && (
+                <p className="text-xs text-gray-500">{`C.C. ${data.cliente.datosCliente.cedula}`}</p>
+            )}
+        </div>
+    );
+};
 
-    // Estados para los modales y la función de deshacer
+const ListarAbonos = () => {
+    const { isLoading, abonos, clientes, viviendas, renuncias, recargarDatos } = useData();
+
+    const {
+        abonosFiltrados,
+        setClienteFiltro,
+        fechaInicioFiltro, setFechaInicioFiltro,
+        fechaFinFiltro, setFechaFinFiltro,
+        setFuenteFiltro,
+        statusFiltro, setStatusFiltro
+    } = useAbonosFilters(abonos, clientes, viviendas, renuncias);
+
     const [abonoAEditar, setAbonoAEditar] = useState(null);
     const [abonoAEliminar, setAbonoAEliminar] = useState(null);
     const [abonosOcultos, setAbonosOcultos] = useState([]);
     const deletionTimeouts = useRef({});
 
-    // Estados para todos los filtros
-    const [searchTerm, setSearchTerm] = useState('');
-    const [fechaInicioFiltro, setFechaInicioFiltro] = useState('');
-    const [fechaFinFiltro, setFechaFinFiltro] = useState('');
-    const [fuenteFiltro, setFuenteFiltro] = useState(null);
-    const [statusFiltro, setStatusFiltro] = useState('activo');
-
-    const abonosFiltrados = useMemo(() => {
-        if (!abonos || !clientes || !viviendas) return [];
-
-        // 1. Enriquecemos cada abono con la información que necesitamos
-        let abonosProcesados = abonos.map(abono => {
-            const cliente = clientes.find(c => c.id === abono.clienteId);
-            const vivienda = viviendas.find(v => v.id === abono.viviendaId);
-            const clienteInfo = cliente && vivienda
-                ? `${vivienda.manzana}${vivienda.numeroCasa} - ${cliente.datosCliente.nombres.toUpperCase()} ${cliente.datosCliente.apellidos.toUpperCase()}`
-                : 'Información no disponible';
-            const nombreCompleto = cliente ? `${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}` : '';
-            const ubicacion = vivienda ? `${vivienda.manzana}${vivienda.numeroCasa}` : '';
-
-            return { ...abono, clienteInfo, vivienda, clienteStatus: cliente?.status, nombreCompleto, ubicacion };
-        });
-
-        // 2. Aplicamos todos los filtros
-        if (statusFiltro !== 'todos') {
-            if (statusFiltro === 'activo') {
-                abonosProcesados = abonosProcesados.filter(a => a.clienteStatus !== 'renunciado');
-            } else { // 'renunciado'
-                abonosProcesados = abonosProcesados.filter(a => a.clienteStatus === 'renunciado');
-            }
-        }
-
-        if (searchTerm) {
-            const lowerCaseSearchTerm = searchTerm.toLowerCase().replace(/\s/g, '');
-            abonosProcesados = abonosProcesados.filter(a =>
-                a.nombreCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                a.ubicacion.toLowerCase().replace(/\s/g, '').includes(lowerCaseSearchTerm)
-            );
-        }
-
-        if (fechaInicioFiltro) {
-            abonosProcesados = abonosProcesados.filter(a => new Date(a.fechaPago + 'T00:00:00') >= new Date(fechaInicioFiltro + 'T00:00:00'));
-        }
-        if (fechaFinFiltro) {
-            abonosProcesados = abonosProcesados.filter(a => new Date(a.fechaPago + 'T00:00:00') <= new Date(fechaFinFiltro + 'T00:00:00'));
-        }
-        if (fuenteFiltro && fuenteFiltro.value) {
-            abonosProcesados = abonosProcesados.filter(a => a.fuente === fuenteFiltro.value);
-        }
-
-        return abonosProcesados.sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
-
-    }, [abonos, clientes, viviendas, searchTerm, fechaInicioFiltro, fechaFinFiltro, fuenteFiltro, statusFiltro]);
+    const clienteOptions = useMemo(() => {
+        const opciones = clientes
+            .filter(c => c.vivienda)
+            .map(c => ({
+                value: c.id,
+                label: `${c.vivienda.manzana}${c.vivienda.numeroCasa} - ${c.datosCliente.nombres} ${c.datosCliente.apellidos}`,
+                cliente: c
+            }));
+        return [{ value: null, label: 'Todos los Clientes', cliente: null }, ...opciones];
+    }, [clientes]);
 
     const fuenteOptions = useMemo(() => [
         { value: null, label: 'Todas las Fuentes' },
@@ -113,14 +91,18 @@ const ListarAbonos = () => {
 
     const abonosVisibles = abonosFiltrados.filter(a => !abonosOcultos.includes(a.id));
 
-    if (isLoading) { return <div className="text-center p-10 animate-pulse">Cargando historial de abonos...</div>; }
+    if (isLoading) {
+        return <div className="text-center p-10 animate-pulse">Cargando historial de abonos...</div>;
+    }
 
     return (
         <AnimatedPage>
             <div className="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-2xl mt-10 relative">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-8">
                     <div className='text-center md:text-left'>
-                        <h2 className="text-4xl font-extrabold text-green-600 uppercase font-poppins">Historial de Abonos</h2>
+                        <h2 className="text-4xl font-extrabold text-green-600 uppercase font-poppins">
+                            Historial de Abonos
+                        </h2>
                         <p className="text-gray-500 mt-1">Consulta y filtra todos los pagos registrados en el sistema.</p>
                     </div>
                     <Link to="/abonos" className="mt-4 md:mt-0">
@@ -129,24 +111,14 @@ const ListarAbonos = () => {
                         </button>
                     </Link>
                 </div>
-
                 <div className="p-4 bg-gray-50 rounded-lg border mb-8">
                     <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2"><Filter size={18} /> Opciones de Filtro</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-1">
-                            <label className="text-xs font-medium text-gray-600">Buscar por Cliente o Vivienda</label>
-                            <div className="relative mt-1">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                                <input
-                                    type="text"
-                                    placeholder="Ej: Cesar Arana o A1..."
-                                    className="w-full pl-10 pr-4 py-2 border rounded-lg"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
+                            <label className="text-xs font-medium text-gray-600">Cliente / Vivienda</label>
+                            <Select options={clienteOptions} onChange={setClienteFiltro} isClearable placeholder="Todos..." components={{ Option: CustomOption }} />
                         </div>
-                        <div>
+                        <div className="lg:col-span-1">
                             <label className="text-xs font-medium text-gray-600">Fuente de Pago</label>
                             <Select options={fuenteOptions} onChange={setFuenteFiltro} isClearable placeholder="Todas..." />
                         </div>
@@ -170,7 +142,6 @@ const ListarAbonos = () => {
                         </div>
                     </div>
                 </div>
-
                 {abonosVisibles.length > 0 ? (
                     <div className="space-y-4">
                         {abonosVisibles.map(abono => (

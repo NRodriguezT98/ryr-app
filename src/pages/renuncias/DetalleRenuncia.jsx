@@ -14,22 +14,16 @@ const DetalleRenuncia = () => {
 
     const datosDetalle = useMemo(() => {
         if (isLoading) return null;
-
         const renuncia = renuncias.find(r => r.id === renunciaId);
         if (!renuncia) return null;
-
         const cliente = clientes.find(c => c.id === renuncia.clienteId);
-
-        // Lógica final y robusta: El historial viene directamente del documento de renuncia.
         const historialAbonos = (renuncia.historialAbonos || []).map(abono => ({
             ...abono,
             clienteInfo: renuncia.clienteNombre,
             clienteStatus: 'renunciado'
         }));
-
         return { renuncia, cliente, historialAbonos };
     }, [renunciaId, renuncias, clientes, isLoading]);
-
 
     if (isLoading) {
         return <div className="text-center p-10 animate-pulse">Cargando detalles de la renuncia...</div>;
@@ -73,7 +67,7 @@ const DetalleRenuncia = () => {
                     <div className="mt-8 pt-6 border-t">
                         <h3 className="font-bold text-xl mb-4 flex items-center gap-2 text-green-700"><CheckCircle /> Devolución Completada</h3>
                         <div className="bg-green-50 border border-green-200 p-5 rounded-xl space-y-3 text-sm">
-                            <p><strong>Fecha de Devolución:</strong> {new Date(renuncia.fechaDevolucion).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                            <p><strong>Fecha de Devolución:</strong> {renuncia.fechaDevolucion ? new Date(renuncia.fechaDevolucion).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'No registrada'}</p>
                             {renuncia.observacionDevolucion && (
                                 <p className="flex items-start gap-2">
                                     <strong className='flex-shrink-0'>Observaciones:</strong>
@@ -92,14 +86,16 @@ const DetalleRenuncia = () => {
                 <div className="mt-8 pt-6 border-t">
                     <h3 className="font-bold text-xl mb-4 flex items-center gap-2"><DollarSign /> Desglose de Devolución</h3>
                     <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg text-center mb-6">
-                        <p className="text-sm text-blue-800 font-semibold">Total a Devolver al Cliente</p>
+                        <p className="text-sm text-blue-800 font-semibold">
+                            {renuncia.estadoDevolucion === 'Pagada' ? 'Total Devuelto al Cliente' : 'Total a Devolver al Cliente'}
+                        </p>
                         <p className="text-3xl font-bold text-blue-700">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</p>
                     </div>
 
                     <h4 className="font-semibold mb-4">Abonos Registrados para este Proceso:</h4>
                     {historialAbonos.length > 0 ? (
                         <div className="space-y-4">
-                            {historialAbonos.map(abono => <AbonoCard key={abono.id} abono={abono} />)}
+                            {historialAbonos.map(abono => <AbonoCard key={abono.id} abono={abono} isReadOnly={true} />)}
                         </div>
                     ) : (
                         <p className="text-center text-gray-500 py-6">No se encontraron abonos registrados para este proceso de renuncia.</p>

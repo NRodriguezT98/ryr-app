@@ -7,9 +7,16 @@ import { getClientes, addClienteAndAssignVivienda } from '../../utils/storage.js
 import toast from 'react-hot-toast';
 import { Home, User, CircleDollarSign, Check } from 'lucide-react';
 
+// --- FUNCIÓN DE AYUDA AÑADIDA AQUÍ ---
+const getTodayString = () => new Date().toISOString().split('T')[0];
+
 const blankInitialState = {
     viviendaSeleccionada: { id: null, valorTotal: 0, label: '' },
-    datosCliente: { nombres: '', apellidos: '', cedula: '', telefono: '', correo: '', direccion: '', urlCedula: null },
+    datosCliente: {
+        nombres: '', apellidos: '', cedula: '', telefono: '',
+        correo: '', direccion: '', urlCedula: null,
+        fechaIngreso: getTodayString()
+    },
     financiero: {
         aplicaCuotaInicial: false,
         cuotaInicial: { metodo: '', monto: 0, urlSoportePago: null },
@@ -19,7 +26,6 @@ const blankInitialState = {
         subsidioVivienda: { monto: 0, urlSoporte: null },
         aplicaSubsidioCaja: false,
         subsidioCaja: { caja: '', monto: 0, urlSoporte: null },
-        // --- CAMPO AÑADIDO AQUÍ ---
         gastosNotariales: { aplica: true, monto: 5000000, urlSoportePago: null }
     },
     seguimiento: {},

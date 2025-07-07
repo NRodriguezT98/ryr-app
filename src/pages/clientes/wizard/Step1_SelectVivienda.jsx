@@ -3,7 +3,6 @@ import Select from 'react-select';
 import toast from 'react-hot-toast';
 import { getViviendas } from '../../../utils/storage';
 
-// Recibimos 'clienteAEditar' como nueva prop
 const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [viviendasDisponibles, setViviendasDisponibles] = useState([]);
@@ -13,12 +12,13 @@ const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar })
             try {
                 const todas = await getViviendas();
 
-                // La lógica de filtrado ahora funcionará porque tiene acceso a clienteAEditar
-                const viviendasFiltradas = isEditing
+                // Si estamos editando, mostramos todas las viviendas disponibles Y la que el cliente ya tiene asignada (si la tiene).
+                // Si estamos creando, solo mostramos las que no tienen cliente.
+                const disponibles = isEditing
                     ? todas.filter(v => v.clienteId === null || v.id === clienteAEditar?.viviendaId)
                     : todas.filter(v => v.clienteId === null);
 
-                setViviendasDisponibles(viviendasFiltradas);
+                setViviendasDisponibles(disponibles);
             } catch (error) {
                 toast.error("Error al cargar las viviendas disponibles.");
             } finally {
@@ -30,10 +30,11 @@ const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar })
 
     const viviendaOptions = useMemo(() =>
         viviendasDisponibles.map(v => {
+            // Usamos el valorFinal si existe, si no, el valorTotal.
             const valorAMostrar = v.valorFinal !== undefined ? v.valorFinal : v.valorTotal;
             return {
                 value: v.id,
-                label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${valorAMostrar.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })})`,
+                label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${(valorAMostrar || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })})`,
                 valorTotal: valorAMostrar
             }
         }),

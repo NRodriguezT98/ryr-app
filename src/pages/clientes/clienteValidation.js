@@ -53,6 +53,12 @@ export const validateCliente = (formData, todosLosClientes, editingId = null) =>
     if (!formData.direccion || !formData.direccion.trim()) {
         errors.direccion = "La dirección es obligatoria.";
     }
+
+    // --- NUEVA VALIDACIÓN DE FECHA ---
+    if (!formData.fechaIngreso) {
+        errors.fechaIngreso = "La fecha de ingreso es obligatoria.";
+    }
+
     // --- NUEVA REGLA AÑADIDA ---
     else if (!/^[a-zA-Z0-9\s#\-áéíóúÁÉÍÓÚñÑ]*$/.test(formData.direccion)) {
         errors.direccion = "La dirección solo puede contener letras, números, espacios y los símbolos # -";
