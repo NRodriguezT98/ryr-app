@@ -8,6 +8,9 @@ import { addVivienda, getViviendas } from "../../utils/storage";
 import { MapPin, FileText, CircleDollarSign, Check } from 'lucide-react';
 import FormularioVivienda from "./FormularioVivienda";
 
+// Definimos el valor como una constante para fácil mantenimiento
+const GASTOS_NOTARIALES_FIJOS = 5000000;
+
 const initialState = {
     manzana: "",
     numero: "",
@@ -55,6 +58,9 @@ const CrearVivienda = () => {
             const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
             const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
 
+            // El valor total ahora siempre incluye los gastos notariales fijos.
+            const valorTotalVivienda = valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS;
+
             const nuevaVivienda = {
                 manzana: formData.manzana,
                 numeroCasa: parseInt(formData.numero, 10),
@@ -67,7 +73,8 @@ const CrearVivienda = () => {
                 urlCertificadoTradicion: formData.urlCertificadoTradicion,
                 valorBase: valorBaseNum,
                 recargoEsquinera: recargoEsquineraNum,
-                valorTotal: valorBaseNum + recargoEsquineraNum, // El valor total ya NO incluye gastos notariales.
+                gastosNotariales: GASTOS_NOTARIALES_FIJOS, // Guardamos el valor fijo
+                valorTotal: valorTotalVivienda,
             };
             try {
                 await addVivienda(nuevaVivienda);
@@ -84,7 +91,7 @@ const CrearVivienda = () => {
     const valorTotalCalculado = useMemo(() => {
         const valorBase = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
         const recargoEsquinera = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
-        return valorBase + recargoEsquinera;
+        return valorBase + recargoEsquinera + GASTOS_NOTARIALES_FIJOS;
     }, [formData.valorBase, formData.esEsquinera, formData.recargoEsquinera]);
 
     const handleNextStep = () => {
@@ -162,6 +169,7 @@ const CrearVivienda = () => {
                         handleValueChange={handleValueChange}
                         handleCheckboxChange={handleCheckboxChange}
                         valorTotalCalculado={valorTotalCalculado}
+                        gastosNotarialesFijos={GASTOS_NOTARIALES_FIJOS}
                     />
 
                     <div className="mt-10 flex justify-between">

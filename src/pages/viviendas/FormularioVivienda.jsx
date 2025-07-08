@@ -2,15 +2,20 @@ import React from 'react';
 import { NumericFormat } from 'react-number-format';
 import AnimatedPage from '../../components/AnimatedPage';
 import FileUpload from '../../components/FileUpload';
+import { PlusCircle } from 'lucide-react';
 
-const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleValueChange, handleCheckboxChange, valorTotalCalculado }) => {
+// Componente de ayuda para el nuevo resumen de valores
+const ResumenValorItem = ({ label, value }) => (
+    <div className="flex justify-between text-sm">
+        <p className="text-gray-600">{label}:</p>
+        <p className="font-medium text-gray-800">{value.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}</p>
+    </div>
+);
 
-    const handleUploadSuccess = (url) => {
-        handleValueChange('urlCertificadoTradicion', url);
-    };
-    const handleRemoveFile = () => {
-        handleValueChange('urlCertificadoTradicion', null);
-    };
+const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleValueChange, handleCheckboxChange, valorTotalCalculado, gastosNotarialesFijos }) => {
+
+    const handleUploadSuccess = (url) => { handleValueChange('urlCertificadoTradicion', url); };
+    const handleRemoveFile = () => { handleValueChange('urlCertificadoTradicion', null); };
 
     return (
         <div className="space-y-6 min-h-[350px]">
@@ -92,6 +97,7 @@ const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleV
                             <NumericFormat id="valorBase" name="valorBase" value={formData.valorBase} onValueChange={(values) => handleValueChange('valorBase', values.value)} thousandSeparator="." decimalSeparator="," prefix="$ " className={`w-full border p-3 rounded-lg ${errors.valorBase ? "border-red-500" : "border-gray-300"}`} />
                             {errors.valorBase && <p className="text-red-600 text-sm mt-1">{errors.valorBase}</p>}
                         </div>
+
                         <div>
                             <label className="flex items-center space-x-3 cursor-pointer">
                                 <input type="checkbox" name="esEsquinera" checked={formData.esEsquinera} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-red-600 focus:ring-red-500" />
@@ -107,9 +113,19 @@ const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleV
                                 </div>
                             )}
                         </div>
-                        <div className="mt-8 pt-4 border-t-2 border-dashed">
-                            <label className="block font-semibold mb-1 text-gray-500">Valor Total de la Propiedad</label>
-                            <NumericFormat value={valorTotalCalculado} thousandSeparator="." decimalSeparator="," prefix="$ " className="w-full border-0 bg-gray-100 p-3 rounded-lg font-bold text-lg text-green-600" disabled />
+
+                        <div className="mt-8 pt-4 border-t-2 border-dashed space-y-2">
+                            <ResumenValorItem label="Valor base vivienda" value={parseInt(String(formData.valorBase).replace(/\D/g, '')) || 0} />
+                            <ResumenValorItem label="Gastos notariales (Recargo obligatorio)" value={gastosNotarialesFijos} />
+                            {formData.esEsquinera && (
+                                <ResumenValorItem label="Recargo por casa esquinera" value={parseInt(formData.recargoEsquinera) || 0} />
+                            )}
+                            <div className="!mt-4 pt-2 border-t">
+                                <div className="flex justify-between items-center">
+                                    <label className="font-bold text-gray-800">Valor Total de la Vivienda</label>
+                                    <p className="font-bold text-lg text-green-600">{valorTotalCalculado.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </AnimatedPage>
