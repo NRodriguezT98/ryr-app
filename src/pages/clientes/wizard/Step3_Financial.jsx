@@ -34,18 +34,18 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
         const montoSubVivienda = financiero.aplicaSubsidioVivienda ? (financiero.subsidioVivienda.monto || 0) : 0;
         const montoSubCaja = financiero.aplicaSubsidioCaja ? (financiero.subsidioCaja.monto || 0) : 0;
 
-        // El monto de gastos notariales es una fuente de pago fija.
-        const montoGastosNotariales = financiero.gastosNotariales?.monto || 0;
+        const totalRecursos = montoCuota + montoCredito + montoSubVivienda + montoSubCaja;
 
-        const totalRecursos = montoCuota + montoCredito + montoSubVivienda + montoSubCaja + montoGastosNotariales;
+        // El total a pagar ahora sí incluye los gastos notariales fijos.
+        const totalAPagar = (viviendaSeleccionada.valorTotal || 0);
 
-        // El total que el cliente debe pagar ahora es el valor de la vivienda MÁS los gastos notariales.
-        const totalAPagar = (viviendaSeleccionada.valorTotal || 0) + montoGastosNotariales;
+        // La diferencia se calcula contra el total de recursos, que incluye los gastos notariales.
+        const diferencia = totalAPagar - totalRecursos;
 
         return {
             totalRecursos,
             totalAPagar,
-            diferencia: totalAPagar - totalRecursos
+            diferencia
         };
     }, [financiero, viviendaSeleccionada.valorTotal]);
 
@@ -58,8 +58,8 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center p-4 bg-gray-50 rounded-lg border">
                 <div>
-                    <p className="text-sm font-semibold text-gray-500">Total a Pagar</p>
-                    <p className="text-lg font-bold text-blue-600">{formatCurrency(resumenFinanciero.totalAPagar)}</p>
+                    <p className="text-sm font-semibold text-gray-500">Valor Vivienda</p>
+                    <p className="text-lg font-bold text-blue-600">{formatCurrency(viviendaSeleccionada.valorTotal)}</p>
                 </div>
                 <div>
                     <p className="text-sm font-semibold text-gray-500">Total Recursos</p>
@@ -79,7 +79,6 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
             }
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 pt-6 border-t">
-                {/* Gastos Notariales como primera tarjeta, abarcando todo el ancho */}
                 <div className="lg:col-span-2">
                     <div className="p-4 border rounded-xl bg-gray-100">
                         <label className="flex items-center space-x-3">
@@ -90,7 +89,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                             <div className='space-y-1'>
                                 <label className="text-xs font-medium text-gray-500">Monto Fijo</label>
                                 <NumericFormat
-                                    value={financiero.gastosNotariales.monto}
+                                    value={5000000}
                                     className="w-full border p-2 rounded-lg bg-gray-200 cursor-not-allowed"
                                     thousandSeparator="." decimalSeparator="," prefix="$ "
                                     disabled

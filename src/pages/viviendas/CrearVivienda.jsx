@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, Fragment } from "react";
+import React, { useEffect, useState, useCallback, useMemo, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import AnimatedPage from "../../components/AnimatedPage";
 import toast from 'react-hot-toast';
@@ -54,6 +54,7 @@ const CrearVivienda = () => {
         onSubmit: async (formData) => {
             const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
             const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
+
             const nuevaVivienda = {
                 manzana: formData.manzana,
                 numeroCasa: parseInt(formData.numero, 10),
@@ -66,7 +67,7 @@ const CrearVivienda = () => {
                 urlCertificadoTradicion: formData.urlCertificadoTradicion,
                 valorBase: valorBaseNum,
                 recargoEsquinera: recargoEsquineraNum,
-                valorTotal: valorBaseNum + recargoEsquineraNum + 5000000,
+                valorTotal: valorBaseNum + recargoEsquineraNum, // El valor total ya NO incluye gastos notariales.
             };
             try {
                 await addVivienda(nuevaVivienda);
@@ -83,7 +84,7 @@ const CrearVivienda = () => {
     const valorTotalCalculado = useMemo(() => {
         const valorBase = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
         const recargoEsquinera = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
-        return valorBase + recargoEsquinera + 5000000;
+        return valorBase + recargoEsquinera;
     }, [formData.valorBase, formData.esEsquinera, formData.recargoEsquinera]);
 
     const handleNextStep = () => {
@@ -161,7 +162,6 @@ const CrearVivienda = () => {
                         handleValueChange={handleValueChange}
                         handleCheckboxChange={handleCheckboxChange}
                         valorTotalCalculado={valorTotalCalculado}
-                        gastosNotarialesFijos={5000000}
                     />
 
                     <div className="mt-10 flex justify-between">
