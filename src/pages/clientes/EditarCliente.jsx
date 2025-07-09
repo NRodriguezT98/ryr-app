@@ -5,10 +5,11 @@ import Step1_SelectVivienda from './wizard/Step1_SelectVivienda';
 import Step2_ClientInfo from './wizard/Step2_ClientInfo';
 import Step3_Financial from './wizard/Step3_Financial';
 import { validateCliente, validateFinancialStep } from './clienteValidation.js';
-import { getClientes, getViviendas, updateCliente } from '../../utils/storage.js';
+import { updateCliente } from '../../utils/storage.js';
 import ModalConfirmacionCambios from '../../components/ModalConfirmacionCambios.jsx';
 import Modal from '../../components/Modal.jsx';
 import { Home, User, CircleDollarSign, Check, UserCog } from 'lucide-react';
+import { useData } from '../../context/DataContext';
 
 function formReducer(state, action) {
     switch (action.type) {
@@ -31,19 +32,17 @@ function formReducer(state, action) {
     }
 }
 
+const getTodayString = () => new Date().toISOString().split('T')[0];
+
 const blankInitialState = {
     viviendaSeleccionada: { id: null, valorTotal: 0, label: '' },
-    datosCliente: { nombres: '', apellidos: '', cedula: '', telefono: '', correo: '', direccion: '', urlCedula: null },
+    datosCliente: { nombres: '', apellidos: '', cedula: '', telefono: '', correo: '', direccion: '', fechaIngreso: getTodayString() },
     financiero: {
-        aplicaCuotaInicial: false,
-        cuotaInicial: { metodo: '', monto: 0, urlSoportePago: null },
-        aplicaCredito: false,
-        credito: { banco: '', monto: 0, urlCartaAprobacion: null },
-        aplicaSubsidioVivienda: false,
-        subsidioVivienda: { monto: 0, urlSoporte: null },
-        aplicaSubsidioCaja: false,
-        subsidioCaja: { caja: '', monto: 0, urlSoporte: null },
-        gastosNotariales: { aplica: true, monto: 5000000, urlSoportePago: null }
+        aplicaCuotaInicial: false, cuotaInicial: { monto: 0 },
+        aplicaCredito: false, credito: { banco: '', monto: 0 },
+        aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
+        aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 },
+        gastosNotariales: { monto: 0 }
     },
     seguimiento: {},
     errors: {}
@@ -52,109 +51,130 @@ const blankInitialState = {
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
 const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
+    const { clientes: todosLosClientes, viviendas } = useData();
     const [step, setStep] = useState(1);
     const [formData, dispatch] = useReducer(formReducer, blankInitialState);
-    const [todosLosClientes, setTodosLosClientes] = useState([]);
     const [viviendaOriginalId, setViviendaOriginalId] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isConfirming, setIsConfirming] = useState(false);
     const [cambios, setCambios] = useState([]);
     const [initialData, setInitialData] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-        const initializeForm = async () => {
-            if (clienteAEditar) {
-                setIsLoading(true);
-                const todasLasViviendas = await getViviendas();
-                const todosLosClientesData = await getClientes();
-                const viviendaAsignada = todasLasViviendas.find(v => v.id === clienteAEditar.viviendaId);
+        if (isOpen && clienteAEditar) {
+            setIsLoading(true);
+            const viviendaAsignada = viviendas.find(v => v.id === clienteAEditar.viviendaId);
+            setViviendaOriginalId(clienteAEditar.viviendaId);
 
-                setViviendaOriginalId(clienteAEditar.viviendaId);
-
-                const initialStateForEdit = {
-                    ...blankInitialState,
-                    ...clienteAEditar,
-                    viviendaSeleccionada: {
-                        id: viviendaAsignada?.id || null,
-                        valorTotal: viviendaAsignada?.valorFinal || 0,
-                        label: viviendaAsignada ? `Mz ${viviendaAsignada.manzana} - Casa ${viviendaAsignada.numeroCasa} (${formatCurrency(viviendaAsignada.valorFinal || 0)})` : ''
-                    },
-                    errors: {}
-                };
-
-                setInitialData(JSON.parse(JSON.stringify(initialStateForEdit)));
-                dispatch({ type: 'INITIALIZE_FORM', payload: initialStateForEdit });
-                setTodosLosClientes(todosLosClientesData);
-                setIsLoading(false);
-                setStep(1);
-            }
-        };
-        if (isOpen) initializeForm();
-    }, [isOpen, clienteAEditar]);
+            const initialStateForEdit = {
+                ...blankInitialState,
+                ...clienteAEditar,
+                viviendaSeleccionada: {
+                    id: viviendaAsignada?.id || null,
+                    valorTotal: viviendaAsignada?.valorTotal || 0,
+                    label: viviendaAsignada ? `Mz ${viviendaAsignada.manzana} - Casa ${viviendaAsignada.numeroCasa} (${formatCurrency(viviendaAsignada.valorTotal || 0)})` : ''
+                },
+                errors: {}
+            };
+            setInitialData(JSON.parse(JSON.stringify(initialStateForEdit)));
+            dispatch({ type: 'INITIALIZE_FORM', payload: initialStateForEdit });
+            setIsLoading(false);
+            setStep(1);
+        }
+    }, [isOpen, clienteAEditar, viviendas]);
 
     const nextStep = () => setStep(prev => prev < 3 ? prev + 1 : 3);
     const prevStep = () => setStep(prev => prev > 1 ? prev - 1 : 1);
-
     const handleNext = () => {
         let errors = {};
         if (step === 2) {
             errors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar.id);
-            if (Object.keys(errors).length > 0) {
-                dispatch({ type: 'SET_ERRORS', payload: errors });
-                toast.error("Por favor, corrige los errores del formulario.");
-                return;
-            }
+            if (Object.keys(errors).length > 0) { dispatch({ type: 'SET_ERRORS', payload: errors }); toast.error("Por favor, corrige los errores del formulario."); return; }
         }
         dispatch({ type: 'SET_ERRORS', payload: {} });
         nextStep();
     };
-
     const executeSave = useCallback(async () => {
+        setIsSubmitting(true);
         const clienteParaActualizar = {
-            datosCliente: formData.datosCliente,
-            financiero: formData.financiero,
-            seguimiento: formData.seguimiento,
-            viviendaId: formData.viviendaSeleccionada.id,
-            status: 'activo' // Se asegura de que el estado sea activo
+            datosCliente: formData.datosCliente, financiero: formData.financiero, seguimiento: formData.seguimiento,
+            viviendaId: formData.viviendaSeleccionada.id, status: 'activo'
         };
         try {
             await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
             toast.success("Cliente actualizado con éxito!");
-            onGuardar();
-            onClose();
+            onGuardar(); onClose();
         } catch (error) {
-            console.error("Error al actualizar el cliente:", error);
-            toast.error("Hubo un error al actualizar los datos.");
+            console.error("Error al actualizar el cliente:", error); toast.error("Hubo un error al actualizar los datos.");
         } finally {
-            setIsConfirming(false);
+            setIsConfirming(false); setIsSubmitting(false);
         }
     }, [formData, clienteAEditar, onGuardar, onClose, viviendaOriginalId]);
 
     const handlePreSave = useCallback(() => {
-        const clientErrors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar.id);
-        const financialErrors = validateFinancialStep(formData.financiero, formData.viviendaSeleccionada.valorTotal);
-        const totalErrors = { ...clientErrors, ...financialErrors };
-
+        const totalErrors = {
+            ...validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar.id),
+            ...validateFinancialStep(formData.financiero, formData.viviendaSeleccionada.valorTotal)
+        };
         if (Object.keys(totalErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: totalErrors });
-            toast.error("Por favor, corrige los errores en la estructura financiera.");
+            toast.error("Por favor, corrige los errores del formulario.");
             return;
         }
 
         const cambiosDetectados = [];
-        const dataHasChanged = JSON.stringify(formData) !== JSON.stringify(initialData);
-        const isReassignment = initialData.viviendaId !== formData.viviendaSeleccionada.id;
+        const initial = initialData;
+        const current = formData;
+        const fieldLabels = {
+            nombres: 'Nombres', apellidos: 'Apellidos', cedula: 'Cédula', telefono: 'Teléfono', correo: 'Correo', direccion: 'Dirección', fechaIngreso: 'Fecha de Ingreso',
+            aplicaCuotaInicial: 'Aplica Cuota Inicial', aplicaCredito: 'Aplica Crédito', aplicaSubsidioVivienda: 'Aplica Subsidio Mi Casa Ya', aplicaSubsidioCaja: 'Aplica Subsidio Caja Comp.',
+            monto: 'Monto', metodo: 'Método', banco: 'Banco', caja: 'Caja de Compensación'
+        };
 
-        if (isReassignment) {
-            cambiosDetectados.push({
-                campo: "Asignación de Vivienda",
-                anterior: initialData.viviendaSeleccionada.label || "Ninguna",
-                actual: formData.viviendaSeleccionada.label
-            });
+        const formatValue = (value, isCurrency = false) => {
+            if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+            if (isCurrency) return formatCurrency(value);
+            return value || 'Vacío';
+        };
+
+        if (initial.viviendaSeleccionada.id !== current.viviendaSeleccionada.id) {
+            cambiosDetectados.push({ campo: 'Vivienda Asignada', anterior: initial.viviendaSeleccionada.label || 'Ninguna', actual: current.viviendaSeleccionada.label || 'Ninguna' });
         }
 
-        if (dataHasChanged) {
-            cambiosDetectados.push({ campo: "Otros Datos", anterior: "Valores Originales", actual: "Valores Modificados" });
+        for (const key in current.datosCliente) {
+            if (String(initial.datosCliente[key] || '') !== String(current.datosCliente[key] || '')) {
+                if (key.startsWith('url')) continue;
+                cambiosDetectados.push({ campo: fieldLabels[key] || key, anterior: initial.datosCliente[key] || 'Vacío', actual: current.datosCliente[key] || 'Vacío' });
+            }
+        }
+
+        const checkFinancialSection = (sectionName, sectionLabel) => {
+            const initialSection = initial.financiero[sectionName];
+            const currentSection = current.financiero[sectionName];
+            if (JSON.stringify(initialSection) !== JSON.stringify(currentSection)) {
+                for (const key in currentSection) {
+                    if (String(initialSection?.[key] || '') !== String(currentSection[key] || '')) {
+                        cambiosDetectados.push({
+                            campo: `${fieldLabels[key]} de ${sectionLabel}`,
+                            anterior: formatValue(initialSection?.[key], key === 'monto'),
+                            actual: formatValue(currentSection[key], key === 'monto')
+                        });
+                    }
+                }
+            }
+        };
+
+        if (initial.financiero.aplicaCuotaInicial !== current.financiero.aplicaCuotaInicial) cambiosDetectados.push({ campo: fieldLabels.aplicaCuotaInicial, anterior: formatValue(initial.financiero.aplicaCuotaInicial), actual: formatValue(current.financiero.aplicaCuotaInicial) });
+        else if (current.financiero.aplicaCuotaInicial) checkFinancialSection('cuotaInicial', 'Cuota Inicial');
+        if (initial.financiero.aplicaCredito !== current.financiero.aplicaCredito) cambiosDetectados.push({ campo: fieldLabels.aplicaCredito, anterior: formatValue(initial.financiero.aplicaCredito), actual: formatValue(current.financiero.aplicaCredito) });
+        else if (current.financiero.aplicaCredito) checkFinancialSection('credito', 'Crédito');
+        if (initial.financiero.aplicaSubsidioVivienda !== current.financiero.aplicaSubsidioVivienda) cambiosDetectados.push({ campo: fieldLabels.aplicaSubsidioVivienda, anterior: formatValue(initial.financiero.aplicaSubsidioVivienda), actual: formatValue(current.financiero.aplicaSubsidioVivienda) });
+        else if (current.financiero.aplicaSubsidioVivienda) checkFinancialSection('subsidioVivienda', 'Subsidio Mi Casa Ya');
+        if (initial.financiero.aplicaSubsidioCaja !== current.financiero.aplicaSubsidioCaja) cambiosDetectados.push({ campo: fieldLabels.aplicaSubsidioCaja, anterior: formatValue(initial.financiero.aplicaSubsidioCaja), actual: formatValue(current.financiero.aplicaSubsidioCaja) });
+        else if (current.financiero.aplicaSubsidioCaja) checkFinancialSection('subsidioCaja', 'Subsidio Caja Comp.');
+        if (String(initial.financiero.gastosNotariales.monto || 0) !== String(current.financiero.gastosNotariales.monto || 0)) {
+            cambiosDetectados.push({ campo: 'Gastos Notariales', anterior: formatCurrency(initial.financiero.gastosNotariales.monto), actual: formatCurrency(current.financiero.gastosNotariales.monto) });
         }
 
         if (cambiosDetectados.length === 0) {
@@ -166,20 +186,12 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         setIsConfirming(true);
     }, [formData, todosLosClientes, clienteAEditar, initialData]);
 
-    // Lógica de 'hayCambios' ahora es más inteligente
-    const hayCambios = useMemo(() => {
-        if (!initialData) return false;
-        // Hay cambios si los datos son diferentes O si la asignación de vivienda cambió.
-        return JSON.stringify(formData) !== JSON.stringify(initialData) ||
-            initialData.viviendaId !== formData.viviendaSeleccionada.id;
-    }, [formData, initialData]);
-
+    const hayCambios = useMemo(() => JSON.stringify(formData) !== JSON.stringify(initialData), [formData, initialData]);
     const steps = [
         <Step1_SelectVivienda key="step1" formData={formData} dispatch={dispatch} isEditing={true} clienteAEditar={clienteAEditar} />,
         <Step2_ClientInfo key="step2" formData={formData} dispatch={dispatch} errors={formData.errors} />,
         <Step3_Financial key="step3" formData={formData} dispatch={dispatch} errors={formData.errors} />,
     ];
-
     const STEPS_CONFIG = [
         { number: 1, title: 'Vivienda', icon: Home },
         { number: 2, title: 'Datos Cliente', icon: User },
@@ -190,15 +202,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
 
     return (
         <>
-            <Modal
-                isOpen={isOpen}
-                onClose={onClose}
-                title="Editar Cliente"
-                icon={<UserCog size={32} className="text-[#1976d2]" />}
-            >
-                {isLoading ? (
-                    <div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos...</div>
-                ) : (
+            <Modal isOpen={isOpen} onClose={onClose} title="Editar Cliente" icon={<UserCog size={32} className="text-[#1976d2]" />}>
+                {isLoading ? (<div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos...</div>) : (
                     <>
                         <div className="flex items-center justify-center my-8">
                             {STEPS_CONFIG.map((s, index) => (
@@ -226,10 +231,10 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                                 <span className="ml-auto" data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
                                     <button
                                         onClick={handlePreSave}
-                                        disabled={!hayCambios}
+                                        disabled={!hayCambios || isSubmitting}
                                         className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full"
                                     >
-                                        Guardar Cambios
+                                        {isSubmitting ? "Guardando..." : "Guardar Cambios"}
                                     </button>
                                 </span>
                             )}
@@ -237,15 +242,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                     </>
                 )}
             </Modal>
-
-            <ModalConfirmacionCambios
-                isOpen={isConfirming}
-                onClose={() => setIsConfirming(false)}
-                onConfirm={executeSave}
-                titulo="Confirmar Cambios del Cliente"
-                cambios={cambios}
-                isSaving={false}
-            />
+            <ModalConfirmacionCambios isOpen={isConfirming} onClose={() => setIsConfirming(false)} onConfirm={executeSave} titulo="Confirmar Cambios del Cliente" cambios={cambios} isSaving={isSubmitting} />
         </>
     );
 };

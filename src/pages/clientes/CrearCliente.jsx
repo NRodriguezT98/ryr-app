@@ -7,7 +7,6 @@ import { getClientes, addClienteAndAssignVivienda } from '../../utils/storage.js
 import toast from 'react-hot-toast';
 import { Home, User, CircleDollarSign, Check } from 'lucide-react';
 
-// --- FUNCIÓN DE AYUDA AÑADIDA AQUÍ ---
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
 const blankInitialState = {
@@ -19,14 +18,14 @@ const blankInitialState = {
     },
     financiero: {
         aplicaCuotaInicial: false,
-        cuotaInicial: { metodo: '', monto: 0, urlSoportePago: null },
+        cuotaInicial: { metodo: '', monto: 0 },
         aplicaCredito: false,
-        credito: { banco: '', monto: 0, urlCartaAprobacion: null },
+        credito: { banco: '', monto: 0 }, // <-- Campo para el banco
         aplicaSubsidioVivienda: false,
-        subsidioVivienda: { monto: 0, urlSoporte: null },
+        subsidioVivienda: { monto: 0 },
         aplicaSubsidioCaja: false,
-        subsidioCaja: { caja: '', monto: 0, urlSoporte: null },
-        gastosNotariales: { aplica: true, monto: 5000000, urlSoportePago: null }
+        subsidioCaja: { caja: '', monto: 0 }, // <-- Campo para la caja
+        gastosNotariales: { monto: 0 }
     },
     seguimiento: {},
     errors: {}
