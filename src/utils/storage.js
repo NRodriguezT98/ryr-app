@@ -17,26 +17,25 @@ export const getAbonos = () => getData("abonos");
 export const getRenuncias = () => getData("renuncias");
 
 
-// --- FUNCIÓN MODIFICADA ---
+// --- CREACIÓN DE DATOS ---
 export const addVivienda = async (viviendaData) => {
+    const valorTotalFinal = viviendaData.valorTotal;
+
     const nuevaVivienda = {
         ...viviendaData,
-        // --- APLICAMOS EL FORMATEO AUTOMÁTICO AQUÍ ---
         nomenclatura: toSentenceCase(viviendaData.nomenclatura),
         linderoNorte: toSentenceCase(viviendaData.linderoNorte),
         linderoSur: toSentenceCase(viviendaData.linderoSur),
         linderoOriente: toSentenceCase(viviendaData.linderoOriente),
         linderoOccidente: toSentenceCase(viviendaData.linderoOccidente),
-        // Datos que ya estaban
         clienteId: null,
         clienteNombre: "",
         totalAbonado: 0,
-        saldoPendiente: viviendaData.valorTotal,
-        valorFinal: viviendaData.valorTotal,
+        saldoPendiente: valorTotalFinal,
+        valorFinal: valorTotalFinal,
     };
     await addDoc(collection(db, "viviendas"), nuevaVivienda);
 };
-
 
 const storage = getStorage();
 
@@ -98,6 +97,7 @@ export const addAbono = async (abonoData) => {
         transaction.set(abonoRef, abonoParaGuardar);
     });
 };
+
 
 // --- ACTUALIZACIÓN, BORRADO Y RENUNCIA ---
 
@@ -187,15 +187,13 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
             historialAbonos: abonosDelCiclo
         };
 
-        if (estadoInicial === 'Pagada') {
-            registroRenuncia.fechaDevolucion = new Date().toISOString();
-        }
-
         transaction.set(renunciaRef, registroRenuncia);
         transaction.update(viviendaRef, { clienteId: null, clienteNombre: "", totalAbonado: 0, saldoPendiente: viviendaDoc.data().valorTotal });
         transaction.update(clienteRef, { viviendaId: null });
 
         if (estadoInicial === 'Pagada') {
+            registroRenuncia.fechaDevolucion = new Date().toISOString();
+            transaction.update(renunciaRef, { fechaDevolucion: registroRenuncia.fechaDevolucion });
             transaction.update(clienteRef, { status: 'renunciado' });
             abonosDelCiclo.forEach(abono => {
                 const abonoRef = doc(db, "abonos", abono.id);
@@ -232,9 +230,7 @@ export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) =>
 
 export const reactivarCliente = async (clienteId) => {
     const clienteRef = doc(db, "clientes", clienteId);
-    await updateDoc(clienteRef, {
-        status: 'activo'
-    });
+    await updateDoc(clienteRef, { status: 'activo' });
 };
 
 export const updateRenuncia = async (renunciaId, datosParaActualizar) => {
@@ -257,9 +253,7 @@ export const cancelarRenuncia = async (renuncia) => {
             saldoPendiente: viviendaDoc.data().valorTotal - renuncia.totalAbonadoParaDevolucion
         });
 
-        transaction.update(clienteRef, {
-            viviendaId: renuncia.viviendaId
-        });
+        transaction.update(clienteRef, { viviendaId: renuncia.viviendaId });
 
         renuncia.historialAbonos.forEach(abono => {
             const abonoRef = doc(db, "abonos", abono.id);

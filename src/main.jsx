@@ -17,7 +17,7 @@ import DetalleCliente from './pages/clientes/DetalleCliente';
 import ListarAbonos from './pages/abonos/ListarAbonos';
 import CrearAbono from './pages/abonos/CrearAbono';
 import ListarRenuncias from './pages/renuncias/ListarRenuncias';
-import DetalleRenuncia from './pages/renuncias/DetalleRenuncia'; // <-- IMPORTAMOS LA NUEVA PÁGINA
+import DetalleRenuncia from './pages/renuncias/DetalleRenuncia';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -42,6 +42,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/viviendas/detalle/:viviendaId" element={<DetalleVivienda />} />
             <Route path="/viviendas/editar/:viviendaId" element={<EditarVivienda />} />
 
+            {/* --- RUTA CORREGIDA AQUÍ --- */}
+            {/* Ahora /clientes también apunta a la lista, al igual que /clientes/listar */}
+            <Route path="/clientes" element={<ListarClientes />} />
             <Route path="/clientes/crear" element={<CrearCliente />} />
             <Route path="/clientes/listar" element={<ListarClientes />} />
             <Route path="/clientes/detalle/:clienteId" element={<DetalleCliente />} />
@@ -50,7 +53,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/abonos/listar" element={<ListarAbonos />} />
 
             <Route path="/renuncias" element={<ListarRenuncias />} />
-            {/* --- NUEVA RUTA AQUÍ --- */}
             <Route path="/renuncias/detalle/:renunciaId" element={<DetalleRenuncia />} />
           </Route>
         </Routes>

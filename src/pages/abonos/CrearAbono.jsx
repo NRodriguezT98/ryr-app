@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
 import AnimatedPage from "../../components/AnimatedPage";
-import toast from "react-hot-toast";
 import { useData } from "../../context/DataContext";
 import FuenteDePagoCard from "./FuenteDePagoCard";
 import AbonoCard from "./AbonoCard";
@@ -16,7 +15,7 @@ const CrearAbono = () => {
     const clientesConVivienda = useMemo(() => clientes.filter(c => c.vivienda), [clientes]);
 
     const clientesFiltrados = useMemo(() => {
-        if (!searchTerm.trim()) return clientesConVivienda;
+        if (!searchTerm.trim()) { return clientesConVivienda.sort((a, b) => { if (a.vivienda.manzana < b.vivienda.manzana) return -1; if (a.vivienda.manzana > b.vivienda.manzana) return 1; return a.vivienda.numeroCasa - b.vivienda.numeroCasa; }); }
         const lowerCaseSearchTerm = searchTerm.toLowerCase().replace(/\s/g, '');
         return clientesConVivienda.filter(c => {
             const nombreCompleto = `${c.datosCliente.nombres} ${c.datosCliente.apellidos}`.toLowerCase();
@@ -35,13 +34,7 @@ const CrearAbono = () => {
         if (!clienteActual) return null;
         const viviendaActual = clienteActual.vivienda;
         if (!viviendaActual) return null;
-
-        // --- LÓGICA DE BÚSQUEDA DEFINITIVA ---
-        // Ahora solo nos interesan los abonos cuyo estado sea 'activo'
-        const historial = abonos
-            .filter(a => a.viviendaId === viviendaActual.id && a.estadoProceso === 'activo')
-            .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
-
+        const historial = abonos.filter(a => a.viviendaId === viviendaActual.id && a.estadoProceso === 'activo').sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
         const fuentes = [];
         if (clienteActual.financiero) {
             const { financiero } = clienteActual;
@@ -49,7 +42,7 @@ const CrearAbono = () => {
             if (financiero.aplicaCredito) fuentes.push({ titulo: "Crédito Hipotecario", fuente: "credito", montoPactado: financiero.credito.monto, abonos: historial.filter(a => a.fuente === 'credito') });
             if (financiero.aplicaSubsidioVivienda) fuentes.push({ titulo: "Subsidio Mi Casa Ya", fuente: "subsidioVivienda", montoPactado: financiero.subsidioVivienda.monto, abonos: historial.filter(a => a.fuente === 'subsidioVivienda') });
             if (financiero.aplicaSubsidioCaja) fuentes.push({ titulo: `Subsidio Caja (${financiero.subsidioCaja.caja})`, fuente: "subsidioCaja", montoPactado: financiero.subsidioCaja.monto, abonos: historial.filter(a => a.fuente === 'subsidioCaja') });
-            if (financiero.gastosNotariales) fuentes.push({ titulo: "Gastos Notariales", fuente: "gastosNotariales", montoPactado: financiero.gastosNotariales.monto, abonos: historial.filter(a => a.fuente === 'gastosNotariales') });
+            if (financiero.gastosNotariales) fuentes.push({ titulo: "Gastos Notariales", fuente: "gastosNotariales", montoPactado: 5000000, abonos: historial.filter(a => a.fuente === 'gastosNotariales') });
         }
         return { vivienda: viviendaActual, cliente: clienteActual, fuentes, historial };
     }, [selectedClienteId, clientes, abonos]);
@@ -63,14 +56,13 @@ const CrearAbono = () => {
                     <h2 className="text-3xl font-bold text-[#1976d2] mb-2">Seguimiento de Pagos</h2>
                     <p className="text-gray-500">Busca y selecciona un cliente para gestionar sus abonos.</p>
                 </div>
-
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     <div className="lg:col-span-1 bg-white p-4 rounded-xl shadow-lg border border-gray-100 self-start">
                         <div className="relative mb-4">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
-                                placeholder="Buscar cliente o vivienda (ej: A1)"
+                                placeholder="Buscar cliente o vivienda..."
                                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -105,7 +97,13 @@ const CrearAbono = () => {
                                 {datosClienteSeleccionado.fuentes.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {datosClienteSeleccionado.fuentes.map(fuente => (
-                                            <FuenteDePagoCard key={fuente.fuente} {...fuente} vivienda={datosClienteSeleccionado.vivienda} onAbonoRegistrado={recargarDatos} />
+                                            <FuenteDePagoCard
+                                                key={fuente.fuente}
+                                                {...fuente}
+                                                vivienda={datosClienteSeleccionado.vivienda}
+                                                cliente={datosClienteSeleccionado.cliente} // <-- Pasamos el cliente completo
+                                                onAbonoRegistrado={recargarDatos}
+                                            />
                                         ))}
                                     </div>
                                 ) : <p className="text-center text-gray-500 py-4">Este cliente no tiene una estructura financiera definida.</p>}
@@ -121,7 +119,7 @@ const CrearAbono = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="text-center flex flex-col justify-center items-center h-full">
+                            <div className="text-center flex flex-col justify-center items-center h-full py-16">
                                 <p className="text-gray-500">Comienza buscando un cliente en el panel de la izquierda.</p>
                             </div>
                         )}

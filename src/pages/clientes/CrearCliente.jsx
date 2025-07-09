@@ -18,14 +18,13 @@ const blankInitialState = {
     },
     financiero: {
         aplicaCuotaInicial: false,
-        cuotaInicial: { metodo: '', monto: 0 },
+        cuotaInicial: { monto: 0 },
         aplicaCredito: false,
-        credito: { banco: '', monto: 0 }, // <-- Campo para el banco
+        credito: { banco: '', monto: 0 },
         aplicaSubsidioVivienda: false,
         subsidioVivienda: { monto: 0 },
         aplicaSubsidioCaja: false,
-        subsidioCaja: { caja: '', monto: 0 }, // <-- Campo para la caja
-        gastosNotariales: { monto: 0 }
+        subsidioCaja: { caja: '', monto: 0 },
     },
     seguimiento: {},
     errors: {}
@@ -67,7 +66,6 @@ const CrearCliente = () => {
     const handleNextStep = () => {
         let errors = {};
         let isValid = true;
-
         if (step === 2) {
             errors = validateCliente(formData.datosCliente, todosLosClientes, null);
             isValid = Object.keys(errors).length === 0;
@@ -75,7 +73,6 @@ const CrearCliente = () => {
                 toast.error("Por favor, corrige los errores del formulario.");
             }
         }
-
         dispatch({ type: 'SET_ERRORS', payload: errors });
         if (isValid) {
             setStep(s => s + 1);
@@ -131,7 +128,6 @@ const CrearCliente = () => {
                     <h2 className="text-3xl font-extrabold mb-4 text-center text-[#1976d2]">
                         👥 Registrar Nuevo Cliente
                     </h2>
-
                     <div className="flex items-center justify-center my-8">
                         {STEPS_CONFIG.map((s, index) => (
                             <Fragment key={s.number}>
@@ -147,21 +143,18 @@ const CrearCliente = () => {
                             </Fragment>
                         ))}
                     </div>
-
                     <FormularioCliente
                         step={step}
                         formData={formData}
                         dispatch={dispatch}
                         errors={formData.errors}
                     />
-
                     <div className="mt-10 flex justify-between">
                         {step > 1 ? (
                             <button onClick={handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">
                                 Anterior
                             </button>
                         ) : <div />}
-
                         {step < 3 ? (
                             <button onClick={handleNextStep} disabled={step === 1 && !formData.viviendaSeleccionada.id} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 ml-auto">
                                 Siguiente

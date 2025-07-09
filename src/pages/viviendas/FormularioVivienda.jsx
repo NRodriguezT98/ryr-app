@@ -1,137 +1,198 @@
-import React from 'react';
-import { NumericFormat } from 'react-number-format';
-import AnimatedPage from '../../components/AnimatedPage';
-import FileUpload from '../../components/FileUpload';
-import { PlusCircle } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useMemo, Fragment } from "react";
+import { useNavigate } from "react-router-dom";
+import AnimatedPage from "../../components/AnimatedPage";
+import toast from 'react-hot-toast';
+import { useForm } from "../../hooks/useForm.jsx";
+import { validateVivienda } from "./viviendaValidation.js";
+import { addVivienda, getViviendas } from "../../utils/storage";
+import { MapPin, FileText, CircleDollarSign, Check } from 'lucide-react';
+import FormularioVivienda from "./FormularioVivienda";
 
-// Componente de ayuda para el nuevo resumen de valores
-const ResumenValorItem = ({ label, value }) => (
-    <div className="flex justify-between text-sm">
-        <p className="text-gray-600">{label}:</p>
-        <p className="font-medium text-gray-800">{value.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}</p>
-    </div>
-);
+const GASTOS_NOTARIALES_FIJOS = 5000000;
 
-const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleValueChange, handleCheckboxChange, valorTotalCalculado, gastosNotarialesFijos }) => {
+const initialState = {
+    manzana: "",
+    numero: "",
+    matricula: "",
+    nomenclatura: "",
+    linderoNorte: "",
+    linderoSur: "",
+    linderoOriente: "",
+    linderoOccidente: "",
+    urlCertificadoTradicion: null,
+    valorBase: "",
+    esEsquinera: false,
+    recargoEsquinera: "0"
+};
 
-    const handleUploadSuccess = (url) => { handleValueChange('urlCertificadoTradicion', url); };
-    const handleRemoveFile = () => { handleValueChange('urlCertificadoTradicion', null); };
+const inputFilters = {
+    numero: { regex: /^[0-9]*$/ },
+    matricula: { regex: /^[0-9-]*$/ },
+};
+
+const CrearVivienda = () => {
+    const navigate = useNavigate();
+    const [isLoading, setIsLoading] = useState(true);
+    const [todasLasViviendas, setTodasLasViviendas] = useState([]);
+    const [step, setStep] = useState(1);
+
+    useEffect(() => {
+        const cargarDatosParaValidacion = async () => {
+            try {
+                const viviendasData = await getViviendas();
+                setTodasLasViviendas(viviendasData);
+            } catch (error) {
+                toast.error("No se pudieron cargar los datos para validación.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        cargarDatosParaValidacion();
+    }, []);
+
+    const { formData, errors, setErrors, isSubmitting, handleInputChange, handleValueChange, handleSubmit, setFormData } = useForm({
+        initialState,
+        validate: (data) => validateVivienda(data, todasLasViviendas, null),
+        onSubmit: async (formData) => {
+            const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
+            const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
+            const valorTotalVivienda = valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS;
+
+            const nuevaVivienda = {
+                manzana: formData.manzana,
+                numeroCasa: parseInt(formData.numero, 10),
+                matricula: formData.matricula.trim(),
+                nomenclatura: formData.nomenclatura,
+                linderoNorte: formData.linderoNorte,
+                linderoSur: formData.linderoSur,
+                linderoOriente: formData.linderoOriente,
+                linderoOccidente: formData.linderoOccidente,
+                urlCertificadoTradicion: formData.urlCertificadoTradicion,
+                valorBase: valorBaseNum,
+                recargoEsquinera: recargoEsquineraNum,
+                gastosNotariales: GASTOS_NOTARIALES_FIJOS,
+                valorTotal: valorTotalVivienda,
+            };
+            try {
+                await addVivienda(nuevaVivienda);
+                toast.success("¡Vivienda registrada con éxito!");
+                navigate("/viviendas/listar");
+            } catch (error) {
+                toast.error("No se pudo registrar la vivienda.");
+                console.error("Error al crear vivienda:", error);
+            }
+        },
+        options: { inputFilters }
+    });
+
+    const valorTotalCalculado = useMemo(() => {
+        const valorBase = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
+        const recargoEsquinera = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
+        return valorBase + recargoEsquinera + GASTOS_NOTARIALES_FIJOS;
+    }, [formData.valorBase, formData.esEsquinera, formData.recargoEsquinera]);
+
+    const handleNextStep = () => {
+        const allErrors = validateVivienda(formData, todasLasViviendas, null);
+        let stepErrors = {};
+        if (step === 1) {
+            if (allErrors.manzana) stepErrors.manzana = allErrors.manzana;
+            if (allErrors.numero) stepErrors.numero = allErrors.numero;
+            if (allErrors.linderoNorte) stepErrors.linderoNorte = allErrors.linderoNorte;
+            if (allErrors.linderoSur) stepErrors.linderoSur = allErrors.linderoSur;
+            if (allErrors.linderoOriente) stepErrors.linderoOriente = allErrors.linderoOriente;
+            if (allErrors.linderoOccidente) stepErrors.linderoOccidente = allErrors.linderoOccidente;
+        } else if (step === 2) {
+            if (allErrors.matricula) stepErrors.matricula = allErrors.matricula;
+            if (allErrors.nomenclatura) stepErrors.nomenclatura = allErrors.nomenclatura;
+        }
+        setErrors(stepErrors);
+        if (Object.keys(stepErrors).length === 0) {
+            setStep(s => s + 1);
+        } else {
+            toast.error("Por favor, completa los campos requeridos.");
+        }
+    };
+
+    const handlePrevStep = () => setStep(s => s - 1);
+
+    const handleCheckboxChange = (e) => {
+        const { name, checked } = e.target;
+        setFormData(prev => {
+            const newState = { ...prev, [name]: checked };
+            if (name === 'esEsquinera') {
+                newState.recargoEsquinera = checked ? "5000000" : "0";
+            }
+            return newState;
+        });
+    };
+
+    const STEPS_CONFIG = [
+        { number: 1, title: 'Ubicación y Linderos', icon: MapPin },
+        { number: 2, title: 'Info. Legal', icon: FileText },
+        { number: 3, title: 'Valor', icon: CircleDollarSign },
+    ];
+
+    if (isLoading) return <div className="text-center p-10 animate-pulse">Preparando formulario...</div>;
 
     return (
-        <div className="space-y-6 min-h-[350px]">
-            {step === 1 && (
-                <AnimatedPage>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block font-semibold mb-1" htmlFor="manzana">Manzana <span className="text-red-600">*</span></label>
-                            <select id="manzana" name="manzana" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.manzana ? "border-red-500 ring-red-500" : "border-gray-300"}`}>
-                                <option value="">Selecciona</option>
-                                {["A", "B", "C", "D", "E", "F"].map((op) => (<option key={op} value={op}>{op}</option>))}
-                            </select>
-                            {errors.manzana && <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>}
-                        </div>
-                        <div>
-                            <label className="block font-semibold mb-1" htmlFor="numero">Número de casa <span className="text-red-600">*</span></label>
-                            <input id="numero" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.numero ? "border-red-500 ring-red-500" : "border-gray-300"}`} maxLength={6} />
-                            {errors.numero && <p className="text-red-600 text-sm mt-1">{errors.numero}</p>}
-                        </div>
-                    </div>
-                    <div className="mt-6 pt-6 border-t border-dashed">
-                        <h3 className="font-semibold text-lg mb-4 text-gray-700">Linderos</h3>
-                        <div className="grid grid-cols-1 gap-y-4">
-                            <div>
-                                <label className="block font-semibold mb-1" htmlFor="linderoNorte">Norte <span className="text-red-600">*</span></label>
-                                <input id="linderoNorte" name="linderoNorte" type="text" value={formData.linderoNorte} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.linderoNorte ? "border-red-500" : "border-gray-300"}`} />
-                                {errors.linderoNorte && <p className="text-red-600 text-sm mt-1">{errors.linderoNorte}</p>}
-                            </div>
-                            <div>
-                                <label className="block font-semibold mb-1" htmlFor="linderoSur">Sur <span className="text-red-600">*</span></label>
-                                <input id="linderoSur" name="linderoSur" type="text" value={formData.linderoSur} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.linderoSur ? "border-red-500" : "border-gray-300"}`} />
-                                {errors.linderoSur && <p className="text-red-600 text-sm mt-1">{errors.linderoSur}</p>}
-                            </div>
-                            <div>
-                                <label className="block font-semibold mb-1" htmlFor="linderoOriente">Oriente <span className="text-red-600">*</span></label>
-                                <input id="linderoOriente" name="linderoOriente" type="text" value={formData.linderoOriente} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.linderoOriente ? "border-red-500" : "border-gray-300"}`} />
-                                {errors.linderoOriente && <p className="text-red-600 text-sm mt-1">{errors.linderoOriente}</p>}
-                            </div>
-                            <div>
-                                <label className="block font-semibold mb-1" htmlFor="linderoOccidente">Occidente <span className="text-red-600">*</span></label>
-                                <input id="linderoOccidente" name="linderoOccidente" type="text" value={formData.linderoOccidente} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.linderoOccidente ? "border-red-500" : "border-gray-300"}`} />
-                                {errors.linderoOccidente && <p className="text-red-600 text-sm mt-1">{errors.linderoOccidente}</p>}
-                            </div>
-                        </div>
-                    </div>
-                </AnimatedPage>
-            )}
-            {step === 2 && (
-                <AnimatedPage>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block font-semibold mb-1" htmlFor="matricula">Matrícula inmobiliaria <span className="text-red-600">*</span></label>
-                            <input id="matricula" name="matricula" type="text" value={formData.matricula} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.matricula ? "border-red-500 ring-red-500" : "border-gray-300"}`} maxLength={15} />
-                            {errors.matricula && <p className="text-red-600 text-sm mt-1">{errors.matricula}</p>}
-                        </div>
-                        <div>
-                            <label className="block font-semibold mb-1" htmlFor="nomenclatura">Nomenclatura <span className="text-red-600">*</span></label>
-                            <input id="nomenclatura" name="nomenclatura" type="text" value={formData.nomenclatura} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.nomenclatura ? "border-red-500 ring-red-500" : "border-gray-300"}`} maxLength={25} />
-                            {errors.nomenclatura && <p className="text-red-600 text-sm mt-1">{errors.nomenclatura}</p>}
-                        </div>
-                    </div>
-                    <div className="md:col-span-2 mt-6 pt-6 border-t border-dashed">
-                        <FileUpload
-                            label="Certificado de Tradición y Libertad (Opcional)"
-                            filePath={(fileName) => `documentos_viviendas/${formData.matricula}/certificado-tradicion-${fileName}`}
-                            currentFileUrl={formData.urlCertificadoTradicion}
-                            onUploadSuccess={handleUploadSuccess}
-                            onRemove={handleRemoveFile}
-                            disabled={!formData.matricula}
-                        />
-                    </div>
-                </AnimatedPage>
-            )}
-            {step === 3 && (
-                <AnimatedPage>
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block font-semibold mb-1" htmlFor="valorBase">Valor Base Casa <span className="text-red-600">*</span></label>
-                            <NumericFormat id="valorBase" name="valorBase" value={formData.valorBase} onValueChange={(values) => handleValueChange('valorBase', values.value)} thousandSeparator="." decimalSeparator="," prefix="$ " className={`w-full border p-3 rounded-lg ${errors.valorBase ? "border-red-500" : "border-gray-300"}`} />
-                            {errors.valorBase && <p className="text-red-600 text-sm mt-1">{errors.valorBase}</p>}
-                        </div>
+        <AnimatedPage>
+            <div className="max-w-2xl mx-auto">
+                <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                    <h2 className="text-3xl font-extrabold mb-4 text-center text-[#c62828]">
+                        🏠 Registrar Nueva Vivienda
+                    </h2>
 
-                        <div>
-                            <label className="flex items-center space-x-3 cursor-pointer">
-                                <input type="checkbox" name="esEsquinera" checked={formData.esEsquinera} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-red-600 focus:ring-red-500" />
-                                <span className="font-semibold text-gray-700">¿Casa esquinera? (Aplica Recargo)</span>
-                            </label>
-                            {formData.esEsquinera && (
-                                <div className="mt-4 pl-8 animate-fade-in">
-                                    <label className="block font-semibold mb-1 text-sm" htmlFor="recargoEsquinera">Selecciona el recargo</label>
-                                    <select id="recargoEsquinera" name="recargoEsquinera" value={formData.recargoEsquinera} onChange={handleInputChange} className="w-full border p-3 rounded-lg border-gray-300">
-                                        <option value="5000000">$ 5.000.000</option>
-                                        <option value="10000000">$ 10.000.000</option>
-                                    </select>
+                    <div className="flex items-center justify-center my-8">
+                        {STEPS_CONFIG.map((s, index) => (
+                            <Fragment key={s.number}>
+                                <div className="flex flex-col items-center">
+                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${step >= s.number ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                        {step > s.number ? <Check size={24} /> : <s.icon size={24} />}
+                                    </div>
+                                    <p className={`mt-2 text-xs font-semibold ${step >= s.number ? 'text-red-500' : 'text-gray-400'}`}>{s.title}</p>
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="mt-8 pt-4 border-t-2 border-dashed space-y-2">
-                            <ResumenValorItem label="Valor base vivienda" value={parseInt(String(formData.valorBase).replace(/\D/g, '')) || 0} />
-                            <ResumenValorItem label="Gastos notariales (Recargo obligatorio)" value={gastosNotarialesFijos} />
-                            {formData.esEsquinera && (
-                                <ResumenValorItem label="Recargo por casa esquinera" value={parseInt(formData.recargoEsquinera) || 0} />
-                            )}
-                            <div className="!mt-4 pt-2 border-t">
-                                <div className="flex justify-between items-center">
-                                    <label className="font-bold text-gray-800">Valor Total de la Vivienda</label>
-                                    <p className="font-bold text-lg text-green-600">{valorTotalCalculado.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}</p>
-                                </div>
-                            </div>
-                        </div>
+                                {index < STEPS_CONFIG.length - 1 && (
+                                    <div className={`flex-auto border-t-2 transition-all duration-300 mx-4 ${step > s.number ? 'border-red-500' : 'border-gray-300'}`}></div>
+                                )}
+                            </Fragment>
+                        ))}
                     </div>
-                </AnimatedPage>
-            )}
-        </div>
+
+                    <FormularioVivienda
+                        step={step}
+                        formData={formData}
+                        errors={errors}
+                        handleInputChange={handleInputChange}
+                        handleValueChange={handleValueChange}
+                        handleCheckboxChange={handleCheckboxChange}
+                        valorTotalCalculado={valorTotalCalculado}
+                        gastosNotarialesFijos={GASTOS_NOTARIALES_FIJOS}
+                    />
+
+                    <div className="mt-10 flex justify-between">
+                        {step > 1 ? (
+                            <button type="button" onClick={handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
+                        ) : <div />}
+
+                        {step < 3 ? (
+                            <button type="button" onClick={handleNextStep} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
+                                Siguiente
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={isSubmitting}
+                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto"
+                            >
+                                {isSubmitting ? "Guardando..." : "Finalizar y Guardar"}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </AnimatedPage>
     );
 };
 
-export default FormularioVivienda;
+export default CrearVivienda;

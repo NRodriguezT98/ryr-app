@@ -5,8 +5,7 @@ import AnimatedPage from '../../../components/AnimatedPage';
 
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
-const cuotaInicialOptions = [{ value: 'Cesantias', label: 'Cesantías' }, { value: 'Efectivo', label: 'Efectivo' }, { value: 'Consignación bancaria', label: 'Consignación' }];
-const creditoOptions = [{ value: 'Bancolombia', label: 'Bancolombia' }, { value: 'Banco de Bogotá', label: 'Banco de Bogotá' }, { value: 'Banco Agrario', label: 'Banco Agrario' }, { value: 'Banco Caja Social', label: 'Banco Caja Social' }];
+const creditoOptions = [{ value: 'Bancolombia', label: 'Bancolombia' }, { value: 'Banco Agrario', label: 'Banco Agrario' }, { value: 'Banco de Bogotá', label: 'Banco de Bogotá' }, { value: 'Banco Caja Social', label: 'Banco Caja Social' }];
 const cajaOptions = [{ value: 'Comfandi', label: 'Comfandi' }, { value: 'Comfenalco', label: 'Comfenalco' }];
 
 const Step3_Financial = ({ formData, dispatch, errors }) => {
@@ -25,19 +24,22 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
         const montoCredito = financiero.aplicaCredito ? (financiero.credito.monto || 0) : 0;
         const montoSubVivienda = financiero.aplicaSubsidioVivienda ? (financiero.subsidioVivienda.monto || 0) : 0;
         const montoSubCaja = financiero.aplicaSubsidioCaja ? (financiero.subsidioCaja.monto || 0) : 0;
-        const montoGastosNotariales = financiero.gastosNotariales.monto || 0;
 
-        const totalRecursos = montoCuota + montoCredito + montoSubVivienda + montoSubCaja + montoGastosNotariales;
+        const totalRecursos = montoCuota + montoCredito + montoSubVivienda + montoSubCaja;
         const totalAPagar = viviendaSeleccionada.valorTotal || 0;
 
-        return { totalRecursos, totalAPagar, diferencia: totalAPagar - totalRecursos };
+        return {
+            totalRecursos,
+            totalAPagar,
+            diferencia: totalAPagar - totalRecursos
+        };
     }, [financiero, viviendaSeleccionada.valorTotal]);
 
     return (
         <AnimatedPage>
             <div className="space-y-6">
                 <div className='text-center'>
-                    <h3 className="text-2xl font-bold text-gray-800">3. Estructura Financiera</h3>
+                    <h3 className="text-2xl font-bold text-gray-800">3. Cierre Financiero</h3>
                     <p className="text-sm text-gray-500 mt-1">La suma de los recursos debe ser igual al Valor de la Vivienda.</p>
                 </div>
 
@@ -138,26 +140,6 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                                 </div>
                             </div>
                         )}
-                    </div>
-
-                    <div className="lg:col-span-2">
-                        <div className="p-4 border rounded-xl bg-gray-50">
-                            <label className="font-semibold text-gray-700">Gastos Notariales</label>
-                            <div className='mt-2 space-y-1'>
-                                <label className="text-xs font-medium text-gray-500">Monto (Máximo $5.000.000)</label>
-                                <NumericFormat
-                                    value={financiero.gastosNotariales.monto}
-                                    isAllowed={(values) => {
-                                        const { floatValue } = values;
-                                        return floatValue === undefined || floatValue <= 5000000;
-                                    }}
-                                    onValueChange={(values) => handleFieldChange('gastosNotariales', 'monto', values.floatValue)}
-                                    className={`w-full border p-2 rounded-lg ${errors.gastosNotariales_monto ? 'border-red-500' : 'border-gray-300'}`}
-                                    thousandSeparator="." decimalSeparator="," prefix="$ "
-                                />
-                                {errors.gastosNotariales_monto && <p className="text-red-600 text-sm mt-1">{errors.gastosNotariales_monto}</p>}
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>

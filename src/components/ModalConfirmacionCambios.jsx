@@ -19,12 +19,12 @@ const ModalConfirmacionCambios = ({ isOpen, onClose, onConfirm, titulo, cambios 
                                     <li key={index} className="text-sm">
                                         <strong className="font-semibold text-gray-700 block mb-1">{cambio.campo}:</strong>
                                         <div className="flex items-center justify-between bg-white p-2 rounded-md border">
-                                            <span className="text-red-600 bg-red-100 px-2 py-1 rounded-md text-xs font-mono truncate" title={cambio.anterior}>
-                                                {cambio.anterior || 'Vacío'}
+                                            <span className="text-red-600 bg-red-100 px-2 py-1 rounded-md text-xs font-mono truncate" title={String(cambio.anterior)}>
+                                                {String(cambio.anterior) || 'Vacío'}
                                             </span>
                                             <ArrowRight className="w-4 h-4 text-gray-400 mx-2 flex-shrink-0" />
-                                            <span className="text-green-700 bg-green-100 px-2 py-1 rounded-md text-xs font-mono truncate" title={cambio.actual}>
-                                                {cambio.actual || 'Vacío'}
+                                            <span className="text-green-700 bg-green-100 px-2 py-1 rounded-md text-xs font-mono truncate" title={String(cambio.actual)}>
+                                                {String(cambio.actual) || 'Vacío'}
                                             </span>
                                         </div>
                                     </li>

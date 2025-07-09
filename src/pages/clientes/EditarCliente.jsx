@@ -33,6 +33,7 @@ function formReducer(state, action) {
 }
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
+const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
 const blankInitialState = {
     viviendaSeleccionada: { id: null, valorTotal: 0, label: '' },
@@ -47,8 +48,6 @@ const blankInitialState = {
     seguimiento: {},
     errors: {}
 };
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
 const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
     const { clientes: todosLosClientes, viviendas } = useData();
@@ -86,6 +85,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
 
     const nextStep = () => setStep(prev => prev < 3 ? prev + 1 : 3);
     const prevStep = () => setStep(prev => prev > 1 ? prev - 1 : 1);
+
     const handleNext = () => {
         let errors = {};
         if (step === 2) {
@@ -95,20 +95,27 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         dispatch({ type: 'SET_ERRORS', payload: {} });
         nextStep();
     };
+
     const executeSave = useCallback(async () => {
         setIsSubmitting(true);
         const clienteParaActualizar = {
-            datosCliente: formData.datosCliente, financiero: formData.financiero, seguimiento: formData.seguimiento,
-            viviendaId: formData.viviendaSeleccionada.id, status: 'activo'
+            datosCliente: formData.datosCliente,
+            financiero: formData.financiero,
+            seguimiento: formData.seguimiento,
+            viviendaId: formData.viviendaSeleccionada.id,
+            status: 'activo'
         };
         try {
             await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
             toast.success("Cliente actualizado con éxito!");
-            onGuardar(); onClose();
+            onGuardar();
+            onClose();
         } catch (error) {
-            console.error("Error al actualizar el cliente:", error); toast.error("Hubo un error al actualizar los datos.");
+            console.error("Error al actualizar el cliente:", error);
+            toast.error("Hubo un error al actualizar los datos.");
         } finally {
-            setIsConfirming(false); setIsSubmitting(false);
+            setIsConfirming(false);
+            setIsSubmitting(false);
         }
     }, [formData, clienteAEditar, onGuardar, onClose, viviendaOriginalId]);
 
@@ -126,15 +133,17 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         const cambiosDetectados = [];
         const initial = initialData;
         const current = formData;
+
         const fieldLabels = {
             nombres: 'Nombres', apellidos: 'Apellidos', cedula: 'Cédula', telefono: 'Teléfono', correo: 'Correo', direccion: 'Dirección', fechaIngreso: 'Fecha de Ingreso',
             aplicaCuotaInicial: 'Aplica Cuota Inicial', aplicaCredito: 'Aplica Crédito', aplicaSubsidioVivienda: 'Aplica Subsidio Mi Casa Ya', aplicaSubsidioCaja: 'Aplica Subsidio Caja Comp.',
             monto: 'Monto', metodo: 'Método', banco: 'Banco', caja: 'Caja de Compensación'
         };
 
-        const formatValue = (value, isCurrency = false) => {
+        const formatValue = (value, isCurrency = false, isDate = false) => {
             if (typeof value === 'boolean') return value ? 'Sí' : 'No';
             if (isCurrency) return formatCurrency(value);
+            if (isDate) return new Date(value + 'T00:00:00').toLocaleDateString('es-ES');
             return value || 'Vacío';
         };
 
@@ -145,7 +154,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         for (const key in current.datosCliente) {
             if (String(initial.datosCliente[key] || '') !== String(current.datosCliente[key] || '')) {
                 if (key.startsWith('url')) continue;
-                cambiosDetectados.push({ campo: fieldLabels[key] || key, anterior: initial.datosCliente[key] || 'Vacío', actual: current.datosCliente[key] || 'Vacío' });
+                const isDateField = key === 'fechaIngreso';
+                cambiosDetectados.push({ campo: fieldLabels[key] || key, anterior: formatValue(initial.datosCliente[key], false, isDateField), actual: formatValue(current.datosCliente[key], false, isDateField) });
             }
         }
 
@@ -167,15 +177,15 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
 
         if (initial.financiero.aplicaCuotaInicial !== current.financiero.aplicaCuotaInicial) cambiosDetectados.push({ campo: fieldLabels.aplicaCuotaInicial, anterior: formatValue(initial.financiero.aplicaCuotaInicial), actual: formatValue(current.financiero.aplicaCuotaInicial) });
         else if (current.financiero.aplicaCuotaInicial) checkFinancialSection('cuotaInicial', 'Cuota Inicial');
+
         if (initial.financiero.aplicaCredito !== current.financiero.aplicaCredito) cambiosDetectados.push({ campo: fieldLabels.aplicaCredito, anterior: formatValue(initial.financiero.aplicaCredito), actual: formatValue(current.financiero.aplicaCredito) });
-        else if (current.financiero.aplicaCredito) checkFinancialSection('credito', 'Crédito');
+        else if (current.financiero.aplicaCredito) checkFinancialSection('credito', 'Crédito Hipotecario');
+
         if (initial.financiero.aplicaSubsidioVivienda !== current.financiero.aplicaSubsidioVivienda) cambiosDetectados.push({ campo: fieldLabels.aplicaSubsidioVivienda, anterior: formatValue(initial.financiero.aplicaSubsidioVivienda), actual: formatValue(current.financiero.aplicaSubsidioVivienda) });
         else if (current.financiero.aplicaSubsidioVivienda) checkFinancialSection('subsidioVivienda', 'Subsidio Mi Casa Ya');
+
         if (initial.financiero.aplicaSubsidioCaja !== current.financiero.aplicaSubsidioCaja) cambiosDetectados.push({ campo: fieldLabels.aplicaSubsidioCaja, anterior: formatValue(initial.financiero.aplicaSubsidioCaja), actual: formatValue(current.financiero.aplicaSubsidioCaja) });
         else if (current.financiero.aplicaSubsidioCaja) checkFinancialSection('subsidioCaja', 'Subsidio Caja Comp.');
-        if (String(initial.financiero.gastosNotariales.monto || 0) !== String(current.financiero.gastosNotariales.monto || 0)) {
-            cambiosDetectados.push({ campo: 'Gastos Notariales', anterior: formatCurrency(initial.financiero.gastosNotariales.monto), actual: formatCurrency(current.financiero.gastosNotariales.monto) });
-        }
 
         if (cambiosDetectados.length === 0) {
             toast('No se han detectado cambios para guardar.', { icon: 'ℹ️' });
@@ -186,12 +196,17 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         setIsConfirming(true);
     }, [formData, todosLosClientes, clienteAEditar, initialData]);
 
-    const hayCambios = useMemo(() => JSON.stringify(formData) !== JSON.stringify(initialData), [formData, initialData]);
+    const hayCambios = useMemo(() => {
+        if (!initialData) return false;
+        return JSON.stringify(formData) !== JSON.stringify(initialData);
+    }, [formData, initialData]);
+
     const steps = [
         <Step1_SelectVivienda key="step1" formData={formData} dispatch={dispatch} isEditing={true} clienteAEditar={clienteAEditar} />,
         <Step2_ClientInfo key="step2" formData={formData} dispatch={dispatch} errors={formData.errors} />,
         <Step3_Financial key="step3" formData={formData} dispatch={dispatch} errors={formData.errors} />,
     ];
+
     const STEPS_CONFIG = [
         { number: 1, title: 'Vivienda', icon: Home },
         { number: 2, title: 'Datos Cliente', icon: User },
@@ -203,7 +218,9 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
     return (
         <>
             <Modal isOpen={isOpen} onClose={onClose} title="Editar Cliente" icon={<UserCog size={32} className="text-[#1976d2]" />}>
-                {isLoading ? (<div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos...</div>) : (
+                {isLoading ? (
+                    <div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos...</div>
+                ) : (
                     <>
                         <div className="flex items-center justify-center my-8">
                             {STEPS_CONFIG.map((s, index) => (
@@ -229,11 +246,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                                 <button type="button" onClick={handleNext} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">Siguiente</button>
                             ) : (
                                 <span className="ml-auto" data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
-                                    <button
-                                        onClick={handlePreSave}
-                                        disabled={!hayCambios || isSubmitting}
-                                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full"
-                                    >
+                                    <button onClick={handlePreSave} disabled={!hayCambios || isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full">
                                         {isSubmitting ? "Guardando..." : "Guardar Cambios"}
                                     </button>
                                 </span>
@@ -243,6 +256,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                 )}
             </Modal>
             <ModalConfirmacionCambios isOpen={isConfirming} onClose={() => setIsConfirming(false)} onConfirm={executeSave} titulo="Confirmar Cambios del Cliente" cambios={cambios} isSaving={isSubmitting} />
+            <Tooltip id="app-tooltip" style={{ backgroundColor: "#334155", color: "#ffffff", borderRadius: '8px', zIndex: 100 }} />
         </>
     );
 };

@@ -3,13 +3,13 @@ import { useForm } from '../../hooks/useForm.jsx';
 import toast from 'react-hot-toast';
 import { NumericFormat } from 'react-number-format';
 import { addAbono } from '../../utils/storage';
-import { Banknote, Landmark, Gift, HandCoins, FilePlus2 } from 'lucide-react'; // <-- Importamos el nuevo ícono
+import { Banknote, Landmark, Gift, HandCoins, FilePlus2 } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
+import { validateAbono } from './abonoValidation.js';
 
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
-// --- AÑADIMOS EL NUEVO ÍCONO AQUÍ ---
 const ICONS = {
     cuotaInicial: <HandCoins className="w-8 h-8 text-yellow-600" />,
     credito: <Landmark className="w-8 h-8 text-blue-600" />,
@@ -25,7 +25,7 @@ const initialAbonoFormState = {
     urlComprobante: null
 };
 
-const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAbonoRegistrado }) => {
+const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, cliente, onAbonoRegistrado }) => {
     const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
 
     const totalAbonado = abonos.reduce((sum, abono) => sum + abono.monto, 0);
@@ -34,6 +34,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAb
 
     const { formData, setFormData, handleInputChange, handleValueChange, handleSubmit, isSubmitting, resetForm } = useForm({
         initialState: initialAbonoFormState,
+        validate: (data) => validateAbono(data, { saldoPendiente }, cliente?.fechaCreacion),
         onSubmit: async (data) => {
             const nuevoAbono = {
                 fechaPago: data.fechaPago,
@@ -45,15 +46,6 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAb
                 viviendaId: vivienda.id,
                 clienteId: vivienda.clienteId,
             };
-
-            if (nuevoAbono.monto <= 0) {
-                toast.error("El monto del abono debe ser mayor a cero.");
-                return;
-            }
-            if (nuevoAbono.monto > saldoPendiente) {
-                toast.error(`El abono no puede superar el saldo pendiente de ${formatCurrency(saldoPendiente)}`);
-                return;
-            }
 
             try {
                 await addAbono(nuevoAbono);
@@ -79,6 +71,8 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAb
     const handleRemoveFile = () => {
         setFormData(prev => ({ ...prev, urlComprobante: null }));
     };
+
+    const minDate = cliente?.fechaCreacion ? cliente.fechaCreacion.split('T')[0] : null;
 
     return (
         <div className="bg-white p-5 rounded-xl border border-gray-200">
@@ -109,19 +103,20 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, onAb
                         </div>
                         <div>
                             <label className="text-xs font-medium">Fecha del Pago</label>
-                            <input type="date" name="fechaPago" value={formData.fechaPago} onChange={handleInputChange} max={getTodayString()} className="w-full border p-2 rounded-lg" />
+                            <input
+                                type="date"
+                                name="fechaPago"
+                                value={formData.fechaPago}
+                                onChange={handleInputChange}
+                                min={minDate}
+                                max={getTodayString()}
+                                className="w-full border p-2 rounded-lg"
+                            />
                         </div>
                     </div>
                     <div>
                         <label className="text-xs font-medium">Observación (Opcional)</label>
-                        <textarea
-                            name="observacion"
-                            value={formData.observacion}
-                            onChange={handleInputChange}
-                            rows="2"
-                            className="w-full border p-2 rounded-lg text-sm"
-                            placeholder="Ej: Pago parcial..."
-                        />
+                        <textarea name="observacion" value={formData.observacion} onChange={handleInputChange} rows="2" className="w-full border p-2 rounded-lg text-sm" placeholder="Ej: Pago parcial..." />
                     </div>
                     <div>
                         <FileUpload

@@ -8,7 +8,6 @@ import { addVivienda, getViviendas } from "../../utils/storage";
 import { MapPin, FileText, CircleDollarSign, Check } from 'lucide-react';
 import FormularioVivienda from "./FormularioVivienda";
 
-// Definimos el valor como una constante para fácil mantenimiento
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 
 const initialState = {
@@ -57,8 +56,6 @@ const CrearVivienda = () => {
         onSubmit: async (formData) => {
             const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
             const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
-
-            // El valor total ahora siempre incluye los gastos notariales fijos.
             const valorTotalVivienda = valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS;
 
             const nuevaVivienda = {
@@ -73,7 +70,7 @@ const CrearVivienda = () => {
                 urlCertificadoTradicion: formData.urlCertificadoTradicion,
                 valorBase: valorBaseNum,
                 recargoEsquinera: recargoEsquineraNum,
-                gastosNotariales: GASTOS_NOTARIALES_FIJOS, // Guardamos el valor fijo
+                gastosNotariales: GASTOS_NOTARIALES_FIJOS,
                 valorTotal: valorTotalVivienda,
             };
             try {
