@@ -50,38 +50,45 @@ const CrearVivienda = () => {
         cargarDatosParaValidacion();
     }, []);
 
+    // --- LÓGICA DE VALIDACIÓN Y SUBMIT MEMOIZADA ---
+    const validateCallback = useCallback((data) => {
+        return validateVivienda(data, todasLasViviendas, null);
+    }, [todasLasViviendas]);
+
+    const onSubmitCallback = useCallback(async (formData) => {
+        const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
+        const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
+        const valorTotalVivienda = valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS;
+
+        const nuevaVivienda = {
+            manzana: formData.manzana,
+            numeroCasa: parseInt(formData.numero, 10),
+            matricula: formData.matricula.trim(),
+            nomenclatura: formData.nomenclatura,
+            linderoNorte: formData.linderoNorte,
+            linderoSur: formData.linderoSur,
+            linderoOriente: formData.linderoOriente,
+            linderoOccidente: formData.linderoOccidente,
+            urlCertificadoTradicion: formData.urlCertificadoTradicion,
+            valorBase: valorBaseNum,
+            recargoEsquinera: recargoEsquineraNum,
+            gastosNotariales: GASTOS_NOTARIALES_FIJOS,
+            valorTotal: valorTotalVivienda,
+        };
+        try {
+            await addVivienda(nuevaVivienda);
+            toast.success("¡Vivienda registrada con éxito!");
+            navigate("/viviendas/listar");
+        } catch (error) {
+            toast.error("No se pudo registrar la vivienda.");
+            console.error("Error al crear vivienda:", error);
+        }
+    }, [navigate]);
+
     const { formData, errors, setErrors, isSubmitting, handleInputChange, handleValueChange, handleSubmit, setFormData } = useForm({
         initialState,
-        validate: (data) => validateVivienda(data, todasLasViviendas, null),
-        onSubmit: async (formData) => {
-            const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
-            const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
-            const valorTotalVivienda = valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS;
-
-            const nuevaVivienda = {
-                manzana: formData.manzana,
-                numeroCasa: parseInt(formData.numero, 10),
-                matricula: formData.matricula.trim(),
-                nomenclatura: formData.nomenclatura,
-                linderoNorte: formData.linderoNorte,
-                linderoSur: formData.linderoSur,
-                linderoOriente: formData.linderoOriente,
-                linderoOccidente: formData.linderoOccidente,
-                urlCertificadoTradicion: formData.urlCertificadoTradicion,
-                valorBase: valorBaseNum,
-                recargoEsquinera: recargoEsquineraNum,
-                gastosNotariales: GASTOS_NOTARIALES_FIJOS,
-                valorTotal: valorTotalVivienda,
-            };
-            try {
-                await addVivienda(nuevaVivienda);
-                toast.success("¡Vivienda registrada con éxito!");
-                navigate("/viviendas/listar");
-            } catch (error) {
-                toast.error("No se pudo registrar la vivienda.");
-                console.error("Error al crear vivienda:", error);
-            }
-        },
+        validate: validateCallback,
+        onSubmit: onSubmitCallback,
         options: { inputFilters }
     });
 
@@ -117,13 +124,7 @@ const CrearVivienda = () => {
 
     const handleCheckboxChange = (e) => {
         const { name, checked } = e.target;
-        setFormData(prev => {
-            const newState = { ...prev, [name]: checked };
-            if (name === 'esEsquinera') {
-                newState.recargoEsquinera = checked ? "5000000" : "0";
-            }
-            return newState;
-        });
+        setFormData(prev => ({ ...prev, [name]: checked }));
     };
 
     const STEPS_CONFIG = [

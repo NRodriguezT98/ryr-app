@@ -1,25 +1,19 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-// Formateador para el eje Y, para mostrar los valores como moneda
 const formatYAxis = (tickItem) => {
     return new Intl.NumberFormat('es-CO', {
         style: 'currency',
         currency: 'COP',
-        notation: 'compact', // Formato compacto (ej: $1M, $500K)
+        notation: 'compact',
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     }).format(tickItem);
 };
 
-/**
- * Muestra un gráfico de barras.
- * @param {object} props
- * @param {Array} props.data - Array de datos para el gráfico, ej: [{ name: 'Ene', Ingresos: 4000 }]
- */
 const BarChartIngresos = ({ data }) => {
     return (
-        <div style={{ width: '100%', height: 300 }}>
+        <div className="w-full h-full min-h-[300px]">
             <ResponsiveContainer>
                 <BarChart
                     data={data}

@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import Select, { components } from 'react-select';
 import { Filter } from 'lucide-react';
 import UndoToast from '../../components/UndoToast';
+import AbonoCardSkeleton from './AbonoCardSkeleton'; // <-- 1. Importamos el nuevo componente
 
 const CustomOption = (props) => {
     const { innerProps, label, data } = props;
@@ -26,13 +27,12 @@ const CustomOption = (props) => {
 
 const ListarAbonos = () => {
     const { isLoading, abonos, clientes, viviendas, renuncias, recargarDatos } = useData();
-
     const {
         abonosFiltrados,
-        setClienteFiltro,
+        clienteFiltro, setClienteFiltro,
         fechaInicioFiltro, setFechaInicioFiltro,
         fechaFinFiltro, setFechaFinFiltro,
-        setFuenteFiltro,
+        fuenteFiltro, setFuenteFiltro,
         statusFiltro, setStatusFiltro
     } = useAbonosFilters(abonos, clientes, viviendas, renuncias);
 
@@ -42,13 +42,11 @@ const ListarAbonos = () => {
     const deletionTimeouts = useRef({});
 
     const clienteOptions = useMemo(() => {
-        const opciones = clientes
-            .filter(c => c.vivienda)
-            .map(c => ({
-                value: c.id,
-                label: `${c.vivienda.manzana}${c.vivienda.numeroCasa} - ${c.datosCliente.nombres} ${c.datosCliente.apellidos}`,
-                cliente: c
-            }));
+        const opciones = clientes.filter(c => c.vivienda).map(c => ({
+            value: c.id,
+            label: `${c.vivienda.manzana}${c.vivienda.numeroCasa} - ${c.datosCliente.nombres} ${c.datosCliente.apellidos}`,
+            cliente: c
+        }));
         return [{ value: null, label: 'Todos los Clientes', cliente: null }, ...opciones];
     }, [clientes]);
 
@@ -64,10 +62,19 @@ const ListarAbonos = () => {
     const handleGuardado = () => recargarDatos();
 
     const iniciarEliminacion = (abono) => {
-        const id = abono.id;
+        if (abono.estadoProceso === 'archivado' || abono.tieneRenunciaPendiente) {
+            toast.error("No se pueden eliminar abonos de procesos cerrados o en curso.");
+            return;
+        }
+        setAbonoAEliminar(abono);
+    };
+
+    const confirmarEliminar = () => {
+        if (!abonoAEliminar) return;
+        const id = abonoAEliminar.id;
         setAbonosOcultos(prev => [...prev, id]);
         toast.custom((t) => (<UndoToast t={t} message="Abono eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
-        const timeoutId = setTimeout(() => { confirmarEliminarReal(abono); }, 5000);
+        const timeoutId = setTimeout(() => { confirmarEliminarReal(abonoAEliminar); }, 5000);
         deletionTimeouts.current[id] = timeoutId;
         setAbonoAEliminar(null);
     };
@@ -91,18 +98,12 @@ const ListarAbonos = () => {
 
     const abonosVisibles = abonosFiltrados.filter(a => !abonosOcultos.includes(a.id));
 
-    if (isLoading) {
-        return <div className="text-center p-10 animate-pulse">Cargando historial de abonos...</div>;
-    }
-
     return (
         <AnimatedPage>
             <div className="max-w-6xl mx-auto bg-white p-6 rounded-2xl shadow-2xl mt-10 relative">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-8">
                     <div className='text-center md:text-left'>
-                        <h2 className="text-4xl font-extrabold text-green-600 uppercase font-poppins">
-                            Historial de Abonos
-                        </h2>
+                        <h2 className="text-4xl font-extrabold text-green-600 uppercase font-poppins">Historial de Abonos</h2>
                         <p className="text-gray-500 mt-1">Consulta y filtra todos los pagos registrados en el sistema.</p>
                     </div>
                     <Link to="/abonos" className="mt-4 md:mt-0">
@@ -142,14 +143,18 @@ const ListarAbonos = () => {
                         </div>
                     </div>
                 </div>
-                {abonosVisibles.length > 0 ? (
+                {isLoading ? (
+                    <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => <AbonoCardSkeleton key={i} />)}
+                    </div>
+                ) : abonosVisibles.length > 0 ? (
                     <div className="space-y-4">
                         {abonosVisibles.map(abono => (
                             <AbonoCard
                                 key={abono.id}
                                 abono={abono}
-                                onEdit={setAbonoAEditar}
-                                onDelete={setAbonoAEliminar}
+                                onEdit={() => setAbonoAEditar(abono)}
+                                onDelete={iniciarEliminacion}
                             />
                         ))}
                     </div>
@@ -158,7 +163,7 @@ const ListarAbonos = () => {
                 )}
             </div>
             {abonoAEditar && (<EditarAbonoModal isOpen={!!abonoAEditar} onClose={() => setAbonoAEditar(null)} onSave={handleGuardado} abonoAEditar={abonoAEditar} viviendaDelAbono={viviendas.find(v => v.id === abonoAEditar.viviendaId)} />)}
-            {abonoAEliminar && (<ModalConfirmacion isOpen={!!abonoAEliminar} onClose={() => setAbonoAEliminar(null)} onConfirm={() => iniciarEliminacion(abonoAEliminar)} titulo="¿Eliminar Abono?" mensaje="¿Estás seguro? Esta acción recalculará los saldos de la vivienda asociada y no se puede deshacer." />)}
+            {abonoAEliminar && (<ModalConfirmacion isOpen={!!abonoAEliminar} onClose={() => setAbonoAEliminar(null)} onConfirm={confirmarEliminar} titulo="¿Eliminar Abono?" mensaje="¿Estás seguro? Esta acción recalculará los saldos de la vivienda asociada y no se puede deshacer." />)}
         </AnimatedPage>
     );
 };

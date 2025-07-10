@@ -1,9 +1,14 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import AnimatedPage from "../../components/AnimatedPage";
 import { useData } from "../../context/DataContext";
 import FuenteDePagoCard from "./FuenteDePagoCard";
 import AbonoCard from "./AbonoCard";
-import { Search } from "lucide-react";
+import { Search, WalletCards } from "lucide-react";
+import EditarAbonoModal from './EditarAbonoModal';
+import ModalConfirmacion from '../../components/ModalConfirmacion';
+import toast from 'react-hot-toast';
+import { deleteAbono } from '../../utils/storage';
+import UndoToast from '../../components/UndoToast';
 
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
@@ -12,10 +17,15 @@ const CrearAbono = () => {
     const [selectedClienteId, setSelectedClienteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
-    const clientesConVivienda = useMemo(() => clientes.filter(c => c.vivienda), [clientes]);
+    const [abonoAEditar, setAbonoAEditar] = useState(null);
+    const [abonoAEliminar, setAbonoAEliminar] = useState(null);
+    const [abonosOcultos, setAbonosOcultos] = useState([]);
+    const deletionTimeouts = useRef({});
+
+    const clientesConVivienda = useMemo(() => clientes.filter(c => c.vivienda && c.status === 'activo'), [clientes]);
 
     const clientesFiltrados = useMemo(() => {
-        if (!searchTerm.trim()) { return clientesConVivienda.sort((a, b) => { if (a.vivienda.manzana < b.vivienda.manzana) return -1; if (a.vivienda.manzana > b.vivienda.manzana) return 1; return a.vivienda.numeroCasa - b.vivienda.numeroCasa; }); }
+        if (!searchTerm.trim()) { return []; }
         const lowerCaseSearchTerm = searchTerm.toLowerCase().replace(/\s/g, '');
         return clientesConVivienda.filter(c => {
             const nombreCompleto = `${c.datosCliente.nombres} ${c.datosCliente.apellidos}`.toLowerCase();
@@ -34,7 +44,11 @@ const CrearAbono = () => {
         if (!clienteActual) return null;
         const viviendaActual = clienteActual.vivienda;
         if (!viviendaActual) return null;
-        const historial = abonos.filter(a => a.viviendaId === viviendaActual.id && a.estadoProceso === 'activo').sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
+
+        const historial = abonos
+            .filter(a => a.viviendaId === viviendaActual.id && a.estadoProceso === 'activo' && !abonosOcultos.includes(a.id))
+            .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
+
         const fuentes = [];
         if (clienteActual.financiero) {
             const { financiero } = clienteActual;
@@ -42,10 +56,51 @@ const CrearAbono = () => {
             if (financiero.aplicaCredito) fuentes.push({ titulo: "Crédito Hipotecario", fuente: "credito", montoPactado: financiero.credito.monto, abonos: historial.filter(a => a.fuente === 'credito') });
             if (financiero.aplicaSubsidioVivienda) fuentes.push({ titulo: "Subsidio Mi Casa Ya", fuente: "subsidioVivienda", montoPactado: financiero.subsidioVivienda.monto, abonos: historial.filter(a => a.fuente === 'subsidioVivienda') });
             if (financiero.aplicaSubsidioCaja) fuentes.push({ titulo: `Subsidio Caja (${financiero.subsidioCaja.caja})`, fuente: "subsidioCaja", montoPactado: financiero.subsidioCaja.monto, abonos: historial.filter(a => a.fuente === 'subsidioCaja') });
-            if (financiero.gastosNotariales) fuentes.push({ titulo: "Gastos Notariales", fuente: "gastosNotariales", montoPactado: 5000000, abonos: historial.filter(a => a.fuente === 'gastosNotariales') });
+            // --- LÍNEA DE GASTOS NOTARIALES ELIMINADA ---
         }
         return { vivienda: viviendaActual, cliente: clienteActual, fuentes, historial };
-    }, [selectedClienteId, clientes, abonos]);
+    }, [selectedClienteId, clientes, abonos, abonosOcultos]);
+
+    const handleGuardadoEdicion = useCallback(() => {
+        recargarDatos();
+        setAbonoAEditar(null);
+    }, [recargarDatos]);
+
+    const iniciarEliminacion = (abono) => {
+        setAbonoAEliminar(abono);
+    };
+
+    const confirmarEliminar = async () => {
+        if (!abonoAEliminar) return;
+        const id = abonoAEliminar.id;
+
+        setAbonosOcultos(prev => [...prev, id]);
+        toast.custom((t) => (<UndoToast t={t} message="Abono eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
+
+        const timeoutId = setTimeout(() => {
+            confirmarEliminarReal(abonoAEliminar);
+        }, 5000);
+
+        deletionTimeouts.current[id] = timeoutId;
+        setAbonoAEliminar(null);
+    };
+
+    const deshacerEliminacion = (id) => {
+        clearTimeout(deletionTimeouts.current[id]);
+        delete deletionTimeouts.current[id];
+        setAbonosOcultos(prev => prev.filter(aId => aId !== id));
+        toast.success("Eliminación deshecha.");
+    };
+
+    const confirmarEliminarReal = async (abono) => {
+        try {
+            await deleteAbono(abono);
+            recargarDatos();
+        } catch (error) {
+            toast.error("No se pudo eliminar el abono.");
+            setAbonosOcultos(prev => prev.filter(aId => aId !== abono.id));
+        }
+    };
 
     if (isLoading) return <div className="text-center p-10 animate-pulse">Cargando...</div>;
 
@@ -53,16 +108,17 @@ const CrearAbono = () => {
         <AnimatedPage>
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-10">
-                    <h2 className="text-3xl font-bold text-[#1976d2] mb-2">Seguimiento de Pagos</h2>
-                    <p className="text-gray-500">Busca y selecciona un cliente para gestionar sus abonos.</p>
+                    <h2 className="text-3xl font-bold text-[#1976d2] mb-2">Gestión de Pagos</h2>
+                    <p className="text-gray-500">Busca y selecciona un cliente para registrar y consultar sus abonos.</p>
                 </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     <div className="lg:col-span-1 bg-white p-4 rounded-xl shadow-lg border border-gray-100 self-start">
                         <div className="relative mb-4">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
-                                placeholder="Buscar cliente o vivienda..."
+                                placeholder="Buscar cliente o vivienda (ej: A1)"
                                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -101,7 +157,7 @@ const CrearAbono = () => {
                                                 key={fuente.fuente}
                                                 {...fuente}
                                                 vivienda={datosClienteSeleccionado.vivienda}
-                                                cliente={datosClienteSeleccionado.cliente} // <-- Pasamos el cliente completo
+                                                cliente={datosClienteSeleccionado.cliente}
                                                 onAbonoRegistrado={recargarDatos}
                                             />
                                         ))}
@@ -112,20 +168,47 @@ const CrearAbono = () => {
                                     {datosClienteSeleccionado.historial.length > 0 ? (
                                         <div className="space-y-4">
                                             {datosClienteSeleccionado.historial.map(abono => (
-                                                <AbonoCard key={abono.id} abono={abono} />
+                                                <AbonoCard
+                                                    key={abono.id}
+                                                    abono={abono}
+                                                    onEdit={() => setAbonoAEditar(abono)}
+                                                    onDelete={() => iniciarEliminacion(abono)}
+                                                />
                                             ))}
                                         </div>
-                                    ) : <p className="text-center text-gray-500 py-4">No hay abonos registrados.</p>}
+                                    ) : <p className="text-center text-gray-500 py-4">No hay abonos registrados para este cliente.</p>}
                                 </div>
                             </div>
                         ) : (
                             <div className="text-center flex flex-col justify-center items-center h-full py-16">
-                                <p className="text-gray-500">Comienza buscando un cliente en el panel de la izquierda.</p>
+                                <WalletCards size={64} className="text-gray-300 mb-4" />
+                                <h3 className="text-xl font-bold text-gray-700">Centro de Gestión de Pagos</h3>
+                                <p className="text-gray-500 mt-2 max-w-sm">
+                                    Comienza buscando un cliente en el panel de la izquierda para ver su detalle financiero.
+                                </p>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
+            {abonoAEditar && (
+                <EditarAbonoModal
+                    isOpen={!!abonoAEditar}
+                    onClose={() => setAbonoAEditar(null)}
+                    onSave={handleGuardadoEdicion}
+                    abonoAEditar={abonoAEditar}
+                    viviendaDelAbono={viviendas.find(v => v.id === abonoAEditar.viviendaId)}
+                />
+            )}
+            {abonoAEliminar && (
+                <ModalConfirmacion
+                    isOpen={!!abonoAEliminar}
+                    onClose={() => setAbonoAEliminar(null)}
+                    onConfirm={confirmarEliminar}
+                    titulo="¿Eliminar Abono?"
+                    mensaje="¿Estás seguro? Esta acción recalculará los saldos de la vivienda asociada. Tendrás 5 segundos para deshacer."
+                />
+            )}
         </AnimatedPage>
     );
 };

@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef, Fragment } from "react";
 import AnimatedPage from "../../components/AnimatedPage";
 import toast from 'react-hot-toast';
-import { User } from 'lucide-react';
 import { useData } from "../../context/DataContext";
 import { deleteCliente, renunciarAVivienda, reactivarCliente } from "../../utils/storage";
 import ResourcePageLayout from "../../layout/ResourcePageLayout";
@@ -11,18 +10,7 @@ import EditarCliente from "./EditarCliente";
 import Select from 'react-select';
 import UndoToast from '../../components/UndoToast.jsx';
 import ModalMotivoRenuncia from "./components/ModalMotivoRenuncia";
-
-const CustomOption = (props) => {
-    const { innerProps, label, data } = props;
-    return (
-        <div {...innerProps} className="p-3 hover:bg-blue-50 cursor-pointer">
-            <p className="font-semibold text-gray-800">{label}</p>
-            {data.cliente && (
-                <p className="text-xs text-gray-500">{`C.C. ${data.cliente.datosCliente.cedula}`}</p>
-            )}
-        </div>
-    );
-};
+import { User } from "lucide-react";
 
 const ListarClientes = () => {
     const { isLoading, clientes, viviendas, renuncias, recargarDatos } = useData();
@@ -43,6 +31,7 @@ const ListarClientes = () => {
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
+        setClienteAEditar(null);
     }, [recargarDatos]);
 
     const manzanaOptions = useMemo(() => {
@@ -59,7 +48,7 @@ const ListarClientes = () => {
 
         if (statusFilter !== 'todos') {
             if (statusFilter === 'activo') {
-                itemsProcesados = itemsProcesados.filter(c => c.status !== 'renunciado');
+                itemsProcesados = itemsProcesados.filter(c => c.status === 'activo');
             } else {
                 itemsProcesados = itemsProcesados.filter(c => c.status === statusFilter);
             }
@@ -97,7 +86,6 @@ const ListarClientes = () => {
 
     const confirmarRenunciaFinal = async () => {
         if (!datosRenuncia || !datosRenuncia.cliente) return;
-
         setIsSubmitting(true);
         const { cliente, motivo, observacion, fechaRenuncia } = datosRenuncia;
         try {
@@ -129,10 +117,20 @@ const ListarClientes = () => {
     };
 
     const iniciarEliminacion = (cliente) => {
-        const id = cliente.id;
+        setClienteAEliminar(cliente);
+    };
+
+    const confirmarEliminar = () => {
+        if (!clienteAEliminar) return;
+        const id = clienteAEliminar.id;
+
         setClientesOcultos(prev => [...prev, id]);
         toast.custom((t) => (<UndoToast t={t} message="Cliente eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
-        const timeoutId = setTimeout(() => { confirmarEliminarReal(id); }, 5000);
+
+        const timeoutId = setTimeout(() => {
+            confirmarEliminarReal(id);
+        }, 5000);
+
         deletionTimeouts.current[id] = timeoutId;
         setClienteAEliminar(null);
     };
@@ -156,8 +154,6 @@ const ListarClientes = () => {
 
     const clientesVisibles = clientesFiltrados.filter(c => !clientesOcultos.includes(c.id));
 
-    if (isLoading) { return <div className="text-center p-10 animate-pulse">Cargando clientes...</div>; }
-
     return (
         <ResourcePageLayout
             title="Clientes Registrados"
@@ -179,14 +175,18 @@ const ListarClientes = () => {
                 </>
             }
         >
-            {clientesVisibles.length > 0 ? (
+            {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {[...Array(6)].map((_, i) => <div key={i} className="bg-white rounded-2xl shadow-lg p-5 animate-pulse h-64"></div>)}
+                </div>
+            ) : clientesVisibles.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {clientesVisibles.map(cliente => (
                         <ClienteCard
                             key={cliente.id}
                             cliente={cliente}
                             onEdit={setClienteAEditar}
-                            onDelete={setClienteAEliminar}
+                            onDelete={iniciarEliminacion}
                             onRenunciar={handleIniciarRenuncia}
                             onReactivar={setClienteAReactivar}
                         />
@@ -198,29 +198,10 @@ const ListarClientes = () => {
                 </div>
             )}
 
-            {clienteAEliminar && (<ModalConfirmacion isOpen={!!clienteAEliminar} onClose={() => setClienteAEliminar(null)} onConfirm={() => iniciarEliminacion(clienteAEliminar)} titulo="¿Eliminar Cliente?" mensaje="Esta acción es permanente. Tendrás 5 segundos para deshacer." />)}
+            {clienteAEliminar && (<ModalConfirmacion isOpen={!!clienteAEliminar} onClose={() => setClienteAEliminar(null)} onConfirm={confirmarEliminar} titulo="¿Eliminar Cliente?" mensaje="¿Estás seguro? Tendrás 5 segundos para deshacer." isSubmitting={isSubmitting} />)}
             {clienteAEditar && (<EditarCliente isOpen={!!clienteAEditar} onClose={() => setClienteAEditar(null)} onGuardar={handleGuardado} clienteAEditar={clienteAEditar} />)}
-
-            {clienteARenunciar && (
-                <ModalMotivoRenuncia
-                    isOpen={!!clienteARenunciar}
-                    onClose={() => setClienteARenunciar(null)}
-                    onConfirm={handleConfirmarMotivo}
-                    cliente={clienteARenunciar}
-                />
-            )}
-
-            {datosRenuncia && (
-                <ModalConfirmacion
-                    isOpen={!!datosRenuncia}
-                    onClose={() => setDatosRenuncia(null)}
-                    onConfirm={confirmarRenunciaFinal}
-                    titulo="¿Confirmar Renuncia?"
-                    mensaje={`¿Seguro de procesar la renuncia para ${datosRenuncia.cliente.datosCliente.nombres} con fecha ${new Date(datosRenuncia.fechaRenuncia + 'T00:00:00').toLocaleDateString('es-ES')} y motivo "${datosRenuncia.motivo}"?`}
-                    isSubmitting={isSubmitting}
-                />
-            )}
-
+            {clienteARenunciar && (<ModalMotivoRenuncia isOpen={!!clienteARenunciar} onClose={() => setClienteARenunciar(null)} onConfirm={handleConfirmarMotivo} cliente={clienteARenunciar} />)}
+            {datosRenuncia && (<ModalConfirmacion isOpen={!!datosRenuncia} onClose={() => setDatosRenuncia(null)} onConfirm={confirmarRenunciaFinal} titulo="¿Confirmar Renuncia?" mensaje={`¿Seguro de procesar la renuncia para ${datosRenuncia.cliente.datosCliente.nombres} con fecha ${new Date(datosRenuncia.fechaRenuncia + 'T00:00:00').toLocaleDateString('es-ES')} y motivo "${datosRenuncia.motivo}"?`} isSubmitting={isSubmitting} />)}
             {clienteAReactivar && (<ModalConfirmacion isOpen={!!clienteAReactivar} onClose={() => setClienteAReactivar(null)} onConfirm={confirmarReactivacion} titulo="¿Reactivar Cliente?" mensaje={`¿Estás seguro de reactivar a ${clienteAReactivar.datosCliente.nombres}? Volverá a la lista de clientes activos.`} isSubmitting={isSubmitting} />)}
         </ResourcePageLayout>
     );

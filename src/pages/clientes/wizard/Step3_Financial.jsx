@@ -2,10 +2,12 @@ import React, { useMemo, useCallback } from 'react';
 import { NumericFormat } from 'react-number-format';
 import Select from 'react-select';
 import AnimatedPage from '../../../components/AnimatedPage';
+import HelpTooltip from '../../../components/HelpTooltip'; // <-- 1. Importamos el nuevo componente
 
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 
-const creditoOptions = [{ value: 'Bancolombia', label: 'Bancolombia' }, { value: 'Banco Agrario', label: 'Banco Agrario' }, { value: 'Banco de Bogotá', label: 'Banco de Bogotá' }, { value: 'Banco Caja Social', label: 'Banco Caja Social' }];
+const cuotaInicialOptions = [{ value: 'Cesantias', label: 'Cesantías' }, { value: 'Efectivo', label: 'Efectivo' }, { value: 'Consignación bancaria', label: 'Consignación' }];
+const creditoOptions = [{ value: 'Bancolombia', label: 'Bancolombia' }, { value: 'Banco de Bogotá', label: 'Banco de Bogotá' }, { value: 'Banco Agrario', label: 'Banco Agrario' }, { value: 'Banco Caja Social', label: 'Banco Caja Social' }];
 const cajaOptions = [{ value: 'Comfandi', label: 'Comfandi' }, { value: 'Comfenalco', label: 'Comfenalco' }];
 
 const Step3_Financial = ({ formData, dispatch, errors }) => {
@@ -74,13 +76,15 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                         {financiero.aplicaCuotaInicial && (
                             <div className="space-y-4 mt-4 pt-4 border-t border-dashed animate-fade-in">
                                 <div className='space-y-1'>
-                                    <label className="text-xs font-medium text-gray-500">Monto</label>
+                                    <label className="text-xs font-medium text-gray-500 flex items-center">
+                                        Monto
+                                        <HelpTooltip id="cuota" content="Monto que el cliente aporta como cuota inicial con recursos propios (efectivo, cesantías, etc.)." />
+                                    </label>
                                     <NumericFormat value={financiero.cuotaInicial.monto} onValueChange={(values) => handleFieldChange('cuotaInicial', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.cuotaInicial_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                 </div>
                             </div>
                         )}
                     </div>
-
                     <div className="p-4 border rounded-xl h-full">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaCredito" checked={financiero.aplicaCredito} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
@@ -95,7 +99,10 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                                         {errors.credito_banco && <p className="text-red-600 text-sm mt-1">{errors.credito_banco}</p>}
                                     </div>
                                     <div className='space-y-1'>
-                                        <label className="text-xs font-medium text-gray-500">Monto</label>
+                                        <label className="text-xs font-medium text-gray-500 flex items-center">
+                                            Monto
+                                            <HelpTooltip id="credito" content="Monto total del crédito aprobado por la entidad financiera." />
+                                        </label>
                                         <NumericFormat value={financiero.credito.monto} onValueChange={(values) => handleFieldChange('credito', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.credito_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                         {errors.credito_monto && <p className="text-red-600 text-sm mt-1">{errors.credito_monto}</p>}
                                     </div>
@@ -103,7 +110,6 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                             </div>
                         )}
                     </div>
-
                     <div className="p-4 border rounded-xl h-full">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaSubsidioVivienda" checked={financiero.aplicaSubsidioVivienda} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
@@ -112,13 +118,15 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                         {financiero.aplicaSubsidioVivienda && (
                             <div className="space-y-4 mt-4 pt-4 border-t border-dashed animate-fade-in">
                                 <div className='space-y-1'>
-                                    <label className="text-xs font-medium text-gray-500">Monto del Subsidio</label>
+                                    <label className="text-xs font-medium text-gray-500 flex items-center">
+                                        Monto del Subsidio
+                                        <HelpTooltip id="sub-vivienda" content="Monto aprobado del subsidio 'Mi Casa Ya' otorgado por el gobierno." />
+                                    </label>
                                     <NumericFormat value={financiero.subsidioVivienda.monto} onValueChange={(values) => handleFieldChange('subsidioVivienda', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioVivienda_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                 </div>
                             </div>
                         )}
                     </div>
-
                     <div className="p-4 border rounded-xl h-full">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaSubsidioCaja" checked={financiero.aplicaSubsidioCaja} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
@@ -133,7 +141,10 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                                         {errors.subsidioCaja_caja && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_caja}</p>}
                                     </div>
                                     <div className='space-y-1'>
-                                        <label className="text-xs font-medium text-gray-500">Monto</label>
+                                        <label className="text-xs font-medium text-gray-500 flex items-center">
+                                            Monto
+                                            <HelpTooltip id="sub-caja" content="Monto aprobado del subsidio otorgado por la caja de compensación familiar." />
+                                        </label>
                                         <NumericFormat value={financiero.subsidioCaja.monto} onValueChange={(values) => handleFieldChange('subsidioCaja', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioCaja_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                         {errors.subsidioCaja_monto && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_monto}</p>}
                                     </div>

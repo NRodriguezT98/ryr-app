@@ -1,90 +1,83 @@
-// Ruta: src/hooks/useForm.jsx
+import { useState, useEffect, useCallback, useReducer, useMemo } from 'react';
+import toast from 'react-hot-toast';
 
-import { useState, useEffect, useCallback } from 'react';
+function formReducer(state, action) {
+    switch (action.type) {
+        case 'INITIALIZE_FORM':
+            return { ...(action.payload || {}), errors: {} };
+        case 'UPDATE_FIELD':
+            const { name, value } = action.payload;
+            return { ...state, [name]: value };
+        case 'SET_ERRORS':
+            return { ...state, errors: action.payload };
+        default:
+            return state;
+    }
+}
 
-/**
- * Hook de React para gestionar el estado, validación y envío de formularios.
- * @param {object} config - Objeto de configuración.
- * @param {object} config.initialState - El estado inicial del formulario.
- * @param {function} [config.validate] - (Opcional) Función que recibe formData y devuelve un objeto de errores.
- * @param {function} config.onSubmit - Función (async) a ejecutar en un envío válido.
- * @param {object} config.options - Opciones adicionales como inputFilters.
- */
-// CAMBIO CLAVE: Se añade un valor por defecto a 'validate'. Si no se pasa la función,
-// se usará una función vacía que no dará errores.
 export const useForm = ({ initialState, validate = () => ({}), onSubmit, options = {} }) => {
-    const [formData, setFormData] = useState(initialState);
-    const [errors, setErrors] = useState({});
+    const [formData, dispatch] = useReducer(formReducer, initialState);
+    const [initialData, setInitialData] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [initialData, setInitialData] = useState(initialState);
 
     const { inputFilters = {}, resetOnSuccess = true } = options;
 
     useEffect(() => {
-        setFormData(initialState);
-        setInitialData(initialState);
-        setErrors({});
+        if (initialState) {
+            const deepCopy = JSON.parse(JSON.stringify(initialState));
+            setInitialData(deepCopy);
+            dispatch({ type: 'INITIALIZE_FORM', payload: deepCopy });
+        }
     }, [initialState]);
+
+    const setFormData = useCallback((newData) => {
+        dispatch({ type: 'INITIALIZE_FORM', payload: newData });
+    }, []);
+
+    const setErrors = useCallback((errors) => {
+        dispatch({ type: 'SET_ERRORS', payload: errors });
+    }, []);
 
     const handleInputChange = useCallback((e) => {
         const { name, value } = e.target;
         const filterConfig = inputFilters[name];
-        if (filterConfig && !filterConfig.regex.test(value)) {
-            return;
-        }
-        setFormData(prev => ({ ...prev, [name]: value }));
+        if (filterConfig && !filterConfig.regex.test(value)) return;
+        dispatch({ type: 'UPDATE_FIELD', payload: { name, value } });
     }, [inputFilters]);
 
     const handleValueChange = useCallback((name, value) => {
-        setFormData(prev => ({ ...prev, [name]: value }));
+        dispatch({ type: 'UPDATE_FIELD', payload: { name, value } });
     }, []);
 
-    const resetForm = useCallback(() => {
-        setFormData(initialState);
-        setErrors({});
-    }, [initialState]);
-
-
-    const handleSubmit = async (e) => {
+    const handleSubmit = useCallback(async (e) => {
         if (e) e.preventDefault();
+        if (isSubmitting) return;
 
-        // Esta línea ahora es segura, incluso si 'validate' no se proporciona.
         const validationErrors = validate(formData);
         setErrors(validationErrors);
 
-
-        const isValid = Object.keys(validationErrors).length === 0;
-
-        if (isValid) {
-            setIsSubmitting(true);
-            try {
-                if (typeof onSubmit === 'function') {
-                    await onSubmit(formData);
-                    if (resetOnSuccess) {
-                        resetForm();
-                    }
-                } else {
-                    console.warn("useForm: La función 'onSubmit' no está definida.");
-                }
-            } catch (error) {
-                console.error("useForm: Ocurrió un error durante la ejecución de onSubmit.", error);
-            } finally {
-                setIsSubmitting(false);
-            }
-        } else {
+        if (Object.keys(validationErrors).length > 0) {
+            toast.error("Por favor, corrige los errores antes de enviar.");
+            return;
         }
-    };
+
+        setIsSubmitting(true);
+        try {
+            await onSubmit(formData);
+            if (resetOnSuccess) {
+                dispatch({ type: 'INITIALIZE_FORM', payload: initialState });
+            }
+        } catch (error) {
+            console.error("useForm: Ocurrió un error durante la ejecución de onSubmit.", error);
+            toast.error("Ocurrió un error inesperado al guardar.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [onSubmit, formData, isSubmitting, resetOnSuccess, initialState, validate, setErrors]);
 
     return {
-        formData,
-        setFormData,
-        initialData,
-        errors,
-        setErrors,
-        isSubmitting,
-        handleInputChange,
-        handleValueChange,
-        handleSubmit,
-        resetForm,
+        formData, dispatch, errors: formData.errors || {},
+        isSubmitting, handleSubmit, handleInputChange, handleValueChange, setFormData, setErrors,
+        initialData
     };
 };

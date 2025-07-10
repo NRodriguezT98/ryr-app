@@ -34,16 +34,21 @@ function formReducer(state, action) {
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+const formatDisplayDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+};
 
 const blankInitialState = {
     viviendaSeleccionada: { id: null, valorTotal: 0, label: '' },
     datosCliente: { nombres: '', apellidos: '', cedula: '', telefono: '', correo: '', direccion: '', fechaIngreso: getTodayString() },
     financiero: {
         aplicaCuotaInicial: false, cuotaInicial: { monto: 0 },
-        aplicaCredito: false, credito: { banco: '', monto: 0 },
+        aplicaCredito: false, credito: { banco: '', monto: 0, cubreGastosNotariales: false, montoParaNotariales: 0 },
         aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
         aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 },
-        gastosNotariales: { monto: 0 }
+        gastosNotariales: { monto: 0, fuentePago: 'recursosPropios' }
     },
     seguimiento: {},
     errors: {}
@@ -90,7 +95,11 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         let errors = {};
         if (step === 2) {
             errors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar.id);
-            if (Object.keys(errors).length > 0) { dispatch({ type: 'SET_ERRORS', payload: errors }); toast.error("Por favor, corrige los errores del formulario."); return; }
+            if (Object.keys(errors).length > 0) {
+                dispatch({ type: 'SET_ERRORS', payload: errors });
+                toast.error("Por favor, corrige los errores del formulario.");
+                return;
+            }
         }
         dispatch({ type: 'SET_ERRORS', payload: {} });
         nextStep();
@@ -143,7 +152,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         const formatValue = (value, isCurrency = false, isDate = false) => {
             if (typeof value === 'boolean') return value ? 'Sí' : 'No';
             if (isCurrency) return formatCurrency(value);
-            if (isDate) return new Date(value + 'T00:00:00').toLocaleDateString('es-ES');
+            if (isDate) return formatDisplayDate(value);
             return value || 'Vacío';
         };
 
@@ -217,7 +226,12 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title="Editar Cliente" icon={<UserCog size={32} className="text-[#1976d2]" />}>
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
+                title="Editar Cliente"
+                icon={<UserCog size={32} className="text-[#1976d2]" />}
+            >
                 {isLoading ? (
                     <div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos...</div>
                 ) : (
@@ -245,8 +259,16 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                             {step < 3 ? (
                                 <button type="button" onClick={handleNext} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">Siguiente</button>
                             ) : (
-                                <span className="ml-auto" data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
-                                    <button onClick={handlePreSave} disabled={!hayCambios || isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full">
+                                <span
+                                    className="ml-auto"
+                                    data-tooltip-id="app-tooltip"
+                                    data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}
+                                >
+                                    <button
+                                        onClick={handlePreSave}
+                                        disabled={!hayCambios || isSubmitting}
+                                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full"
+                                    >
                                         {isSubmitting ? "Guardando..." : "Guardar Cambios"}
                                     </button>
                                 </span>
@@ -255,7 +277,14 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                     </>
                 )}
             </Modal>
-            <ModalConfirmacionCambios isOpen={isConfirming} onClose={() => setIsConfirming(false)} onConfirm={executeSave} titulo="Confirmar Cambios del Cliente" cambios={cambios} isSaving={isSubmitting} />
+            <ModalConfirmacionCambios
+                isOpen={isConfirming}
+                onClose={() => setIsConfirming(false)}
+                onConfirm={executeSave}
+                titulo="Confirmar Cambios del Cliente"
+                cambios={cambios}
+                isSaving={isSubmitting}
+            />
             <Tooltip id="app-tooltip" style={{ backgroundColor: "#334155", color: "#ffffff", borderRadius: '8px', zIndex: 100 }} />
         </>
     );
