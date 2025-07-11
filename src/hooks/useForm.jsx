@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useReducer, useMemo } from 'react';
+import { useState, useReducer, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 
 function formReducer(state, action) {
@@ -10,28 +10,37 @@ function formReducer(state, action) {
             return { ...state, [name]: value };
         case 'SET_ERRORS':
             return { ...state, errors: action.payload };
+        // <-- 1. AÑADIMOS UN NUEVO CASO PARA MANEJAR ACTUALIZACIONES CON FUNCIONES
+        case 'SET_FORM_DATA_FN':
+            return action.payload(state);
         default:
             return state;
     }
 }
 
 export const useForm = ({ initialState, validate = () => ({}), onSubmit, options = {} }) => {
-    const [formData, dispatch] = useReducer(formReducer, initialState);
+    // Usamos el estado del reducer, pero también guardamos una copia inicial limpia.
+    const [formData, dispatch] = useReducer(formReducer, { ...initialState, errors: {} });
     const [initialData, setInitialData] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { inputFilters = {}, resetOnSuccess = true } = options;
 
-    useEffect(() => {
+    // Guardamos el estado inicial una sola vez
+    useMemo(() => {
         if (initialState) {
             const deepCopy = JSON.parse(JSON.stringify(initialState));
             setInitialData(deepCopy);
-            dispatch({ type: 'INITIALIZE_FORM', payload: deepCopy });
         }
     }, [initialState]);
 
-    const setFormData = useCallback((newData) => {
-        dispatch({ type: 'INITIALIZE_FORM', payload: newData });
+    // <-- 2. HACEMOS QUE setFormData ACEPTE OBJETOS O FUNCIONES
+    const setFormData = useCallback((updater) => {
+        if (typeof updater === 'function') {
+            dispatch({ type: 'SET_FORM_DATA_FN', payload: updater });
+        } else {
+            dispatch({ type: 'INITIALIZE_FORM', payload: updater });
+        }
     }, []);
 
     const setErrors = useCallback((errors) => {

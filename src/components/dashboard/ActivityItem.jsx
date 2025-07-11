@@ -2,8 +2,8 @@ import React from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DollarSign, UserPlus, UserX } from 'lucide-react';
+import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTAMOS LA FUNCIÓN
 
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 const formatDate = (dateString) => {
     if (!dateString) return "Fecha inválida";
     try {

@@ -1,16 +1,15 @@
+import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTAMOS LA FUNCIÓN
+
 // Función para validar la creación/edición de una vivienda completa
 export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = null) => {
     const errors = {};
-    // Ya no extraemos 'gastosNotariales' porque no viene del formulario.
     const { manzana, numero, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente } = formData;
 
     const linderoRegex = /^[a-zA-Z0-9\s.,\-()]*$/;
 
-    // --- Validaciones de campos de ubicación ---
     if (!manzana) errors.manzana = "La manzana es obligatoria.";
     if (!numero) errors.numero = "El número de casa es obligatorio.";
 
-    // --- Validaciones para los linderos ---
     if (!linderoNorte?.trim()) {
         errors.linderoNorte = "El lindero Norte es obligatorio.";
     } else if (!linderoRegex.test(linderoNorte)) {
@@ -35,12 +34,9 @@ export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = 
         errors.linderoOccidente = "Contiene caracteres no permitidos.";
     }
 
-    // --- Validaciones existentes ---
     if (!matricula?.trim()) errors.matricula = "La matrícula es obligatoria.";
     if (!nomenclatura?.trim()) errors.nomenclatura = "La nomenclatura es obligatoria.";
     if (!valorBase) errors.valorBase = "El valor base de la casa es obligatorio.";
-
-    // --- VALIDACIÓN DE GASTOS NOTARIALES ELIMINADA ---
 
     if (todasLasViviendas && manzana && numero) {
         const isDuplicate = todasLasViviendas.some(vivienda => {
@@ -53,7 +49,6 @@ export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = 
     return errors;
 };
 
-// La función para validar descuentos no necesita cambios.
 export const validateDescuento = (formData, vivienda) => {
     const errors = {};
     const { descuentoMonto, descuentoMotivo } = formData;
@@ -72,5 +67,3 @@ export const validateDescuento = (formData, vivienda) => {
 
     return errors;
 };
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });

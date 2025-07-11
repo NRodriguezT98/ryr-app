@@ -5,8 +5,7 @@ import AnimatedPage from '../../components/AnimatedPage';
 import { ArrowLeft, Home, Info, BarChart2, User, FileText, Compass, Download, CheckCircle, MessageSquare, DollarSign, ClipboardList } from 'lucide-react';
 import FuenteDePagoCard from '../abonos/FuenteDePagoCard';
 import AbonoCard from '../abonos/AbonoCard';
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTAMOS LA FUNCIÓN
 
 const LinderoItem = ({ label, value }) => (
     <div>
@@ -77,7 +76,6 @@ const DetalleVivienda = () => {
     return (
         <AnimatedPage>
             <div className="bg-gray-50 p-6 rounded-2xl shadow-lg">
-                {/* --- ENCABEZADO REDISEÑADO --- */}
                 <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
                         <Home size={40} className="text-red-500 flex-shrink-0" />

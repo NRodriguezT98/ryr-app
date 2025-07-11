@@ -1,10 +1,9 @@
-import React, { Fragment } from 'react';
+import React, { Fragment, memo } from 'react'; // <-- 1. Importamos memo
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Menu, Transition } from '@headlessui/react';
 import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertical, Pencil, Trash, AlertTriangle, Archive } from 'lucide-react';
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+import { formatCurrency } from '../../utils/textFormatters';
 
 const formatDate = (dateString) => {
     if (!dateString) return "Fecha inválida";
@@ -37,7 +36,6 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
                 label: 'Proceso de Renuncia'
             };
         }
-        // Estado por defecto (activo)
         return {
             cardBorder: 'border-gray-100',
             iconBg: 'bg-green-100',
@@ -116,4 +114,4 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
     );
 };
 
-export default AbonoCard;
+export default memo(AbonoCard); // <-- 2. Envolvemos el componente

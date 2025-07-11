@@ -1,7 +1,23 @@
 import { db } from '../firebase/config';
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch, setDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch, setDoc, query, where, serverTimestamp } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { toSentenceCase } from './textFormatters';
+import { toSentenceCase, formatCurrency } from './textFormatters';
+
+// --- FUNCIÓN HELPER PARA CREAR NOTIFICACIONES ---
+const createNotification = async (type, message, link = '#') => {
+    const notificationsCol = collection(db, 'notifications');
+    try {
+        await addDoc(notificationsCol, {
+            type,
+            message,
+            link,
+            read: false,
+            timestamp: serverTimestamp() // Usa el timestamp del servidor para consistencia
+        });
+    } catch (error) {
+        console.error("Error al crear la notificación:", error);
+    }
+};
 
 // --- LECTURA DE DATOS ---
 const getData = async (collectionName) => {
@@ -80,6 +96,8 @@ export const addClienteAndAssignVivienda = async (clienteData) => {
     } else {
         await setDoc(newClienteRef, clienteParaGuardar);
     }
+    const clienteNombre = `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`.trim();
+    await createNotification('cliente', `Nuevo cliente registrado: ${clienteNombre}`, `/clientes/detalle/${clienteData.datosCliente.cedula}`);
 };
 
 export const addAbono = async (abonoData) => {
@@ -96,6 +114,9 @@ export const addAbono = async (abonoData) => {
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         transaction.set(abonoRef, abonoParaGuardar);
     });
+    const viviendaSnap = await getDoc(viviendaRef);
+    const viviendaInfo = viviendaSnap.data();
+    await createNotification('abono', `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaInfo.manzana} - Casa ${viviendaInfo.numeroCasa}`, `/viviendas/detalle/${abonoData.viviendaId}`);
 };
 
 
@@ -165,18 +186,21 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
     const abonosSnapshot = await getDocs(abonosActivosQuery);
     const abonosDelCiclo = abonosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+    let clienteNombre = '';
+
     await runTransaction(db, async (transaction) => {
         const clienteDoc = await transaction.get(clienteRef);
         const viviendaDoc = await transaction.get(viviendaRef);
         if (!clienteDoc.exists() || !viviendaDoc.exists()) throw new Error("El cliente o la vivienda ya no existen.");
 
+        clienteNombre = `${clienteDoc.data().datosCliente.nombres} ${clienteDoc.data().datosCliente.apellidos}`.trim();
         const totalAbonado = abonosDelCiclo.reduce((sum, abono) => sum + abono.monto, 0);
         const estadoInicial = totalAbonado > 0 ? 'Pendiente' : 'Pagada';
 
         const registroRenuncia = {
             id: renunciaRef.id,
             clienteId: clienteId,
-            clienteNombre: `${clienteDoc.data().datosCliente.nombres} ${clienteDoc.data().datosCliente.apellidos}`.trim(),
+            clienteNombre: clienteNombre,
             viviendaId: viviendaId,
             viviendaInfo: `Mz. ${viviendaDoc.data().manzana} - Casa ${viviendaDoc.data().numeroCasa}`,
             fechaRenuncia: fechaRenuncia,
@@ -201,6 +225,8 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
             });
         }
     });
+
+    await createNotification('renuncia', `Se registró una renuncia del cliente ${clienteNombre}.`, `/renuncias/detalle/${renunciaRef.id}`);
 };
 
 export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) => {

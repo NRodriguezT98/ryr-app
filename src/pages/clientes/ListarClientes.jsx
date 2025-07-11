@@ -1,19 +1,25 @@
-import React, { useEffect, useState, useCallback, useMemo, useRef, Fragment } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import AnimatedPage from "../../components/AnimatedPage";
 import toast from 'react-hot-toast';
 import { useData } from "../../context/DataContext";
+import { useUndoableDelete } from "../../hooks/useUndoableDelete.jsx";
 import { deleteCliente, renunciarAVivienda, reactivarCliente } from "../../utils/storage";
 import ResourcePageLayout from "../../layout/ResourcePageLayout";
 import ClienteCard from './ClienteCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
 import Select from 'react-select';
-import UndoToast from '../../components/UndoToast.jsx';
 import ModalMotivoRenuncia from "./components/ModalMotivoRenuncia";
 import { User } from "lucide-react";
 
 const ListarClientes = () => {
     const { isLoading, clientes, viviendas, renuncias, recargarDatos } = useData();
+
+    const { hiddenItems: clientesOcultos, initiateDelete } = useUndoableDelete(
+        async (cliente) => deleteCliente(cliente.id),
+        recargarDatos,
+        "Cliente"
+    );
 
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
@@ -25,9 +31,6 @@ const ListarClientes = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [manzanaFilter, setManzanaFilter] = useState(null);
     const [statusFilter, setStatusFilter] = useState('activo');
-
-    const [clientesOcultos, setClientesOcultos] = useState([]);
-    const deletionTimeouts = useRef({});
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
@@ -47,11 +50,7 @@ const ListarClientes = () => {
         });
 
         if (statusFilter !== 'todos') {
-            if (statusFilter === 'activo') {
-                itemsProcesados = itemsProcesados.filter(c => c.status === 'activo');
-            } else {
-                itemsProcesados = itemsProcesados.filter(c => c.status === statusFilter);
-            }
+            itemsProcesados = itemsProcesados.filter(c => c.status === statusFilter);
         }
 
         if (manzanaFilter && manzanaFilter.value) {
@@ -116,40 +115,19 @@ const ListarClientes = () => {
         }
     };
 
-    const iniciarEliminacion = (cliente) => {
+    const iniciarEliminacionConModal = (cliente) => {
+        // <-- VALIDACIÓN AÑADIDA AQUÍ
+        if (cliente.viviendaId) {
+            toast.error("No se puede eliminar un cliente con una vivienda asignada. Primero debe procesar la renuncia.");
+            return;
+        }
         setClienteAEliminar(cliente);
     };
 
     const confirmarEliminar = () => {
         if (!clienteAEliminar) return;
-        const id = clienteAEliminar.id;
-
-        setClientesOcultos(prev => [...prev, id]);
-        toast.custom((t) => (<UndoToast t={t} message="Cliente eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
-
-        const timeoutId = setTimeout(() => {
-            confirmarEliminarReal(id);
-        }, 5000);
-
-        deletionTimeouts.current[id] = timeoutId;
+        initiateDelete(clienteAEliminar);
         setClienteAEliminar(null);
-    };
-
-    const deshacerEliminacion = (id) => {
-        clearTimeout(deletionTimeouts.current[id]);
-        delete deletionTimeouts.current[id];
-        setClientesOcultos(prev => prev.filter(cId => cId !== id));
-        toast.success("Eliminación deshecha.");
-    };
-
-    const confirmarEliminarReal = async (id) => {
-        try {
-            await deleteCliente(id);
-            recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo eliminar el cliente.");
-            setClientesOcultos(prev => prev.filter(cId => cId !== id));
-        }
     };
 
     const clientesVisibles = clientesFiltrados.filter(c => !clientesOcultos.includes(c.id));
@@ -186,7 +164,7 @@ const ListarClientes = () => {
                             key={cliente.id}
                             cliente={cliente}
                             onEdit={setClienteAEditar}
-                            onDelete={iniciarEliminacion}
+                            onDelete={iniciarEliminacionConModal}
                             onRenunciar={handleIniciarRenuncia}
                             onReactivar={setClienteAReactivar}
                         />

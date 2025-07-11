@@ -58,24 +58,28 @@ export const DataProvider = ({ children }) => {
         };
     }, []);
 
-    const value = useMemo(() => {
-        const clientesConVivienda = clientes.map((cliente) => {
+    // MEJORA 1: Memoizamos los datos derivados de forma aislada.
+    // Este cálculo ahora solo se ejecutará si 'clientes' o 'viviendas' cambian.
+    const clientesConVivienda = useMemo(() => {
+        return clientes.map((cliente) => {
             const viviendaAsignada = viviendas.find((v) => v.id === cliente.viviendaId);
             return { ...cliente, vivienda: viviendaAsignada || null };
         });
+    }, [clientes, viviendas]);
 
-        // --- CORRECCIÓN DEFINITIVA AQUÍ ---
-        // Ahora pasamos la lista COMPLETA de renuncias y clientes, sin ningún filtro.
-        // La lógica de filtrado se hará en cada componente que lo necesite.
+
+    // MEJORA 2: El 'value' del contexto ahora depende del array ya memoizado.
+    // No se creará un nuevo objeto 'value' si solo cambian 'abonos' o 'renuncias'.
+    const value = useMemo(() => {
         return {
             isLoading,
             viviendas,
-            clientes: clientesConVivienda,
+            clientes: clientesConVivienda, // Usamos el valor ya procesado y estable.
             abonos,
-            renuncias, // <-- Se pasa la lista completa
+            renuncias,
             recargarDatos
         };
-    }, [isLoading, viviendas, clientes, abonos, renuncias, recargarDatos]);
+    }, [isLoading, viviendas, clientesConVivienda, abonos, renuncias, recargarDatos]);
 
     return (
         <DataContext.Provider value={value}>

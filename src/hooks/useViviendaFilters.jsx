@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 
-export const useViviendaFilters = (viviendasIniciales) => {
+export const useViviendaFilters = (viviendasIniciales, initialStatusFilter = 'todas') => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('todas');
+    const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
     const [sortConfig, setSortConfig] = useState({ key: 'manzana', direction: 'ascending' });
 
     const viviendasFiltradasYOrdenadas = useMemo(() => {
@@ -62,8 +62,8 @@ export const useViviendaFilters = (viviendasIniciales) => {
         viviendasFiltradasYOrdenadas,
         searchTerm,
         setSearchTerm,
-        statusFilter,
-        setStatusFilter,
+        statusFilter, // Devolvemos el estado para que el componente sepa cuál está activo
+        setStatusFilter, // Devolvemos el setter para los botones
         sortConfig,
         handleSort
     };

@@ -1,12 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { UserX, AlertTriangle } from 'lucide-react';
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTAMOS LA FUNCIÓN
 
 const RenunciasPendientes = ({ renuncias }) => {
-    // --- LÓGICA DE FILTRADO AÑADIDA AQUÍ ---
-    // Este componente ahora es responsable de filtrar solo las pendientes.
     const renunciasPendientes = renuncias.filter(r => r.estadoDevolucion === 'Pendiente');
 
     return (

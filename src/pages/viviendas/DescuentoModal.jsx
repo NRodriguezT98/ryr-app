@@ -5,12 +5,10 @@ import toast from 'react-hot-toast';
 import { NumericFormat } from 'react-number-format';
 import { validateDescuento } from './viviendaValidation.js';
 import { Tooltip } from 'react-tooltip';
-import ModalConfirmacionCambios from '../../components/ModalConfirmacionCambios.jsx';
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
+import { formatCurrency } from '../../utils/textFormatters.js';
 
 const DescuentoModal = ({ isOpen, onClose, onSave, vivienda }) => {
-
     const [isConfirming, setIsConfirming] = useState(false);
     const [cambios, setCambios] = useState([]);
 
@@ -24,7 +22,6 @@ const DescuentoModal = ({ isOpen, onClose, onSave, vivienda }) => {
         handleValueChange, errors, isSubmitting, initialData, setErrors
     } = useForm({
         initialState,
-        // La propiedad 'validate' se elimina, ya que la manejamos manualmente.
         onSubmit: async (data) => {
             const montoDescuento = parseInt(String(data.descuentoMonto).replace(/\D/g, ''), 10) || 0;
             const datosParaGuardar = {
@@ -66,6 +63,11 @@ const DescuentoModal = ({ isOpen, onClose, onSave, vivienda }) => {
             cambiosDetectados.push({ campo: "Motivo del Descuento", anterior: initialData.descuentoMotivo.trim(), actual: formData.descuentoMotivo.trim() });
         }
 
+        if (cambiosDetectados.length === 0) {
+            // Ya no mostramos el toast. El botón deshabilitado es la señal principal.
+            return;
+        }
+
         setCambios(cambiosDetectados);
         setIsConfirming(true);
     };
@@ -74,7 +76,12 @@ const DescuentoModal = ({ isOpen, onClose, onSave, vivienda }) => {
         setFormData(initialState);
     }, [vivienda, initialState, setFormData]);
 
-    const hayCambios = useMemo(() => JSON.stringify(formData) !== JSON.stringify(initialData), [formData, initialData]);
+    const hayCambios = useMemo(() => {
+        if (!initialData) return false;
+        const currentData = { ...formData, errors: null };
+        const originalData = { ...initialData, errors: null };
+        return JSON.stringify(currentData) !== JSON.stringify(originalData);
+    }, [formData, initialData]);
 
     const valorFinalCalculado = useMemo(() => {
         const valorTotal = vivienda?.valorTotal || 0;
@@ -117,7 +124,7 @@ const DescuentoModal = ({ isOpen, onClose, onSave, vivienda }) => {
                             disabled={!hayCambios || isSubmitting}
                             className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-6 py-2 rounded-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                             data-tooltip-id="save-discount-tooltip"
-                            data-tooltip-content="No hay cambios para guardar"
+                            data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}
                         >
                             {isSubmitting ? 'Guardando...' : 'Guardar Descuento'}
                         </button>
@@ -125,14 +132,17 @@ const DescuentoModal = ({ isOpen, onClose, onSave, vivienda }) => {
                     </div>
                 </div>
             </div>
-            <ModalConfirmacionCambios
-                isOpen={isConfirming}
-                onClose={() => setIsConfirming(false)}
-                onConfirm={handleSubmit}
-                titulo="Confirmar Descuento"
-                cambios={cambios}
-                isSaving={isSubmitting}
-            />
+
+            {isConfirming && (
+                <ModalConfirmacion
+                    isOpen={isConfirming}
+                    onClose={() => setIsConfirming(false)}
+                    onConfirm={handleSubmit}
+                    titulo="Confirmar Descuento"
+                    cambios={cambios}
+                    isSubmitting={isSubmitting}
+                />
+            )}
         </>
     );
 };

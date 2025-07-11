@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { useForm } from "../../hooks/useForm.jsx";
 import { validateVivienda } from "./viviendaValidation.js";
 import { addVivienda, getViviendas } from "../../utils/storage";
-import { MapPin, FileText, CircleDollarSign, Check } from 'lucide-react';
+import { MapPin, FileText, CircleDollarSign, Check, Loader } from 'lucide-react';
 import FormularioVivienda from "./FormularioVivienda";
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;
@@ -50,7 +50,6 @@ const CrearVivienda = () => {
         cargarDatosParaValidacion();
     }, []);
 
-    // --- LÓGICA DE VALIDACIÓN Y SUBMIT MEMOIZADA ---
     const validateCallback = useCallback((data) => {
         return validateVivienda(data, todasLasViviendas, null);
     }, [todasLasViviendas]);
@@ -124,7 +123,13 @@ const CrearVivienda = () => {
 
     const handleCheckboxChange = (e) => {
         const { name, checked } = e.target;
-        setFormData(prev => ({ ...prev, [name]: checked }));
+        setFormData(prev => {
+            const newState = { ...prev, [name]: checked };
+            if (name === 'esEsquinera') {
+                newState.recargoEsquinera = checked ? "5000000" : "0";
+            }
+            return newState;
+        });
     };
 
     const STEPS_CONFIG = [
@@ -184,9 +189,16 @@ const CrearVivienda = () => {
                                 type="button"
                                 onClick={handleSubmit}
                                 disabled={isSubmitting}
-                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto"
+                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto flex items-center justify-center gap-2"
                             >
-                                {isSubmitting ? "Guardando..." : "Finalizar y Guardar"}
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader size={20} className="animate-spin" />
+                                        <span>Guardando...</span>
+                                    </>
+                                ) : (
+                                    "Finalizar y Guardar"
+                                )}
                             </button>
                         )}
                     </div>

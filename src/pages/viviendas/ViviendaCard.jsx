@@ -1,15 +1,9 @@
-import React, { Fragment } from 'react';
+import React, { Fragment, memo } from 'react'; // <-- 1. Importamos memo
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Tag, Pencil, Trash, Info, User, Home, Eye, CheckCircle2 } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
-
-const toTitleCase = (str) => {
-    if (!str) return '';
-    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-};
+import { formatCurrency, toSentenceCase } from '../../utils/textFormatters';
 
 const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
     const {
@@ -23,7 +17,6 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
 
     return (
         <div className={`bg-white rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 shadow-green-100' : 'border-gray-200'} overflow-hidden`}>
-            {/* Cabecera de la Tarjeta */}
             <div className={`flex items-center justify-between p-4 border-b rounded-t-2xl ${isDisponible ? 'bg-yellow-50' : 'bg-green-50'}`}>
                 <div className="flex items-center gap-3">
                     <Home className={`w-6 h-6 ${isDisponible ? 'text-yellow-600' : 'text-green-700'}`} />
@@ -44,7 +37,6 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                 </div>
             </div>
 
-            {/* Cuerpo de la Tarjeta */}
             <div className="p-5 space-y-4 flex-grow">
                 <div className='text-sm text-gray-600'>
                     <p><strong className='font-medium text-gray-800'>Matrícula:</strong> {matricula}</p>
@@ -80,14 +72,12 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                 </div>
             </div>
 
-            {/* --- PIE DE TARJETA CON AJUSTE DE ESTILO --- */}
             <div className="mt-auto p-4 border-t bg-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm overflow-hidden">
                     {!isDisponible && (
                         <>
                             <User size={16} className="text-gray-400 flex-shrink-0" />
-                            {/* Clases modificadas aquí para mayor énfasis */}
-                            <span className='font-bold text-gray-800 truncate' title={toTitleCase(clienteNombre)}>{toTitleCase(clienteNombre)}</span>
+                            <span className='font-bold text-gray-800 truncate' title={toSentenceCase(clienteNombre)}>{toSentenceCase(clienteNombre)}</span>
                         </>
                     )}
                 </div>
@@ -110,4 +100,4 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
     );
 };
 
-export default ViviendaCard;
+export default memo(ViviendaCard); // <-- 2. Envolvemos el componente

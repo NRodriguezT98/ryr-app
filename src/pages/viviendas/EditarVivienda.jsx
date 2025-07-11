@@ -6,10 +6,9 @@ import { updateVivienda } from "../../utils/storage";
 import { MapPin, FileText, CircleDollarSign, Check, Edit } from 'lucide-react';
 import FormularioVivienda from "./FormularioVivienda";
 import Modal from "../../components/Modal";
-import ModalConfirmacionCambios from '../../components/ModalConfirmacionCambios.jsx';
+import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import { Tooltip } from 'react-tooltip';
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+import { formatCurrency } from "../../utils/textFormatters.js";
 
 const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }) => {
     const [step, setStep] = useState(1);
@@ -73,7 +72,14 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
         }
     }, [isOpen, initialState, setFormData, setErrors]);
 
-    const hayCambios = useMemo(() => JSON.stringify(formData) !== JSON.stringify(initialData), [formData, initialData]);
+    const hayCambios = useMemo(() => {
+        if (!initialData) return false;
+        // Comparamos el estado actual con el inicial, ignorando 'errors'
+        const currentData = { ...formData, errors: null };
+        const originalData = { ...initialData, errors: null };
+        return JSON.stringify(currentData) !== JSON.stringify(originalData);
+    }, [formData, initialData]);
+
 
     const handlePreSave = useCallback(() => {
         const validationErrors = validateVivienda(formData, todasLasViviendas, vivienda);
@@ -101,7 +107,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
         };
 
         for (const key in formData) {
-            if (key === 'urlCertificadoTradicion') continue;
+            if (key === 'urlCertificadoTradicion' || key === 'errors') continue;
 
             const valorAnterior = initialData[key];
             const valorActual = formData[key];
@@ -115,8 +121,9 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
             }
         }
 
+        // Esta comprobación ahora es redundante si el botón está deshabilitado, pero la mantenemos como una doble seguridad.
         if (cambiosDetectados.length === 0) {
-            toast('No se han detectado cambios para guardar.', { icon: 'ℹ️' });
+            // Ya no mostramos el toast. El botón deshabilitado es la señal principal.
             return;
         }
 
@@ -236,14 +243,16 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                 </div>
             </Modal>
 
-            <ModalConfirmacionCambios
-                isOpen={isConfirming}
-                onClose={() => setIsConfirming(false)}
-                onConfirm={handleSubmit}
-                titulo="Confirmar Cambios de la Vivienda"
-                cambios={cambios}
-                isSaving={isSubmitting}
-            />
+            {isConfirming && (
+                <ModalConfirmacion
+                    isOpen={isConfirming}
+                    onClose={() => setIsConfirming(false)}
+                    onConfirm={handleSubmit}
+                    titulo="Confirmar Cambios de la Vivienda"
+                    cambios={cambios}
+                    isSubmitting={isSubmitting}
+                />
+            )}
         </>
     );
 };

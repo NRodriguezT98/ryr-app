@@ -1,11 +1,10 @@
-import React, { Fragment } from 'react';
+import React, { Fragment, memo } from 'react'; // <-- 1. Importamos memo
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Menu, Transition } from '@headlessui/react';
 import { Link } from 'react-router-dom';
 import { UserX, Calendar, Home, MoreVertical, CheckCircle, DollarSign, Eye, Pencil, RotateCcw } from 'lucide-react';
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+import { formatCurrency } from '../../../utils/textFormatters';
 
 const formatDate = (dateString) => {
     if (!dateString) return "Fecha inválida";
@@ -64,4 +63,5 @@ const RenunciaCard = ({ renuncia, onMarcarPagada, onEditar, onCancelar }) => {
         </div>
     );
 };
-export default RenunciaCard;
+
+export default memo(RenunciaCard); // <-- 2. Envolvemos el componente

@@ -9,7 +9,8 @@ import BarChartIngresos from '../components/dashboard/BarChartIngresos';
 import DocumentosPendientes from '../components/dashboard/DocumentosPendientes';
 import RenunciasPendientes from '../components/dashboard/RenunciasPendientes';
 import GraficoOcupacion from '../components/dashboard/GraficoOcupacion';
-import { Home, User, CheckCircle, DollarSign } from 'lucide-react';
+import { Home, User, CheckCircle, DollarSign, UserX, Wallet } from 'lucide-react';
+import { formatCurrency } from '../utils/textFormatters';
 
 const DashboardPage = () => {
     const { isLoading, viviendas, clientes, abonos, renuncias } = useData();
@@ -35,10 +36,25 @@ const DashboardPage = () => {
                 <h1 className="text-3xl font-bold text-gray-800 mb-8">Panel de Control</h1>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <Link to="/viviendas/listar"><StatCard title="Total de Viviendas" value={stats.totalViviendas} icon={<Home />} colorClass="text-red-500" /></Link>
-                    <Link to="/clientes/listar"><StatCard title="Clientes Activos" value={stats.totalClientes} icon={<User />} colorClass="text-blue-500" /></Link>
-                    <Link to="/viviendas/listar"><StatCard title="Viviendas Disponibles" value={stats.viviendasDisponibles} icon={<CheckCircle />} colorClass="text-green-500" /></Link>
-                    <Link to="/abonos/listar"><StatCard title="Total Recaudado" value={stats.totalRecaudado.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })} icon={<DollarSign />} colorClass="text-yellow-500" /></Link>
+                    {/* Tarjeta de Total de Viviendas (sin filtro) */}
+                    <Link to="/viviendas/listar">
+                        <StatCard title="Total de Viviendas" value={stats.totalViviendas} icon={<Home />} colorClass="text-red-500" />
+                    </Link>
+
+                    {/* Tarjeta de Clientes Activos (con filtro) */}
+                    <Link to="/clientes/listar" state={{ statusFilter: 'activo' }}>
+                        <StatCard title="Clientes Activos" value={stats.totalClientes} icon={<User />} colorClass="text-blue-500" />
+                    </Link>
+
+                    {/* Tarjeta de Viviendas Disponibles (con filtro) */}
+                    <Link to="/viviendas/listar" state={{ statusFilter: 'disponibles' }}>
+                        <StatCard title="Viviendas Disponibles" value={stats.viviendasDisponibles} icon={<CheckCircle />} colorClass="text-green-500" />
+                    </Link>
+
+                    {/* Tarjeta de Total Recaudado (lleva a la lista de abonos) */}
+                    <Link to="/abonos/listar">
+                        <StatCard title="Total Recaudado" value={formatCurrency(stats.totalRecaudado)} icon={<Wallet />} colorClass="text-yellow-500" />
+                    </Link>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">

@@ -6,8 +6,8 @@ import { addAbono } from '../../utils/storage';
 import { Banknote, Landmark, Gift, HandCoins, FilePlus2 } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import { validateAbono } from './abonoValidation.js';
+import { formatCurrency } from '../../utils/textFormatters.js'; // <-- IMPORTAMOS LA FUNCIÓN
 
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
 const ICONS = {

@@ -4,8 +4,7 @@ import { useData } from '../../context/DataContext';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ArrowLeft, User, Home, Calendar, DollarSign, FileText, CheckCircle, MessageSquare, Download } from 'lucide-react';
 import AbonoCard from '../abonos/AbonoCard';
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTAMOS LA FUNCIÓN
 
 const DetalleRenuncia = () => {
     const { renunciaId } = useParams();

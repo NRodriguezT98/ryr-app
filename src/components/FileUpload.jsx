@@ -1,9 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { UploadCloud, FileText, XCircle, Loader } from 'lucide-react';
+import { UploadCloud, Loader } from 'lucide-react';
 import { uploadFile } from '../utils/storage';
-import toast from 'react-hot-toast'; // <-- IMPORTACIÓN AÑADIDA AQUÍ
+import toast from 'react-hot-toast';
 
-const FileUpload = ({ label, filePath, currentFileUrl, onUploadSuccess, onRemove }) => {
+/**
+ * Componente genérico para manejar la selección y subida de un archivo.
+ * @param {object} props
+ * @param {string} props.label - El texto que se muestra en el botón/área de carga.
+ * @param {function} props.filePath - Función que genera la ruta de almacenamiento.
+ * @param {function} props.onUploadSuccess - Callback que se ejecuta con la URL tras una subida exitosa.
+ * @param {boolean} [props.isCompact=false] - Si es true, muestra una versión más pequeña del botón.
+ */
+const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false }) => {
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState(0);
     const fileInputRef = useRef(null);
@@ -23,6 +31,9 @@ const FileUpload = ({ label, filePath, currentFileUrl, onUploadSuccess, onRemove
             toast.error("Error al subir el archivo.");
         } finally {
             setUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
         }
     };
 
@@ -30,10 +41,25 @@ const FileUpload = ({ label, filePath, currentFileUrl, onUploadSuccess, onRemove
         fileInputRef.current?.click();
     };
 
+    if (isCompact) {
+        return (
+            <>
+                <button
+                    type="button"
+                    onClick={handleSelectFileClick}
+                    disabled={uploading}
+                    className="text-sm font-semibold text-blue-600 hover:underline disabled:text-gray-400"
+                >
+                    {uploading ? 'Subiendo...' : label}
+                </button>
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf,.png,.jpg,.jpeg" />
+            </>
+        );
+    }
+
     return (
         <div>
-            <label className="block font-semibold mb-2 text-gray-700">{label}</label>
-            <div className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-4 relative">
+            <div className="w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-4 relative hover:bg-gray-50 transition-colors">
                 {uploading ? (
                     <>
                         <Loader className="animate-spin text-blue-500 mb-2" />
@@ -42,40 +68,14 @@ const FileUpload = ({ label, filePath, currentFileUrl, onUploadSuccess, onRemove
                             <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${progress}%` }}></div>
                         </div>
                     </>
-                ) : currentFileUrl ? (
-                    <>
-                        <div className='flex items-center gap-2 text-green-700'>
-                            <FileText />
-                            <a href={currentFileUrl} target="_blank" rel="noopener noreferrer" className="font-bold hover:underline">
-                                Ver Documento Actual
-                            </a>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={onRemove}
-                            className="absolute top-1 right-1 p-0.5 bg-red-100 text-red-500 rounded-full hover:bg-red-200"
-                            title="Eliminar documento"
-                        >
-                            <XCircle size={20} />
-                        </button>
-                        <button type="button" onClick={handleSelectFileClick} className="text-sm text-blue-600 hover:underline mt-2">Reemplazar</button>
-                    </>
                 ) : (
                     <button type="button" onClick={handleSelectFileClick} className="text-center">
                         <UploadCloud className="mx-auto text-gray-400" size={32} />
-                        <p className="mt-2 text-sm text-gray-600">
-                            Haz clic para seleccionar un archivo
-                        </p>
+                        <p className="mt-2 text-sm text-gray-600">{label}</p>
                         <p className="text-xs text-gray-500">PDF, PNG, JPG</p>
                     </button>
                 )}
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".pdf,.png,.jpg,.jpeg"
-                />
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf,.png,.jpg,.jpeg" />
             </div>
         </div>
     );

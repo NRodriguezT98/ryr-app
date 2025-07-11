@@ -6,10 +6,11 @@ import Step2_ClientInfo from './wizard/Step2_ClientInfo';
 import Step3_Financial from './wizard/Step3_Financial';
 import { validateCliente, validateFinancialStep } from './clienteValidation.js';
 import { updateCliente } from '../../utils/storage.js';
-import ModalConfirmacionCambios from '../../components/ModalConfirmacionCambios.jsx';
+import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import Modal from '../../components/Modal.jsx';
 import { Home, User, CircleDollarSign, Check, UserCog } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { formatCurrency } from '../../utils/textFormatters.js';
 
 function formReducer(state, action) {
     switch (action.type) {
@@ -33,7 +34,7 @@ function formReducer(state, action) {
 }
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+
 const formatDisplayDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString + 'T00:00:00');
@@ -135,7 +136,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         };
         if (Object.keys(totalErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: totalErrors });
-            toast.error("Por favor, corrige los errores del formulario.");
+            toast.error("Por favor, corrige los errores antes de guardar.");
             return;
         }
 
@@ -161,8 +162,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         }
 
         for (const key in current.datosCliente) {
+            if (key.startsWith('url') || key === 'errors') continue;
             if (String(initial.datosCliente[key] || '') !== String(current.datosCliente[key] || '')) {
-                if (key.startsWith('url')) continue;
                 const isDateField = key === 'fechaIngreso';
                 cambiosDetectados.push({ campo: fieldLabels[key] || key, anterior: formatValue(initial.datosCliente[key], false, isDateField), actual: formatValue(current.datosCliente[key], false, isDateField) });
             }
@@ -277,14 +278,18 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                     </>
                 )}
             </Modal>
-            <ModalConfirmacionCambios
-                isOpen={isConfirming}
-                onClose={() => setIsConfirming(false)}
-                onConfirm={executeSave}
-                titulo="Confirmar Cambios del Cliente"
-                cambios={cambios}
-                isSaving={isSubmitting}
-            />
+
+            {isConfirming && (
+                <ModalConfirmacion
+                    isOpen={isConfirming}
+                    onClose={() => setIsConfirming(false)}
+                    onConfirm={executeSave}
+                    titulo="Confirmar Cambios del Cliente"
+                    cambios={cambios}
+                    isSubmitting={isSubmitting}
+                />
+            )}
+
             <Tooltip id="app-tooltip" style={{ backgroundColor: "#334155", color: "#ffffff", borderRadius: '8px', zIndex: 100 }} />
         </>
     );

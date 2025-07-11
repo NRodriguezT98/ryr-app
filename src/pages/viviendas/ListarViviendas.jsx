@@ -1,28 +1,38 @@
-import React, { useState, useCallback, useMemo, useRef } from "react";
+import React, { useState, useCallback } from "react";
 import toast from 'react-hot-toast';
+import { useLocation } from 'react-router-dom'; // <-- 1. Importar useLocation
 import { useData } from "../../context/DataContext";
 import { useViviendaFilters } from "../../hooks/useViviendaFilters";
+import { useUndoableDelete } from "../../hooks/useUndoableDelete.jsx";
 import { deleteVivienda } from "../../utils/storage";
 import ResourcePageLayout from "../../layout/ResourcePageLayout";
 import ViviendaCard from './ViviendaCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarVivienda from "./EditarVivienda.jsx";
 import DescuentoModal from './DescuentoModal.jsx';
-import UndoToast from '../../components/UndoToast.jsx';
-import ViviendaCardSkeleton from "./ViviendaCardSkeleton.jsx"; // <-- Ruta corregida
+import ViviendaCardSkeleton from "./ViviendaCardSkeleton.jsx";
 
 const ListarViviendas = () => {
+    const location = useLocation(); // <-- 2. Obtener la ubicación
     const { isLoading, viviendas, recargarDatos } = useData();
+
+    // 3. Establecer el estado inicial del filtro usando el state del Link (si existe)
+    const initialStateFromLink = location.state?.statusFilter || 'todas';
+    const [statusFilter, setStatusFilter] = useState(initialStateFromLink);
+
     const {
-        viviendasFiltradasYOrdenadas, searchTerm, setSearchTerm,
-        statusFilter, setStatusFilter
-    } = useViviendaFilters(viviendas);
+        viviendasFiltradasYOrdenadas, searchTerm, setSearchTerm
+    } = useViviendaFilters(viviendas, statusFilter); // Pasamos el filtro al hook
+
+    const { hiddenItems: viviendasOcultas, initiateDelete } = useUndoableDelete(
+        async (vivienda) => deleteVivienda(vivienda.id),
+        recargarDatos,
+        "Vivienda"
+    );
 
     const [viviendaAEditar, setViviendaAEditar] = useState(null);
     const [viviendaAEliminar, setViviendaAEliminar] = useState(null);
     const [viviendaConDescuento, setViviendaConDescuento] = useState(null);
-    const [viviendasOcultas, setViviendasOcultas] = useState([]);
-    const deletionTimeouts = useRef({});
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
@@ -30,7 +40,7 @@ const ListarViviendas = () => {
         setViviendaConDescuento(null);
     }, [recargarDatos]);
 
-    const iniciarEliminacion = (vivienda) => {
+    const handleIniciarEliminacion = (vivienda) => {
         if (vivienda.clienteId) {
             toast.error("No se puede eliminar: la vivienda ya tiene un cliente asignado.");
             return;
@@ -40,34 +50,8 @@ const ListarViviendas = () => {
 
     const confirmarEliminar = () => {
         if (!viviendaAEliminar) return;
-        const id = viviendaAEliminar.id;
-
-        setViviendasOcultas(prev => [...prev, id]);
-        toast.custom((t) => (<UndoToast t={t} message="Vivienda eliminada" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
-
-        const timeoutId = setTimeout(() => {
-            confirmarEliminarReal(id);
-        }, 5000);
-
-        deletionTimeouts.current[id] = timeoutId;
+        initiateDelete(viviendaAEliminar);
         setViviendaAEliminar(null);
-    };
-
-    const deshacerEliminacion = (id) => {
-        clearTimeout(deletionTimeouts.current[id]);
-        delete deletionTimeouts.current[id];
-        setViviendasOcultas(prev => prev.filter(vId => vId !== id));
-        toast.success("Eliminación deshecha.");
-    };
-
-    const confirmarEliminarReal = async (id) => {
-        try {
-            await deleteVivienda(id);
-            recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo eliminar la vivienda.");
-            setViviendasOcultas(prev => prev.filter(vId => vId !== id));
-        }
     };
 
     const viviendasVisibles = viviendasFiltradasYOrdenadas.filter(v => !viviendasOcultas.includes(v.id));
@@ -101,7 +85,7 @@ const ListarViviendas = () => {
                             key={vivienda.id}
                             vivienda={vivienda}
                             onEdit={setViviendaAEditar}
-                            onDelete={iniciarEliminacion}
+                            onDelete={handleIniciarEliminacion}
                             onApplyDiscount={setViviendaConDescuento}
                         />
                     ))}

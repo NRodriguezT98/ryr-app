@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { User, FileWarning, FileText } from 'lucide-react';
 
-// Función de ayuda para obtener la lista de documentos faltantes
 const getDocumentosFaltantes = (cliente) => {
     const faltantes = [];
     if (!cliente.datosCliente.urlCedula) {
@@ -31,12 +30,12 @@ const DocumentosPendientes = ({ clientes }) => {
 
     const clientesConPendientes = useMemo(() => {
         return clientes
-            .filter(cliente => cliente.status !== 'renunciado') // Solo clientes activos
+            .filter(cliente => cliente.status !== 'renunciado')
             .map(cliente => ({
                 cliente,
                 documentosFaltantes: getDocumentosFaltantes(cliente)
             }))
-            .filter(item => item.documentosFaltantes.length > 0); // Solo los que tienen al menos un documento faltante
+            .filter(item => item.documentosFaltantes.length > 0);
     }, [clientes]);
 
 
@@ -51,7 +50,11 @@ const DocumentosPendientes = ({ clientes }) => {
                     <ul className="space-y-3">
                         {clientesConPendientes.map(({ cliente, documentosFaltantes }) => (
                             <li key={cliente.id}>
-                                <Link to={`/clientes/detalle/${cliente.id}`} className="block p-3 rounded-lg hover:bg-gray-100 transition-colors">
+                                <Link
+                                    to={`/clientes/detalle/${cliente.id}`}
+                                    state={{ defaultTab: 'documentos' }} // <-- AÑADIMOS ESTADO AL ENLACE
+                                    className="block p-3 rounded-lg hover:bg-gray-100 transition-colors"
+                                >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="bg-blue-100 p-2 rounded-full">
@@ -60,7 +63,6 @@ const DocumentosPendientes = ({ clientes }) => {
                                             <p className="font-semibold text-gray-800">{cliente.datosCliente.nombres} {cliente.datosCliente.apellidos}</p>
                                         </div>
                                     </div>
-                                    {/* --- LISTA DE DOCUMENTOS FALTANTES --- */}
                                     <div className='mt-2 pl-11 text-xs'>
                                         <p className='text-orange-700 font-semibold flex items-center gap-1.5'>
                                             <FileText size={14} />

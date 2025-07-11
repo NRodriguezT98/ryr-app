@@ -1,7 +1,8 @@
-import React, { Fragment } from 'react';
+import React, { Fragment, memo } from 'react'; // <-- 1. Importamos memo
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, User, Eye, Pencil, Trash, Tag, Phone, MapPin, Home, UserX, CheckCircle2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { formatCurrency, formatID } from '../../utils/textFormatters';
 
 const getInitials = (nombres = '', apellidos = '') => {
     const n = nombres.charAt(0) || '';
@@ -9,15 +10,7 @@ const getInitials = (nombres = '', apellidos = '') => {
     return `${n}${a}`.toUpperCase();
 };
 
-function formatID(cedula) {
-    if (!cedula) return '';
-    return Number(cedula).toLocaleString("es-CO");
-}
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
-
 const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) => {
-    // Obtenemos todas las propiedades directamente del objeto cliente
     const { datosCliente, vivienda, status, tieneRenunciaPendiente, renunciaPendiente } = cliente;
 
     const tieneDescuento = vivienda && vivienda.descuentoMonto > 0;
@@ -114,4 +107,4 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) =>
     );
 };
 
-export default ClienteCard;
+export default memo(ClienteCard); // <-- 2. Envolvemos el componente

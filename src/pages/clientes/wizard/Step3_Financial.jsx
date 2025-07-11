@@ -2,9 +2,8 @@ import React, { useMemo, useCallback } from 'react';
 import { NumericFormat } from 'react-number-format';
 import Select from 'react-select';
 import AnimatedPage from '../../../components/AnimatedPage';
-import HelpTooltip from '../../../components/HelpTooltip'; // <-- 1. Importamos el nuevo componente
-
-const formatCurrency = (value) => (value || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 });
+import HelpTooltip from '../../../components/HelpTooltip';
+import { formatCurrency } from '../../../utils/textFormatters'; // <-- IMPORTAMOS LA FUNCIÓN
 
 const cuotaInicialOptions = [{ value: 'Cesantias', label: 'Cesantías' }, { value: 'Efectivo', label: 'Efectivo' }, { value: 'Consignación bancaria', label: 'Consignación' }];
 const creditoOptions = [{ value: 'Bancolombia', label: 'Bancolombia' }, { value: 'Banco de Bogotá', label: 'Banco de Bogotá' }, { value: 'Banco Agrario', label: 'Banco Agrario' }, { value: 'Banco Caja Social', label: 'Banco Caja Social' }];
