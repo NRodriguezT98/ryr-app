@@ -21,7 +21,6 @@ export const DataProvider = ({ children }) => {
     const [renuncias, setRenuncias] = useState([]);
 
     const recargarDatos = useCallback(() => {
-        console.log("Recarga manual invocada (actualmente no es necesaria con onSnapshot).");
     }, []);
 
     useEffect(() => {

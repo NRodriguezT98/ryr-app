@@ -1,42 +1,28 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef, Fragment } from "react";
-import { Menu, Popover, Transition } from '@headlessui/react'; // Popover añadido
+import { Menu, Popover, Transition } from '@headlessui/react';
 import logo1 from "../assets/logo1.png";
 import logo2 from "../assets/logo2.png";
-import { Bell, Check } from "lucide-react"; // Bell y Check añadidos
-import { useNotifications } from "../context/NotificationContext"; // Importamos el hook
-import NotificationItem from "./notifications/NotificationItem"; // Importamos el item
+import { Bell } from "lucide-react";
+import { useNotifications } from "../context/NotificationContext";
+import NotificationItem from "./notifications/NotificationItem";
 
-// Pequeño componente de ayuda para los enlaces del menú
-const NavLink = ({ to, active, children, colorClass, closeMenu }) => (
-    <Link to={to} onClick={closeMenu} className={`${active ? `${colorClass} font-bold` : 'text-gray-900'} group flex rounded-md items-center w-full px-3 py-2 text-sm hover:bg-gray-100`}>
-        {children}
-    </Link>
-);
+// Este componente NavLink ya no es necesario aquí, lo manejaremos directamente.
 
 const Navbar = () => {
     const location = useLocation();
-    const [openMenu, setOpenMenu] = useState(null);
-    const menuRef = useRef(null);
-    const { notifications, unreadCount, markAllAsRead } = useNotifications(); // Usamos el hook
-
-    const toggleMenu = (menuName) => {
-        setOpenMenu(prev => (prev === menuName ? null : menuName));
-    };
-
-    const closeAllMenus = () => {
-        setOpenMenu(null);
-    };
+    const { notifications, unreadCount, markAllAsRead } = useNotifications();
+    const [isRinging, setIsRinging] = useState(false);
+    const prevUnreadCount = useRef(unreadCount);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                closeAllMenus();
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+        if (unreadCount > prevUnreadCount.current) {
+            setIsRinging(true);
+            const timer = setTimeout(() => setIsRinging(false), 500);
+            return () => clearTimeout(timer);
+        }
+        prevUnreadCount.current = unreadCount;
+    }, [unreadCount]);
 
     const isActiveLink = (path) => location.pathname.startsWith(path);
 
@@ -49,61 +35,68 @@ const Navbar = () => {
                         <img src={logo2} alt="Logo 2" className="h-9" />
                     </Link>
 
-                    <div className="flex items-center space-x-8" ref={menuRef}>
-                        {/* Menús existentes... */}
-                        <div className="relative">
-                            <button onClick={() => toggleMenu('viviendas')} className={`font-semibold text-gray-700 hover:text-[#c62828] focus:outline-none py-2 relative group ${isActiveLink('/viviendas') ? 'text-[#c62828]' : ''}`}>
+                    {/* --- ESTRUCTURA DE MENÚS CORREGIDA Y SIMPLIFICADA --- */}
+                    <div className="hidden md:flex items-center space-x-1">
+                        {/* Menú Viviendas */}
+                        <Menu as="div" className="relative inline-block text-left">
+                            <Menu.Button className={`font-semibold text-gray-700 hover:text-[#c62828] focus:outline-none py-2 px-3 relative group rounded-md ${isActiveLink('/viviendas') ? 'text-[#c62828]' : ''}`}>
                                 Viviendas
                                 <span className={`absolute left-0 bottom-0 w-full h-0.5 bg-[#c62828] transform transition-transform duration-300 ease-out ${isActiveLink('/viviendas') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
-                            </button>
-                            <Transition show={openMenu === 'viviendas'} as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                <div className="absolute left-0 mt-3 w-48 bg-white shadow-lg rounded-lg z-50 border border-gray-100 overflow-hidden p-1">
-                                    <NavLink to="/viviendas/crear" closeMenu={closeAllMenus}>Registrar Vivienda</NavLink>
-                                    <NavLink to="/viviendas/listar" closeMenu={closeAllMenus}>Ver Viviendas</NavLink>
-                                </div>
+                            </Menu.Button>
+                            <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                                <Menu.Items className="absolute left-0 mt-2 w-56 origin-top-left bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                    <div className="py-1">
+                                        <Menu.Item><Link to="/viviendas/crear" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Registrar Vivienda</Link></Menu.Item>
+                                        <Menu.Item><Link to="/viviendas/listar" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Ver Viviendas</Link></Menu.Item>
+                                    </div>
+                                </Menu.Items>
                             </Transition>
-                        </div>
+                        </Menu>
 
-                        <div className="relative">
-                            <button onClick={() => toggleMenu('clientes')} className={`font-semibold text-gray-700 hover:text-[#1976d2] focus:outline-none py-2 relative group ${isActiveLink('/clientes') ? 'text-[#1976d2]' : ''}`}>
+                        {/* Menú Clientes */}
+                        <Menu as="div" className="relative inline-block text-left">
+                            <Menu.Button className={`font-semibold text-gray-700 hover:text-[#1976d2] focus:outline-none py-2 px-3 relative group rounded-md ${isActiveLink('/clientes') ? 'text-[#1976d2]' : ''}`}>
                                 Clientes
                                 <span className={`absolute left-0 bottom-0 w-full h-0.5 bg-[#1976d2] transform transition-transform duration-300 ease-out ${isActiveLink('/clientes') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
-                            </button>
-                            <Transition show={openMenu === 'clientes'} as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                <div className="absolute left-0 mt-3 w-48 bg-white shadow-lg rounded-lg z-50 border border-gray-100 overflow-hidden p-1">
-                                    <NavLink to="/clientes/crear" closeMenu={closeAllMenus}>Registrar Cliente</NavLink>
-                                    <NavLink to="/clientes/listar" closeMenu={closeAllMenus}>Ver Clientes</NavLink>
-                                </div>
+                            </Menu.Button>
+                            <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                                <Menu.Items className="absolute left-0 mt-2 w-56 origin-top-left bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                    <div className="py-1">
+                                        <Menu.Item><Link to="/clientes/crear" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Registrar Cliente</Link></Menu.Item>
+                                        <Menu.Item><Link to="/clientes/listar" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Ver Clientes</Link></Menu.Item>
+                                    </div>
+                                </Menu.Items>
                             </Transition>
-                        </div>
+                        </Menu>
 
-                        <div className="relative">
-                            <button onClick={() => toggleMenu('abonos')} className={`font-semibold text-gray-700 hover:text-green-600 focus:outline-none py-2 relative group ${isActiveLink('/abonos') ? 'text-green-600' : ''}`}>
+                        {/* Menú Abonos */}
+                        <Menu as="div" className="relative inline-block text-left">
+                            <Menu.Button className={`font-semibold text-gray-700 hover:text-green-600 focus:outline-none py-2 px-3 relative group rounded-md ${isActiveLink('/abonos') ? 'text-green-600' : ''}`}>
                                 Abonos
                                 <span className={`absolute left-0 bottom-0 w-full h-0.5 bg-green-600 transform transition-transform duration-300 ease-out ${isActiveLink('/abonos') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
-                            </button>
-                            <Transition show={openMenu === 'abonos'} as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                <div className="absolute left-0 mt-3 w-52 bg-white shadow-lg rounded-lg z-50 border border-gray-100 overflow-hidden p-1">
-                                    <NavLink to="/abonos" closeMenu={closeAllMenus}>Gestionar Pagos</NavLink>
-                                    <NavLink to="/abonos/listar" closeMenu={closeAllMenus}>Ver Historial</NavLink>
-                                </div>
+                            </Menu.Button>
+                            <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                                <Menu.Items className="absolute left-0 mt-2 w-56 origin-top-left bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                    <div className="py-1"><Menu.Item><Link to="/abonos" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Gestionar Pagos</Link></Menu.Item></div>
+                                    <div className="py-1"><Menu.Item><Link to="/abonos/listar" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Listar Abonos</Link></Menu.Item></div>
+                                </Menu.Items>
                             </Transition>
-                        </div>
+                        </Menu>
 
-                        <Link to="/renuncias" className={`font-semibold text-gray-700 hover:text-orange-500 focus:outline-none py-2 relative group ${isActiveLink('/renuncias') ? 'text-orange-500' : ''}`}>
+                        {/* Enlace Renuncias */}
+                        <Link to="/renuncias" className={`font-semibold text-gray-700 hover:text-orange-500 focus:outline-none py-2 px-3 relative group rounded-md ${isActiveLink('/renuncias') ? 'text-orange-500' : ''}`}>
                             Renuncias
                             <span className={`absolute left-0 bottom-0 w-full h-0.5 bg-orange-500 transform transition-transform duration-300 ease-out ${isActiveLink('/renuncias') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
                         </Link>
                     </div>
                 </div>
 
-                {/* NUEVO: Icono de notificaciones */}
                 <div className="relative">
                     <Popover>
                         {({ open, close }) => (
                             <>
-                                <Popover.Button className="relative p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full focus:outline-none">
-                                    <Bell />
+                                <Popover.Button className="relative p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <Bell className={isRinging ? 'animate-ring' : ''} />
                                     {unreadCount > 0 && (
                                         <span className="absolute top-0 right-0 block h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center ring-2 ring-white">
                                             {unreadCount}

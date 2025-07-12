@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useForm } from '../../hooks/useForm.jsx';
 import toast from 'react-hot-toast';
 import { NumericFormat } from 'react-number-format';
-import { addAbono } from '../../utils/storage';
-import { Banknote, Landmark, Gift, HandCoins, FilePlus2 } from 'lucide-react';
+import { addAbono, createNotification } from '../../utils/storage';
+import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import { validateAbono } from './abonoValidation.js';
 import { formatCurrency } from '../../utils/textFormatters.js';
@@ -32,15 +32,14 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
     const saldoPendiente = montoPactado - totalAbonado;
     const porcentajePagado = montoPactado > 0 ? (totalAbonado / montoPactado) * 100 : 100;
 
-    const { formData, setFormData, handleInputChange, handleValueChange, handleSubmit, isSubmitting, resetForm } = useForm({
-        initialState: initialAbonoFormState,
-        // <-- CORRECCIÓN AQUÍ: Pasamos la fecha de ingreso correcta
+    const { formData, errors, setFormData, handleInputChange, handleValueChange, handleSubmit, isSubmitting, resetForm } = useForm({
+        initialState: { ...initialAbonoFormState, metodoPago: titulo },
         validate: (data) => validateAbono(data, { saldoPendiente }, cliente?.datosCliente?.fechaIngreso),
         onSubmit: async (data) => {
             const nuevoAbono = {
                 fechaPago: data.fechaPago,
                 monto: parseInt(String(data.monto).replace(/\D/g, ''), 10) || 0,
-                metodoPago: titulo,
+                metodoPago: data.metodoPago,
                 fuente: fuente,
                 observacion: data.observacion.trim(),
                 urlComprobante: data.urlComprobante,
@@ -51,6 +50,10 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
             try {
                 await addAbono(nuevoAbono);
                 toast.success("Abono registrado con éxito.");
+
+                const message = `Nuevo abono de ${formatCurrency(nuevoAbono.monto)} para la vivienda Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`;
+                await createNotification('abono', message, `/viviendas/detalle/${nuevoAbono.viviendaId}`);
+
                 resetForm();
                 setMostrandoFormulario(false);
                 onAbonoRegistrado();
@@ -66,14 +69,13 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
     }
 
     const handleUploadSuccess = (url) => {
-        setFormData(prev => ({ ...prev, urlComprobante: url }));
+        handleValueChange('urlComprobante', url);
     };
 
     const handleRemoveFile = () => {
-        setFormData(prev => ({ ...prev, urlComprobante: null }));
+        handleValueChange('urlComprobante', null);
     };
 
-    // <-- CORRECCIÓN AQUÍ: Usamos la fecha de ingreso para el 'min'
     const minDate = cliente?.datosCliente?.fechaIngreso ? cliente.datosCliente.fechaIngreso.split('T')[0] : null;
 
     return (
@@ -97,11 +99,17 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
             </div>
 
             {mostrandoFormulario && (
-                <form onSubmit={handleSubmit} className="mt-4 pt-4 border-t space-y-4 animate-fade-in">
+                <form onSubmit={handleSubmit} noValidate className="mt-4 pt-4 border-t space-y-4 animate-fade-in">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-medium">Monto a abonar</label>
-                            <NumericFormat value={formData.monto} onValueChange={(v) => handleValueChange('monto', v.value)} className="w-full border p-2 rounded-lg" thousandSeparator="." decimalSeparator="," prefix="$ " />
+                            <NumericFormat
+                                value={formData.monto}
+                                onValueChange={(v) => handleValueChange('monto', v.value)}
+                                className={`w-full border p-2 rounded-lg ${errors.monto ? 'border-red-500' : 'border-gray-300'}`}
+                                thousandSeparator="." decimalSeparator="," prefix="$ "
+                            />
+                            {errors.monto && <p className="text-red-600 text-sm mt-1">{errors.monto}</p>}
                         </div>
                         <div>
                             <label className="text-xs font-medium">Fecha del Pago</label>
@@ -112,8 +120,9 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                                 onChange={handleInputChange}
                                 min={minDate}
                                 max={getTodayString()}
-                                className="w-full border p-2 rounded-lg"
+                                className={`w-full border p-2 rounded-lg ${errors.fechaPago ? 'border-red-500' : 'border-gray-300'}`}
                             />
+                            {errors.fechaPago && <p className="text-red-600 text-sm mt-1">{errors.fechaPago}</p>}
                         </div>
                     </div>
                     <div>
@@ -121,13 +130,26 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                         <textarea name="observacion" value={formData.observacion} onChange={handleInputChange} rows="2" className="w-full border p-2 rounded-lg text-sm" placeholder="Ej: Pago parcial..." />
                     </div>
                     <div>
-                        <FileUpload
-                            label="Comprobante de Pago (Opcional)"
-                            filePath={(fileName) => `comprobantes_abonos/${vivienda.id}/${fuente}-${Date.now()}-${fileName}`}
-                            currentFileUrl={formData.urlComprobante}
-                            onUploadSuccess={handleUploadSuccess}
-                            onRemove={handleRemoveFile}
-                        />
+                        <label className="block font-medium mb-2 text-xs">Comprobante de Pago (Opcional)</label>
+                        {formData.urlComprobante ? (
+                            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-3 flex items-center justify-between">
+                                <div className='flex items-center gap-2 text-green-800 font-semibold text-sm'>
+                                    <FileText size={16} />
+                                    <a href={formData.urlComprobante} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                        Ver Comprobante
+                                    </a>
+                                </div>
+                                <button type="button" onClick={handleRemoveFile} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar comprobante">
+                                    <XCircle size={18} />
+                                </button>
+                            </div>
+                        ) : (
+                            <FileUpload
+                                label="Subir Comprobante"
+                                filePath={(fileName) => `comprobantes_abonos/${vivienda.id}/${fuente}-${Date.now()}-${fileName}`}
+                                onUploadSuccess={handleUploadSuccess}
+                            />
+                        )}
                     </div>
                     <div className="flex justify-end gap-2">
                         <button type="button" onClick={handleCancelarFormulario} className="bg-gray-200 px-4 py-1.5 rounded-md text-sm">Cancelar</button>

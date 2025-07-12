@@ -84,7 +84,7 @@ const CrearVivienda = () => {
         }
     }, [navigate]);
 
-    const { formData, errors, setErrors, isSubmitting, handleInputChange, handleValueChange, handleSubmit, setFormData } = useForm({
+    const { formData, errors, setErrors, isSubmitting, handleInputChange, handleValueChange, handleSubmit, dispatch } = useForm({
         initialState,
         validate: validateCallback,
         onSubmit: onSubmitCallback,
@@ -123,13 +123,10 @@ const CrearVivienda = () => {
 
     const handleCheckboxChange = (e) => {
         const { name, checked } = e.target;
-        setFormData(prev => {
-            const newState = { ...prev, [name]: checked };
-            if (name === 'esEsquinera') {
-                newState.recargoEsquinera = checked ? "5000000" : "0";
-            }
-            return newState;
-        });
+        dispatch({ type: 'UPDATE_FIELD', payload: { name, value: checked } });
+        if (name === 'esEsquinera') {
+            dispatch({ type: 'UPDATE_FIELD', payload: { name: 'recargoEsquinera', value: checked ? "5000000" : "0" } });
+        }
     };
 
     const STEPS_CONFIG = [
@@ -147,7 +144,6 @@ const CrearVivienda = () => {
                     <h2 className="text-3xl font-extrabold mb-4 text-center text-[#c62828]">
                         🏠 Registrar Nueva Vivienda
                     </h2>
-
                     <div className="flex items-center justify-center my-8">
                         {STEPS_CONFIG.map((s, index) => (
                             <Fragment key={s.number}>
@@ -163,7 +159,6 @@ const CrearVivienda = () => {
                             </Fragment>
                         ))}
                     </div>
-
                     <FormularioVivienda
                         step={step}
                         formData={formData}
@@ -174,12 +169,10 @@ const CrearVivienda = () => {
                         valorTotalCalculado={valorTotalCalculado}
                         gastosNotarialesFijos={GASTOS_NOTARIALES_FIJOS}
                     />
-
                     <div className="mt-10 flex justify-between">
                         {step > 1 ? (
                             <button type="button" onClick={handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
                         ) : <div />}
-
                         {step < 3 ? (
                             <button type="button" onClick={handleNextStep} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
                                 Siguiente
@@ -191,14 +184,7 @@ const CrearVivienda = () => {
                                 disabled={isSubmitting}
                                 className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto flex items-center justify-center gap-2"
                             >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader size={20} className="animate-spin" />
-                                        <span>Guardando...</span>
-                                    </>
-                                ) : (
-                                    "Finalizar y Guardar"
-                                )}
+                                {isSubmitting ? (<><Loader size={20} className="animate-spin" /><span>Guardando...</span></>) : ("Finalizar y Guardar")}
                             </button>
                         )}
                     </div>

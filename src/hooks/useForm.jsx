@@ -1,16 +1,16 @@
-import { useState, useReducer, useCallback, useMemo } from 'react';
+import { useReducer, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
 function formReducer(state, action) {
     switch (action.type) {
         case 'INITIALIZE_FORM':
             return { ...(action.payload || {}), errors: {} };
-        case 'UPDATE_FIELD':
+        case 'UPDATE_FIELD': {
             const { name, value } = action.payload;
             return { ...state, [name]: value };
+        }
         case 'SET_ERRORS':
             return { ...state, errors: action.payload };
-        // <-- 1. AÑADIMOS UN NUEVO CASO PARA MANEJAR ACTUALIZACIONES CON FUNCIONES
         case 'SET_FORM_DATA_FN':
             return action.payload(state);
         default:
@@ -19,28 +19,14 @@ function formReducer(state, action) {
 }
 
 export const useForm = ({ initialState, validate = () => ({}), onSubmit, options = {} }) => {
-    // Usamos el estado del reducer, pero también guardamos una copia inicial limpia.
+    // El estado se inicializa una sola vez aquí.
     const [formData, dispatch] = useReducer(formReducer, { ...initialState, errors: {} });
-    const [initialData, setInitialData] = useState(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
     const { inputFilters = {}, resetOnSuccess = true } = options;
 
-    // Guardamos el estado inicial una sola vez
-    useMemo(() => {
-        if (initialState) {
-            const deepCopy = JSON.parse(JSON.stringify(initialState));
-            setInitialData(deepCopy);
-        }
-    }, [initialState]);
-
-    // <-- 2. HACEMOS QUE setFormData ACEPTE OBJETOS O FUNCIONES
-    const setFormData = useCallback((updater) => {
-        if (typeof updater === 'function') {
-            dispatch({ type: 'SET_FORM_DATA_FN', payload: updater });
-        } else {
-            dispatch({ type: 'INITIALIZE_FORM', payload: updater });
-        }
+    // setFormData ahora solo actualiza el estado. La responsabilidad de cuándo llamar a esto
+    // recae en el componente que usa el hook.
+    const setFormData = useCallback((newData) => {
+        dispatch({ type: 'INITIALIZE_FORM', payload: newData });
     }, []);
 
     const setErrors = useCallback((errors) => {
@@ -58,35 +44,41 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         dispatch({ type: 'UPDATE_FIELD', payload: { name, value } });
     }, []);
 
+    const resetForm = useCallback(() => {
+        dispatch({ type: 'INITIALIZE_FORM', payload: initialState });
+    }, [initialState]);
+
     const handleSubmit = useCallback(async (e) => {
         if (e) e.preventDefault();
-        if (isSubmitting) return;
 
         const validationErrors = validate(formData);
-        setErrors(validationErrors);
-
         if (Object.keys(validationErrors).length > 0) {
+            dispatch({ type: 'SET_ERRORS', payload: validationErrors });
             toast.error("Por favor, corrige los errores antes de enviar.");
             return;
         }
 
-        setIsSubmitting(true);
         try {
             await onSubmit(formData);
             if (resetOnSuccess) {
-                dispatch({ type: 'INITIALIZE_FORM', payload: initialState });
+                resetForm();
             }
         } catch (error) {
             console.error("useForm: Ocurrió un error durante la ejecución de onSubmit.", error);
             toast.error("Ocurrió un error inesperado al guardar.");
-        } finally {
-            setIsSubmitting(false);
         }
-    }, [onSubmit, formData, isSubmitting, resetOnSuccess, initialState, validate, setErrors]);
+    }, [onSubmit, formData, resetOnSuccess, validate, resetForm]);
 
     return {
-        formData, dispatch, errors: formData.errors || {},
-        isSubmitting, handleSubmit, handleInputChange, handleValueChange, setFormData, setErrors,
-        initialData
+        formData,
+        errors: formData.errors || {},
+        isSubmitting: false, // Simplificamos, el componente puede manejar su propio estado de carga si es complejo.
+        handleSubmit,
+        handleInputChange,
+        handleValueChange,
+        setFormData,
+        setErrors,
+        resetForm,
+        dispatch
     };
 };

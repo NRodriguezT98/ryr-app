@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { marcarDevolucionComoPagada } from '../../../utils/storage';
 import Modal from '../../../components/Modal';
 import FileUpload from '../../../components/FileUpload';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, FileText, XCircle } from 'lucide-react'; // <-- Íconos añadidos
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -28,7 +28,8 @@ const ModalGestionarDevolucion = ({ isOpen, onClose, onSave, renuncia }) => {
                 toast.error('No se pudo registrar la devolución.');
                 console.error("Error al registrar devolución:", error);
             }
-        }
+        },
+        options: { resetOnSuccess: false }
     });
 
     const handleUploadSuccess = (url) => {
@@ -70,13 +71,35 @@ const ModalGestionarDevolucion = ({ isOpen, onClose, onSave, renuncia }) => {
                     />
                 </div>
                 <div>
-                    <FileUpload
-                        label="Soporte de Devolución (Opcional)"
-                        filePath={(fileName) => `documentos_renuncias/${renuncia.id}/${fileName}`}
-                        currentFileUrl={formData.urlComprobanteDevolucion}
-                        onUploadSuccess={handleUploadSuccess}
-                        onRemove={handleRemoveFile}
-                    />
+                    {/* --- INICIO DE LÓGICA CORREGIDA --- */}
+                    <label className="block font-semibold mb-2 text-gray-700">Soporte de Devolución (Opcional)</label>
+                    {formData.urlComprobanteDevolucion ? (
+                        <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center justify-between">
+                            <div className='flex items-center gap-2 text-green-800 font-semibold'>
+                                <FileText />
+                                <a href={formData.urlComprobanteDevolucion} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                    Ver Soporte Actual
+                                </a>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleRemoveFile}
+                                className="p-1 text-red-500 rounded-full hover:bg-red-100"
+                                title="Eliminar soporte"
+                            >
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+                    ) : (
+                        <FileUpload
+                            label="Subir Soporte"
+                            filePath={(fileName) => `documentos_renuncias/${renuncia.id}/${fileName}`}
+                            currentFileUrl={formData.urlComprobanteDevolucion}
+                            onUploadSuccess={handleUploadSuccess}
+                            onRemove={handleRemoveFile}
+                        />
+                    )}
+                    {/* --- FIN DE LÓGICA CORREGIDA --- */}
                 </div>
                 <div className="flex justify-end gap-4 mt-8 pt-6 border-t">
                     <button type="button" onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>

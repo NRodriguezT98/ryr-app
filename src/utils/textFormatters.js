@@ -12,6 +12,17 @@ export const toSentenceCase = (str) => {
 };
 
 /**
+ * Convierte un string a "Title Case".
+ * Pone en mayúscula la primera letra de cada palabra.
+ * @param {string} str - El string a formatear.
+ * @returns {string} El string formateado.
+ */
+export const toTitleCase = (str) => {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
+/**
  * Formatea un valor numérico como moneda colombiana (COP).
  * @param {number} value - El valor a formatear.
  * @returns {string} El valor formateado como string de moneda.

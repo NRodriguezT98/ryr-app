@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase/config';
-import { collection, onSnapshot, query, orderBy, limit, writeBatch, where, getDocs } from "firebase/firestore";
+// --- CORRECCIÓN AQUÍ: Añadimos 'doc' y 'updateDoc' a la importación ---
+import { collection, onSnapshot, query, orderBy, limit, writeBatch, doc, updateDoc } from "firebase/firestore";
 
 const NotificationContext = createContext(null);
 
@@ -18,12 +19,14 @@ export const NotificationProvider = ({ children }) => {
 
     useEffect(() => {
         const notifCollection = collection(db, 'notifications');
-        // Creamos una consulta para ordenar por fecha y limitar a las últimas 50
         const q = query(notifCollection, orderBy('timestamp', 'desc'), limit(50));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setNotifications(notifs);
+            setIsLoading(false);
+        }, (error) => {
+            console.error("Error al obtener notificaciones:", error);
             setIsLoading(false);
         });
 
@@ -45,20 +48,28 @@ export const NotificationProvider = ({ children }) => {
             batch.update(notifRef, { read: true });
         });
 
-        await batch.commit();
+        try {
+            await batch.commit();
+        } catch (error) {
+            console.error("Error al marcar notificaciones como leídas:", error);
+        }
     };
 
-    // Versión para marcar una notificación específica como leída (opcional por ahora)
     const markAsRead = async (id) => {
         const notifRef = doc(db, 'notifications', id);
-        await updateDoc(notifRef, { read: true });
+        try {
+            await updateDoc(notifRef, { read: true });
+        } catch (error) {
+            console.error("Error al marcar la notificación como leída:", error);
+        }
     };
 
     const value = {
         notifications,
         unreadCount,
         isLoading,
-        markAllAsRead
+        markAllAsRead,
+        markAsRead // <-- Aquí se expone la función que necesitamos
     };
 
     return (

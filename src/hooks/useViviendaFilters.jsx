@@ -1,13 +1,19 @@
 import { useState, useMemo } from 'react';
 
-export const useViviendaFilters = (viviendasIniciales, initialStatusFilter = 'todas') => {
+/**
+ * Hook para filtrar y ordenar la lista de viviendas.
+ * @param {Array} viviendasIniciales - El array de todas las viviendas.
+ * @param {string} statusFilter - El filtro de estado actual ('todas', 'disponibles', 'ocupadas').
+ * @returns {object} Un objeto con las viviendas filtradas y las funciones para manejar los filtros.
+ */
+export const useViviendaFilters = (viviendasIniciales, statusFilter) => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState(initialStatusFilter);
     const [sortConfig, setSortConfig] = useState({ key: 'manzana', direction: 'ascending' });
 
     const viviendasFiltradasYOrdenadas = useMemo(() => {
         let itemsProcesados = [...viviendasIniciales];
 
+        // Usa el statusFilter que viene como prop para filtrar
         if (statusFilter === 'disponibles') {
             itemsProcesados = itemsProcesados.filter(v => !v.clienteId);
         } else if (statusFilter === 'ocupadas') {
@@ -19,11 +25,12 @@ export const useViviendaFilters = (viviendasIniciales, initialStatusFilter = 'to
             itemsProcesados = itemsProcesados.filter(v =>
                 v.manzana.toLowerCase().includes(lowerCaseSearchTerm) ||
                 v.numeroCasa.toString().includes(lowerCaseSearchTerm) ||
-                v.matricula.toLowerCase().includes(lowerCaseSearchTerm) ||
+                (v.matricula || '').toLowerCase().includes(lowerCaseSearchTerm) ||
                 (v.clienteNombre || '').toLowerCase().includes(lowerCaseSearchTerm)
             );
         }
 
+        // Lógica de ordenamiento
         itemsProcesados.sort((a, b) => {
             const key = sortConfig.key;
             if (!key) return 0;
@@ -62,8 +69,6 @@ export const useViviendaFilters = (viviendasIniciales, initialStatusFilter = 'to
         viviendasFiltradasYOrdenadas,
         searchTerm,
         setSearchTerm,
-        statusFilter, // Devolvemos el estado para que el componente sepa cuál está activo
-        setStatusFilter, // Devolvemos el setter para los botones
         sortConfig,
         handleSort
     };

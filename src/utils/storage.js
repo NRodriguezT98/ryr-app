@@ -3,8 +3,8 @@ import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction,
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { toSentenceCase, formatCurrency } from './textFormatters';
 
-// --- FUNCIÓN HELPER PARA CREAR NOTIFICACIONES ---
-const createNotification = async (type, message, link = '#') => {
+// --- FUNCIÓN HELPER PARA CREAR NOTIFICACIONES (AHORA EXPORTADA) ---
+export const createNotification = async (type, message, link = '#') => {
     const notificationsCol = collection(db, 'notifications');
     try {
         await addDoc(notificationsCol, {
@@ -96,8 +96,6 @@ export const addClienteAndAssignVivienda = async (clienteData) => {
     } else {
         await setDoc(newClienteRef, clienteParaGuardar);
     }
-    const clienteNombre = `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`.trim();
-    await createNotification('cliente', `Nuevo cliente registrado: ${clienteNombre}`, `/clientes/detalle/${clienteData.datosCliente.cedula}`);
 };
 
 export const addAbono = async (abonoData) => {
@@ -114,9 +112,6 @@ export const addAbono = async (abonoData) => {
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         transaction.set(abonoRef, abonoParaGuardar);
     });
-    const viviendaSnap = await getDoc(viviendaRef);
-    const viviendaInfo = viviendaSnap.data();
-    await createNotification('abono', `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaInfo.manzana} - Casa ${viviendaInfo.numeroCasa}`, `/viviendas/detalle/${abonoData.viviendaId}`);
 };
 
 
@@ -243,7 +238,7 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
         }
     });
 
-    await createNotification('renuncia', `Se registró una renuncia del cliente ${clienteNombre}.`, `/renuncias/detalle/${renunciaRef.id}`);
+    return renunciaRef.id;
 };
 
 export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) => {

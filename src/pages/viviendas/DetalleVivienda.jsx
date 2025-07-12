@@ -2,22 +2,17 @@ import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, Home, Info, BarChart2, User, FileText, Compass, Download, CheckCircle, MessageSquare, DollarSign, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Home, Info, BarChart2, User, FileText, Compass, Download, CheckCircle, Star } from 'lucide-react';
 import FuenteDePagoCard from '../abonos/FuenteDePagoCard';
 import AbonoCard from '../abonos/AbonoCard';
-import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTAMOS LA FUNCIÓN
+import { formatCurrency } from '../../utils/textFormatters';
+import FinancialBreakdownCard from './components/FinancialBreakdownCard';
+import StatCard from '../../components/dashboard/StatCard';
 
 const LinderoItem = ({ label, value }) => (
     <div>
         <p className="text-xs font-semibold text-gray-500">{label}</p>
         <p className="text-sm text-gray-800">{value || 'N/A'}</p>
-    </div>
-);
-
-const StatCard = ({ title, value, colorClass }) => (
-    <div className="bg-white p-4 rounded-lg border">
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        <p className={`text-2xl font-bold ${colorClass}`}>{value}</p>
     </div>
 );
 
@@ -42,17 +37,33 @@ const DetalleVivienda = () => {
                 clienteStatus: cliente?.status || 'activo'
             }));
 
+        const desgloseValorVivienda = [
+            { label: 'Valor Base', value: vivienda.valorBase },
+            { label: 'Recargo Esquinera', value: vivienda.recargoEsquinera },
+            { label: 'G. Notariales', value: vivienda.gastosNotariales }
+        ];
+
         let fuentes = [];
+        let desgloseTotalAbonado = [];
+
         if (cliente && cliente.financiero) {
             const { financiero } = cliente;
-            if (financiero.aplicaCuotaInicial) fuentes.push({ titulo: "Cuota Inicial", fuente: "cuotaInicial", montoPactado: financiero.cuotaInicial.monto, abonos: historialAbonos.filter(a => a.fuente === 'cuotaInicial') });
-            if (financiero.aplicaCredito) fuentes.push({ titulo: "Crédito Hipotecario", fuente: "credito", montoPactado: financiero.credito.monto, abonos: historialAbonos.filter(a => a.fuente === 'credito') });
-            if (financiero.aplicaSubsidioVivienda) fuentes.push({ titulo: "Subsidio Mi Casa Ya", fuente: "subsidioVivienda", montoPactado: financiero.subsidioVivienda.monto, abonos: historialAbonos.filter(a => a.fuente === 'subsidioVivienda') });
-            if (financiero.aplicaSubsidioCaja) fuentes.push({ titulo: `Subsidio Caja (${financiero.subsidioCaja.caja})`, fuente: "subsidioCaja", montoPactado: financiero.subsidioCaja.monto, abonos: historialAbonos.filter(a => a.fuente === 'subsidioCaja') });
-            if (financiero.gastosNotariales) fuentes.push({ titulo: "Gastos Notariales", fuente: "gastosNotariales", montoPactado: financiero.gastosNotariales.monto, abonos: historialAbonos.filter(a => a.fuente === 'gastosNotariales') });
+            const crearFuente = (titulo, fuente, montoPactado) => ({
+                titulo, fuente, montoPactado, abonos: historialAbonos.filter(a => a.fuente === fuente)
+            });
+
+            if (financiero.aplicaCuotaInicial) fuentes.push(crearFuente("Cuota Inicial", "cuotaInicial", financiero.cuotaInicial.monto));
+            if (financiero.aplicaCredito) fuentes.push(crearFuente("Crédito Hipotecario", "credito", financiero.credito.monto));
+            if (financiero.aplicaSubsidioVivienda) fuentes.push(crearFuente("Subsidio Mi Casa Ya", "subsidioVivienda", financiero.subsidioVivienda.monto));
+            if (financiero.aplicaSubsidioCaja) fuentes.push(crearFuente(`Subsidio Caja (${financiero.subsidioCaja.caja})`, "subsidioCaja", financiero.subsidioCaja.monto));
+
+            desgloseTotalAbonado = fuentes.map(f => ({
+                label: f.titulo,
+                value: f.abonos.reduce((sum, abono) => sum + abono.monto, 0)
+            }));
         }
 
-        return { vivienda, cliente, historialAbonos, fuentes };
+        return { vivienda, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado };
     }, [viviendaId, viviendas, clientes, abonos, isLoading]);
 
     if (isLoading) return <div className="text-center p-10 animate-pulse">Cargando detalles de la vivienda...</div>;
@@ -61,7 +72,7 @@ const DetalleVivienda = () => {
         return null;
     }
 
-    const { vivienda, cliente, historialAbonos, fuentes } = datosDetalle;
+    const { vivienda, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado } = datosDetalle;
 
     const TabButton = ({ tabName, label, icon }) => (
         <button
@@ -81,16 +92,30 @@ const DetalleVivienda = () => {
                         <Home size={40} className="text-red-500 flex-shrink-0" />
                         <div>
                             <h2 className="text-3xl font-bold text-gray-800">{`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}</h2>
-                            {cliente ? (
-                                <Link to={`/clientes/detalle/${cliente.id}`} className="flex items-center gap-2 text-blue-600 font-semibold hover:underline mt-1">
-                                    <User size={16} />
-                                    <span>{`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`}</span>
-                                </Link>
-                            ) : (
-                                <span className={`mt-1 inline-block px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800`}>
-                                    Disponible
-                                </span>
-                            )}
+                            <div className='flex items-center gap-4 mt-2'>
+                                {cliente ? (
+                                    <Link to={`/clientes/detalle/${cliente.id}`} className="flex items-center gap-2 text-blue-600 font-semibold hover:underline">
+                                        <User size={16} />
+                                        <span>{`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`}</span>
+                                    </Link>
+                                ) : (
+                                    <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800`}>
+                                        Disponible
+                                    </span>
+                                )}
+
+                                {vivienda.recargoEsquinera > 0 ? (
+                                    <span className="flex items-center gap-1.5 text-xs font-bold text-purple-800 bg-purple-200 px-3 py-1 rounded-full">
+                                        <Star size={14} />
+                                        Casa Esquinera
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-200 px-3 py-1 rounded-full">
+                                        <Home size={14} />
+                                        Casa Medianera
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <button onClick={() => navigate('/viviendas/listar')} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-300 transition-colors flex-shrink-0">
@@ -141,16 +166,28 @@ const DetalleVivienda = () => {
                     {activeTab === 'financiero' && (
                         <AnimatedPage>
                             <div className='space-y-8'>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
-                                    <StatCard title="Valor Final" value={formatCurrency(vivienda.valorFinal)} colorClass="text-blue-600" />
-                                    <StatCard title="Total Abonado" value={formatCurrency(vivienda.totalAbonado)} colorClass="text-green-600" />
-                                    <StatCard title="Saldo Pendiente" value={formatCurrency(vivienda.saldoPendiente)} colorClass="text-red-600" />
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <FinancialBreakdownCard title="Valor Final" total={vivienda.valorFinal} items={desgloseValorVivienda} colorClass="text-blue-600" />
+                                    <FinancialBreakdownCard title="Total Abonado" total={vivienda.totalAbonado} items={desgloseTotalAbonado} colorClass="text-green-600" />
+
+                                    <div className={`bg-white p-4 rounded-lg border text-center ${vivienda.saldoPendiente <= 0 && vivienda.clienteId ? 'border-green-300' : 'border-gray-200'}`}>
+                                        <p className="text-sm font-medium text-gray-500">Saldo Pendiente</p>
+                                        <p className={`text-2xl font-bold ${vivienda.saldoPendiente <= 0 && vivienda.clienteId ? 'text-green-600' : 'text-red-600'}`}>
+                                            {formatCurrency(vivienda.saldoPendiente)}
+                                        </p>
+                                        {vivienda.saldoPendiente <= 0 && vivienda.clienteId && (
+                                            <div className="mt-2 flex items-center justify-center gap-2 text-sm font-bold text-green-700 bg-green-100 p-2 rounded-md">
+                                                <CheckCircle size={16} />
+                                                <span>¡A Paz y Salvo!</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="pt-6 border-t">
                                     <h3 className="text-xl font-bold text-gray-800 mb-4">Seguimiento por Fuente de Pago</h3>
                                     {fuentes.length > 0 ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {fuentes.map(fuente => (<FuenteDePagoCard key={fuente.fuente} {...fuente} vivienda={vivienda} onAbonoRegistrado={recargarDatos} />))}
+                                            {fuentes.map(fuente => (<FuenteDePagoCard key={fuente.fuente} {...fuente} vivienda={vivienda} cliente={cliente} onAbonoRegistrado={recargarDatos} />))}
                                         </div>
                                     ) : (<div className="bg-white p-6 rounded-xl border text-center text-gray-500">Esta vivienda no tiene un cliente con estructura financiera asignada.</div>)}
                                 </div>

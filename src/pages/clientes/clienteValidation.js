@@ -53,21 +53,21 @@ export const validateFinancialStep = (financiero, valorVivienda) => {
 
     let totalRecursos = 0;
     if (aplicaCuotaInicial) {
-        if (!cuotaInicial.monto || cuotaInicial.monto <= 0) errors.cuotaInicial_monto = "El monto debe ser > 0.";
+        if (!cuotaInicial.monto || cuotaInicial.monto <= 0) errors.cuotaInicial_monto = "El monto debe ser mayor 0.";
         totalRecursos += cuotaInicial.monto || 0;
     }
     if (aplicaCredito) {
         if (!credito.banco) errors.credito_banco = "Selecciona un banco.";
-        if (!credito.monto || credito.monto <= 0) errors.credito_monto = "El monto debe ser > 0.";
+        if (!credito.monto || credito.monto <= 0) errors.credito_monto = "El monto debe ser mayor 0.";
         totalRecursos += credito.monto || 0;
     }
     if (aplicaSubsidioVivienda) {
-        if (!subsidioVivienda.monto || subsidioVivienda.monto <= 0) errors.subsidioVivienda_monto = "El monto debe ser > 0.";
+        if (!subsidioVivienda.monto || subsidioVivienda.monto <= 0) errors.subsidioVivienda_monto = "El monto debe ser mayor 0.";
         totalRecursos += subsidioVivienda.monto || 0;
     }
     if (aplicaSubsidioCaja) {
         if (!subsidioCaja.caja) errors.subsidioCaja_caja = "Selecciona una caja.";
-        if (!subsidioCaja.monto || subsidioCaja.monto <= 0) errors.subsidioCaja_monto = "El monto debe ser > 0.";
+        if (!subsidioCaja.monto || subsidioCaja.monto <= 0) errors.subsidioCaja_monto = "El monto debe ser mayor 0.";
         totalRecursos += subsidioCaja.monto || 0;
     }
 

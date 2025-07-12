@@ -31,7 +31,7 @@ export const validateAbono = (formData, resumenPago, fechaIngresoCliente) => {
         errors.monto = `El abono no puede superar el saldo pendiente de ${resumenPago.saldoPendiente.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}`;
     }
 
-    // Validación de Método de Pago
+    // Esta validación estaba ausente en el archivo anterior, la restauramos.
     if (!formData.metodoPago || formData.metodoPago.trim() === "") {
         errors.metodoPago = "Debes seleccionar un método de pago.";
     }

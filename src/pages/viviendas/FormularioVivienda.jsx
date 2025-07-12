@@ -2,8 +2,8 @@ import React from 'react';
 import { NumericFormat } from 'react-number-format';
 import AnimatedPage from '../../components/AnimatedPage';
 import FileUpload from '../../components/FileUpload';
-import HelpTooltip from '../../components/HelpTooltip';
 import { FileText, XCircle } from 'lucide-react';
+import HelpTooltip from '../../components/HelpTooltip';
 
 const ResumenValorItem = ({ label, value }) => (
     <div className="flex justify-between text-sm">
@@ -125,7 +125,7 @@ const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleV
                         <div>
                             <label className="block font-semibold mb-1 flex items-center" htmlFor="valorBase">
                                 Valor Base Casa <span className="text-red-600">*</span>
-                                <HelpTooltip id="valorBase" content="Costo de la estructura de la vivienda antes de aplicar recargos adicionales como gastos notariales o por ser esquinera." />
+                                <HelpTooltip id="valorBase" content="Costo de la estructura de la vivienda antes de aplicar recargos adicionales." />
                             </label>
                             <NumericFormat id="valorBase" name="valorBase" value={formData.valorBase} onValueChange={(values) => handleValueChange('valorBase', values.value)} thousandSeparator="." decimalSeparator="," prefix="$ " className={`w-full border p-3 rounded-lg ${errors.valorBase ? "border-red-500" : "border-gray-300"}`} />
                             {errors.valorBase && <p className="text-red-600 text-sm mt-1">{errors.valorBase}</p>}
@@ -157,7 +157,7 @@ const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleV
                                 <div className="flex justify-between items-center">
                                     <label className="font-bold text-gray-800 flex items-center">
                                         Valor Total de la Vivienda
-                                        <HelpTooltip id="valorTotal" content="Este es el precio final que el cliente deberá cubrir. Incluye el valor base, recargos y gastos notariales." />
+                                        <HelpTooltip id="valorTotal" content="Este es el precio final que el cliente deberá cubrir." />
                                     </label>
                                     <p className="font-bold text-lg text-green-600">{valorTotalCalculado.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}</p>
                                 </div>

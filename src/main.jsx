@@ -17,7 +17,7 @@ import ListarClientes from './pages/clientes/ListarClientes';
 import DetalleCliente from './pages/clientes/DetalleCliente';
 import ListarAbonos from './pages/abonos/ListarAbonos';
 import CrearAbono from './pages/abonos/CrearAbono';
-import GestionarAbonos from './pages/abonos/GestionarAbonos'; // <-- 1. Importar la nueva página
+import GestionarAbonos from './pages/abonos/GestionarAbonos';
 import ListarRenuncias from './pages/renuncias/ListarRenuncias';
 import DetalleRenuncia from './pages/renuncias/DetalleRenuncia';
 
@@ -25,7 +25,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <Toaster
-        position="top-right"
+        position="top-right" // Mantenemos la posición a la derecha
+        containerStyle={{
+          top: 80, // <-- AÑADIMOS ESTA LÍNEA para bajar el contenedor
+        }}
         toastOptions={{
           duration: 4000,
           style: {
@@ -52,7 +55,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
               <Route path="/abonos" element={<CrearAbono />} />
               <Route path="/abonos/listar" element={<ListarAbonos />} />
-              <Route path="/abonos/gestionar/:clienteId" element={<GestionarAbonos />} /> {/* <-- 2. Añadir nueva ruta */}
+              <Route path="/abonos/gestionar/:clienteId" element={<GestionarAbonos />} />
 
               <Route path="/renuncias" element={<ListarRenuncias />} />
               <Route path="/renuncias/detalle/:renunciaId" element={<DetalleRenuncia />} />

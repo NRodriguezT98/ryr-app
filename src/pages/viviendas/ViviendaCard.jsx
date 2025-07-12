@@ -1,9 +1,9 @@
-import React, { Fragment, memo } from 'react'; // <-- 1. Importamos memo
+import React, { Fragment, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Tag, Pencil, Trash, Info, User, Home, Eye, CheckCircle2 } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
-import { formatCurrency, toSentenceCase } from '../../utils/textFormatters';
+import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 
 const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
     const {
@@ -77,7 +77,7 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                     {!isDisponible && (
                         <>
                             <User size={16} className="text-gray-400 flex-shrink-0" />
-                            <span className='font-bold text-gray-800 truncate' title={toSentenceCase(clienteNombre)}>{toSentenceCase(clienteNombre)}</span>
+                            <span className='font-bold text-gray-800 truncate' title={toTitleCase(clienteNombre)}>{toTitleCase(clienteNombre)}</span>
                         </>
                     )}
                 </div>
@@ -100,4 +100,4 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
     );
 };
 
-export default memo(ViviendaCard); // <-- 2. Envolvemos el componente
+export default memo(ViviendaCard);
