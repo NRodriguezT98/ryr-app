@@ -16,9 +16,8 @@ const getDocumentosFaltantes = (cliente) => {
     if (cliente.financiero?.aplicaSubsidioCaja && !cliente.financiero.subsidioCaja.urlSoporte) {
         faltantes.push('Soporte Sub. Caja');
     }
-    if (cliente.financiero?.aplicaCuotaInicial && !cliente.financiero.cuotaInicial.urlSoportePago) {
-        faltantes.push('Soporte Cuota Inicial');
-    }
+    // La siguiente línea ha sido eliminada para no requerir el soporte de cuota inicial
+    // if (cliente.financiero?.aplicaCuotaInicial && !cliente.financiero.cuotaInicial.urlSoportePago) { ... }
     if (cliente.financiero?.gastosNotariales && !cliente.financiero.gastosNotariales.urlSoportePago) {
         faltantes.push('Soporte Gastos Notariales');
     }
@@ -30,12 +29,12 @@ const DocumentosPendientes = ({ clientes }) => {
 
     const clientesConPendientes = useMemo(() => {
         return clientes
-            .filter(cliente => cliente.status !== 'renunciado')
+            .filter(cliente => cliente.status !== 'renunciado') // Solo clientes activos
             .map(cliente => ({
                 cliente,
                 documentosFaltantes: getDocumentosFaltantes(cliente)
             }))
-            .filter(item => item.documentosFaltantes.length > 0);
+            .filter(item => item.documentosFaltantes.length > 0); // Solo los que tienen al menos un documento faltante
     }, [clientes]);
 
 
@@ -50,11 +49,7 @@ const DocumentosPendientes = ({ clientes }) => {
                     <ul className="space-y-3">
                         {clientesConPendientes.map(({ cliente, documentosFaltantes }) => (
                             <li key={cliente.id}>
-                                <Link
-                                    to={`/clientes/detalle/${cliente.id}`}
-                                    state={{ defaultTab: 'documentos' }} // <-- AÑADIMOS ESTADO AL ENLACE
-                                    className="block p-3 rounded-lg hover:bg-gray-100 transition-colors"
-                                >
+                                <Link to={`/clientes/detalle/${cliente.id}`} state={{ defaultTab: 'documentos' }} className="block p-3 rounded-lg hover:bg-gray-100 transition-colors">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
                                             <div className="bg-blue-100 p-2 rounded-full">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Select from 'react-select';
 import toast from 'react-hot-toast';
 import { getViviendas } from '../../../utils/storage';
+import { formatCurrency } from '../../../utils/textFormatters';
 
 const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar }) => {
     const [isLoading, setIsLoading] = useState(true);
@@ -26,23 +27,20 @@ const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar })
         cargarViviendas();
     }, [isEditing, clienteAEditar]);
 
-    // --- LÓGICA DE ORDENAMIENTO AÑADIDA AQUÍ ---
     const viviendaOptions = useMemo(() =>
         viviendasDisponibles
             .sort((a, b) => {
-                // Primero, ordena por Manzana alfabéticamente
                 if (a.manzana < b.manzana) return -1;
                 if (a.manzana > b.manzana) return 1;
-
-                // Si la manzana es la misma, ordena por Número de Casa numéricamente
                 return a.numeroCasa - b.numeroCasa;
             })
             .map(v => {
                 const valorAMostrar = v.valorFinal !== undefined ? v.valorFinal : v.valorTotal;
                 return {
                     value: v.id,
-                    label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${(valorAMostrar || 0).toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })})`,
-                    valorTotal: valorAMostrar
+                    label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${formatCurrency(valorAMostrar || 0)})`,
+                    // Pasamos el objeto completo de la vivienda en los datos de la opción
+                    vivienda: v
                 }
             }),
         [viviendasDisponibles]);
@@ -50,11 +48,8 @@ const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar })
     const handleSelectChange = useCallback((selectedOption) => {
         dispatch({
             type: 'UPDATE_VIVIENDA_SELECCIONADA',
-            payload: {
-                id: selectedOption ? selectedOption.value : null,
-                valorTotal: selectedOption ? selectedOption.valorTotal : 0,
-                label: selectedOption ? selectedOption.label : ''
-            }
+            // Si se deselecciona, enviamos un objeto vacío; si no, el objeto completo.
+            payload: selectedOption ? selectedOption.vivienda : { id: null, valorTotal: 0 }
         });
     }, [dispatch]);
 
@@ -69,11 +64,11 @@ const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar })
 
                 {isEditing ? (
                     <p className="text-sm text-gray-500 mb-4">
-                        Verifica que la vivienda asignada es la correcta o asígnale una nueva de ser necesario. El valor de la vivienda seleccionada se usará para validar la estructura financiera.
+                        Verifica que la vivienda asignada es la correcta o asígnale una nueva de ser necesario.
                     </p>
                 ) : (
                     <p className="text-sm text-gray-500 mb-4">
-                        Asigna una vivienda disponible al nuevo cliente. El valor de la vivienda seleccionada se usará para validar la estructura financiera.
+                        Asigna una vivienda disponible al nuevo cliente.
                     </p>
                 )}
 
@@ -91,7 +86,7 @@ const Step1_SelectVivienda = ({ formData, dispatch, isEditing, clienteAEditar })
             {formData.viviendaSeleccionada.id && (
                 <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg animate-fade-in">
                     <h4 className="font-bold text-green-800">Vivienda Seleccionada</h4>
-                    <p className="text-green-700">{formData.viviendaSeleccionada.label}</p>
+                    <p className="text-green-700">{`Mz ${formData.viviendaSeleccionada.manzana} - Casa ${formData.viviendaSeleccionada.numeroCasa}`}</p>
                 </div>
             )}
         </div>

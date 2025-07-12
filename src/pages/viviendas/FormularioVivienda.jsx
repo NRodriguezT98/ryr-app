@@ -2,8 +2,8 @@ import React from 'react';
 import { NumericFormat } from 'react-number-format';
 import AnimatedPage from '../../components/AnimatedPage';
 import FileUpload from '../../components/FileUpload';
-import { PlusCircle } from 'lucide-react';
 import HelpTooltip from '../../components/HelpTooltip';
+import { FileText, XCircle } from 'lucide-react';
 
 const ResumenValorItem = ({ label, value }) => (
     <div className="flex justify-between text-sm">
@@ -89,14 +89,32 @@ const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleV
                         </div>
                     </div>
                     <div className="md:col-span-2 mt-6 pt-6 border-t border-dashed">
-                        <FileUpload
-                            label="Certificado de Tradición y Libertad (Opcional)"
-                            filePath={(fileName) => `documentos_viviendas/${formData.matricula}/certificado-tradicion-${fileName}`}
-                            currentFileUrl={formData.urlCertificadoTradicion}
-                            onUploadSuccess={handleUploadSuccess}
-                            onRemove={handleRemoveFile}
-                            disabled={!formData.matricula}
-                        />
+                        <label className="block font-semibold mb-2 text-gray-700">Certificado de Tradición y Libertad (Opcional)</label>
+                        {formData.urlCertificadoTradicion ? (
+                            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center justify-between">
+                                <div className='flex items-center gap-2 text-green-800 font-semibold'>
+                                    <FileText />
+                                    <a href={formData.urlCertificadoTradicion} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                        Ver Certificado Actual
+                                    </a>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveFile}
+                                    className="p-1 text-red-500 rounded-full hover:bg-red-100"
+                                    title="Eliminar documento"
+                                >
+                                    <XCircle size={20} />
+                                </button>
+                            </div>
+                        ) : (
+                            <FileUpload
+                                label="Subir Certificado"
+                                filePath={(fileName) => `documentos_viviendas/${formData.matricula}/certificado-tradicion-${fileName}`}
+                                onUploadSuccess={handleUploadSuccess}
+                                disabled={!formData.matricula}
+                            />
+                        )}
                     </div>
                 </AnimatedPage>
             )}

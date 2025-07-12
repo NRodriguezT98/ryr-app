@@ -5,7 +5,7 @@ import FormularioCliente from './FormularioCliente';
 import { validateCliente, validateFinancialStep } from './clienteValidation.js';
 import { getClientes, addClienteAndAssignVivienda } from '../../utils/storage.js';
 import toast from 'react-hot-toast';
-import { Home, User, CircleDollarSign, Check } from 'lucide-react';
+import { Home, User, CircleDollarSign, Check, Loader } from 'lucide-react';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -17,14 +17,10 @@ const blankInitialState = {
         fechaIngreso: getTodayString()
     },
     financiero: {
-        aplicaCuotaInicial: false,
-        cuotaInicial: { monto: 0 },
-        aplicaCredito: false,
-        credito: { banco: '', monto: 0 },
-        aplicaSubsidioVivienda: false,
-        subsidioVivienda: { monto: 0 },
-        aplicaSubsidioCaja: false,
-        subsidioCaja: { caja: '', monto: 0 },
+        aplicaCuotaInicial: false, cuotaInicial: { monto: 0 },
+        aplicaCredito: false, credito: { banco: '', monto: 0 },
+        aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
+        aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 },
     },
     seguimiento: {},
     errors: {}
@@ -53,6 +49,7 @@ const CrearCliente = () => {
     const [step, setStep] = useState(1);
     const [formData, dispatch] = useReducer(formReducer, blankInitialState);
     const [todosLosClientes, setTodosLosClientes] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -65,23 +62,22 @@ const CrearCliente = () => {
 
     const handleNextStep = () => {
         let errors = {};
-        let isValid = true;
         if (step === 2) {
             errors = validateCliente(formData.datosCliente, todosLosClientes, null);
-            isValid = Object.keys(errors).length === 0;
-            if (!isValid) {
+            if (Object.keys(errors).length > 0) {
+                dispatch({ type: 'SET_ERRORS', payload: errors });
                 toast.error("Por favor, corrige los errores del formulario.");
+                return;
             }
         }
-        dispatch({ type: 'SET_ERRORS', payload: errors });
-        if (isValid) {
-            setStep(s => s + 1);
-        }
+        dispatch({ type: 'SET_ERRORS', payload: {} });
+        setStep(s => s + 1);
     };
 
     const handlePrevStep = () => setStep(s => s - 1);
 
     const handleSave = useCallback(async () => {
+        setIsSubmitting(true);
         const clientErrors = validateCliente(formData.datosCliente, todosLosClientes, null);
         const financialErrors = validateFinancialStep(formData.financiero, formData.viviendaSeleccionada.valorTotal);
         const totalErrors = { ...clientErrors, ...financialErrors };
@@ -89,19 +85,14 @@ const CrearCliente = () => {
         if (Object.keys(totalErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: totalErrors });
             toast.error("Por favor, corrige los errores antes de guardar.");
+            setIsSubmitting(false);
             return;
         }
 
         const clienteParaGuardar = {
             datosCliente: formData.datosCliente,
             financiero: formData.financiero,
-            seguimiento: {
-                fechaEnvioAvaluo: null, fechaEstudioTitulos: null, escrituraEnviada: null,
-                escrituraFirmada: null, actaEntrega: null, boletaRegistro: null,
-                solicitudDesembolsoCredito: null, desembolsoCredito: null,
-                marcacionPagoSubsidio: null, desembolsoSubsidioVivienda: null,
-                desembolsoCajaCompensacion: null
-            },
+            seguimiento: {},
             viviendaId: formData.viviendaSeleccionada.id
         };
 
@@ -112,6 +103,8 @@ const CrearCliente = () => {
         } catch (error) {
             console.error("Error al guardar el cliente:", error);
             toast.error("Hubo un error al guardar los datos.");
+        } finally {
+            setIsSubmitting(false);
         }
     }, [formData, navigate, todosLosClientes]);
 
@@ -160,8 +153,12 @@ const CrearCliente = () => {
                                 Siguiente
                             </button>
                         ) : (
-                            <button onClick={handleSave} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
-                                Finalizar y Guardar
+                            <button
+                                onClick={handleSave}
+                                disabled={isSubmitting}
+                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto flex items-center justify-center gap-2"
+                            >
+                                {isSubmitting ? (<><Loader size={20} className="animate-spin" /><span>Guardando...</span></>) : ("Finalizar y Guardar")}
                             </button>
                         )}
                     </div>

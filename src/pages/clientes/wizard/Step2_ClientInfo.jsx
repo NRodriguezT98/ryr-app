@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import FileUpload from '../../../components/FileUpload';
+import { FileText, XCircle } from 'lucide-react'; // Importamos íconos
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -66,13 +67,28 @@ const Step2_ClientInfo = ({ formData, dispatch, errors }) => {
                     {errors.fechaIngreso && <p className="text-red-600 text-sm mt-1">{errors.fechaIngreso}</p>}
                 </div>
                 <div className="md:col-span-2">
-                    <FileUpload
-                        label="Soporte de Cédula (Opcional)"
-                        filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/cedula-${fileName}`}
-                        currentFileUrl={datosCliente.urlCedula}
-                        onUploadSuccess={handleFileUpload}
-                        onRemove={handleFileRemove}
-                    />
+                    <label className="block font-semibold mb-2 text-gray-700">Soporte de Cédula <span className="text-red-600">*</span></label>
+                    {datosCliente.urlCedula ? (
+                        <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center justify-between">
+                            <div className='flex items-center gap-2 text-green-800 font-semibold'>
+                                <FileText />
+                                <a href={datosCliente.urlCedula} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                                    Ver Documento de identidad subido
+                                </a>
+                            </div>
+                            <button type="button" onClick={handleFileRemove} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar documento">
+                                <XCircle size={20} />
+                            </button>
+                        </div>
+                    ) : (
+                        <FileUpload
+                            label="Subir Cédula"
+                            filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/cedula-${fileName}`}
+                            onUploadSuccess={handleFileUpload}
+                            disabled={!datosCliente.cedula}
+                        />
+                    )}
+                    {errors.urlCedula && <p className="text-red-600 text-sm mt-1">{errors.urlCedula}</p>}
                 </div>
             </div>
         </div>

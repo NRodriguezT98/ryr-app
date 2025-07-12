@@ -1,22 +1,45 @@
-export const validateCliente = (formData, todosLosClientes, editingId = null) => {
+import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTACIÓN AÑADIDA
+
+export const validateCliente = (formData, todosLosClientes, clienteIdActual = null) => {
     const errors = {};
-    if (!formData.nombres?.trim()) errors.nombres = "El nombre(s) es obligatorio(s).";
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.nombres?.trim())) errors.nombres = "El nombre(s) solo puede(n) contener letras y espacios.";
-    if (!formData.apellidos?.trim()) errors.apellidos = "El apellido(s) es obligatorio(s).";
-    if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(formData.apellidos?.trim())) errors.apellidos = "El apellido(s) solo puede(n) contener letras y espacios.";
-    if (!formData.cedula?.trim()) errors.cedula = "La cédula es obligatoria.";
-    else if (!/^\d+$/.test(formData.cedula.trim())) errors.cedula = "La cédula debe contener solo números.";
-    else if (todosLosClientes) {
-        const existe = todosLosClientes.some(c => c.id !== editingId && c.datosCliente.cedula === formData.cedula.trim());
-        if (existe) errors.cedula = "Esta cédula ya se encuentra registrada.";
+    if (!formData.nombres?.trim()) errors.nombres = "El nombre es requerido.";
+    if (!formData.apellidos?.trim()) errors.apellidos = "El apellido es requerido.";
+    if (!formData.cedula?.trim()) {
+        errors.cedula = "La cédula es requerida.";
+    } else if (!/^\d+$/.test(formData.cedula)) {
+        errors.cedula = "La cédula solo debe contener números.";
+    } else if (todosLosClientes.some(c => c.id === formData.cedula && c.id !== clienteIdActual)) {
+        errors.cedula = "Esta cédula ya está registrada.";
     }
-    if (!formData.telefono?.trim()) errors.telefono = "El teléfono es obligatorio.";
-    else if (!/^\d+$/.test(formData.telefono.trim())) errors.telefono = "El teléfono debe contener solo números.";
-    if (!formData.correo?.trim()) errors.correo = "El correo es obligatorio.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo.trim())) errors.correo = "El formato del correo no es válido.";
-    if (!formData.direccion?.trim()) errors.direccion = "La dirección es obligatoria.";
-    if (!formData.fechaIngreso) errors.fechaIngreso = "La fecha de ingreso es obligatoria.";
+    if (!formData.telefono?.trim()) errors.telefono = "El teléfono es requerido.";
+    if (!formData.correo?.trim()) {
+        errors.correo = "El correo es requerido.";
+    } else if (!/\S+@\S+\.\S+/.test(formData.correo)) {
+        errors.correo = "El formato del correo no es válido.";
+    }
+    if (!formData.direccion?.trim()) errors.direccion = "La dirección es requerida.";
+    if (!formData.fechaIngreso) errors.fechaIngreso = "La fecha de ingreso es requerida.";
+    if (!formData.urlCedula) {
+        errors.urlCedula = "Adjuntar la cédula es obligatorio.";
+    }
     return errors;
+};
+
+export const validateEditarCliente = (formData, todosLosClientes, clienteIdActual, abonosDelCliente = []) => {
+    const baseErrors = validateCliente(formData, todosLosClientes, clienteIdActual);
+
+    if (formData.fechaIngreso && abonosDelCliente.length > 0) {
+        const nuevaFechaIngreso = new Date(formData.fechaIngreso + 'T00:00:00');
+        const abonoMasAntiguo = abonosDelCliente.reduce((masAntiguo, abonoActual) => {
+            const fechaActual = new Date(abonoActual.fechaPago + 'T00:00:00');
+            return fechaActual < masAntiguo ? fechaActual : masAntiguo;
+        }, new Date());
+
+        if (nuevaFechaIngreso > abonoMasAntiguo) {
+            baseErrors.fechaIngreso = `No puedes usar esta fecha. Ya existen abonos registrados desde el ${abonoMasAntiguo.toLocaleDateString('es-ES')}.`;
+        }
+    }
+    return baseErrors;
 };
 
 export const validateFinancialStep = (financiero, valorVivienda) => {
@@ -49,8 +72,8 @@ export const validateFinancialStep = (financiero, valorVivienda) => {
     }
 
     const totalAPagar = valorVivienda || 0;
-    if (totalRecursos !== totalAPagar) {
-        errors.financiero = `La suma de los recursos (${totalRecursos.toLocaleString("es-CO", { style: "currency", currency: "COP" })}) debe ser igual al valor de la vivienda.`;
+    if (totalRecursos !== totalAPagar && totalAPagar > 0) {
+        errors.financiero = `La suma de los recursos (${formatCurrency(totalRecursos)}) debe ser igual al valor de la vivienda.`;
     }
 
     return errors;

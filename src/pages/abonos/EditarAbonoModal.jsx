@@ -23,7 +23,8 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar, viviendaDelAb
 
     const { formData, setFormData, handleSubmit, handleInputChange, handleValueChange, errors, isSubmitting, initialData } = useForm({
         initialState,
-        validate: (data) => validateAbono(data, null, viviendaDelAbono?.cliente?.fechaCreacion),
+        // <-- CORRECCIÓN AQUÍ: Pasamos la fecha de ingreso correcta
+        validate: (data) => validateAbono(data, null, viviendaDelAbono?.cliente?.datosCliente?.fechaIngreso),
         onSubmit: async (data) => {
             const montoNumerico = parseInt(String(data.monto).replace(/\D/g, '')) || 0;
             const datosParaGuardar = {
@@ -47,10 +48,8 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar, viviendaDelAb
         options: { resetOnSuccess: false }
     });
 
-    // <-- LÓGICA CORREGIDA AQUÍ
     const hayCambios = useMemo(() => {
         if (!initialData) return false;
-        // Clonamos los objetos y anulamos 'errors' para una comparación precisa
         const currentData = { ...formData, errors: null };
         const originalData = { ...initialData, errors: null };
         return JSON.stringify(currentData) !== JSON.stringify(originalData);
@@ -79,7 +78,8 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar, viviendaDelAb
                                     value={formData.fechaPago}
                                     onChange={handleInputChange}
                                     max={getTodayString()}
-                                    min={viviendaDelAbono?.cliente?.fechaCreacion?.split('T')[0]}
+                                    // <-- CORRECCIÓN AQUÍ: Usamos la fecha de ingreso para el 'min'
+                                    min={viviendaDelAbono?.cliente?.datosCliente?.fechaIngreso?.split('T')[0]}
                                     className={`w-full border p-2 rounded-lg ${errors.fechaPago ? "border-red-500" : "border-gray-300"}`}
                                 />
                                 {errors.fechaPago && <p className="text-red-600 text-sm mt-1">{errors.fechaPago}</p>}

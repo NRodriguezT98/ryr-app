@@ -3,25 +3,13 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getClientes, getViviendas, getAbonos, updateCliente } from '../../utils/storage';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, User, Phone, MapPin, Home, BadgePercent, Briefcase, Download, FileDown, Info, Eye } from 'lucide-react'; // <-- Eye añadido
+import { ArrowLeft, User, Phone, MapPin, Home, BadgePercent, Briefcase, FileDown, Info, Eye, CheckCircle, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../utils/textFormatters';
 import { generateClientStatementPDF } from '../../utils/pdfGenerator';
-import DocumentoCard from '../../components/documentos/DocumentoCard';
+import DocumentoRow from '../../components/documentos/DocumentoRow';
 
 // Helpers
 const getInitials = (nombres = '', apellidos = '') => `${(nombres[0] || '')}${(apellidos[0] || '')}`.toUpperCase();
-
-const DocumentRow = ({ label, url }) => {
-    if (!url) { return null; }
-    return (
-        <div className="flex justify-between items-center py-2 border-b last:border-b-0">
-            <span className="text-sm text-gray-700">{label}</span>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 font-semibold px-3 py-1 rounded-md hover:bg-blue-50 transition-colors">
-                <Eye size={14} /> Ver Documento {/* <-- ÍCONO CAMBIADO */}
-            </a>
-        </div>
-    );
-};
 
 // Componente para los botones de las pestañas
 const TabButton = ({ activeTab, tabName, label, icon, onClick }) => (
@@ -34,6 +22,33 @@ const TabButton = ({ activeTab, tabName, label, icon, onClick }) => (
     </button>
 );
 
+// Componente para una fila de fuente financiera
+const FuenteFinanciera = ({ titulo, montoPactado, abonos, fuente, banco = '' }) => {
+    const totalAbonado = abonos.filter(a => a.fuente === fuente).reduce((sum, abono) => sum + abono.monto, 0);
+    const saldoPendiente = montoPactado - totalAbonado;
+
+    return (
+        <div className="p-3 bg-gray-50 rounded-lg">
+            <p className="font-semibold">{titulo}</p>
+            <p className="text-sm text-gray-600">
+                Monto: {formatCurrency(montoPactado)} {banco && `(${banco})`}
+            </p>
+            <div className="mt-2 pt-2 border-t border-gray-200">
+                {saldoPendiente <= 0 ? (
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-green-600">
+                        <CheckCircle size={14} /> A paz y salvo
+                    </p>
+                ) : (
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-red-600">
+                        <AlertTriangle size={14} /> Pendiente: {formatCurrency(saldoPendiente)}
+                    </p>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
 const DetalleCliente = () => {
     const { clienteId } = useParams();
     const navigate = useNavigate();
@@ -43,12 +58,18 @@ const DetalleCliente = () => {
 
     const [cliente, setCliente] = useState(null);
     const [vivienda, setVivienda] = useState(null);
+    const [historialAbonos, setHistorialAbonos] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const cargarDatos = useCallback(async (forceReload = false) => {
+    const cargarDatos = useCallback(async () => {
         setIsLoading(true);
         try {
-            const todosClientes = await getClientes();
+            const [todosClientes, todasViviendas, todosAbonos] = await Promise.all([
+                getClientes(),
+                getViviendas(),
+                getAbonos()
+            ]);
+
             const clienteEncontrado = todosClientes.find(c => c.id === clienteId);
 
             if (!clienteEncontrado) {
@@ -59,10 +80,12 @@ const DetalleCliente = () => {
             setCliente(clienteEncontrado);
 
             if (clienteEncontrado.viviendaId) {
-                const todasViviendas = await getViviendas();
                 const viviendaAsignada = todasViviendas.find(v => v.id === clienteEncontrado.viviendaId);
                 setVivienda(viviendaAsignada || null);
             }
+
+            setHistorialAbonos(todosAbonos.filter(a => a.clienteId === clienteId));
+
         } catch (error) {
             toast.error("Error al cargar los datos del cliente.");
         } finally {
@@ -90,18 +113,16 @@ const DetalleCliente = () => {
             const { vivienda, ...datosParaGuardar } = clienteActualizado;
             await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId);
             toast.success('Documento actualizado correctamente.');
-            cargarDatos(true);
+            cargarDatos(); // Recarga los datos para reflejar cambios
         } catch (error) {
             console.error("Error al actualizar el documento:", error);
             toast.error("No se pudo actualizar el documento.");
         }
     }, [cliente, cargarDatos]);
 
-    const handleGeneratePdf = async () => {
+    const handleGeneratePdf = () => {
         if (cliente && vivienda) {
-            const todosAbonos = await getAbonos();
-            const abonosDelCliente = todosAbonos.filter(a => a.clienteId === clienteId);
-            generateClientStatementPDF(cliente, vivienda, abonosDelCliente);
+            generateClientStatementPDF(cliente, vivienda, historialAbonos);
         } else {
             toast.error("Faltan datos para generar el reporte.");
         }
@@ -115,7 +136,6 @@ const DetalleCliente = () => {
 
     const documentos = [
         { label: "Cédula de Ciudadanía", isRequired: true, currentFileUrl: datosCliente.urlCedula, fieldPath: 'datosCliente.urlCedula', filePath: (fileName) => `documentos_clientes/${clienteId}/cedula-${fileName}` },
-        { label: "Soporte Cuota Inicial", isRequired: financiero.aplicaCuotaInicial, currentFileUrl: financiero.cuotaInicial.urlSoportePago, fieldPath: 'financiero.cuotaInicial.urlSoportePago', filePath: (fileName) => `documentos_clientes/${clienteId}/cuota-inicial-${fileName}` },
         { label: "Carta Aprobación Crédito", isRequired: financiero.aplicaCredito, currentFileUrl: financiero.credito.urlCartaAprobacion, fieldPath: 'financiero.credito.urlCartaAprobacion', filePath: (fileName) => `documentos_clientes/${clienteId}/aprobacion-credito-${fileName}` },
         { label: "Soporte Subsidio Mi Casa Ya", isRequired: financiero.aplicaSubsidioVivienda, currentFileUrl: financiero.subsidioVivienda.urlSoporte, fieldPath: 'financiero.subsidioVivienda.urlSoporte', filePath: (fileName) => `documentos_clientes/${clienteId}/subsidio-vivienda-${fileName}` },
         { label: "Soporte Subsidio Caja Comp.", isRequired: financiero.aplicaSubsidioCaja, currentFileUrl: financiero.subsidioCaja.urlSoporte, fieldPath: 'financiero.subsidioCaja.urlSoporte', filePath: (fileName) => `documentos_clientes/${clienteId}/subsidio-caja-${fileName}` }
@@ -177,12 +197,12 @@ const DetalleCliente = () => {
                         </div>
                         <div className="lg:col-span-2 space-y-6">
                             <div className="bg-white p-5 rounded-xl border">
-                                <h3 className="font-bold text-lg mb-4 border-b pb-2">Estructura Financiera</h3>
+                                <h3 className="font-bold text-lg mb-4 border-b pb-2">Cierre Financiero</h3>
                                 <div className="space-y-4">
-                                    {financiero.aplicaCuotaInicial && (<div className="p-3 bg-gray-50 rounded-lg"><p className="font-semibold">Cuota Inicial</p><p className="text-sm text-gray-600">Monto: {formatCurrency(financiero.cuotaInicial.monto)}</p></div>)}
-                                    {financiero.aplicaCredito && (<div className="p-3 bg-gray-50 rounded-lg"><p className="font-semibold">Crédito Hipotecario</p><p className="text-sm text-gray-600">Monto: {formatCurrency(financiero.credito.monto)} ({financiero.credito.banco})</p></div>)}
-                                    {financiero.aplicaSubsidioVivienda && (<div className="p-3 bg-gray-50 rounded-lg"><p className="font-semibold">Subsidio Mi Casa Ya</p><p className="text-sm text-gray-600">Monto: {formatCurrency(financiero.subsidioVivienda.monto)}</p></div>)}
-                                    {financiero.aplicaSubsidioCaja && (<div className="p-3 bg-gray-50 rounded-lg"><p className="font-semibold">Subsidio Caja de Compensación</p><p className="text-sm text-gray-600">Monto: {formatCurrency(financiero.subsidioCaja.monto)} ({financiero.subsidioCaja.caja})</p></div>)}
+                                    {financiero.aplicaCuotaInicial && <FuenteFinanciera titulo="Cuota Inicial" montoPactado={financiero.cuotaInicial.monto} abonos={historialAbonos} fuente="cuotaInicial" />}
+                                    {financiero.aplicaCredito && <FuenteFinanciera titulo="Crédito Hipotecario" montoPactado={financiero.credito.monto} abonos={historialAbonos} fuente="credito" banco={financiero.credito.banco} />}
+                                    {financiero.aplicaSubsidioVivienda && <FuenteFinanciera titulo="Subsidio Mi Casa Ya" montoPactado={financiero.subsidioVivienda.monto} abonos={historialAbonos} fuente="subsidioVivienda" />}
+                                    {financiero.aplicaSubsidioCaja && <FuenteFinanciera titulo="Subsidio Caja de Compensación" montoPactado={financiero.subsidioCaja.monto} abonos={historialAbonos} fuente="subsidioCaja" banco={financiero.subsidioCaja.caja} />}
                                 </div>
                             </div>
                         </div>
@@ -190,18 +210,27 @@ const DetalleCliente = () => {
                 )}
 
                 {activeTab === 'documentos' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-                        {documentos.map(doc => (
-                            <DocumentoCard
-                                key={doc.label}
-                                label={doc.label}
-                                isRequired={doc.isRequired}
-                                currentFileUrl={doc.currentFileUrl}
-                                filePath={doc.filePath}
-                                onUploadSuccess={(url) => handleFileUpload(doc.fieldPath, url)}
-                                onRemove={() => handleFileUpload(doc.fieldPath, null)}
-                            />
-                        ))}
+                    <div className="animate-fade-in bg-white border rounded-xl shadow-sm">
+                        <div className="p-4 border-b">
+                            <h3 className="font-bold text-lg">Lista de Documentos Requeridos</h3>
+                        </div>
+                        <div className="divide-y">
+                            {documentos.filter(doc => doc.isRequired).length > 0 ? (
+                                documentos.map(doc => (
+                                    <DocumentoRow
+                                        key={doc.label}
+                                        label={doc.label}
+                                        isRequired={doc.isRequired}
+                                        currentFileUrl={doc.currentFileUrl}
+                                        filePath={doc.filePath}
+                                        onUploadSuccess={(url) => handleFileUpload(doc.fieldPath, url)}
+                                        onRemove={() => handleFileUpload(doc.fieldPath, null)}
+                                    />
+                                ))
+                            ) : (
+                                <p className="p-4 text-center text-gray-500">No hay documentos requeridos para la estructura financiera de este cliente.</p>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

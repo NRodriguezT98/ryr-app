@@ -6,7 +6,7 @@ import { addAbono } from '../../utils/storage';
 import { Banknote, Landmark, Gift, HandCoins, FilePlus2 } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import { validateAbono } from './abonoValidation.js';
-import { formatCurrency } from '../../utils/textFormatters.js'; // <-- IMPORTAMOS LA FUNCIÓN
+import { formatCurrency } from '../../utils/textFormatters.js';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -34,7 +34,8 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
 
     const { formData, setFormData, handleInputChange, handleValueChange, handleSubmit, isSubmitting, resetForm } = useForm({
         initialState: initialAbonoFormState,
-        validate: (data) => validateAbono(data, { saldoPendiente }, cliente?.fechaCreacion),
+        // <-- CORRECCIÓN AQUÍ: Pasamos la fecha de ingreso correcta
+        validate: (data) => validateAbono(data, { saldoPendiente }, cliente?.datosCliente?.fechaIngreso),
         onSubmit: async (data) => {
             const nuevoAbono = {
                 fechaPago: data.fechaPago,
@@ -72,7 +73,8 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
         setFormData(prev => ({ ...prev, urlComprobante: null }));
     };
 
-    const minDate = cliente?.fechaCreacion ? cliente.fechaCreacion.split('T')[0] : null;
+    // <-- CORRECCIÓN AQUÍ: Usamos la fecha de ingreso para el 'min'
+    const minDate = cliente?.datosCliente?.fechaIngreso ? cliente.datosCliente.fechaIngreso.split('T')[0] : null;
 
     return (
         <div className="bg-white p-5 rounded-xl border border-gray-200">

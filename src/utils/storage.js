@@ -12,7 +12,7 @@ const createNotification = async (type, message, link = '#') => {
             message,
             link,
             read: false,
-            timestamp: serverTimestamp() // Usa el timestamp del servidor para consistencia
+            timestamp: serverTimestamp()
         });
     } catch (error) {
         console.error("Error al crear la notificación:", error);
@@ -164,6 +164,23 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
         const viviendaRef = doc(db, "viviendas", String(nuevaViviendaId));
         batch.update(viviendaRef, { clienteNombre: nombreCompleto });
     }
+    await batch.commit();
+};
+
+export const updateClienteAndAbonos = async (clienteId, clienteData, abonosAActualizar) => {
+    const batch = writeBatch(db);
+
+    const clienteRef = doc(db, "clientes", clienteId);
+    batch.update(clienteRef, clienteData);
+
+    abonosAActualizar.forEach(abono => {
+        const abonoRef = doc(db, "abonos", abono.id);
+        batch.update(abonoRef, {
+            fechaPago: clienteData.datosCliente.fechaIngreso,
+            observacion: `${abono.observacion || ''} (Fecha ajustada por cambio de contrato)`.trim()
+        });
+    });
+
     await batch.commit();
 };
 
