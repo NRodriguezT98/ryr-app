@@ -1,5 +1,4 @@
-import { useReducer, useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { useReducer, useCallback, useState, useEffect } from 'react';
 
 function formReducer(state, action) {
     switch (action.type) {
@@ -7,38 +6,52 @@ function formReducer(state, action) {
             return { ...(action.payload || {}), errors: {} };
         case 'UPDATE_FIELD': {
             const { name, value } = action.payload;
-            return { ...state, [name]: value };
+            // Al actualizar un campo, limpiamos su error específico
+            const newErrors = { ...state.errors };
+            delete newErrors[name];
+            return { ...state, [name]: value, errors: newErrors };
         }
         case 'SET_ERRORS':
             return { ...state, errors: action.payload };
-        case 'SET_FORM_DATA_FN':
-            return action.payload(state);
         default:
             return state;
     }
 }
 
 export const useForm = ({ initialState, validate = () => ({}), onSubmit, options = {} }) => {
-    // El estado se inicializa una sola vez aquí.
     const [formData, dispatch] = useReducer(formReducer, { ...initialState, errors: {} });
-    const { inputFilters = {}, resetOnSuccess = true } = options;
+    const { inputFilters = {} } = options;
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // setFormData ahora solo actualiza el estado. La responsabilidad de cuándo llamar a esto
-    // recae en el componente que usa el hook.
     const setFormData = useCallback((newData) => {
         dispatch({ type: 'INITIALIZE_FORM', payload: newData });
     }, []);
+
+    useEffect(() => {
+        setFormData(initialState);
+    }, [initialState, setFormData]);
 
     const setErrors = useCallback((errors) => {
         dispatch({ type: 'SET_ERRORS', payload: errors });
     }, []);
 
+    // --- FUNCIÓN DE INPUT MEJORADA CON FILTROS Y ERRORES EN LÍNEA ---
     const handleInputChange = useCallback((e) => {
         const { name, value } = e.target;
         const filterConfig = inputFilters[name];
-        if (filterConfig && !filterConfig.regex.test(value)) return;
+
+        if (filterConfig && !filterConfig.regex.test(value)) {
+            // Si el valor no coincide, NO actualizamos el estado.
+            // En su lugar, establecemos un error específico para este campo.
+            setErrors({
+                ...formData.errors,
+                [name]: filterConfig.message || "Caracter no permitido."
+            });
+            return;
+        }
+        // Si el valor es válido, actualizamos el campo y limpiamos cualquier error previo.
         dispatch({ type: 'UPDATE_FIELD', payload: { name, value } });
-    }, [inputFilters]);
+    }, [inputFilters, formData.errors, setErrors]);
 
     const handleValueChange = useCallback((name, value) => {
         dispatch({ type: 'UPDATE_FIELD', payload: { name, value } });
@@ -54,25 +67,25 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         const validationErrors = validate(formData);
         if (Object.keys(validationErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: validationErrors });
-            toast.error("Por favor, corrige los errores antes de enviar.");
+            // Ya no usamos toast, la UI mostrará los errores.
             return;
         }
 
+        setIsSubmitting(true);
         try {
             await onSubmit(formData);
-            if (resetOnSuccess) {
-                resetForm();
-            }
+            resetForm();
         } catch (error) {
             console.error("useForm: Ocurrió un error durante la ejecución de onSubmit.", error);
-            toast.error("Ocurrió un error inesperado al guardar.");
+        } finally {
+            setIsSubmitting(false);
         }
-    }, [onSubmit, formData, resetOnSuccess, validate, resetForm]);
+    }, [onSubmit, formData, validate, resetForm]);
 
     return {
         formData,
         errors: formData.errors || {},
-        isSubmitting: false, // Simplificamos, el componente puede manejar su propio estado de carga si es complejo.
+        isSubmitting,
         handleSubmit,
         handleInputChange,
         handleValueChange,

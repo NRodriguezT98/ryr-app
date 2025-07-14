@@ -11,23 +11,23 @@ import FormularioVivienda from "./FormularioVivienda";
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 
 const initialState = {
-    manzana: "",
-    numero: "",
-    matricula: "",
-    nomenclatura: "",
-    linderoNorte: "",
-    linderoSur: "",
-    linderoOriente: "",
-    linderoOccidente: "",
-    urlCertificadoTradicion: null,
-    valorBase: "",
-    esEsquinera: false,
-    recargoEsquinera: "0"
+    manzana: "", numero: "", matricula: "", nomenclatura: "",
+    areaLote: "", areaConstruida: "", linderoNorte: "", linderoSur: "",
+    linderoOriente: "", linderoOccidente: "", urlCertificadoTradicion: null,
+    valorBase: "", esEsquinera: false, recargoEsquinera: "0"
 };
 
+// --- FILTROS DE INPUT ACTUALIZADOS ---
 const inputFilters = {
-    numero: { regex: /^[0-9]*$/ },
-    matricula: { regex: /^[0-9-]*$/ },
+    numero: { regex: /^[0-9]*$/, message: "Este campo solo permite números." },
+    matricula: { regex: /^[0-9-]*$/, message: "Solo permite números y guiones." },
+    areaLote: { regex: /^[0-9.,]*$/, message: "Solo permite números y separadores (, o .)" },
+    areaConstruida: { regex: /^[0-9.,]*$/, message: "Solo permite números y separadores (, o .)" },
+    nomenclatura: { regex: /^[a-zA-Z0-9\s#\-]*$/, message: "Solo permite letras, números, # y -." },
+    linderoNorte: { regex: /^[a-zA-Z0-9\s.,\(\)-]*$/, message: "Caracter no permitido." },
+    linderoSur: { regex: /^[a-zA-Z0-9\s.,\(\)-]*$/, message: "Caracter no permitido." },
+    linderoOriente: { regex: /^[a-zA-Z0-9\s.,\(\)-]*$/, message: "Caracter no permitido." },
+    linderoOccidente: { regex: /^[a-zA-Z0-9\s.,\(\)-]*$/, message: "Caracter no permitido." },
 };
 
 const CrearVivienda = () => {
@@ -41,53 +41,46 @@ const CrearVivienda = () => {
             try {
                 const viviendasData = await getViviendas();
                 setTodasLasViviendas(viviendasData);
-            } catch (error) {
-                toast.error("No se pudieron cargar los datos para validación.");
-            } finally {
-                setIsLoading(false);
-            }
+            } catch (error) { toast.error("No se pudieron cargar los datos para validación."); }
+            finally { setIsLoading(false); }
         };
         cargarDatosParaValidacion();
     }, []);
 
-    const validateCallback = useCallback((data) => {
-        return validateVivienda(data, todasLasViviendas, null);
-    }, [todasLasViviendas]);
-
-    const onSubmitCallback = useCallback(async (formData) => {
-        const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
-        const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
-        const valorTotalVivienda = valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS;
-
-        const nuevaVivienda = {
-            manzana: formData.manzana,
-            numeroCasa: parseInt(formData.numero, 10),
-            matricula: formData.matricula.trim(),
-            nomenclatura: formData.nomenclatura,
-            linderoNorte: formData.linderoNorte,
-            linderoSur: formData.linderoSur,
-            linderoOriente: formData.linderoOriente,
-            linderoOccidente: formData.linderoOccidente,
-            urlCertificadoTradicion: formData.urlCertificadoTradicion,
-            valorBase: valorBaseNum,
-            recargoEsquinera: recargoEsquineraNum,
-            gastosNotariales: GASTOS_NOTARIALES_FIJOS,
-            valorTotal: valorTotalVivienda,
-        };
-        try {
-            await addVivienda(nuevaVivienda);
-            toast.success("¡Vivienda registrada con éxito!");
-            navigate("/viviendas/listar");
-        } catch (error) {
-            toast.error("No se pudo registrar la vivienda.");
-            console.error("Error al crear vivienda:", error);
-        }
-    }, [navigate]);
-
     const { formData, errors, setErrors, isSubmitting, handleInputChange, handleValueChange, handleSubmit, dispatch } = useForm({
         initialState,
-        validate: validateCallback,
-        onSubmit: onSubmitCallback,
+        validate: (data) => validateVivienda(data, todasLasViviendas, null),
+        onSubmit: async (formData) => {
+            const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
+            const recargoEsquineraNum = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
+            const valorTotalVivienda = valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS;
+
+            const nuevaVivienda = {
+                manzana: formData.manzana,
+                numeroCasa: parseInt(formData.numero, 10),
+                matricula: formData.matricula.trim(),
+                nomenclatura: formData.nomenclatura,
+                areaLote: formData.areaLote,
+                areaConstruida: formData.areaConstruida,
+                linderoNorte: formData.linderoNorte,
+                linderoSur: formData.linderoSur,
+                linderoOriente: formData.linderoOriente,
+                linderoOccidente: formData.linderoOccidente,
+                urlCertificadoTradicion: formData.urlCertificadoTradicion,
+                valorBase: valorBaseNum,
+                recargoEsquinera: recargoEsquineraNum,
+                gastosNotariales: GASTOS_NOTARIALES_FIJOS,
+                valorTotal: valorTotalVivienda,
+            };
+            try {
+                await addVivienda(nuevaVivienda);
+                toast.success("¡Vivienda registrada con éxito!");
+                navigate("/viviendas/listar");
+            } catch (error) {
+                toast.error("No se pudo registrar la vivienda.");
+                console.error("Error al crear vivienda:", error);
+            }
+        },
         options: { inputFilters }
     });
 
@@ -101,15 +94,11 @@ const CrearVivienda = () => {
         const allErrors = validateVivienda(formData, todasLasViviendas, null);
         let stepErrors = {};
         if (step === 1) {
-            if (allErrors.manzana) stepErrors.manzana = allErrors.manzana;
-            if (allErrors.numero) stepErrors.numero = allErrors.numero;
-            if (allErrors.linderoNorte) stepErrors.linderoNorte = allErrors.linderoNorte;
-            if (allErrors.linderoSur) stepErrors.linderoSur = allErrors.linderoSur;
-            if (allErrors.linderoOriente) stepErrors.linderoOriente = allErrors.linderoOriente;
-            if (allErrors.linderoOccidente) stepErrors.linderoOccidente = allErrors.linderoOccidente;
+            const step1Fields = ['manzana', 'numero', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente'];
+            step1Fields.forEach(field => { if (allErrors[field]) stepErrors[field] = allErrors[field]; });
         } else if (step === 2) {
-            if (allErrors.matricula) stepErrors.matricula = allErrors.matricula;
-            if (allErrors.nomenclatura) stepErrors.nomenclatura = allErrors.nomenclatura;
+            const step2Fields = ['matricula', 'nomenclatura', 'areaLote', 'areaConstruida'];
+            step2Fields.forEach(field => { if (allErrors[field]) stepErrors[field] = allErrors[field]; });
         }
         setErrors(stepErrors);
         if (Object.keys(stepErrors).length === 0) {

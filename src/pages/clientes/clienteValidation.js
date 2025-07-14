@@ -1,4 +1,4 @@
-import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTACIÓN AÑADIDA
+import { formatCurrency } from '../../utils/textFormatters';
 
 export const validateCliente = (formData, todosLosClientes, clienteIdActual = null) => {
     const errors = {};
@@ -6,8 +6,6 @@ export const validateCliente = (formData, todosLosClientes, clienteIdActual = nu
     if (!formData.apellidos?.trim()) errors.apellidos = "El apellido es requerido.";
     if (!formData.cedula?.trim()) {
         errors.cedula = "La cédula es requerida.";
-    } else if (!/^\d+$/.test(formData.cedula)) {
-        errors.cedula = "La cédula solo debe contener números.";
     } else if (todosLosClientes.some(c => c.id === formData.cedula && c.id !== clienteIdActual)) {
         errors.cedula = "Esta cédula ya está registrada.";
     }
@@ -27,7 +25,6 @@ export const validateCliente = (formData, todosLosClientes, clienteIdActual = nu
 
 export const validateEditarCliente = (formData, todosLosClientes, clienteIdActual, abonosDelCliente = []) => {
     const baseErrors = validateCliente(formData, todosLosClientes, clienteIdActual);
-
     if (formData.fechaIngreso && abonosDelCliente.length > 0) {
         const nuevaFechaIngreso = new Date(formData.fechaIngreso + 'T00:00:00');
         const abonoMasAntiguo = abonosDelCliente.reduce((masAntiguo, abonoActual) => {
@@ -44,30 +41,25 @@ export const validateEditarCliente = (formData, todosLosClientes, clienteIdActua
 
 export const validateFinancialStep = (financiero, valorVivienda) => {
     const errors = {};
-    const {
-        aplicaCuotaInicial, cuotaInicial,
-        aplicaCredito, credito,
-        aplicaSubsidioVivienda, subsidioVivienda,
-        aplicaSubsidioCaja, subsidioCaja
-    } = financiero;
+    const { aplicaCuotaInicial, cuotaInicial, aplicaCredito, credito, aplicaSubsidioVivienda, subsidioVivienda, aplicaSubsidioCaja, subsidioCaja } = financiero;
 
     let totalRecursos = 0;
     if (aplicaCuotaInicial) {
-        if (!cuotaInicial.monto || cuotaInicial.monto <= 0) errors.cuotaInicial_monto = "El monto debe ser mayor 0.";
+        if (!cuotaInicial.monto || cuotaInicial.monto <= 0) errors.cuotaInicial_monto = "El monto debe ser > 0.";
         totalRecursos += cuotaInicial.monto || 0;
     }
     if (aplicaCredito) {
         if (!credito.banco) errors.credito_banco = "Selecciona un banco.";
-        if (!credito.monto || credito.monto <= 0) errors.credito_monto = "El monto debe ser mayor 0.";
+        if (!credito.monto || credito.monto <= 0) errors.credito_monto = "El monto debe ser > 0.";
         totalRecursos += credito.monto || 0;
     }
     if (aplicaSubsidioVivienda) {
-        if (!subsidioVivienda.monto || subsidioVivienda.monto <= 0) errors.subsidioVivienda_monto = "El monto debe ser mayor 0.";
+        if (!subsidioVivienda.monto || subsidioVivienda.monto <= 0) errors.subsidioVivienda_monto = "El monto debe ser > 0.";
         totalRecursos += subsidioVivienda.monto || 0;
     }
     if (aplicaSubsidioCaja) {
         if (!subsidioCaja.caja) errors.subsidioCaja_caja = "Selecciona una caja.";
-        if (!subsidioCaja.monto || subsidioCaja.monto <= 0) errors.subsidioCaja_monto = "El monto debe ser mayor 0.";
+        if (!subsidioCaja.monto || subsidioCaja.monto <= 0) errors.subsidioCaja_monto = "El monto debe ser > 0.";
         totalRecursos += subsidioCaja.monto || 0;
     }
 
@@ -75,6 +67,5 @@ export const validateFinancialStep = (financiero, valorVivienda) => {
     if (totalRecursos !== totalAPagar && totalAPagar > 0) {
         errors.financiero = `La suma de los recursos (${formatCurrency(totalRecursos)}) debe ser igual al valor de la vivienda.`;
     }
-
     return errors;
 };

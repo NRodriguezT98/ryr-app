@@ -1,112 +1,23 @@
-import React, { useReducer, useState, useCallback, useEffect, Fragment } from 'react';
-import { useNavigate } from "react-router-dom";
+import React, { Fragment } from 'react';
 import AnimatedPage from '../../components/AnimatedPage';
 import FormularioCliente from './FormularioCliente';
-import { validateCliente, validateFinancialStep } from './clienteValidation.js';
-import { getClientes, addClienteAndAssignVivienda } from '../../utils/storage.js';
-import toast from 'react-hot-toast';
 import { Home, User, CircleDollarSign, Check, Loader } from 'lucide-react';
-
-const getTodayString = () => new Date().toISOString().split('T')[0];
-
-const blankInitialState = {
-    viviendaSeleccionada: { id: null, valorTotal: 0, label: '' },
-    datosCliente: {
-        nombres: '', apellidos: '', cedula: '', telefono: '',
-        correo: '', direccion: '', urlCedula: null,
-        fechaIngreso: getTodayString()
-    },
-    financiero: {
-        aplicaCuotaInicial: false, cuotaInicial: { monto: 0 },
-        aplicaCredito: false, credito: { banco: '', monto: 0 },
-        aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
-        aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 },
-    },
-    seguimiento: {},
-    errors: {}
-};
-
-function formReducer(state, action) {
-    switch (action.type) {
-        case 'UPDATE_FIELD':
-            const { section, field, value } = action.payload;
-            return { ...state, [section]: { ...state[section], [field]: value } };
-        case 'UPDATE_FINANCIAL_FIELD':
-            const { section: financialSection, field: financialField, value: financialValue } = action.payload;
-            return { ...state, financiero: { ...state.financiero, [financialSection]: { ...state.financiero[financialSection], [financialField]: financialValue } } };
-        case 'TOGGLE_FINANCIAL_OPTION':
-            return { ...state, financiero: { ...state.financiero, [action.payload.field]: action.payload.value } };
-        case 'UPDATE_VIVIENDA_SELECCIONADA':
-            return { ...state, viviendaSeleccionada: action.payload };
-        case 'SET_ERRORS':
-            return { ...state, errors: action.payload };
-        default:
-            return state;
-    }
-}
+import { useClienteForm } from '../../hooks/useClienteForm';
 
 const CrearCliente = () => {
-    const [step, setStep] = useState(1);
-    const [formData, dispatch] = useReducer(formReducer, blankInitialState);
-    const [todosLosClientes, setTodosLosClientes] = useState([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        const fetchClientes = async () => {
-            const clientesData = await getClientes();
-            setTodosLosClientes(clientesData);
-        };
-        fetchClientes();
-    }, []);
-
-    const handleNextStep = () => {
-        let errors = {};
-        if (step === 2) {
-            errors = validateCliente(formData.datosCliente, todosLosClientes, null);
-            if (Object.keys(errors).length > 0) {
-                dispatch({ type: 'SET_ERRORS', payload: errors });
-                toast.error("Por favor, corrige los errores del formulario.");
-                return;
-            }
-        }
-        dispatch({ type: 'SET_ERRORS', payload: {} });
-        setStep(s => s + 1);
-    };
-
-    const handlePrevStep = () => setStep(s => s - 1);
-
-    const handleSave = useCallback(async () => {
-        setIsSubmitting(true);
-        const clientErrors = validateCliente(formData.datosCliente, todosLosClientes, null);
-        const financialErrors = validateFinancialStep(formData.financiero, formData.viviendaSeleccionada.valorTotal);
-        const totalErrors = { ...clientErrors, ...financialErrors };
-
-        if (Object.keys(totalErrors).length > 0) {
-            dispatch({ type: 'SET_ERRORS', payload: totalErrors });
-            toast.error("Por favor, corrige los errores antes de guardar.");
-            setIsSubmitting(false);
-            return;
-        }
-
-        const clienteParaGuardar = {
-            datosCliente: formData.datosCliente,
-            financiero: formData.financiero,
-            seguimiento: {},
-            viviendaId: formData.viviendaSeleccionada.id
-        };
-
-        try {
-            await addClienteAndAssignVivienda(clienteParaGuardar);
-            toast.success("¡Cliente y proceso iniciados con éxito!");
-            navigate("/clientes/listar");
-        } catch (error) {
-            console.error("Error al guardar el cliente:", error);
-            toast.error("Hubo un error al guardar los datos.");
-        } finally {
-            setIsSubmitting(false);
-        }
-    }, [formData, navigate, todosLosClientes]);
+    // El componente ahora es simple: solo llama al hook y obtiene lo que necesita.
+    const {
+        step,
+        formData,
+        dispatch,
+        errors,
+        isSubmitting,
+        handleNextStep,
+        handlePrevStep,
+        handleSubmit,
+        handleInputChange,
+        handleValueChange
+    } = useClienteForm();
 
     const STEPS_CONFIG = [
         { number: 1, title: 'Vivienda', icon: Home },
@@ -140,7 +51,9 @@ const CrearCliente = () => {
                         step={step}
                         formData={formData}
                         dispatch={dispatch}
-                        errors={formData.errors}
+                        errors={errors}
+                        handleInputChange={handleInputChange}
+                        handleValueChange={handleValueChange}
                     />
                     <div className="mt-10 flex justify-between">
                         {step > 1 ? (
@@ -154,7 +67,7 @@ const CrearCliente = () => {
                             </button>
                         ) : (
                             <button
-                                onClick={handleSave}
+                                onClick={handleSubmit}
                                 disabled={isSubmitting}
                                 className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto flex items-center justify-center gap-2"
                             >

@@ -1,15 +1,9 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import FileUpload from '../../../components/FileUpload';
-import { FileText, XCircle } from 'lucide-react'; // Importamos íconos
+import HelpTooltip from '../../../components/HelpTooltip';
+import { FileText, XCircle } from 'lucide-react';
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
-
-const Step2_ClientInfo = ({ formData, dispatch, errors }) => {
-    const { datosCliente } = formData;
-
-    const handleChange = useCallback((e) => {
-        dispatch({ type: 'UPDATE_FIELD', payload: { section: 'datosCliente', field: e.target.name, value: e.target.value } });
-    }, [dispatch]);
+const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, handleValueChange }) => {
 
     const handleFileUpload = (url) => {
         dispatch({ type: 'UPDATE_FIELD', payload: { section: 'datosCliente', field: 'urlCedula', value: url } });
@@ -27,65 +21,80 @@ const Step2_ClientInfo = ({ formData, dispatch, errors }) => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
                 <div>
-                    <label className="block font-semibold mb-1" htmlFor="nombres">Nombre(s) <span className="text-red-600">*</span></label>
-                    <input type="text" id="nombres" name="nombres" className={`w-full border p-2 rounded-lg ${errors.nombres ? 'border-red-500' : 'border-gray-300'}`} value={datosCliente.nombres} onChange={handleChange} />
+                    <label className="block font-semibold mb-1 flex items-center" htmlFor="nombres">
+                        Nombres <span className="text-red-600">*</span>
+                        <HelpTooltip id="nombres" content="Ingrese los nombres completos del cliente." />
+                    </label>
+                    <input id="nombres" name="nombres" type="text" value={formData.nombres} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.nombres ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.nombres && <p className="text-red-600 text-sm mt-1">{errors.nombres}</p>}
                 </div>
                 <div>
-                    <label className="block font-semibold mb-1" htmlFor="apellidos">Apellido(s) <span className="text-red-600">*</span></label>
-                    <input type="text" id="apellidos" name="apellidos" className={`w-full border p-2 rounded-lg ${errors.apellidos ? 'border-red-500' : 'border-gray-300'}`} value={datosCliente.apellidos} onChange={handleChange} />
+                    <label className="block font-semibold mb-1 flex items-center" htmlFor="apellidos">
+                        Apellidos <span className="text-red-600">*</span>
+                        <HelpTooltip id="apellidos" content="Ingrese los apellidos completos del cliente." />
+                    </label>
+                    <input id="apellidos" name="apellidos" type="text" value={formData.apellidos} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.apellidos ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.apellidos && <p className="text-red-600 text-sm mt-1">{errors.apellidos}</p>}
                 </div>
                 <div>
-                    <label className="block font-semibold mb-1" htmlFor="cedula">Cédula <span className="text-red-600">*</span></label>
-                    <input type="text" id="cedula" name="cedula" className={`w-full border p-2 rounded-lg ${errors.cedula ? 'border-red-500' : 'border-gray-300'}`} value={datosCliente.cedula} onChange={handleChange} />
+                    <label className="block font-semibold mb-1 flex items-center" htmlFor="cedula">
+                        Cédula <span className="text-red-600">*</span>
+                        <HelpTooltip id="cedula" content="Número de identificación único del cliente. Este campo no podrá ser editado posteriormente." />
+                    </label>
+                    <input id="cedula" name="cedula" type="text" value={formData.cedula} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.cedula ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.cedula && <p className="text-red-600 text-sm mt-1">{errors.cedula}</p>}
                 </div>
                 <div>
-                    <label className="block font-semibold mb-1" htmlFor="telefono">Teléfono <span className="text-red-600">*</span></label>
-                    <input type="text" id="telefono" name="telefono" className={`w-full border p-2 rounded-lg ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`} value={datosCliente.telefono} onChange={handleChange} />
+                    <label className="block font-semibold mb-1 flex items-center" htmlFor="telefono">
+                        Teléfono <span className="text-red-600">*</span>
+                        <HelpTooltip id="telefono" content="Número de contacto principal del cliente." />
+                    </label>
+                    <input id="telefono" name="telefono" type="text" value={formData.telefono} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.telefono && <p className="text-red-600 text-sm mt-1">{errors.telefono}</p>}
                 </div>
-                <div>
-                    <label className="block font-semibold mb-1" htmlFor="correo">Correo Electrónico <span className="text-red-600">*</span></label>
-                    <input type="email" id="correo" name="correo" className={`w-full border p-2 rounded-lg ${errors.correo ? 'border-red-500' : 'border-gray-300'}`} value={datosCliente.correo} onChange={handleChange} />
+                <div className="md:col-span-2">
+                    <label className="block font-semibold mb-1 flex items-center" htmlFor="correo">
+                        Correo Electrónico <span className="text-red-600">*</span>
+                        <HelpTooltip id="correo" content="Dirección de correo electrónico para comunicaciones y notificaciones." />
+                    </label>
+                    <input id="correo" name="correo" type="email" value={formData.correo} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.correo ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.correo && <p className="text-red-600 text-sm mt-1">{errors.correo}</p>}
                 </div>
-                <div>
-                    <label className="block font-semibold mb-1" htmlFor="direccion">Dirección <span className="text-red-600">*</span></label>
-                    <input type="text" id="direccion" name="direccion" className={`w-full border p-2 rounded-lg ${errors.direccion ? 'border-red-500' : 'border-gray-300'}`} value={datosCliente.direccion} onChange={handleChange} />
+                <div className="md:col-span-2">
+                    <label className="block font-semibold mb-1 flex items-center" htmlFor="direccion">
+                        Dirección de Residencia <span className="text-red-600">*</span>
+                        <HelpTooltip id="direccion" content="Dirección actual de residencia del cliente." />
+                    </label>
+                    <input id="direccion" name="direccion" type="text" value={formData.direccion} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.direccion ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.direccion && <p className="text-red-600 text-sm mt-1">{errors.direccion}</p>}
                 </div>
                 <div className="md:col-span-2">
-                    <label className="block font-semibold mb-1" htmlFor="fechaIngreso">Fecha de Ingreso / Inicio del Proceso <span className="text-red-600">*</span></label>
-                    <input
-                        type="date" id="fechaIngreso" name="fechaIngreso"
-                        className={`w-full md:w-1/2 border p-2 rounded-lg ${errors.fechaIngreso ? 'border-red-500' : 'border-gray-300'}`}
-                        value={datosCliente.fechaIngreso} onChange={handleChange}
-                        max={getTodayString()}
-                    />
+                    <label className="block font-semibold mb-1 flex items-center" htmlFor="fechaIngreso">
+                        Fecha de Ingreso al Proceso <span className="text-red-600">*</span>
+                        <HelpTooltip id="fechaIngreso" content="Fecha en la que el cliente inicia formalmente el proceso de compra." />
+                    </label>
+                    <input id="fechaIngreso" name="fechaIngreso" type="date" value={formData.fechaIngreso} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.fechaIngreso ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.fechaIngreso && <p className="text-red-600 text-sm mt-1">{errors.fechaIngreso}</p>}
                 </div>
                 <div className="md:col-span-2">
-                    <label className="block font-semibold mb-2 text-gray-700">Soporte de Cédula <span className="text-red-600">*</span></label>
-                    {datosCliente.urlCedula ? (
+                    <label className="block font-semibold mb-2 text-gray-700 flex items-center">
+                        Copia de la Cédula <span className="text-red-600">*</span>
+                        <HelpTooltip id="cedulaFile" content="Adjunte el documento de identidad del cliente. Es obligatorio para continuar." />
+                    </label>
+                    {formData.urlCedula ? (
                         <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center justify-between">
                             <div className='flex items-center gap-2 text-green-800 font-semibold'>
                                 <FileText />
-                                <a href={datosCliente.urlCedula} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                                    Ver Documento de identidad subido
-                                </a>
+                                <a href={formData.urlCedula} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Documento Actual</a>
                             </div>
-                            <button type="button" onClick={handleFileRemove} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar documento">
-                                <XCircle size={20} />
-                            </button>
+                            <button type="button" onClick={handleFileRemove} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar documento"><XCircle size={20} /></button>
                         </div>
                     ) : (
                         <FileUpload
                             label="Subir Cédula"
-                            filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/cedula-${fileName}`}
+                            filePath={(fileName) => `documentos_clientes/${formData.cedula}/cedula-${fileName}`}
                             onUploadSuccess={handleFileUpload}
-                            disabled={!datosCliente.cedula}
+                            disabled={!formData.cedula}
                         />
                     )}
                     {errors.urlCedula && <p className="text-red-600 text-sm mt-1">{errors.urlCedula}</p>}

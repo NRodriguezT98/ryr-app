@@ -1,15 +1,16 @@
-import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTAMOS LA FUNCIÓN
+import { formatCurrency } from '../../utils/textFormatters';
 
-// Función para validar la creación/edición de una vivienda completa
 export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = null) => {
     const errors = {};
-    const { manzana, numero, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente } = formData;
+    const { manzana, numero, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente, areaLote, areaConstruida } = formData;
 
-    const linderoRegex = /^[a-zA-Z0-9\s.,\-()]*$/;
+    // --- EXPRESIÓN REGULAR PARA LINDEROS ---
+    const linderoRegex = /^[a-zA-Z0-9\s.,\(\)-]*$/;
 
     if (!manzana) errors.manzana = "La manzana es obligatoria.";
     if (!numero) errors.numero = "El número de casa es obligatorio.";
 
+    // --- VALIDACIÓN DE LINDEROS CON REGEX ---
     if (!linderoNorte?.trim()) {
         errors.linderoNorte = "El lindero Norte es obligatorio.";
     } else if (!linderoRegex.test(linderoNorte)) {
@@ -33,10 +34,30 @@ export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = 
     } else if (!linderoRegex.test(linderoOccidente)) {
         errors.linderoOccidente = "Contiene caracteres no permitidos.";
     }
+    // --- FIN DE VALIDACIÓN DE LINDEROS ---
 
     if (!matricula?.trim()) errors.matricula = "La matrícula es obligatoria.";
     if (!nomenclatura?.trim()) errors.nomenclatura = "La nomenclatura es obligatoria.";
     if (!valorBase) errors.valorBase = "El valor base de la casa es obligatorio.";
+
+    const areaLoteNum = parseFloat(String(areaLote).replace(',', '.'));
+    const areaConstruidaNum = parseFloat(String(areaConstruida).replace(',', '.'));
+
+    if (!areaLote || String(areaLote).trim() === '') {
+        errors.areaLote = "El área del lote es obligatoria.";
+    } else if (isNaN(areaLoteNum) || areaLoteNum <= 0) {
+        errors.areaLote = "Debe ser un número positivo.";
+    }
+
+    if (!areaConstruida || String(areaConstruida).trim() === '') {
+        errors.areaConstruida = "El área construida es obligatoria.";
+    } else if (isNaN(areaConstruidaNum) || areaConstruidaNum <= 0) {
+        errors.areaConstruida = "Debe ser un número positivo.";
+    }
+
+    if (!isNaN(areaLoteNum) && !isNaN(areaConstruidaNum) && areaConstruidaNum > areaLoteNum) {
+        errors.areaConstruida = "No puede ser mayor al área del lote.";
+    }
 
     if (todasLasViviendas && manzana && numero) {
         const isDuplicate = todasLasViviendas.some(vivienda => {

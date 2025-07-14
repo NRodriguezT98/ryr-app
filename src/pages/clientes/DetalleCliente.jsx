@@ -3,10 +3,12 @@ import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getClientes, getViviendas, getAbonos, updateCliente } from '../../utils/storage';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, User, Phone, MapPin, Home, BadgePercent, Briefcase, FileDown, Info, Eye, CheckCircle, AlertTriangle } from 'lucide-react';
-import { formatCurrency } from '../../utils/textFormatters';
+// --- CORRECCIÓN AQUÍ: Añadimos CheckCircle y AlertTriangle ---
+import { ArrowLeft, User, Phone, MapPin, Home, BadgePercent, Briefcase, FileDown, Info, Eye, CheckSquare, CheckCircle, AlertTriangle } from 'lucide-react';
+import { formatCurrency, formatID } from '../../utils/textFormatters';
 import { generateClientStatementPDF } from '../../utils/pdfGenerator';
 import DocumentoRow from '../../components/documentos/DocumentoRow';
+import SeguimientoCliente from './components/SeguimientoCliente';
 
 // Helpers
 const getInitials = (nombres = '', apellidos = '') => `${(nombres[0] || '')}${(apellidos[0] || '')}`.toUpperCase();
@@ -22,7 +24,6 @@ const TabButton = ({ activeTab, tabName, label, icon, onClick }) => (
     </button>
 );
 
-// Componente para una fila de fuente financiera
 const FuenteFinanciera = ({ titulo, montoPactado, abonos, fuente, banco = '' }) => {
     const totalAbonado = abonos.filter(a => a.fuente === fuente).reduce((sum, abono) => sum + abono.monto, 0);
     const saldoPendiente = montoPactado - totalAbonado;
@@ -48,21 +49,19 @@ const FuenteFinanciera = ({ titulo, montoPactado, abonos, fuente, banco = '' }) 
     );
 };
 
-
 const DetalleCliente = () => {
     const { clienteId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
 
     const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'info');
-
     const [cliente, setCliente] = useState(null);
     const [vivienda, setVivienda] = useState(null);
     const [historialAbonos, setHistorialAbonos] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const cargarDatos = useCallback(async () => {
-        setIsLoading(true);
+    const cargarDatos = useCallback(async (forceReload = false) => {
+        if (!forceReload) setIsLoading(true);
         try {
             const [todosClientes, todasViviendas, todosAbonos] = await Promise.all([
                 getClientes(),
@@ -89,7 +88,7 @@ const DetalleCliente = () => {
         } catch (error) {
             toast.error("Error al cargar los datos del cliente.");
         } finally {
-            setIsLoading(false);
+            if (!forceReload) setIsLoading(false);
         }
     }, [clienteId, navigate]);
 
@@ -101,10 +100,10 @@ const DetalleCliente = () => {
         if (!cliente) return;
 
         const clienteActualizado = JSON.parse(JSON.stringify(cliente));
-
         const keys = fieldPath.split('.');
         let current = clienteActualizado;
         for (let i = 0; i < keys.length - 1; i++) {
+            current[keys[i]] = current[keys[i]] || {};
             current = current[keys[i]];
         }
         current[keys[keys.length - 1]] = url;
@@ -113,12 +112,26 @@ const DetalleCliente = () => {
             const { vivienda, ...datosParaGuardar } = clienteActualizado;
             await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId);
             toast.success('Documento actualizado correctamente.');
-            cargarDatos(); // Recarga los datos para reflejar cambios
+            cargarDatos(true);
         } catch (error) {
             console.error("Error al actualizar el documento:", error);
             toast.error("No se pudo actualizar el documento.");
         }
     }, [cliente, cargarDatos]);
+
+    const handleGuardarSeguimiento = async (nuevoSeguimiento) => {
+        if (!cliente) return;
+        try {
+            const clienteActualizado = { ...cliente, seguimiento: nuevoSeguimiento };
+            const { vivienda, ...datosParaGuardar } = clienteActualizado;
+            await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId);
+            toast.success('El seguimiento del cliente ha sido actualizado.');
+            cargarDatos(true);
+        } catch (error) {
+            toast.error('No se pudo actualizar el seguimiento.');
+            console.error(error);
+        }
+    };
 
     const handleGeneratePdf = () => {
         if (cliente && vivienda) {
@@ -168,6 +181,7 @@ const DetalleCliente = () => {
                     <nav className="flex space-x-2">
                         <TabButton activeTab={activeTab} tabName="info" label="Información General" icon={<Info size={16} />} onClick={setActiveTab} />
                         <TabButton activeTab={activeTab} tabName="documentos" label="Documentación" icon={<Briefcase size={16} />} onClick={setActiveTab} />
+                        <TabButton activeTab={activeTab} tabName="seguimiento" label="Seguimiento" icon={<CheckSquare size={16} />} onClick={setActiveTab} />
                     </nav>
                 </div>
 
@@ -232,6 +246,10 @@ const DetalleCliente = () => {
                             )}
                         </div>
                     </div>
+                )}
+
+                {activeTab === 'seguimiento' && (
+                    <SeguimientoCliente cliente={cliente} onSave={handleGuardarSeguimiento} />
                 )}
             </div>
         </AnimatedPage>

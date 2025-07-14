@@ -3,7 +3,7 @@ import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction,
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { toSentenceCase, formatCurrency } from './textFormatters';
 
-// --- FUNCIÓN HELPER PARA CREAR NOTIFICACIONES (AHORA EXPORTADA) ---
+// --- FUNCIÓN HELPER PARA CREAR NOTIFICACIONES (EXPORTADA) ---
 export const createNotification = async (type, message, link = '#') => {
     const notificationsCol = collection(db, 'notifications');
     try {
@@ -44,6 +44,8 @@ export const addVivienda = async (viviendaData) => {
         linderoSur: toSentenceCase(viviendaData.linderoSur),
         linderoOriente: toSentenceCase(viviendaData.linderoOriente),
         linderoOccidente: toSentenceCase(viviendaData.linderoOccidente),
+        areaLote: parseFloat(String(viviendaData.areaLote).replace(',', '.')) || 0,
+        areaConstruida: parseFloat(String(viviendaData.areaConstruida).replace(',', '.')) || 0,
         clienteId: null,
         clienteNombre: "",
         totalAbonado: 0,
@@ -123,6 +125,14 @@ export const updateVivienda = async (id, datosActualizados) => {
     if (!viviendaSnap.exists()) throw new Error("La vivienda no existe.");
     const viviendaOriginal = viviendaSnap.data();
     const datosFinales = { ...datosActualizados };
+
+    if (datosFinales.areaLote !== undefined) {
+        datosFinales.areaLote = parseFloat(String(datosFinales.areaLote).replace(',', '.')) || 0;
+    }
+    if (datosFinales.areaConstruida !== undefined) {
+        datosFinales.areaConstruida = parseFloat(String(datosFinales.areaConstruida).replace(',', '.')) || 0;
+    }
+
     if (datosFinales.valorTotal !== undefined || datosFinales.descuentoMonto !== undefined) {
         const nuevoValorTotal = datosFinales.valorTotal !== undefined ? datosFinales.valorTotal : viviendaOriginal.valorTotal;
         const nuevoDescuento = datosFinales.descuentoMonto !== undefined ? datosFinales.descuentoMonto : (viviendaOriginal.descuentoMonto || 0);
@@ -238,7 +248,7 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
         }
     });
 
-    return renunciaRef.id;
+    return { renunciaId: renunciaRef.id, clienteNombre: clienteNombre };
 };
 
 export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) => {
