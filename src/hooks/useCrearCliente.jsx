@@ -1,10 +1,12 @@
-import { useReducer, useState, useCallback, useEffect } from 'react';
+import { useReducer, useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
+// --- RUTA CORREGIDA AQUÍ ---
 import { validateCliente, validateFinancialStep } from '../pages/clientes/clienteValidation.js';
-import { getClientes, addClienteAndAssignVivienda, createNotification } from '../utils/storage.js';
+import { getClientes, getViviendas, addClienteAndAssignVivienda, createNotification } from '../utils/storage.js';
 import { PASOS_SEGUIMIENTO_CONFIG } from '../utils/seguimientoConfig.js';
 import { useForm } from './useForm.jsx';
+import { formatCurrency } from '../utils/textFormatters.js';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -24,17 +26,10 @@ const blankInitialState = {
     errors: {}
 };
 
-const inputFilters = {
-    nombres: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/, message: 'Solo se permiten letras y espacios.' },
-    apellidos: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/, message: 'Solo se permiten letras y espacios.' },
-    cedula: { regex: /^[0-9]*$/, message: 'Este campo solo permite números.' },
-    telefono: { regex: /^[0-9]*$/, message: 'Este campo solo permite números.' },
-};
-
 function formReducer(state, action) {
     switch (action.type) {
         case 'UPDATE_VIVIENDA_SELECCIONADA':
-            return { ...state, viviendaSeleccionada: action.payload };
+            return { ...state, viviendaSeleccionada: action.payload, errors: {} };
         case 'UPDATE_DATOS_CLIENTE': {
             const { field, value } = action.payload;
             const newErrors = { ...state.errors };
@@ -42,35 +37,54 @@ function formReducer(state, action) {
             return { ...state, datosCliente: { ...state.datosCliente, [field]: value }, errors: newErrors };
         }
         case 'UPDATE_FINANCIAL_FIELD': {
-            const { section: financialSection, field: financialField, value: financialValue } = action.payload;
-            return { ...state, financiero: { ...state.financiero, [financialSection]: { ...state.financiero[financialSection], [field]: financialField, value: financialValue } } };
+            const { section, field, value } = action.payload;
+            return { ...state, financiero: { ...state.financiero, [section]: { ...state.financiero[section], [field]: value } } };
         }
         case 'TOGGLE_FINANCIAL_OPTION': {
             return { ...state, financiero: { ...state.financiero, [action.payload.field]: action.payload.value } };
         }
         case 'SET_ERRORS':
-            return { ...state, errors: action.payload };
+            return { ...state, errors: { ...state.errors, ...action.payload } };
         default:
             return state;
     }
 }
 
-export const useClienteForm = () => {
+export const useCrearCliente = () => {
     const [step, setStep] = useState(1);
     const [formData, dispatch] = useReducer(formReducer, blankInitialState);
     const [todosLosClientes, setTodosLosClientes] = useState([]);
+    const [viviendasDisponibles, setViviendasDisponibles] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const navigate = useNavigate();
 
     const { handleInputChange, handleValueChange, setErrors } = useForm({
         dispatch,
         initialState: formData,
-        options: { inputFilters }
+        options: {
+            nombres: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/, message: 'Solo se permiten letras y espacios.' },
+            apellidos: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/, message: 'Solo se permiten letras y espacios.' },
+            cedula: { regex: /^[0-9]*$/, message: 'Este campo solo permite números.' },
+            telefono: { regex: /^[0-9]*$/, message: 'Este campo solo permite números.' },
+        }
     });
 
     useEffect(() => {
         getClientes().then(setTodosLosClientes);
+        getViviendas().then(viviendas => {
+            setViviendasDisponibles(viviendas.filter(v => !v.clienteId));
+        });
     }, []);
+
+    const viviendaOptions = useMemo(() => {
+        return viviendasDisponibles
+            .sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa)
+            .map(v => ({
+                value: v.id,
+                label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${formatCurrency(v.valorFinal || v.valorTotal || 0)})`,
+                vivienda: v
+            }));
+    }, [viviendasDisponibles]);
 
     const handleNextStep = () => {
         let errors = {};
@@ -141,6 +155,7 @@ export const useClienteForm = () => {
         dispatch,
         errors: formData.errors,
         isSubmitting,
+        viviendaOptions,
         handleNextStep,
         handlePrevStep,
         handleSave,

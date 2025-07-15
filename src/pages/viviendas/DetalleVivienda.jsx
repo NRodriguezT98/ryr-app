@@ -1,14 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useData } from '../../context/DataContext';
+import React from 'react';
+import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-// --- CORRECCIÓN AQUÍ: Añadimos 'ClipboardList' y otros íconos que se usarán ---
 import { ArrowLeft, Home, Info, BarChart2, User, FileText, Compass, Download, CheckCircle, Star, ClipboardList } from 'lucide-react';
-import FuenteDePagoCard from '../abonos/FuenteDePagoCard';
-import AbonoCard from '../abonos/AbonoCard';
-import { formatCurrency } from '../../utils/textFormatters';
+import { useDetalleVivienda } from '../../hooks/viviendas/useDetalleVivienda';
 import FinancialBreakdownCard from './components/FinancialBreakdownCard';
 import StatCard from '../../components/dashboard/StatCard';
+import FuenteDePagoCard from '../abonos/FuenteDePagoCard';
+import AbonoCard from '../abonos/AbonoCard';
+import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 
 const LinderoItem = ({ label, value }) => (
     <div>
@@ -17,73 +16,24 @@ const LinderoItem = ({ label, value }) => (
     </div>
 );
 
+const TabButton = ({ tabName, label, icon, activeTab, onClick }) => (
+    <button
+        onClick={() => onClick(tabName)}
+        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === tabName ? 'bg-red-500 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+    >
+        {icon}
+        {label}
+    </button>
+);
+
 const DetalleVivienda = () => {
-    const { viviendaId } = useParams();
-    const navigate = useNavigate();
-    const { viviendas, clientes, abonos, isLoading, recargarDatos } = useData();
-    const [activeTab, setActiveTab] = useState('info');
+    const { isLoading, datosDetalle, activeTab, setActiveTab, recargarDatos, navigate } = useDetalleVivienda();
 
-    const datosDetalle = useMemo(() => {
-        if (isLoading) return null;
-        const vivienda = viviendas.find(v => v.id === viviendaId);
-        if (!vivienda) return null;
-
-        const cliente = clientes.find(c => c.id === vivienda.clienteId);
-        const historialAbonos = abonos
-            .filter(a => a.viviendaId === viviendaId)
-            .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))
-            .map(abono => ({
-                ...abono,
-                clienteInfo: cliente?.datosCliente ? `${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}` : 'N/A',
-                clienteStatus: cliente?.status || 'activo'
-            }));
-
-        const desgloseValorVivienda = [
-            { label: 'Valor Base', value: vivienda.valorBase },
-            { label: 'Recargo Esquinera', value: vivienda.recargoEsquinera },
-            { label: 'G. Notariales', value: vivienda.gastosNotariales }
-        ];
-
-        let fuentes = [];
-        let desgloseTotalAbonado = [];
-
-        if (cliente && cliente.financiero) {
-            const { financiero } = cliente;
-            const crearFuente = (titulo, fuente, montoPactado) => ({
-                titulo, fuente, montoPactado, abonos: historialAbonos.filter(a => a.fuente === fuente)
-            });
-
-            if (financiero.aplicaCuotaInicial) fuentes.push(crearFuente("Cuota Inicial", "cuotaInicial", financiero.cuotaInicial.monto));
-            if (financiero.aplicaCredito) fuentes.push(crearFuente("Crédito Hipotecario", "credito", financiero.credito.monto));
-            if (financiero.aplicaSubsidioVivienda) fuentes.push(crearFuente("Subsidio Mi Casa Ya", "subsidioVivienda", financiero.subsidioVivienda.monto));
-            if (financiero.aplicaSubsidioCaja) fuentes.push(crearFuente(`Subsidio Caja (${financiero.subsidioCaja.caja})`, "subsidioCaja", financiero.subsidioCaja.monto));
-
-            desgloseTotalAbonado = fuentes.map(f => ({
-                label: f.titulo,
-                value: f.abonos.reduce((sum, abono) => sum + abono.monto, 0)
-            }));
-        }
-
-        return { vivienda, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado };
-    }, [viviendaId, viviendas, clientes, abonos, isLoading]);
-
-    if (isLoading) return <div className="text-center p-10 animate-pulse">Cargando detalles de la vivienda...</div>;
-    if (!datosDetalle) {
-        navigate('/viviendas/listar');
-        return null;
+    if (isLoading) {
+        return <div className="text-center p-10 animate-pulse">Cargando detalles de la vivienda...</div>;
     }
 
     const { vivienda, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado } = datosDetalle;
-
-    const TabButton = ({ tabName, label, icon }) => (
-        <button
-            onClick={() => setActiveTab(tabName)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === tabName ? 'bg-red-500 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
-        >
-            {icon}
-            {label}
-        </button>
-    );
 
     return (
         <AnimatedPage>
@@ -97,14 +47,11 @@ const DetalleVivienda = () => {
                                 {cliente ? (
                                     <Link to={`/clientes/detalle/${cliente.id}`} className="flex items-center gap-2 text-blue-600 font-semibold hover:underline">
                                         <User size={16} />
-                                        <span>{`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`}</span>
+                                        <span>{toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`)}</span>
                                     </Link>
                                 ) : (
-                                    <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800`}>
-                                        Disponible
-                                    </span>
+                                    <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800`}>Disponible</span>
                                 )}
-
                                 {vivienda.recargoEsquinera > 0 ? (
                                     <span className="flex items-center gap-1.5 text-xs font-bold text-purple-800 bg-purple-200 px-3 py-1 rounded-full"><Star size={14} />Casa Esquinera</span>
                                 ) : (
@@ -120,8 +67,8 @@ const DetalleVivienda = () => {
 
                 <div className="border-b border-gray-200 mb-6">
                     <nav className="flex space-x-2">
-                        <TabButton tabName="info" label="Información General" icon={<Info size={16} />} />
-                        <TabButton tabName="financiero" label="Resumen Financiero" icon={<BarChart2 size={16} />} />
+                        <TabButton tabName="info" label="Información General" icon={<Info size={16} />} activeTab={activeTab} onClick={setActiveTab} />
+                        <TabButton tabName="financiero" label="Resumen Financiero" icon={<BarChart2 size={16} />} activeTab={activeTab} onClick={setActiveTab} />
                     </nav>
                 </div>
 
@@ -130,7 +77,7 @@ const DetalleVivienda = () => {
                         <AnimatedPage>
                             <div className="space-y-6">
                                 <div className="bg-white p-6 rounded-xl border">
-                                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><ClipboardList /> Ficha Técnica de la Propiedad</h3>
+                                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><ClipboardList /> Ficha Técnica</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                                         <p><strong>Matrícula:</strong> {vivienda.matricula}</p>
                                         <p><strong>Nomenclatura:</strong> {vivienda.nomenclatura}</p>
@@ -164,16 +111,12 @@ const DetalleVivienda = () => {
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <FinancialBreakdownCard title="Valor Final" total={vivienda.valorFinal} items={desgloseValorVivienda} colorClass="text-blue-600" />
                                     <FinancialBreakdownCard title="Total Abonado" total={vivienda.totalAbonado} items={desgloseTotalAbonado} colorClass="text-green-600" />
-
                                     <div className={`bg-white p-4 rounded-lg border text-center ${vivienda.saldoPendiente <= 0 && vivienda.clienteId ? 'border-green-300' : 'border-gray-200'}`}>
                                         <p className="text-sm font-medium text-gray-500">Saldo Pendiente</p>
-                                        <p className={`text-2xl font-bold ${vivienda.saldoPendiente <= 0 && vivienda.clienteId ? 'text-green-600' : 'text-red-600'}`}>
-                                            {formatCurrency(vivienda.saldoPendiente)}
-                                        </p>
+                                        <p className={`text-2xl font-bold ${vivienda.saldoPendiente <= 0 && vivienda.clienteId ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(vivienda.saldoPendiente)}</p>
                                         {vivienda.saldoPendiente <= 0 && vivienda.clienteId && (
                                             <div className="mt-2 flex items-center justify-center gap-2 text-sm font-bold text-green-700 bg-green-100 p-2 rounded-md">
-                                                <CheckCircle size={16} />
-                                                <span>¡A Paz y Salvo!</span>
+                                                <CheckCircle size={16} /><span>¡A Paz y Salvo!</span>
                                             </div>
                                         )}
                                     </div>

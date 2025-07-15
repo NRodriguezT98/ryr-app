@@ -1,10 +1,5 @@
-import React, { useState, useCallback } from "react";
-import toast from 'react-hot-toast';
-import { useLocation } from 'react-router-dom'; // <-- 1. Importar useLocation
-import { useData } from "../../context/DataContext";
-import { useViviendaFilters } from "../../hooks/useViviendaFilters";
-import { useUndoableDelete } from "../../hooks/useUndoableDelete.jsx";
-import { deleteVivienda } from "../../utils/storage";
+import React from "react";
+import { useListarViviendas } from "../../hooks/viviendas/useListarViviendas.jsx";
 import ResourcePageLayout from "../../layout/ResourcePageLayout";
 import ViviendaCard from './ViviendaCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
@@ -13,48 +8,14 @@ import DescuentoModal from './DescuentoModal.jsx';
 import ViviendaCardSkeleton from "./ViviendaCardSkeleton.jsx";
 
 const ListarViviendas = () => {
-    const location = useLocation(); // <-- 2. Obtener la ubicación
-    const { isLoading, viviendas, recargarDatos } = useData();
-
-    // 3. Establecer el estado inicial del filtro usando el state del Link (si existe)
-    const initialStateFromLink = location.state?.statusFilter || 'todas';
-    const [statusFilter, setStatusFilter] = useState(initialStateFromLink);
-
     const {
-        viviendasFiltradasYOrdenadas, searchTerm, setSearchTerm
-    } = useViviendaFilters(viviendas, statusFilter); // Pasamos el filtro al hook
-
-    const { hiddenItems: viviendasOcultas, initiateDelete } = useUndoableDelete(
-        async (vivienda) => deleteVivienda(vivienda.id),
-        recargarDatos,
-        "Vivienda"
-    );
-
-    const [viviendaAEditar, setViviendaAEditar] = useState(null);
-    const [viviendaAEliminar, setViviendaAEliminar] = useState(null);
-    const [viviendaConDescuento, setViviendaConDescuento] = useState(null);
-
-    const handleGuardado = useCallback(() => {
-        recargarDatos();
-        setViviendaAEditar(null);
-        setViviendaConDescuento(null);
-    }, [recargarDatos]);
-
-    const handleIniciarEliminacion = (vivienda) => {
-        if (vivienda.clienteId) {
-            toast.error("No se puede eliminar: la vivienda ya tiene un cliente asignado.");
-            return;
-        }
-        setViviendaAEliminar(vivienda);
-    };
-
-    const confirmarEliminar = () => {
-        if (!viviendaAEliminar) return;
-        initiateDelete(viviendaAEliminar);
-        setViviendaAEliminar(null);
-    };
-
-    const viviendasVisibles = viviendasFiltradasYOrdenadas.filter(v => !viviendasOcultas.includes(v.id));
+        isLoading,
+        viviendasVisibles,
+        todasLasViviendas,
+        filters,
+        modals,
+        handlers
+    } = useListarViviendas();
 
     return (
         <ResourcePageLayout
@@ -64,12 +25,12 @@ const ListarViviendas = () => {
             filterControls={
                 <>
                     <div className="flex-shrink-0 bg-gray-100 p-1 rounded-lg">
-                        <button onClick={() => setStatusFilter('todas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'todas' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:bg-gray-200'}`}>Todas</button>
-                        <button onClick={() => setStatusFilter('disponibles')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'disponibles' ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:bg-gray-200'}`}>Disponibles</button>
-                        <button onClick={() => setStatusFilter('ocupadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'ocupadas' ? 'bg-white shadow text-red-600' : 'text-gray-600 hover:bg-gray-200'}`}>Ocupadas</button>
+                        <button onClick={() => filters.setStatusFilter('todas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'todas' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:bg-gray-200'}`}>Todas</button>
+                        <button onClick={() => filters.setStatusFilter('disponibles')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'disponibles' ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:bg-gray-200'}`}>Disponibles</button>
+                        <button onClick={() => filters.setStatusFilter('ocupadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'ocupadas' ? 'bg-white shadow text-red-600' : 'text-gray-600 hover:bg-gray-200'}`}>Ocupadas</button>
                     </div>
                     <div className="w-full md:w-1/3">
-                        <input type="text" placeholder="Buscar por Mz, Casa o Cliente..." className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <input type="text" placeholder="Buscar por Mz, Casa o Cliente..." className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300" value={filters.searchTerm} onChange={(e) => filters.setSearchTerm(e.target.value)} />
                     </div>
                 </>
             }
@@ -84,9 +45,9 @@ const ListarViviendas = () => {
                         <ViviendaCard
                             key={vivienda.id}
                             vivienda={vivienda}
-                            onEdit={setViviendaAEditar}
-                            onDelete={handleIniciarEliminacion}
-                            onApplyDiscount={setViviendaConDescuento}
+                            onEdit={modals.setViviendaAEditar}
+                            onDelete={handlers.handleIniciarEliminacion}
+                            onApplyDiscount={modals.setViviendaConDescuento}
                         />
                     ))}
                 </div>
@@ -96,9 +57,9 @@ const ListarViviendas = () => {
                 </div>
             )}
 
-            {viviendaAEliminar && (<ModalConfirmacion isOpen={!!viviendaAEliminar} onClose={() => setViviendaAEliminar(null)} onConfirm={confirmarEliminar} titulo="¿Eliminar Vivienda?" mensaje="¿Estás seguro? Tendrás 5 segundos para deshacer la acción." />)}
-            {viviendaAEditar && (<EditarVivienda isOpen={!!viviendaAEditar} onClose={() => setViviendaAEditar(null)} onSave={handleGuardado} vivienda={viviendaAEditar} todasLasViviendas={viviendas} />)}
-            {viviendaConDescuento && (<DescuentoModal isOpen={!!viviendaConDescuento} onClose={() => setViviendaConDescuento(null)} onSave={handleGuardado} vivienda={viviendaConDescuento} />)}
+            {modals.viviendaAEliminar && (<ModalConfirmacion isOpen={!!modals.viviendaAEliminar} onClose={() => modals.setViviendaAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Vivienda?" mensaje="¿Estás seguro? Tendrás 5 segundos para deshacer la acción." />)}
+            {modals.viviendaAEditar && (<EditarVivienda isOpen={!!modals.viviendaAEditar} onClose={() => modals.setViviendaAEditar(null)} onSave={handlers.handleGuardado} vivienda={modals.viviendaAEditar} todasLasViviendas={todasLasViviendas} />)}
+            {modals.viviendaConDescuento && (<DescuentoModal isOpen={!!modals.viviendaConDescuento} onClose={() => modals.setViviendaConDescuento(null)} onSave={handlers.handleGuardado} vivienda={modals.viviendaConDescuento} />)}
         </ResourcePageLayout>
     );
 };

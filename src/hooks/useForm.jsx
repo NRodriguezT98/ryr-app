@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useState } from 'react';
+import { useReducer, useCallback, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 function formReducer(state, action) {
@@ -20,12 +20,16 @@ function formReducer(state, action) {
 
 export const useForm = ({ initialState, validate = () => ({}), onSubmit, options = {} }) => {
     const [formData, dispatch] = useReducer(formReducer, { ...initialState, errors: {} });
-    const { inputFilters = {} } = options;
+    const { inputFilters = {}, resetOnSuccess = true } = options;
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const setFormData = useCallback((newData) => {
         dispatch({ type: 'INITIALIZE_FORM', payload: newData });
     }, []);
+
+    useEffect(() => {
+        setFormData(initialState);
+    }, [initialState, setFormData]);
 
     const setErrors = useCallback((errors) => {
         dispatch({ type: 'SET_ERRORS', payload: errors });
@@ -61,7 +65,9 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         setIsSubmitting(true);
         try {
             await onSubmit(formData);
-            resetForm();
+            if (resetOnSuccess) {
+                resetForm();
+            }
         } catch (error) {
             console.error("useForm: Ocurrió un error durante la ejecución de onSubmit.", error);
             toast.error("Ocurrió un error inesperado al guardar.");
@@ -79,6 +85,7 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         handleValueChange,
         setFormData,
         setErrors,
-        resetForm
+        resetForm,
+        dispatch // <-- Exportamos dispatch para que otros hooks lo usen
     };
 };

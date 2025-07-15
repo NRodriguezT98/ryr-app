@@ -1,6 +1,5 @@
 import React, { Fragment } from "react";
-// --- RUTA CORREGIDA AQUÍ ---
-import { useEditarVivienda } from "../../hooks/useEditarVivienda.jsx";
+import { useEditarVivienda } from "../../hooks/viviendas/useEditarVivienda.jsx";
 import { MapPin, FileText, CircleDollarSign, Check, Edit, Loader } from 'lucide-react';
 import FormularioVivienda from "./FormularioVivienda";
 import Modal from "../../components/Modal";
@@ -10,7 +9,7 @@ import { Tooltip } from 'react-tooltip';
 const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }) => {
 
     const {
-        step, form, valorTotalCalculado, gastosNotarialesFijos,
+        step, formData, errors, isSubmitting, valorTotalCalculado, gastosNotarialesFijos,
         isConfirming, setIsConfirming, cambios, hayCambios,
         handlers
     } = useEditarVivienda(vivienda, todasLasViviendas, isOpen, onSave, onClose);
@@ -47,16 +46,18 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                     ))}
                 </div>
 
-                <FormularioVivienda
-                    step={step}
-                    formData={form.formData}
-                    errors={form.errors}
-                    handleInputChange={handlers.handleInputChange}
-                    handleValueChange={handlers.handleValueChange}
-                    handleCheckboxChange={handlers.handleCheckboxChange}
-                    valorTotalCalculado={valorTotalCalculado}
-                    gastosNotarialesFijos={gastosNotarialesFijos}
-                />
+                {formData && (
+                    <FormularioVivienda
+                        step={step}
+                        formData={formData}
+                        errors={errors}
+                        handleInputChange={handlers.handleInputChange}
+                        handleValueChange={handlers.handleValueChange}
+                        handleCheckboxChange={handlers.handleCheckboxChange}
+                        valorTotalCalculado={valorTotalCalculado}
+                        gastosNotarialesFijos={gastosNotarialesFijos}
+                    />
+                )}
 
                 <div className="mt-10 pt-6 border-t flex justify-between">
                     {step > 1 ? (
@@ -76,11 +77,11 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                             <button
                                 type="button"
                                 onClick={handlers.handlePreSave}
-                                disabled={!hayCambios || form.isSubmitting}
+                                disabled={!hayCambios || isSubmitting}
                                 className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full flex items-center justify-center gap-2"
                             >
-                                {form.isSubmitting ? <Loader size={20} className="animate-spin" /> : null}
-                                {form.isSubmitting ? "Guardando..." : "Guardar Cambios"}
+                                {isSubmitting ? <Loader size={20} className="animate-spin" /> : null}
+                                {isSubmitting ? "Guardando..." : "Guardar Cambios"}
                             </button>
                         </span>
                     )}
@@ -94,7 +95,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                     onConfirm={handlers.handleSubmit}
                     titulo="Confirmar Cambios de la Vivienda"
                     cambios={cambios}
-                    isSubmitting={form.isSubmitting}
+                    isSubmitting={isSubmitting}
                 />
             )}
             <Tooltip id="app-tooltip" />
