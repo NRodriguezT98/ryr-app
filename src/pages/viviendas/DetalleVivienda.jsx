@@ -2,7 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, Home, Info, BarChart2, User, FileText, Compass, Download, CheckCircle, Star } from 'lucide-react';
+// --- CORRECCIÓN AQUÍ: Añadimos 'ClipboardList' y otros íconos que se usarán ---
+import { ArrowLeft, Home, Info, BarChart2, User, FileText, Compass, Download, CheckCircle, Star, ClipboardList } from 'lucide-react';
 import FuenteDePagoCard from '../abonos/FuenteDePagoCard';
 import AbonoCard from '../abonos/AbonoCard';
 import { formatCurrency } from '../../utils/textFormatters';
@@ -105,15 +106,9 @@ const DetalleVivienda = () => {
                                 )}
 
                                 {vivienda.recargoEsquinera > 0 ? (
-                                    <span className="flex items-center gap-1.5 text-xs font-bold text-purple-800 bg-purple-200 px-3 py-1 rounded-full">
-                                        <Star size={14} />
-                                        Casa Esquinera
-                                    </span>
+                                    <span className="flex items-center gap-1.5 text-xs font-bold text-purple-800 bg-purple-200 px-3 py-1 rounded-full"><Star size={14} />Casa Esquinera</span>
                                 ) : (
-                                    <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-200 px-3 py-1 rounded-full">
-                                        <Home size={14} />
-                                        Casa Medianera
-                                    </span>
+                                    <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-200 px-3 py-1 rounded-full"><Home size={14} />Casa Medianera</span>
                                 )}
                             </div>
                         </div>

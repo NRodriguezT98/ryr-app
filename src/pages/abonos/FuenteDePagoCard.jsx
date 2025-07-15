@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useForm } from '../../hooks/useForm.jsx';
 import toast from 'react-hot-toast';
 import { NumericFormat } from 'react-number-format';
 import { addAbono, createNotification } from '../../utils/storage';
-import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle } from 'lucide-react';
+import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle, Loader } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import { validateAbono } from './abonoValidation.js';
 import { formatCurrency } from '../../utils/textFormatters.js';
@@ -18,13 +18,6 @@ const ICONS = {
     gastosNotariales: <FilePlus2 className="w-8 h-8 text-slate-600" />
 };
 
-const initialAbonoFormState = {
-    monto: '',
-    fechaPago: getTodayString(),
-    observacion: '',
-    urlComprobante: null
-};
-
 const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, cliente, onAbonoRegistrado }) => {
     const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
 
@@ -32,8 +25,16 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
     const saldoPendiente = montoPactado - totalAbonado;
     const porcentajePagado = montoPactado > 0 ? (totalAbonado / montoPactado) * 100 : 100;
 
+    const initialAbonoFormState = useMemo(() => ({
+        monto: '',
+        fechaPago: getTodayString(),
+        observacion: '',
+        urlComprobante: null,
+        metodoPago: titulo
+    }), [titulo]);
+
     const { formData, errors, setFormData, handleInputChange, handleValueChange, handleSubmit, isSubmitting, resetForm } = useForm({
-        initialState: { ...initialAbonoFormState, metodoPago: titulo },
+        initialState: initialAbonoFormState,
         validate: (data) => validateAbono(data, { saldoPendiente }, cliente?.datosCliente?.fechaIngreso),
         onSubmit: async (data) => {
             const nuevoAbono = {
@@ -63,18 +64,16 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
         }
     });
 
+    useEffect(() => {
+        if (mostrandoFormulario) {
+            setFormData(initialAbonoFormState);
+        }
+    }, [mostrandoFormulario, initialAbonoFormState, setFormData]);
+
     const handleCancelarFormulario = () => {
         resetForm();
         setMostrandoFormulario(false);
     }
-
-    const handleUploadSuccess = (url) => {
-        handleValueChange('urlComprobante', url);
-    };
-
-    const handleRemoveFile = () => {
-        handleValueChange('urlComprobante', null);
-    };
 
     const minDate = cliente?.datosCliente?.fechaIngreso ? cliente.datosCliente.fechaIngreso.split('T')[0] : null;
 
@@ -139,7 +138,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                                         Ver Comprobante
                                     </a>
                                 </div>
-                                <button type="button" onClick={handleRemoveFile} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar comprobante">
+                                <button type="button" onClick={() => handleValueChange('urlComprobante', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar comprobante">
                                     <XCircle size={18} />
                                 </button>
                             </div>
@@ -147,13 +146,14 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                             <FileUpload
                                 label="Subir Comprobante"
                                 filePath={(fileName) => `comprobantes_abonos/${vivienda.id}/${fuente}-${Date.now()}-${fileName}`}
-                                onUploadSuccess={handleUploadSuccess}
+                                onUploadSuccess={(url) => handleValueChange('urlComprobante', url)}
                             />
                         )}
                     </div>
                     <div className="flex justify-end gap-2">
                         <button type="button" onClick={handleCancelarFormulario} className="bg-gray-200 px-4 py-1.5 rounded-md text-sm">Cancelar</button>
-                        <button type="submit" disabled={isSubmitting} className="bg-blue-500 text-white px-4 py-1.5 rounded-md text-sm disabled:bg-gray-400">
+                        <button type="submit" disabled={isSubmitting} className="bg-blue-500 text-white px-4 py-1.5 rounded-md text-sm disabled:bg-gray-400 flex items-center justify-center gap-2">
+                            {isSubmitting && <Loader size={16} className="animate-spin" />}
                             {isSubmitting ? 'Guardando...' : 'Guardar Abono'}
                         </button>
                     </div>

@@ -1,4 +1,5 @@
-import { useReducer, useCallback, useState, useEffect } from 'react';
+import { useReducer, useCallback, useState } from 'react';
+import toast from 'react-hot-toast';
 
 function formReducer(state, action) {
     switch (action.type) {
@@ -6,13 +7,12 @@ function formReducer(state, action) {
             return { ...(action.payload || {}), errors: {} };
         case 'UPDATE_FIELD': {
             const { name, value } = action.payload;
-            // Al actualizar un campo, limpiamos su error específico
             const newErrors = { ...state.errors };
             delete newErrors[name];
             return { ...state, [name]: value, errors: newErrors };
         }
         case 'SET_ERRORS':
-            return { ...state, errors: action.payload };
+            return { ...state, errors: { ...state.errors, ...action.payload } };
         default:
             return state;
     }
@@ -27,31 +27,19 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         dispatch({ type: 'INITIALIZE_FORM', payload: newData });
     }, []);
 
-    useEffect(() => {
-        setFormData(initialState);
-    }, [initialState, setFormData]);
-
     const setErrors = useCallback((errors) => {
         dispatch({ type: 'SET_ERRORS', payload: errors });
     }, []);
 
-    // --- FUNCIÓN DE INPUT MEJORADA CON FILTROS Y ERRORES EN LÍNEA ---
     const handleInputChange = useCallback((e) => {
         const { name, value } = e.target;
         const filterConfig = inputFilters[name];
-
         if (filterConfig && !filterConfig.regex.test(value)) {
-            // Si el valor no coincide, NO actualizamos el estado.
-            // En su lugar, establecemos un error específico para este campo.
-            setErrors({
-                ...formData.errors,
-                [name]: filterConfig.message || "Caracter no permitido."
-            });
+            setErrors({ [name]: filterConfig.message || "Caracter no permitido." });
             return;
         }
-        // Si el valor es válido, actualizamos el campo y limpiamos cualquier error previo.
         dispatch({ type: 'UPDATE_FIELD', payload: { name, value } });
-    }, [inputFilters, formData.errors, setErrors]);
+    }, [inputFilters, setErrors]);
 
     const handleValueChange = useCallback((name, value) => {
         dispatch({ type: 'UPDATE_FIELD', payload: { name, value } });
@@ -67,7 +55,6 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         const validationErrors = validate(formData);
         if (Object.keys(validationErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: validationErrors });
-            // Ya no usamos toast, la UI mostrará los errores.
             return;
         }
 
@@ -77,6 +64,7 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
             resetForm();
         } catch (error) {
             console.error("useForm: Ocurrió un error durante la ejecución de onSubmit.", error);
+            toast.error("Ocurrió un error inesperado al guardar.");
         } finally {
             setIsSubmitting(false);
         }
@@ -91,7 +79,6 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         handleValueChange,
         setFormData,
         setErrors,
-        resetForm,
-        dispatch
+        resetForm
     };
 };
