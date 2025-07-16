@@ -8,10 +8,30 @@ import Modal from '../../components/Modal.jsx';
 import { Pencil, FileText, XCircle, Loader } from 'lucide-react';
 import FileUpload from '../../components/FileUpload.jsx';
 import { Tooltip } from 'react-tooltip';
+import { useData } from '../../context/DataContext.jsx';
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
+const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
-const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar, viviendaDelAbono }) => {
+const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
+
+    const { viviendas, clientes } = useData();
+
+    const abonoEnriquecido = useMemo(() => {
+        if (!abonoAEditar) return null;
+        const vivienda = viviendas.find(v => v.id === abonoAEditar.viviendaId);
+        const cliente = clientes.find(c => c.id === abonoAEditar.clienteId);
+        return {
+            ...abonoAEditar,
+            vivienda,
+            cliente
+        };
+    }, [abonoAEditar, viviendas, clientes]);
 
     const initialState = useMemo(() => ({
         monto: abonoAEditar?.monto?.toString() || '',
@@ -25,7 +45,7 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar, viviendaDelAb
 
     const { formData, setFormData, handleSubmit, handleInputChange, handleValueChange, errors } = useForm({
         initialState,
-        validate: (data) => validateAbono(data, null, viviendaDelAbono?.cliente?.datosCliente?.fechaIngreso),
+        validate: (data) => validateAbono(data, null, abonoEnriquecido?.cliente?.datosCliente?.fechaIngreso, abonoEnriquecido),
         onSubmit: async (data) => {
             setIsSubmitting(true);
             const montoNumerico = parseInt(String(data.monto).replace(/\D/g, '')) || 0;
@@ -52,17 +72,18 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar, viviendaDelAb
         options: { resetOnSuccess: false }
     });
 
-    // Este useEffect ahora controla el reinicio del formulario. Es más seguro aquí.
     useEffect(() => {
         if (isOpen) {
             setFormData(initialState);
         }
     }, [isOpen, initialState, setFormData]);
 
-    // El estado de "hayCambios" ya no es necesario porque el botón de guardar se habilitará/deshabilitará
-    // en función de otras lógicas si es necesario, pero la validación principal la hace el submit.
+    const hayCambios = useMemo(() => {
+        if (!formData) return false;
+        return JSON.stringify(formData) !== JSON.stringify(initialState);
+    }, [formData, initialState]);
 
-    if (!isOpen) return null;
+    if (!isOpen || !abonoEnriquecido) return null;
 
     return (
         <>
@@ -79,7 +100,7 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar, viviendaDelAb
                                     value={formData.fechaPago || ''}
                                     onChange={handleInputChange}
                                     max={getTodayString()}
-                                    min={viviendaDelAbono?.cliente?.datosCliente?.fechaIngreso?.split('T')[0]}
+                                    min={abonoEnriquecido?.cliente?.datosCliente?.fechaIngreso?.split('T')[0]}
                                     className={`w-full border p-2 rounded-lg ${errors.fechaPago ? "border-red-500" : "border-gray-300"}`}
                                 />
                                 {errors.fechaPago && <p className="text-red-600 text-sm mt-1">{errors.fechaPago}</p>}
@@ -140,14 +161,16 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar, viviendaDelAb
                     <div className="flex justify-end gap-4 mt-8 pt-6 border-t">
                         <button type="button" onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-5 py-2 rounded-lg">Cancelar</button>
 
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg disabled:bg-gray-400 flex items-center gap-2"
-                        >
-                            {isSubmitting ? <Loader size={20} className="animate-spin" /> : null}
-                            {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
-                        </button>
+                        <span data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
+                            <button
+                                type="submit"
+                                disabled={!hayCambios || isSubmitting}
+                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg disabled:bg-gray-400 flex items-center gap-2"
+                            >
+                                {isSubmitting ? <Loader size={20} className="animate-spin" /> : null}
+                                {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
+                            </button>
+                        </span>
                     </div>
                 </form>
             </Modal>

@@ -24,10 +24,12 @@ const ListarViviendas = () => {
             color="#c62828"
             filterControls={
                 <>
+                    {/* --- BOTONES DE FILTRO ACTUALIZADOS --- */}
                     <div className="flex-shrink-0 bg-gray-100 p-1 rounded-lg">
                         <button onClick={() => filters.setStatusFilter('todas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'todas' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:bg-gray-200'}`}>Todas</button>
-                        <button onClick={() => filters.setStatusFilter('disponibles')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'disponibles' ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:bg-gray-200'}`}>Disponibles</button>
-                        <button onClick={() => filters.setStatusFilter('ocupadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'ocupadas' ? 'bg-white shadow text-red-600' : 'text-gray-600 hover:bg-gray-200'}`}>Ocupadas</button>
+                        <button onClick={() => filters.setStatusFilter('disponibles')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'disponibles' ? 'bg-white shadow text-yellow-600' : 'text-gray-600 hover:bg-gray-200'}`}>Disponibles</button>
+                        <button onClick={() => filters.setStatusFilter('asignadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'asignadas' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200'}`}>Asignadas</button>
+                        <button onClick={() => filters.setStatusFilter('pagadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'pagadas' ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:bg-gray-200'}`}>Pagadas</button>
                     </div>
                     <div className="w-full md:w-1/3">
                         <input type="text" placeholder="Buscar por Mz, Casa o Cliente..." className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-300" value={filters.searchTerm} onChange={(e) => filters.setSearchTerm(e.target.value)} />

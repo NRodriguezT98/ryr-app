@@ -7,11 +7,10 @@ import { Bell } from "lucide-react";
 import { useNotifications } from "../context/NotificationContext";
 import NotificationItem from "./notifications/NotificationItem";
 
-// Este componente NavLink ya no es necesario aquí, lo manejaremos directamente.
-
 const Navbar = () => {
     const location = useLocation();
     const { notifications, unreadCount, markAllAsRead } = useNotifications();
+
     const [isRinging, setIsRinging] = useState(false);
     const prevUnreadCount = useRef(unreadCount);
 
@@ -35,9 +34,8 @@ const Navbar = () => {
                         <img src={logo2} alt="Logo 2" className="h-9" />
                     </Link>
 
-                    {/* --- ESTRUCTURA DE MENÚS CORREGIDA Y SIMPLIFICADA --- */}
+                    {/* --- MENÚS DESPLEGABLES RESTAURADOS --- */}
                     <div className="hidden md:flex items-center space-x-1">
-                        {/* Menú Viviendas */}
                         <Menu as="div" className="relative inline-block text-left">
                             <Menu.Button className={`font-semibold text-gray-700 hover:text-[#c62828] focus:outline-none py-2 px-3 relative group rounded-md ${isActiveLink('/viviendas') ? 'text-[#c62828]' : ''}`}>
                                 Viviendas
@@ -45,15 +43,12 @@ const Navbar = () => {
                             </Menu.Button>
                             <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                                 <Menu.Items className="absolute left-0 mt-2 w-56 origin-top-left bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                    <div className="py-1">
-                                        <Menu.Item><Link to="/viviendas/crear" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Registrar Vivienda</Link></Menu.Item>
-                                        <Menu.Item><Link to="/viviendas/listar" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Ver Viviendas</Link></Menu.Item>
-                                    </div>
+                                    <div className="py-1"><Menu.Item><Link to="/viviendas/crear" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Registrar Vivienda</Link></Menu.Item></div>
+                                    <div className="py-1"><Menu.Item><Link to="/viviendas/listar" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Ver Viviendas</Link></Menu.Item></div>
                                 </Menu.Items>
                             </Transition>
                         </Menu>
 
-                        {/* Menú Clientes */}
                         <Menu as="div" className="relative inline-block text-left">
                             <Menu.Button className={`font-semibold text-gray-700 hover:text-[#1976d2] focus:outline-none py-2 px-3 relative group rounded-md ${isActiveLink('/clientes') ? 'text-[#1976d2]' : ''}`}>
                                 Clientes
@@ -61,15 +56,12 @@ const Navbar = () => {
                             </Menu.Button>
                             <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                                 <Menu.Items className="absolute left-0 mt-2 w-56 origin-top-left bg-white divide-y divide-gray-100 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                                    <div className="py-1">
-                                        <Menu.Item><Link to="/clientes/crear" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Registrar Cliente</Link></Menu.Item>
-                                        <Menu.Item><Link to="/clientes/listar" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Ver Clientes</Link></Menu.Item>
-                                    </div>
+                                    <div className="py-1"><Menu.Item><Link to="/clientes/crear" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Registrar Cliente</Link></Menu.Item></div>
+                                    <div className="py-1"><Menu.Item><Link to="/clientes/listar" className="text-gray-700 block px-4 py-2 text-sm hover:bg-gray-100">Ver Clientes</Link></Menu.Item></div>
                                 </Menu.Items>
                             </Transition>
                         </Menu>
 
-                        {/* Menú Abonos */}
                         <Menu as="div" className="relative inline-block text-left">
                             <Menu.Button className={`font-semibold text-gray-700 hover:text-green-600 focus:outline-none py-2 px-3 relative group rounded-md ${isActiveLink('/abonos') ? 'text-green-600' : ''}`}>
                                 Abonos
@@ -83,7 +75,6 @@ const Navbar = () => {
                             </Transition>
                         </Menu>
 
-                        {/* Enlace Renuncias */}
                         <Link to="/renuncias" className={`font-semibold text-gray-700 hover:text-orange-500 focus:outline-none py-2 px-3 relative group rounded-md ${isActiveLink('/renuncias') ? 'text-orange-500' : ''}`}>
                             Renuncias
                             <span className={`absolute left-0 bottom-0 w-full h-0.5 bg-orange-500 transform transition-transform duration-300 ease-out ${isActiveLink('/renuncias') ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></span>
@@ -117,12 +108,12 @@ const Navbar = () => {
                                         <div className="p-3 flex justify-between items-center border-b">
                                             <h3 className="text-md font-bold text-gray-800">Notificaciones</h3>
                                             {unreadCount > 0 && (
-                                                <button onClick={markAllAsRead} className="text-xs text-blue-600 hover:underline">Marcar todas como leídas</button>
+                                                <button onClick={() => { markAllAsRead(); close(); }} className="text-xs text-blue-600 hover:underline">Marcar todas como leídas</button>
                                             )}
                                         </div>
                                         <div className="overflow-hidden p-2 max-h-96 overflow-y-auto">
                                             {notifications.length > 0 ? (
-                                                notifications.map(notif => <NotificationItem key={notif.id} notification={notif} />)
+                                                notifications.map(notif => <NotificationItem key={notif.id} notification={notif} closePanel={close} />)
                                             ) : (
                                                 <p className="text-center text-gray-500 py-8 text-sm">No hay notificaciones</p>
                                             )}

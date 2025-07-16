@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useLocation } from 'react-router-dom';
 import { useData } from "../../context/DataContext";
 import { useUndoableDelete } from "../useUndoableDelete";
@@ -9,18 +9,33 @@ export const useListarViviendas = () => {
     const location = useLocation();
     const { isLoading, viviendas, recargarDatos } = useData();
 
-    // 1. Lógica de filtrado (antes en useViviendaFilters)
+    // El estado inicial ahora puede ser uno de los nuevos filtros
     const initialStateFromLink = location.state?.statusFilter || 'todas';
     const [statusFilter, setStatusFilter] = useState(initialStateFromLink);
     const [searchTerm, setSearchTerm] = useState('');
 
     const viviendasFiltradasYOrdenadas = useMemo(() => {
         let itemsProcesados = [...viviendas];
-        if (statusFilter === 'disponibles') {
-            itemsProcesados = itemsProcesados.filter(v => !v.clienteId);
-        } else if (statusFilter === 'ocupadas') {
-            itemsProcesados = itemsProcesados.filter(v => !!v.clienteId);
+
+        // --- LÓGICA DE FILTRADO ACTUALIZADA ---
+        switch (statusFilter) {
+            case 'disponibles':
+                itemsProcesados = itemsProcesados.filter(v => !v.clienteId);
+                break;
+            case 'asignadas':
+                // Asignada = Tiene cliente Y su saldo pendiente es mayor a 0
+                itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente > 0);
+                break;
+            case 'pagadas':
+                // Pagada = Tiene cliente Y su saldo pendiente es 0 o menos
+                itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente <= 0);
+                break;
+            case 'todas':
+            default:
+                // No se aplica ningún filtro de estado
+                break;
         }
+
         if (searchTerm) {
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
             itemsProcesados = itemsProcesados.filter(v =>
@@ -30,10 +45,10 @@ export const useListarViviendas = () => {
                 (v.clienteNombre || '').toLowerCase().includes(lowerCaseSearchTerm)
             );
         }
+
         return itemsProcesados.sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa);
     }, [viviendas, statusFilter, searchTerm]);
 
-    // 2. Lógica de borrado con "Deshacer"
     const { hiddenItems: viviendasOcultas, initiateDelete } = useUndoableDelete(
         async (vivienda) => deleteVivienda(vivienda.id),
         recargarDatos,
@@ -41,7 +56,6 @@ export const useListarViviendas = () => {
     );
     const viviendasVisibles = viviendasFiltradasYOrdenadas.filter(v => !viviendasOcultas.includes(v.id));
 
-    // 3. Lógica para manejar los modales
     const [viviendaAEditar, setViviendaAEditar] = useState(null);
     const [viviendaAEliminar, setViviendaAEliminar] = useState(null);
     const [viviendaConDescuento, setViviendaConDescuento] = useState(null);
@@ -66,11 +80,10 @@ export const useListarViviendas = () => {
         setViviendaAEliminar(null);
     };
 
-    // 4. Devolvemos todo lo que el componente necesita
     return {
         isLoading,
         viviendasVisibles,
-        todasLasViviendas: viviendas, // Para pasar al modal de edición
+        todasLasViviendas: viviendas,
         filters: {
             statusFilter, setStatusFilter,
             searchTerm, setSearchTerm

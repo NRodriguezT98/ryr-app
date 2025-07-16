@@ -39,7 +39,7 @@ export default {
         'ring': 'ring 0.5s ease-in-out',
       },
       fontFamily: {
-        poppins: ['Montserrat', 'sans-serif'],
+        montserrat: ['Montserrat', 'sans-serif'],
       },
     },
   },

@@ -8,7 +8,14 @@ import FileUpload from '../../components/FileUpload';
 import { validateAbono } from './abonoValidation.js';
 import { formatCurrency } from '../../utils/textFormatters.js';
 
-const getTodayString = () => new Date().toISOString().split('T')[0];
+// --- FUNCIÓN CORREGIDA ---
+const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 const ICONS = {
     cuotaInicial: <HandCoins className="w-8 h-8 text-yellow-600" />,
@@ -73,7 +80,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
     const handleCancelarFormulario = () => {
         resetForm();
         setMostrandoFormulario(false);
-    }
+    };
 
     const minDate = cliente?.datosCliente?.fechaIngreso ? cliente.datosCliente.fechaIngreso.split('T')[0] : null;
 
@@ -134,13 +141,9 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                             <div className="bg-green-50 border-2 border-green-200 rounded-lg p-3 flex items-center justify-between">
                                 <div className='flex items-center gap-2 text-green-800 font-semibold text-sm'>
                                     <FileText size={16} />
-                                    <a href={formData.urlComprobante} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                                        Ver Comprobante
-                                    </a>
+                                    <a href={formData.urlComprobante} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Comprobante</a>
                                 </div>
-                                <button type="button" onClick={() => handleValueChange('urlComprobante', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar comprobante">
-                                    <XCircle size={18} />
-                                </button>
+                                <button type="button" onClick={() => handleValueChange('urlComprobante', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar comprobante"><XCircle size={18} /></button>
                             </div>
                         ) : (
                             <FileUpload
