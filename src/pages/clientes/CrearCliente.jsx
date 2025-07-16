@@ -2,7 +2,7 @@ import React, { Fragment } from 'react';
 import AnimatedPage from '../../components/AnimatedPage';
 import FormularioCliente from './FormularioCliente';
 import { Home, User, CircleDollarSign, Check, Loader } from 'lucide-react';
-import { useCrearCliente } from '../../hooks/useCrearCliente';
+import { useCrearCliente } from '../../hooks/clientes/useCrearCliente.jsx'; // <-- RUTA ACTUALIZADA
 
 const CrearCliente = () => {
     const {

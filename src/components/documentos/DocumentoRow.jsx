@@ -37,8 +37,7 @@ const DocumentoRow = ({ label, isRequired, currentFileUrl, filePath, onUploadSuc
         : { text: "Pendiente", icon: <FileWarning className="text-orange-500" />, textColor: "text-orange-600" };
 
     return (
-        <div className="flex items-center justify-between p-3 border-b hover:bg-gray-50 transition-colors">
-            {/* Columna de Nombre y Estado */}
+        <div className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors">
             <div className="flex-1 flex flex-col">
                 <span className="font-semibold text-gray-800">{label}</span>
                 <div className={`flex items-center gap-1.5 text-xs font-medium ${statusInfo.textColor}`}>
@@ -47,7 +46,6 @@ const DocumentoRow = ({ label, isRequired, currentFileUrl, filePath, onUploadSuc
                 </div>
             </div>
 
-            {/* Columna de Acciones */}
             <div className="flex-none flex items-center gap-4 ml-4">
                 {isUploaded ? (
                     <>

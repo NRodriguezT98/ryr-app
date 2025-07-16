@@ -1,5 +1,7 @@
 import React from 'react';
 import FinancialBreakdownCard from './FinancialBreakdownCard';
+// --- RUTA CORREGIDA AQUÍ (se añadieron dos puntos "..") ---
+import StatCard from '../../../components/dashboard/StatCard';
 import FuenteDePagoCard from '../../abonos/FuenteDePagoCard';
 import AbonoCard from '../../abonos/AbonoCard';
 import { formatCurrency } from '../../../utils/textFormatters';

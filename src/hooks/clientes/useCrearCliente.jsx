@@ -2,11 +2,11 @@ import { useReducer, useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
 // --- RUTA CORREGIDA AQUÍ ---
-import { validateCliente, validateFinancialStep } from '../pages/clientes/clienteValidation.js';
-import { getClientes, getViviendas, addClienteAndAssignVivienda, createNotification } from '../utils/storage.js';
-import { PASOS_SEGUIMIENTO_CONFIG } from '../utils/seguimientoConfig.js';
-import { useForm } from './useForm.jsx';
-import { formatCurrency } from '../utils/textFormatters.js';
+import { validateCliente, validateFinancialStep } from '../../pages/clientes/clienteValidation.js';
+import { getClientes, getViviendas, addClienteAndAssignVivienda, createNotification } from '../../utils/storage.js';
+import { PASOS_SEGUIMIENTO_CONFIG } from '../../utils/seguimientoConfig.js';
+import { useForm } from '../useForm.jsx';
+import { formatCurrency } from '../../utils/textFormatters.js';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 

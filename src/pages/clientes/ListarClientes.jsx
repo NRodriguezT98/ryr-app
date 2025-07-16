@@ -1,5 +1,6 @@
 import React from "react";
-import { useListarClientes } from "../../hooks/useListarClientes.jsx"; // <-- RUTA CORREGIDA
+// --- RUTA CORREGIDA AQUÍ ---
+import { useListarClientes } from "../../hooks/clientes/useListarClientes.jsx";
 import ResourcePageLayout from "../../layout/ResourcePageLayout";
 import ClienteCard from './ClienteCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
@@ -66,7 +67,7 @@ const ListarClientes = () => {
             )}
 
             {modals.clienteAEliminar && (<ModalConfirmacion isOpen={!!modals.clienteAEliminar} onClose={() => modals.setClienteAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Cliente?" mensaje="¿Estás seguro? Tendrás 5 segundos para deshacer." />)}
-            {modals.clienteAEditar && (<EditarCliente isOpen={!!modals.clienteAEditar} onClose={() => modals.setClienteAEditar(null)} onGuardar={handlers.handleGuardado} clienteAEditar={modals.clienteAEditar} todosLosClientes={clientesVisibles} />)}
+            {modals.clienteAEditar && (<EditarCliente isOpen={!!modals.clienteAEditar} onClose={() => modals.setClienteAEditar(null)} onGuardar={handlers.handleGuardado} clienteAEditar={modals.clienteAEditar} />)}
             {modals.clienteARenunciar && (<ModalMotivoRenuncia isOpen={!!modals.clienteARenunciar} onClose={() => modals.setClienteARenunciar(null)} onConfirm={handlers.handleConfirmarMotivo} cliente={modals.clienteARenunciar} />)}
             {modals.datosRenuncia && (<ModalConfirmacion isOpen={!!modals.datosRenuncia} onClose={() => modals.setDatosRenuncia(null)} onConfirm={handlers.confirmarRenunciaFinal} titulo="¿Confirmar Renuncia?" mensaje={`¿Seguro de procesar la renuncia para ${modals.datosRenuncia.cliente.datosCliente.nombres} con motivo "${modals.datosRenuncia.motivo}"?`} isSubmitting={modals.isSubmitting} />)}
             {modals.clienteAReactivar && (<ModalConfirmacion isOpen={!!modals.clienteAReactivar} onClose={() => modals.setClienteAReactivar(null)} onConfirm={handlers.confirmarReactivacion} titulo="¿Reactivar Cliente?" mensaje={`¿Estás seguro de reactivar a ${modals.clienteAReactivar.datosCliente.nombres}? Volverá a la lista de clientes activos.`} isSubmitting={modals.isSubmitting} />)}

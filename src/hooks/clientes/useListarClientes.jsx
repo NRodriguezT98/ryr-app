@@ -1,10 +1,13 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { useData } from '../context/DataContext';
-import { deleteCliente, renunciarAVivienda, reactivarCliente, createNotification } from '../utils/storage';
+import { useLocation } from 'react-router-dom';
+// --- RUTA CORREGIDA AQUÍ (se añadieron dos puntos "..") ---
+import { useData } from '../../context/DataContext';
+import { deleteCliente, renunciarAVivienda, reactivarCliente, createNotification } from '../../utils/storage';
 import toast from 'react-hot-toast';
-import UndoToast from '../components/UndoToast';
+import UndoToast from '../../components/UndoToast';
 
 export const useListarClientes = () => {
+    const location = useLocation();
     const { isLoading, clientes, viviendas, renuncias, recargarDatos } = useData();
 
     // Estados para los modales

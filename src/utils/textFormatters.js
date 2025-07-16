@@ -44,3 +44,27 @@ export const formatID = (cedula) => {
     if (!cedula) return '';
     return Number(cedula).toLocaleString("es-CO");
 };
+
+/**
+ * Formatea un string de fecha (YYYY-MM-DD) a un formato legible (ej: 15 de julio de 2024).
+ * @param {string} dateString - La fecha en formato YYYY-MM-DD.
+ * @returns {string} La fecha formateada.
+ */
+export const formatDisplayDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    // Se añade 'T00:00:00' para evitar problemas de zona horaria
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+
+/**
+ * Obtiene las iniciales de un nombre y un apellido.
+ * @param {string} nombres - Los nombres.
+ * @param {string} apellidos - Los apellidos.
+ * @returns {string} Las iniciales en mayúsculas.
+ */
+export const getInitials = (nombres = '', apellidos = '') => {
+    const n = nombres.charAt(0) || '';
+    const a = apellidos.charAt(0) || '';
+    return `${n}${a}`.toUpperCase();
+};

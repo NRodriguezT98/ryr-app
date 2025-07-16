@@ -1,21 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useForm } from '../../hooks/useForm.jsx';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from 'react';
 import { NumericFormat } from 'react-number-format';
-import { addAbono, createNotification } from '../../utils/storage';
+import { useAbonoForm } from '../../hooks/abonos/useAbonoForm.jsx';
 import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle, Loader } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
-import { validateAbono } from './abonoValidation.js';
 import { formatCurrency } from '../../utils/textFormatters.js';
-
-// --- FUNCIÓN CORREGIDA ---
-const getTodayString = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
 
 const ICONS = {
     cuotaInicial: <HandCoins className="w-8 h-8 text-yellow-600" />,
@@ -32,57 +20,37 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
     const saldoPendiente = montoPactado - totalAbonado;
     const porcentajePagado = montoPactado > 0 ? (totalAbonado / montoPactado) * 100 : 100;
 
-    const initialAbonoFormState = useMemo(() => ({
-        monto: '',
-        fechaPago: getTodayString(),
-        observacion: '',
-        urlComprobante: null,
-        metodoPago: titulo
-    }), [titulo]);
-
-    const { formData, errors, setFormData, handleInputChange, handleValueChange, handleSubmit, isSubmitting, resetForm } = useForm({
-        initialState: initialAbonoFormState,
-        validate: (data) => validateAbono(data, { saldoPendiente }, cliente?.datosCliente?.fechaIngreso),
-        onSubmit: async (data) => {
-            const nuevoAbono = {
-                fechaPago: data.fechaPago,
-                monto: parseInt(String(data.monto).replace(/\D/g, ''), 10) || 0,
-                metodoPago: data.metodoPago,
-                fuente: fuente,
-                observacion: data.observacion.trim(),
-                urlComprobante: data.urlComprobante,
-                viviendaId: vivienda.id,
-                clienteId: vivienda.clienteId,
-            };
-
-            try {
-                await addAbono(nuevoAbono);
-                toast.success("Abono registrado con éxito.");
-
-                const message = `Nuevo abono de ${formatCurrency(nuevoAbono.monto)} para la vivienda Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`;
-                await createNotification('abono', message, `/viviendas/detalle/${nuevoAbono.viviendaId}`);
-
-                resetForm();
+    const {
+        formData, errors, handleInputChange, handleValueChange,
+        handleSubmit, isSubmitting, resetForm, setFormData
+    } = useAbonoForm({
+        fuente,
+        titulo,
+        saldoPendiente,
+        vivienda,
+        cliente,
+        onAbonoRegistrado: (cerrarFormulario) => {
+            onAbonoRegistrado();
+            if (cerrarFormulario) {
                 setMostrandoFormulario(false);
-                onAbonoRegistrado();
-            } catch (error) {
-                toast.error("No se pudo registrar el abono.");
             }
         }
     });
 
     useEffect(() => {
         if (mostrandoFormulario) {
-            setFormData(initialAbonoFormState);
+            setFormData({
+                monto: '',
+                fechaPago: new Date().toISOString().split('T')[0],
+                observacion: '',
+                urlComprobante: null,
+                metodoPago: titulo
+            });
         }
-    }, [mostrandoFormulario, initialAbonoFormState, setFormData]);
-
-    const handleCancelarFormulario = () => {
-        resetForm();
-        setMostrandoFormulario(false);
-    };
+    }, [mostrandoFormulario, setFormData, titulo]);
 
     const minDate = cliente?.datosCliente?.fechaIngreso ? cliente.datosCliente.fechaIngreso.split('T')[0] : null;
+    const getTodayString = () => new Date().toISOString().split('T')[0];
 
     return (
         <div className="bg-white p-5 rounded-xl border border-gray-200">
@@ -154,7 +122,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                         )}
                     </div>
                     <div className="flex justify-end gap-2">
-                        <button type="button" onClick={handleCancelarFormulario} className="bg-gray-200 px-4 py-1.5 rounded-md text-sm">Cancelar</button>
+                        <button type="button" onClick={() => setMostrandoFormulario(false)} className="bg-gray-200 px-4 py-1.5 rounded-md text-sm">Cancelar</button>
                         <button type="submit" disabled={isSubmitting} className="bg-blue-500 text-white px-4 py-1.5 rounded-md text-sm disabled:bg-gray-400 flex items-center justify-center gap-2">
                             {isSubmitting && <Loader size={16} className="animate-spin" />}
                             {isSubmitting ? 'Guardando...' : 'Guardar Abono'}
