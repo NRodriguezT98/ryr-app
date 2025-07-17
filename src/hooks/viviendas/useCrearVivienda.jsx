@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useForm } from "../useForm.jsx";
-import { validateVivienda } from "../../pages/viviendas/viviendaValidation.js";
+import { validateVivienda } from "../../utils/validation.js"; // <-- RUTA ACTUALIZADA
 import { addVivienda, getViviendas } from "../../utils/storage";
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;

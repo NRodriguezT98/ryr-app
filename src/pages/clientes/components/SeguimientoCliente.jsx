@@ -20,7 +20,6 @@ const SeguimientoItem = ({ paso, data, onUpdate, isLocked, minDate, previousStep
             return;
         }
 
-        // Al marcar, no ponemos fecha automáticamente para forzar al usuario.
         const newDate = completado ? localDate : null;
         onUpdate(paso.key, { completado, fecha: newDate });
     };
@@ -31,19 +30,15 @@ const SeguimientoItem = ({ paso, data, onUpdate, isLocked, minDate, previousStep
             const fechaMinimaProceso = new Date(minDate + 'T00:00:00');
 
             if (fechaSeleccionada < fechaMinimaProceso) {
-                toast.error(`La fecha no puede ser anterior al inicio del proceso (${fechaMinimaProceso.toLocaleDateString('es-ES')}).`);
+                toast.error(`La fecha no puede ser anterior al inicio del proceso (${new Date(minDate).toLocaleDateString('es-ES')}).`);
                 return;
             }
 
-            if (previousStepDate) {
-                const fechaPasoAnterior = new Date(previousStepDate + 'T00:00:00');
-                if (fechaSeleccionada < fechaPasoAnterior) {
-                    toast.error(`La fecha no puede ser anterior a la del paso previo (${fechaPasoAnterior.toLocaleDateString('es-ES')}).`);
-                    return;
-                }
+            if (previousStepDate && new Date(previousStepDate) > fechaSeleccionada) {
+                toast.error(`La fecha no puede ser anterior a la del paso previo (${new Date(previousStepDate).toLocaleDateString('es-ES')}).`);
+                return;
             }
         }
-        // Actualizamos el estado padre solo al perder el foco
         onUpdate(paso.key, { completado: !!localDate, fecha: localDate || null });
     };
 
@@ -71,6 +66,7 @@ const SeguimientoItem = ({ paso, data, onUpdate, isLocked, minDate, previousStep
                             onChange={(e) => setLocalDate(e.target.value)}
                             onBlur={handleDateBlur}
                             min={previousStepDate || minDate}
+                            max={getTodayString()}
                             className="text-sm border-b bg-transparent"
                         />
                     </div>
@@ -99,7 +95,7 @@ const SeguimientoCliente = ({ cliente, onSave }) => {
     };
 
     const pasosAplicables = PASOS_SEGUIMIENTO_CONFIG.filter(paso =>
-        Object.prototype.hasOwnProperty.call(cliente.seguimiento, paso.key)
+        paso.aplicaA(cliente.financiero || {})
     );
 
     let previousStepValid = true;
@@ -121,9 +117,11 @@ const SeguimientoCliente = ({ cliente, onSave }) => {
                     const isLocked = !previousStepValid;
                     const pasoActual = seguimiento[paso.key];
 
-                    if (pasoActual?.completado && pasoActual?.fecha) {
+                    const isCurrentStepCompleted = pasoActual?.completado && pasoActual?.fecha;
+
+                    if (isCurrentStepCompleted) {
                         previousStepValid = true;
-                        lastCompletedDate = pasoActual.fecha;
+                        lastCompletedDate = pasoActual.fecha > lastCompletedDate ? pasoActual.fecha : lastCompletedDate;
                     } else {
                         previousStepValid = false;
                     }
@@ -138,7 +136,7 @@ const SeguimientoCliente = ({ cliente, onSave }) => {
                             minDate={cliente.datosCliente.fechaIngreso}
                             previousStepDate={lastCompletedDate}
                         />
-                    )
+                    );
                 })}
             </div>
         </div>

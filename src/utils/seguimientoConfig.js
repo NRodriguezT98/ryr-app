@@ -1,99 +1,24 @@
 // src/utils/seguimientoConfig.js
 
-// Define el orden explícito de las etapas del proceso del cliente.
-// Estas serán los valores posibles para el nuevo campo 'currentStage' en el documento del cliente.
-export const PROCESS_STAGES_ORDER = [
-    'DOCUMENTACION_INICIAL',
-    'PROCESO_PROMESA',
-    'PROCESO_AVALUO',
-    'ESTUDIO_TITULOS_Y_ESCRITURA',
-    'ENTREGA_REGISTRO_Y_DESEMBOLSO',
-    'PROCESO_COMPLETADO', // Etapa final cuando todo está en orden
-];
-
-// Aquí definimos todos los pasos posibles y la lógica para saber si aplican a un cliente,
-// y a qué etapa principal del proceso pertenecen.
+// Nueva lista de 19 pasos para el seguimiento del cliente con sus reglas de aplicación.
 export const PASOS_SEGUIMIENTO_CONFIG = [
-    // Etapa: DOCUMENTACION_INICIAL (No hay un paso específico que "active" esta etapa, es la predeterminada)
-    // Los pasos iniciales de documentación como 'urlCedula' están en los datos del cliente.
-
-    // Etapa: PROCESO_PROMESA
-    {
-        key: 'promesaEnviada',
-        label: 'Promesa de Compraventa Enviada',
-        aplicaA: () => true,
-        stage: 'PROCESO_PROMESA'
-    },
-    {
-        key: 'promesaRecibida',
-        label: 'Promesa de Compraventa Firmada',
-        aplicaA: () => true,
-        stage: 'PROCESO_PROMESA'
-    },
-
-    // Etapa: PROCESO_AVALUO
-    {
-        key: 'envioDocumentacionAvaluo',
-        label: 'Envío documentación para Avalúo',
-        aplicaA: (financiero) => financiero.aplicaCredito,
-        stage: 'PROCESO_AVALUO'
-    },
-    {
-        key: 'avaluoRealizado',
-        label: 'Avalúo Realizado',
-        aplicaA: (financiero) => financiero.aplicaCredito,
-        stage: 'PROCESO_AVALUO'
-    },
-
-    // Etapa: ESTUDIO_TITULOS_Y_ESCRITURA
-    {
-        key: 'pagoEstudioTitulos',
-        label: 'Pago Estudio de Títulos',
-        aplicaA: () => true,
-        stage: 'ESTUDIO_TITULOS_Y_ESCRITURA'
-    },
-    {
-        key: 'escrituraEnviada',
-        label: 'Escritura Enviada a Notaría',
-        aplicaA: () => true,
-        stage: 'ESTUDIO_TITULOS_Y_ESCRITURA'
-    },
-    {
-        key: 'escrituraFirmada',
-        label: 'Escritura Firmada por Cliente',
-        aplicaA: () => true,
-        stage: 'ESTUDIO_TITULOS_Y_ESCRITURA'
-    },
-
-    // Etapa: ENTREGA_REGISTRO_Y_DESEMBOLSO
-    {
-        key: 'actaEntregaEnviada',
-        label: 'Acta de Entrega Enviada',
-        aplicaA: () => true,
-        stage: 'ENTREGA_REGISTRO_Y_DESEMBOLSO'
-    },
-    {
-        key: 'actaEntregaRecibida',
-        label: 'Acta de Entrega Firmada',
-        aplicaA: () => true,
-        stage: 'ENTREGA_REGISTRO_Y_DESEMBOLSO'
-    },
-    {
-        key: 'boletaRegistro',
-        label: 'Boleta de Registro Emitida',
-        aplicaA: () => true,
-        stage: 'ENTREGA_REGISTRO_Y_DESEMBOLSO'
-    },
-    {
-        key: 'solicitudDesembolso',
-        label: 'Solicitud Desembolso de Crédito',
-        aplicaA: (financiero) => financiero.aplicaCredito,
-        stage: 'ENTREGA_REGISTRO_Y_DESEMBOLSO'
-    },
-    {
-        key: 'desembolsoSubsidio',
-        label: 'Desembolso de Subsidio',
-        aplicaA: (financiero) => financiero.aplicaSubsidioVivienda || financiero.aplicaSubsidioCaja,
-        stage: 'ENTREGA_REGISTRO_Y_DESEMBOLSO'
-    },
+    { key: 'promesaEnviada', label: '1. Promesa de Compraventa Enviada', aplicaA: () => true },
+    { key: 'promesaRecibida', label: '2. Promesa de Compraventa Firmada', aplicaA: () => true },
+    { key: 'envioDocumentacionAvaluo', label: '3. Envío Documentación para Avalúo', aplicaA: (financiero) => financiero.aplicaCredito },
+    { key: 'pagoEstudioTitulos', label: '4. Pago Estudio de Títulos', aplicaA: (financiero) => financiero.aplicaCredito },
+    { key: 'minutaEnviadaAbogada', label: '5. Minuta de Compraventa Enviada a Abogada', aplicaA: (financiero) => financiero.aplicaCredito },
+    { key: 'minutaAprobadaAbogada', label: '6. Minuta Aprobada por Abogada', aplicaA: (financiero) => financiero.aplicaCredito },
+    { key: 'minutaEnviadaNotaria', label: '7. Minuta Enviada a Notaría', aplicaA: (financiero) => financiero.aplicaCredito },
+    { key: 'minutaFirmada', label: '8. Minuta Firmada por Ambas Partes', aplicaA: () => true },
+    { key: 'actaEntregaEnviada', label: '9. Acta de Entrega Enviada', aplicaA: () => true },
+    { key: 'actaEntregaRecibida', label: '10. Acta de Entrega Firmada', aplicaA: () => true },
+    { key: 'pagoBoletaFiscal', label: '11. Pago de Boleta Fiscal', aplicaA: () => true },
+    { key: 'pagoBoletaRegistro', label: '12. Pago de Boleta de Registro', aplicaA: () => true },
+    { key: 'solicitudDesembolsoCredito', label: '13. Solicitud Desembolso Crédito', aplicaA: (financiero) => financiero.aplicaCredito },
+    { key: 'desembolsoCredito', label: '14. Crédito Desembolsado', aplicaA: (financiero) => financiero.aplicaCredito },
+    { key: 'solicitudDesembolsoMCY', label: '15. Solicitud Desembolso Sub. MCY', aplicaA: (financiero) => financiero.aplicaSubsidioVivienda },
+    { key: 'desembolsoMCY', label: '16. Subsidio MCY Desembolsado', aplicaA: (financiero) => financiero.aplicaSubsidioVivienda },
+    { key: 'solicitudDesembolsoCaja', label: '17. Solicitud Desembolso Sub. Caja Comp.', aplicaA: (financiero) => financiero.aplicaSubsidioCaja },
+    { key: 'desembolsoCaja', label: '18. Subsidio Caja Comp. Desembolsado', aplicaA: (financiero) => financiero.aplicaSubsidioCaja },
+    { key: 'facturaVenta', label: '19. Factura de Venta', aplicaA: () => true },
 ];

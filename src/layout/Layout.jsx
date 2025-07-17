@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { Tooltip } from "react-tooltip";
 import 'react-tooltip/dist/react-tooltip.css';
-import ErrorBoundary from "../components/ErrorBoundary"; // <-- 1. Importamos nuestro nuevo componente
+import ErrorBoundary from "../components/ErrorBoundary";
 
 export default function Layout() {
     return (
@@ -10,7 +10,6 @@ export default function Layout() {
             <Navbar />
             <main>
                 <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-                    {/* --- 2. ENVOLVEMOS EL OUTLET --- */}
                     <ErrorBoundary>
                         <Outlet />
                     </ErrorBoundary>

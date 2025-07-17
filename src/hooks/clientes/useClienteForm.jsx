@@ -1,7 +1,7 @@
 import { useReducer, useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
-import { validateCliente, validateFinancialStep, validateEditarCliente } from '../../pages/clientes/clienteValidation.js';
+import { validateCliente, validateFinancialStep, validateEditarCliente } from '../../utils/validation.js';
 import { getClientes, addClienteAndAssignVivienda, updateCliente, getAbonos, createNotification } from '../../utils/storage.js';
 import { useData } from '../../context/DataContext.jsx';
 import { PASOS_SEGUIMIENTO_CONFIG } from '../../utils/seguimientoConfig.js';
@@ -18,7 +18,7 @@ const blankInitialState = {
     },
     financiero: {
         aplicaCuotaInicial: false, cuotaInicial: { monto: 0 },
-        aplicaCredito: false, credito: { banco: '', monto: 0 },
+        aplicaCredito: false, credito: { banco: '', monto: 0, caso: '' },
         aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
         aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 },
     },
@@ -39,8 +39,13 @@ function formReducer(state, action) {
         }
         case 'UPDATE_FINANCIAL_FIELD': {
             const { section, field, value } = action.payload;
-            const newFinancials = { ...state.financiero, [section]: { ...state.financiero[section], [field]: value } };
-            return { ...state, financiero: newFinancials, errors: { ...state.errors, financiero: null } };
+            const newFinancials = {
+                ...state.financiero,
+                [section]: { ...state.financiero[section], [field]: value }
+            };
+            const newErrors = { ...state.errors };
+            delete newErrors[`${section}_${field}`];
+            return { ...state, financiero: newFinancials, errors: newErrors };
         }
         case 'TOGGLE_FINANCIAL_OPTION': {
             const newFinancials = { ...state.financiero, [action.payload.field]: action.payload.value };
@@ -85,12 +90,26 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field: name, value } });
     }, [dispatch]);
 
+    // --- NUEVO HANDLER CENTRALIZADO PARA CAMPOS FINANCIEROS ---
+    const handleFinancialFieldChange = useCallback((section, field, value) => {
+        // Lógica de filtrado para el campo 'caso'
+        if (field === 'caso') {
+            const filter = /^[a-zA-Z0-9_-]*$/; // Permite letras, números, guion bajo y guion medio
+            if (!filter.test(value)) {
+                dispatch({ type: 'SET_ERRORS', payload: { [`${section}_${field}`]: 'Solo se permiten letras, números, _ y -.' } });
+                return;
+            }
+        }
+        dispatch({ type: 'UPDATE_FINANCIAL_FIELD', payload: { section, field, value } });
+    }, [dispatch]);
+
+
     useEffect(() => {
         if (isEditing && clienteAEditar) {
             const viviendaAsignada = viviendas.find(v => v.id === clienteAEditar.viviendaId);
             setViviendaOriginalId(clienteAEditar.viviendaId);
             getAbonos().then(abonos => setAbonosDelCliente(abonos.filter(a => a.clienteId === clienteAEditar.id)));
-            const initialStateForEdit = { ...blankInitialState, ...clienteAEditar, viviendaSeleccionada: viviendaAsignada || null, errors: {} };
+            const initialStateForEdit = { ...blankInitialState, ...clienteAEditar, financiero: { ...blankInitialState.financiero, ...clienteAEditar.financiero }, viviendaSeleccionada: viviendaAsignada || null, errors: {} };
             dispatch({ type: 'INITIALIZE_FORM', payload: initialStateForEdit });
             setInitialData(JSON.parse(JSON.stringify(initialStateForEdit)));
         }
@@ -192,9 +211,8 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         }
 
         if (isEditing) {
-            // --- LÓGICA DE DETECCIÓN DE CAMBIOS MEJORADA ---
             const cambiosDetectados = [];
-            const labels = { nombres: "Nombres", apellidos: "Apellidos", telefono: "Teléfono", correo: "Correo", direccion: "Dirección", fechaIngreso: "Fecha de Ingreso" };
+            const labels = { nombres: "Nombres", apellidos: "Apellidos", telefono: "Teléfono", correo: "Correo", direccion: "Dirección", fechaIngreso: "Fecha de Ingreso", caso: "Número de Caso" };
 
             const formatValue = (key, value) => {
                 if (key === 'fechaIngreso') return formatDisplayDate(value);
@@ -210,7 +228,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             }
 
             for (const key in formData.datosCliente) {
-                if (!labels[key]) continue; // Solo nos interesan los campos con etiqueta
+                if (!labels[key]) continue;
                 if (String(initialData.datosCliente[key] || '') !== String(formData.datosCliente[key] || '')) {
                     cambiosDetectados.push({
                         campo: labels[key],
@@ -219,6 +237,15 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     });
                 }
             }
+
+            if (initialData.financiero?.credito?.caso !== formData.financiero?.credito?.caso) {
+                cambiosDetectados.push({
+                    campo: labels.caso,
+                    anterior: formatValue('caso', initialData.financiero.credito.caso),
+                    actual: formatValue('caso', formData.financiero.credito.caso)
+                });
+            }
+
             setCambios(cambiosDetectados);
             setIsConfirming(true);
         } else {
@@ -243,7 +270,8 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             handlePrevStep,
             handleSave,
             executeSave,
-            handleInputChange
+            handleInputChange,
+            handleFinancialFieldChange // <-- Exportamos el nuevo handler
         }
     };
 };

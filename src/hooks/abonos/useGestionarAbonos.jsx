@@ -1,12 +1,11 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useData } from '../../context/DataContext';
-import { useClienteFinanciero } from '../clientes/useClienteFinanciero';
 import { deleteAbono } from '../../utils/storage';
 import toast from 'react-hot-toast';
 import UndoToast from '../../components/UndoToast';
 
 export const useGestionarAbonos = () => {
-    const { isLoading: isDataLoading, clientes, viviendas, recargarDatos } = useData();
+    const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos } = useData();
     const [selectedClienteId, setSelectedClienteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -15,26 +14,67 @@ export const useGestionarAbonos = () => {
     const [abonosOcultos, setAbonosOcultos] = useState([]);
     const deletionTimeouts = useRef({});
 
-    // 1. Llamamos al hook de datos financieros desde aquí
-    const { isLoading: isFinancialDataLoading, data: datosClienteSeleccionado } = useClienteFinanciero(selectedClienteId);
+    const datosClienteSeleccionado = useMemo(() => {
+        if (!selectedClienteId || isDataLoading) {
+            return null;
+        }
 
-    // 2. Combinamos los estados de carga
-    const isLoading = isDataLoading || (selectedClienteId && isFinancialDataLoading);
+        const cliente = clientes.find(c => c.id === selectedClienteId);
+        if (!cliente) return null;
 
-    // 3. Lógica de filtrado de clientes
+        const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
+        if (!vivienda) return { data: { cliente, vivienda: null, historial: [], fuentes: [] } };
+
+        const historial = abonos
+            .filter(a => a.clienteId === selectedClienteId)
+            .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
+
+        const fuentes = [];
+        if (cliente.financiero) {
+            const { financiero } = cliente;
+            const crearFuente = (titulo, fuente, montoPactado) => ({
+                titulo, fuente, montoPactado, abonos: historial.filter(a => a.fuente === fuente)
+            });
+            if (financiero.aplicaCuotaInicial) fuentes.push(crearFuente("Cuota Inicial", "cuotaInicial", financiero.cuotaInicial.monto || 0));
+            if (financiero.aplicaCredito) fuentes.push(crearFuente("Crédito Hipotecario", "credito", financiero.credito.monto || 0));
+            if (financiero.aplicaSubsidioVivienda) fuentes.push(crearFuente("Subsidio Mi Casa Ya", "subsidioVivienda", financiero.subsidioVivienda.monto || 0));
+            if (financiero.aplicaSubsidioCaja) fuentes.push(crearFuente(`Subsidio Caja (${financiero.subsidioCaja.caja || 'N/A'})`, "subsidioCaja", financiero.subsidioCaja.monto || 0));
+        }
+
+        return {
+            data: {
+                cliente,
+                vivienda,
+                historial,
+                fuentes
+            }
+        };
+    }, [selectedClienteId, clientes, viviendas, abonos, isDataLoading]);
+
+    const isLoading = isDataLoading;
+
     const clientesConVivienda = useMemo(() => clientes.filter(c => c.vivienda && c.status === 'activo'), [clientes]);
 
     const clientesFiltrados = useMemo(() => {
-        if (!searchTerm.trim()) return [];
-        const lowerCaseSearchTerm = searchTerm.toLowerCase().replace(/\s/g, '');
-        return clientesConVivienda.filter(c => {
-            const nombreCompleto = `${c.datosCliente.nombres} ${c.datosCliente.apellidos}`.toLowerCase();
-            const ubicacion = `${c.vivienda.manzana}${c.vivienda.numeroCasa}`.toLowerCase().replace(/\s/g, '');
-            return nombreCompleto.includes(searchTerm.toLowerCase()) || ubicacion.includes(lowerCaseSearchTerm);
-        }).sort((a, b) => a.vivienda.manzana.localeCompare(b.vivienda.manzana) || a.vivienda.numeroCasa - b.vivienda.numeroCasa);
-    }, [clientesConVivienda, searchTerm]);
+        // --- LÓGICA DE FILTRADO Y ORDENACIÓN MEJORADA ---
+        const clientesActivos = clientes.filter(c => c.vivienda && c.status === 'activo');
 
-    // 4. Lógica para manejar los abonos (edición, eliminación)
+        const filtrados = searchTerm.trim()
+            ? clientesActivos.filter(c => {
+                const nombreCompleto = `${c.datosCliente.nombres} ${c.datosCliente.apellidos}`.toLowerCase();
+                const ubicacion = `mz ${c.vivienda.manzana} casa ${c.vivienda.numeroCasa}`.toLowerCase().replace(/\s/g, '');
+                const cedula = c.datosCliente.cedula;
+                return nombreCompleto.includes(searchTerm.toLowerCase()) || ubicacion.includes(searchTerm.toLowerCase().replace(/\s/g, '')) || cedula.includes(searchTerm);
+            })
+            : clientesActivos;
+
+        return filtrados.sort((a, b) => {
+            const manzanaComp = a.vivienda.manzana.localeCompare(b.vivienda.manzana);
+            if (manzanaComp !== 0) return manzanaComp;
+            return a.vivienda.numeroCasa - b.vivienda.numeroCasa;
+        });
+    }, [clientes, searchTerm]);
+
     const handleGuardadoEdicion = useCallback(() => {
         recargarDatos();
         setAbonoAEditar(null);
@@ -69,7 +109,6 @@ export const useGestionarAbonos = () => {
         setAbonoAEliminar(null);
     };
 
-    // Devolvemos todo lo que el componente necesita
     return {
         isLoading,
         searchTerm, setSearchTerm,

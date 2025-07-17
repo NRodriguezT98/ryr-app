@@ -6,7 +6,6 @@ import HelpTooltip from '../../../components/HelpTooltip';
 import { formatCurrency } from '../../../utils/textFormatters';
 import { useClienteFinanciero } from '../../../hooks/clientes/useClienteFinanciero';
 
-// --- CONSTANTES AÑADIDAS PARA CORREGIR EL ERROR ---
 const creditoOptions = [
     { value: 'Bancolombia', label: 'Bancolombia' },
     { value: 'Davivienda', label: 'Davivienda' },
@@ -20,7 +19,6 @@ const cajaOptions = [
     { value: 'Comfenalco', label: 'Comfenalco' },
     { value: 'Otra', label: 'Otra' }
 ];
-// ----------------------------------------------------
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 
@@ -43,8 +41,7 @@ const getSelectStyles = (hasError) => ({
     }),
 });
 
-
-const Step3_Financial = ({ formData, dispatch, errors }) => {
+const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange }) => {
     const { financiero, viviendaSeleccionada } = formData;
     const resumenFinanciero = useClienteFinanciero(financiero, viviendaSeleccionada?.valorTotal);
 
@@ -52,9 +49,6 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
         dispatch({ type: 'TOGGLE_FINANCIAL_OPTION', payload: { field: e.target.name, value: e.target.checked } });
     }, [dispatch]);
 
-    const handleFieldChange = useCallback((section, field, value) => {
-        dispatch({ type: 'UPDATE_FINANCIAL_FIELD', payload: { section, field, value } });
-    }, [dispatch]);
     return (
         <AnimatedPage>
             <div className="space-y-6">
@@ -107,7 +101,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                         {financiero.aplicaCuotaInicial && (
                             <div className="space-y-1 mt-4 pt-4 border-t border-dashed animate-fade-in">
                                 <label className="text-xs font-medium text-gray-500 flex items-center">Monto<HelpTooltip id="cuota" content="Monto que el cliente aporta como cuota inicial." /></label>
-                                <NumericFormat value={financiero.cuotaInicial.monto} onValueChange={(values) => handleFieldChange('cuotaInicial', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.cuotaInicial_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                <NumericFormat value={financiero.cuotaInicial.monto} onValueChange={(values) => handleFinancialFieldChange('cuotaInicial', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.cuotaInicial_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                 {errors.cuotaInicial_monto && <p className="text-red-600 text-sm mt-1">{errors.cuotaInicial_monto}</p>}
                             </div>
                         )}
@@ -123,15 +117,29 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className='space-y-1'>
                                         <label className="text-xs font-medium text-gray-500">Banco</label>
-                                        <Select options={creditoOptions} value={creditoOptions.find(o => o.value === financiero.credito.banco)} onChange={(opt) => handleFieldChange('credito', 'banco', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.credito_banco)} />
+                                        <Select options={creditoOptions} value={creditoOptions.find(o => o.value === financiero.credito.banco)} onChange={(opt) => handleFinancialFieldChange('credito', 'banco', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.credito_banco)} />
                                         {errors.credito_banco && <p className="text-red-600 text-sm mt-1">{errors.credito_banco}</p>}
                                     </div>
                                     <div className='space-y-1'>
                                         <label className="text-xs font-medium text-gray-500 flex items-center">Monto<HelpTooltip id="credito" content="Monto total del crédito aprobado." /></label>
-                                        <NumericFormat value={financiero.credito.monto} onValueChange={(values) => handleFieldChange('credito', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.credito_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                        <NumericFormat value={financiero.credito.monto} onValueChange={(values) => handleFinancialFieldChange('credito', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.credito_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                         {errors.credito_monto && <p className="text-red-600 text-sm mt-1">{errors.credito_monto}</p>}
                                     </div>
                                 </div>
+
+                                {financiero.credito.banco === 'Bancolombia' && (
+                                    <div className='space-y-1 animate-fade-in'>
+                                        <label className="text-xs font-medium text-gray-500 flex items-center">Número de Caso<HelpTooltip id="caso" content="Número de caso SIB asignado por Bancolombia." /></label>
+                                        <input
+                                            name="caso"
+                                            type="text"
+                                            value={financiero.credito.caso || ''}
+                                            onChange={(e) => handleFinancialFieldChange('credito', 'caso', e.target.value)}
+                                            className={`w-full border p-2 rounded-lg ${errors.credito_caso ? 'border-red-500' : 'border-gray-300'}`}
+                                        />
+                                        {errors.credito_caso && <p className="text-red-600 text-sm mt-1">{errors.credito_caso}</p>}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -144,7 +152,7 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                         {financiero.aplicaSubsidioVivienda && (
                             <div className="space-y-1 mt-4 pt-4 border-t border-dashed animate-fade-in">
                                 <label className="text-xs font-medium text-gray-500 flex items-center">Monto del Subsidio<HelpTooltip id="sub-vivienda" content="Monto aprobado del subsidio del gobierno." /></label>
-                                <NumericFormat value={financiero.subsidioVivienda.monto} onValueChange={(values) => handleFieldChange('subsidioVivienda', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioVivienda_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                <NumericFormat value={financiero.subsidioVivienda.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioVivienda', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioVivienda_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                 {errors.subsidioVivienda_monto && <p className="text-red-600 text-sm mt-1">{errors.subsidioVivienda_monto}</p>}
                             </div>
                         )}
@@ -160,12 +168,12 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className='space-y-1'>
                                         <label className="text-xs font-medium text-gray-500">Caja</label>
-                                        <Select options={cajaOptions} value={cajaOptions.find(o => o.value === financiero.subsidioCaja.caja)} onChange={(opt) => handleFieldChange('subsidioCaja', 'caja', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.subsidioCaja_caja)} />
+                                        <Select options={cajaOptions} value={cajaOptions.find(o => o.value === financiero.subsidioCaja.caja)} onChange={(opt) => handleFinancialFieldChange('subsidioCaja', 'caja', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.subsidioCaja_caja)} />
                                         {errors.subsidioCaja_caja && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_caja}</p>}
                                     </div>
                                     <div className='space-y-1'>
                                         <label className="text-xs font-medium text-gray-500 flex items-center">Monto<HelpTooltip id="sub-caja" content="Monto aprobado del subsidio de la caja." /></label>
-                                        <NumericFormat value={financiero.subsidioCaja.monto} onValueChange={(values) => handleFieldChange('subsidioCaja', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioCaja_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                        <NumericFormat value={financiero.subsidioCaja.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioCaja', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioCaja_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                         {errors.subsidioCaja_monto && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_monto}</p>}
                                     </div>
                                 </div>

@@ -27,7 +27,6 @@ const GestionarAbonos = () => {
         return <div className="text-center p-10 animate-pulse">Cargando datos iniciales...</div>;
     }
 
-    // Filtramos el historial de abonos para la UI
     const historialVisible = datosClienteSeleccionado?.data.historial.filter(a => !abonosOcultos.includes(a.id)) || [];
 
     return (
@@ -45,7 +44,7 @@ const GestionarAbonos = () => {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                             <input
                                 type="text"
-                                placeholder="Buscar cliente o vivienda (ej: A1)"
+                                placeholder="Buscar cliente, cédula o vivienda (ej: A1)"
                                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -85,14 +84,25 @@ const GestionarAbonos = () => {
                                     <div><p className="text-sm font-semibold text-gray-500">Saldo Pendiente</p><p className="text-lg font-bold text-red-600">{formatCurrency(datosClienteSeleccionado.data.vivienda.saldoPendiente)}</p></div>
                                 </div>
                                 <h3 className="text-xl font-bold mb-4 text-gray-800">Fuentes de Pago</h3>
-                                {datosClienteSeleccionado.data.fuentes.map(fuente => (
-                                    <FuenteDePagoCard key={fuente.fuente} {...fuente} vivienda={datosClienteSeleccionado.data.vivienda} cliente={datosClienteSeleccionado.data.cliente} onAbonoRegistrado={handlers.recargarDatos} />
-                                ))}
+                                <div className="space-y-4">
+                                    {datosClienteSeleccionado.data.fuentes.map(fuente => (
+                                        <FuenteDePagoCard key={fuente.fuente} {...fuente} vivienda={datosClienteSeleccionado.data.vivienda} cliente={datosClienteSeleccionado.data.cliente} onAbonoRegistrado={handlers.recargarDatos} />
+                                    ))}
+                                </div>
                                 <div className="mt-12 pt-6 border-t">
                                     <h3 className="text-xl font-bold mb-4 text-gray-800">Historial de Abonos</h3>
-                                    {historialVisible.map(abono => (
-                                        <AbonoCard key={abono.id} abono={abono} onEdit={() => modals.setAbonoAEditar(abono)} onDelete={handlers.iniciarEliminacion} />
-                                    ))}
+                                    {/* --- LÓGICA CONDICIONAL AÑADIDA AQUÍ --- */}
+                                    {historialVisible.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {historialVisible.map(abono => (
+                                                <AbonoCard key={abono.id} abono={abono} onEdit={() => modals.setAbonoAEditar(abono)} onDelete={handlers.iniciarEliminacion} />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-10">
+                                            <p className="text-gray-500">Este cliente aún no ha realizado abonos.</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ) : (

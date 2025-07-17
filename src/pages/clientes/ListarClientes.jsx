@@ -1,14 +1,23 @@
 import React from "react";
-// --- RUTA CORREGIDA AQUÍ ---
 import { useListarClientes } from "../../hooks/clientes/useListarClientes.jsx";
 import ResourcePageLayout from "../../layout/ResourcePageLayout";
-import ClienteCard from './ClienteCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
-import Select from 'react-select';
 import ModalMotivoRenuncia from "./components/ModalMotivoRenuncia";
-import { User } from "lucide-react";
-import ClienteCardSkeleton from "./ClienteCardSkeleton";
+import { User, ChevronUp, ChevronDown } from "lucide-react";
+import ClienteTableRow from "./components/ClienteTableRow.jsx"; // Importamos el nuevo componente
+
+const TableHeader = ({ children, onSort, sortKey, sortConfig }) => {
+    const isSorted = sortConfig.key === sortKey;
+    const icon = isSorted ? (sortConfig.direction === 'ascending' ? <ChevronUp size={16} /> : <ChevronDown size={16} />) : null;
+    return (
+        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <button className="flex items-center gap-2" onClick={() => onSort(sortKey)}>
+                {children} {icon}
+            </button>
+        </th>
+    );
+};
 
 const ListarClientes = () => {
     const {
@@ -16,10 +25,9 @@ const ListarClientes = () => {
         clientesVisibles,
         statusFilter, setStatusFilter,
         searchTerm, setSearchTerm,
-        manzanaFilter, setManzanaFilter,
-        manzanaOptions,
         modals,
-        handlers
+        handlers,
+        sortConfig
     } = useListarClientes();
 
     return (
@@ -28,43 +36,55 @@ const ListarClientes = () => {
             icon={<User size={40} />}
             color="#1976d2"
             filterControls={
-                <>
+                <div className="flex flex-col md:flex-row items-center justify-end gap-4 w-full">
                     <div className="flex-shrink-0 bg-gray-100 p-1 rounded-lg">
                         <button onClick={() => setStatusFilter('activo')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'activo' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200'}`}>Activos</button>
                         <button onClick={() => setStatusFilter('renunciado')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'renunciado' ? 'bg-white shadow text-orange-600' : 'text-gray-600 hover:bg-gray-200'}`}>Renunciaron</button>
                         <button onClick={() => setStatusFilter('todos')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'todos' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:bg-gray-200'}`}>Todos</button>
                     </div>
-                    <div className="w-full md:w-auto md:min-w-[200px]">
-                        <Select options={manzanaOptions} onChange={setManzanaFilter} value={manzanaFilter} placeholder="Filtrar por Manzana..." isClearable={false} defaultValue={manzanaOptions[0]} />
-                    </div>
                     <div className="w-full md:w-1/3">
                         <input type="text" placeholder="Buscar por nombre o cédula..." className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
-                </>
+                </div>
             }
         >
-            {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {[...Array(6)].map((_, i) => <ClienteCardSkeleton key={i} />)}
+            <div className="flex flex-col">
+                <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                    <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+                        <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <TableHeader onSort={handlers.requestSort} sortKey="nombres" sortConfig={sortConfig}>Cliente</TableHeader>
+                                        <TableHeader onSort={handlers.requestSort} sortKey="vivienda" sortConfig={sortConfig}>Vivienda</TableHeader>
+                                        <TableHeader onSort={() => { }} sortKey="status" sortConfig={{}}>Estado</TableHeader>
+                                        <TableHeader onSort={handlers.requestSort} sortKey="saldoPendiente" sortConfig={sortConfig}>Saldo Pendiente</TableHeader>
+                                        <th scope="col" className="relative px-6 py-3"><span className="sr-only">Acciones</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {isLoading ? (
+                                        <tr><td colSpan="5" className="text-center p-10">Cargando...</td></tr>
+                                    ) : clientesVisibles.length > 0 ? (
+                                        clientesVisibles.map(cliente => (
+                                            <ClienteTableRow
+                                                key={cliente.id}
+                                                cliente={cliente}
+                                                onEdit={modals.setClienteAEditar}
+                                                onDelete={() => handlers.iniciarEliminacion(cliente)}
+                                                onRenunciar={() => handlers.iniciarRenuncia(cliente)}
+                                                onReactivar={() => handlers.iniciarReactivacion(cliente)}
+                                            />
+                                        ))
+                                    ) : (
+                                        <tr><td colSpan="5" className="text-center p-10 text-gray-500">No se encontraron clientes con los filtros actuales.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            ) : clientesVisibles.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {clientesVisibles.map(cliente => (
-                        <ClienteCard
-                            key={cliente.id}
-                            cliente={cliente}
-                            onEdit={modals.setClienteAEditar}
-                            onDelete={() => handlers.iniciarEliminacion(cliente)}
-                            onRenunciar={() => handlers.iniciarRenuncia(cliente)}
-                            onReactivar={() => handlers.iniciarReactivacion(cliente)}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-16">
-                    <p className="text-gray-500">No se encontraron clientes con los filtros actuales.</p>
-                </div>
-            )}
+            </div>
 
             {modals.clienteAEliminar && (<ModalConfirmacion isOpen={!!modals.clienteAEliminar} onClose={() => modals.setClienteAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Cliente?" mensaje="¿Estás seguro? Tendrás 5 segundos para deshacer." />)}
             {modals.clienteAEditar && (<EditarCliente isOpen={!!modals.clienteAEditar} onClose={() => modals.setClienteAEditar(null)} onGuardar={handlers.handleGuardado} clienteAEditar={modals.clienteAEditar} />)}

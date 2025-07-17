@@ -1,9 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import toast from 'react-hot-toast';
 import { useForm } from "../useForm.jsx";
-import { validateVivienda } from "../../pages/viviendas/viviendaValidation.js";
+import { validateVivienda } from "../../utils/validation.js"; // <-- RUTA ACTUALIZADA
 import { updateVivienda } from "../../utils/storage";
-import { formatCurrency } from "../../utils/textFormatters.js";
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 

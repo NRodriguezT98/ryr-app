@@ -60,6 +60,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                                 isEditing={true}
                                 clienteAEditar={clienteAEditar}
                                 handleInputChange={handlers.handleInputChange}
+                                handleFinancialFieldChange={handlers.handleFinancialFieldChange}
                             />
                         </div>
                         <div className="mt-10 pt-6 border-t flex justify-between">
@@ -67,7 +68,6 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                             {step < 3 ? (
                                 <button type="button" onClick={handlers.handleNextStep} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">Siguiente</button>
                             ) : (
-                                // --- BOTÓN CON TOOLTIP ---
                                 <span className="ml-auto" data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
                                     <button onClick={handlers.handleSave} disabled={!hayCambios || isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full flex items-center justify-center gap-2">
                                         {isSubmitting ? <Loader size={20} className="animate-spin" /> : null}
@@ -85,10 +85,12 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                 onClose={() => setIsConfirming(false)}
                 onConfirm={handlers.executeSave}
                 titulo="Confirmar Cambios del Cliente"
+                mensaje="¿Estás seguro de que deseas guardar estos cambios?"
                 cambios={cambios}
                 isSubmitting={isSubmitting}
             />
-            {/* El Tooltip se renderiza en el Layout principal, por lo que no es necesario añadirlo aquí de nuevo */}
+
+            <Tooltip id="app-tooltip" />
         </>
     );
 };

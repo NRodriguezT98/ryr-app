@@ -49,7 +49,8 @@ const CrearCliente = () => {
                         dispatch={dispatch}
                         errors={errors}
                         viviendaOptions={viviendasOptions}
-                        handleInputChange={handlers.handleInputChange} // <-- Lo pasamos como prop
+                        handleInputChange={handlers.handleInputChange}
+                        handleFinancialFieldChange={handlers.handleFinancialFieldChange}
                     />
                     <div className="mt-10 flex justify-between">
                         {step > 1 ? (

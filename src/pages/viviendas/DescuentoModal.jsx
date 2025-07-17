@@ -3,7 +3,7 @@ import { useForm } from '../../hooks/useForm.jsx';
 import { updateVivienda } from '../../utils/storage.js';
 import toast from 'react-hot-toast';
 import { NumericFormat } from 'react-number-format';
-import { validateDescuento } from './viviendaValidation.js';
+import { validateDescuento } from '../../utils/validation.js'; // <-- RUTA ACTUALIZADA
 import { Tooltip } from 'react-tooltip';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import { formatCurrency } from '../../utils/textFormatters.js';
@@ -64,7 +64,6 @@ const DescuentoModal = ({ isOpen, onClose, onSave, vivienda }) => {
         }
 
         if (cambiosDetectados.length === 0) {
-            // Ya no mostramos el toast. El botón deshabilitado es la señal principal.
             return;
         }
 

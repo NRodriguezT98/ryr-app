@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NumericFormat } from 'react-number-format';
 import { useForm } from '../../hooks/useForm.jsx';
-import { validateAbono } from './abonoValidation.js';
+import { validateAbono } from '../../utils/validation.js'; // <-- RUTA CORREGIDA AQUÍ
 import { updateAbono } from '../../utils/storage.js';
 import toast from 'react-hot-toast';
 import Modal from '../../components/Modal.jsx';

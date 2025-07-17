@@ -1,16 +1,14 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-// --- RUTA CORREGIDA AQUÍ (se añadieron dos puntos "..") ---
 import { useData } from '../../context/DataContext';
 import { deleteCliente, renunciarAVivienda, reactivarCliente, createNotification } from '../../utils/storage';
 import toast from 'react-hot-toast';
 import UndoToast from '../../components/UndoToast';
 
 export const useListarClientes = () => {
-    const location = useLocation();
-    const { isLoading, clientes, viviendas, renuncias, recargarDatos } = useData();
+    // --- CORRECCIÓN AQUÍ: Añadimos recargarDatos ---
+    const { isLoading, clientes, renuncias, recargarDatos } = useData();
 
-    // Estados para los modales
+    // Estados para modales (sin cambios)
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [clienteARenunciar, setClienteARenunciar] = useState(null);
@@ -18,34 +16,25 @@ export const useListarClientes = () => {
     const [datosRenuncia, setDatosRenuncia] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Estados para los filtros
+    // Estados para filtros
     const [searchTerm, setSearchTerm] = useState('');
-    const [manzanaFilter, setManzanaFilter] = useState(null);
     const [statusFilter, setStatusFilter] = useState('activo');
 
-    // Lógica de borrado con "Deshacer"
+    const [sortConfig, setSortConfig] = useState({ key: 'nombres', direction: 'ascending' });
+
     const [clientesOcultos, setClientesOcultos] = useState([]);
     const deletionTimeouts = useRef({});
 
-    const manzanaOptions = useMemo(() => {
-        const manzanasUnicas = [...new Set(viviendas.map(v => v.manzana).filter(Boolean))];
-        const opciones = manzanasUnicas.sort().map(m => ({ value: m, label: `Manzana ${m}` }));
-        return [{ value: null, label: 'Todas las Manzanas' }, ...opciones];
-    }, [viviendas]);
-
-    const clientesFiltrados = useMemo(() => {
+    const clientesFiltradosYOrdenados = useMemo(() => {
         let itemsProcesados = clientes.map(cliente => {
             const renunciaPendiente = renuncias.find(r => r.clienteId === cliente.id && r.estadoDevolucion === 'Pendiente');
-            return { ...cliente, tieneRenunciaPendiente: !!renunciaPendiente, renunciaPendiente: renunciaPendiente || null };
+            return { ...cliente, tieneRenunciaPendiente: !!renunciaPendiente };
         });
 
         if (statusFilter !== 'todos') {
             itemsProcesados = itemsProcesados.filter(c => c.status === statusFilter);
         }
 
-        if (manzanaFilter && manzanaFilter.value) {
-            itemsProcesados = itemsProcesados.filter(c => c.vivienda?.manzana === manzanaFilter.value);
-        }
         if (searchTerm) {
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
             itemsProcesados = itemsProcesados.filter(c =>
@@ -54,22 +43,48 @@ export const useListarClientes = () => {
             );
         }
 
-        return itemsProcesados.sort((a, b) => {
-            const nameA = `${a.datosCliente?.nombres || ''} ${a.datosCliente?.apellidos || ''}`.toLowerCase();
-            const nameB = `${b.datosCliente?.nombres || ''} ${b.datosCliente?.apellidos || ''}`.toLowerCase();
-            return nameA.localeCompare(nameB);
-        });
-    }, [clientes, renuncias, searchTerm, manzanaFilter, statusFilter]);
+        if (sortConfig.key) {
+            itemsProcesados.sort((a, b) => {
+                let valA, valB;
 
-    const handleGuardado = useCallback(() => {
-        recargarDatos();
-        setClienteAEditar(null);
-    }, [recargarDatos]);
+                if (sortConfig.key === 'nombres') {
+                    valA = `${a.datosCliente.nombres} ${a.datosCliente.apellidos}`.toLowerCase();
+                    valB = `${b.datosCliente.nombres} ${b.datosCliente.apellidos}`.toLowerCase();
+                } else if (sortConfig.key === 'vivienda') {
+                    valA = a.vivienda ? `${a.vivienda.manzana}${a.vivienda.numeroCasa}` : '';
+                    valB = b.vivienda ? `${b.vivienda.manzana}${b.vivienda.numeroCasa}` : '';
+                } else {
+                    valA = a[sortConfig.key];
+                    valB = b[sortConfig.key];
+                }
 
+                if (valA < valB) {
+                    return sortConfig.direction === 'ascending' ? -1 : 1;
+                }
+                if (valA > valB) {
+                    return sortConfig.direction === 'ascending' ? 1 : -1;
+                }
+                return 0;
+            });
+        }
+
+        return itemsProcesados;
+    }, [clientes, renuncias, searchTerm, statusFilter, sortConfig]);
+
+    const requestSort = (key) => {
+        let direction = 'ascending';
+        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const clientesVisibles = clientesFiltradosYOrdenados.filter(c => !clientesOcultos.includes(c.id));
+
+    const handleGuardado = useCallback(() => { recargarDatos(); setClienteAEditar(null); }, [recargarDatos]);
     const iniciarRenuncia = (cliente) => setClienteARenunciar(cliente);
     const iniciarReactivacion = (cliente) => setClienteAReactivar(cliente);
     const iniciarEliminacion = (cliente) => setClienteAEliminar(cliente);
-
     const handleConfirmarMotivo = (motivo, observacion, fechaRenuncia) => {
         setDatosRenuncia({ cliente: clienteARenunciar, motivo, observacion, fechaRenuncia });
         setClienteARenunciar(null);
@@ -107,23 +122,6 @@ export const useListarClientes = () => {
         }
     }, [clienteAReactivar, recargarDatos]);
 
-    const confirmarEliminar = useCallback(() => {
-        if (!clienteAEliminar) return;
-        const id = clienteAEliminar.id;
-        setClientesOcultos(prev => [...prev, id]);
-        toast.custom((t) => (<UndoToast t={t} message="Cliente eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
-        const timeoutId = setTimeout(() => confirmarEliminarReal(id), 5000);
-        deletionTimeouts.current[id] = timeoutId;
-        setClienteAEliminar(null);
-    }, [clienteAEliminar]);
-
-    const deshacerEliminacion = useCallback((id) => {
-        clearTimeout(deletionTimeouts.current[id]);
-        delete deletionTimeouts.current[id];
-        setClientesOcultos(prev => prev.filter(cId => cId !== id));
-        toast.success("Eliminación deshecha.");
-    }, []);
-
     const confirmarEliminarReal = useCallback(async (id) => {
         try {
             await deleteCliente(id);
@@ -134,32 +132,30 @@ export const useListarClientes = () => {
         }
     }, [recargarDatos]);
 
-    const clientesVisibles = clientesFiltrados.filter(c => !clientesOcultos.includes(c.id));
+    const deshacerEliminacion = useCallback((id) => {
+        clearTimeout(deletionTimeouts.current[id]);
+        delete deletionTimeouts.current[id];
+        setClientesOcultos(prev => prev.filter(cId => cId !== id));
+        toast.success("Eliminación deshecha.");
+    }, []);
+
+    const confirmarEliminar = useCallback(() => {
+        if (!clienteAEliminar) return;
+        const id = clienteAEliminar.id;
+        setClientesOcultos(prev => [...prev, id]);
+        toast.custom((t) => (<UndoToast t={t} message="Cliente eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
+        const timeoutId = setTimeout(() => confirmarEliminarReal(id), 5000);
+        deletionTimeouts.current[id] = timeoutId;
+        setClienteAEliminar(null);
+    }, [clienteAEliminar, deshacerEliminacion, confirmarEliminarReal]);
 
     return {
         isLoading,
         clientesVisibles,
         statusFilter, setStatusFilter,
         searchTerm, setSearchTerm,
-        manzanaFilter, setManzanaFilter,
-        manzanaOptions,
-        modals: {
-            clienteAEditar, setClienteAEditar,
-            clienteAEliminar, setClienteAEliminar,
-            clienteARenunciar, setClienteARenunciar,
-            clienteAReactivar, setClienteAReactivar,
-            datosRenuncia, setDatosRenuncia,
-            isSubmitting
-        },
-        handlers: {
-            handleGuardado,
-            iniciarEliminacion,
-            iniciarReactivacion,
-            iniciarRenuncia,
-            handleConfirmarMotivo,
-            confirmarRenunciaFinal,
-            confirmarReactivacion,
-            confirmarEliminar
-        }
+        modals: { clienteAEditar, setClienteAEditar, clienteAEliminar, setClienteAEliminar, clienteARenunciar, setClienteARenunciar, clienteAReactivar, setClienteAReactivar, datosRenuncia, setDatosRenuncia, isSubmitting },
+        handlers: { handleGuardado, iniciarEliminacion, iniciarReactivacion, iniciarRenuncia, handleConfirmarMotivo, confirmarRenunciaFinal, confirmarReactivacion, confirmarEliminar, requestSort },
+        sortConfig
     };
 };

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useForm } from '../useForm.jsx';
 import toast from 'react-hot-toast';
 import { addAbono, createNotification } from '../../utils/storage';
-import { validateAbono } from '../../pages/abonos/abonoValidation.js';
+import { validateAbono } from '../../utils/validation.js'; // <-- RUTA ACTUALIZADA
 import { formatCurrency } from '../../utils/textFormatters.js';
 
 const getTodayString = () => {
@@ -46,7 +46,7 @@ export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente
                 await createNotification('abono', message, `/viviendas/detalle/${nuevoAbono.viviendaId}`);
 
                 form.resetForm();
-                onAbonoRegistrado(true); // Pasamos 'true' para indicar que se debe cerrar el form
+                onAbonoRegistrado(true);
             } catch (error) {
                 toast.error("No se pudo registrar el abono.");
             }
