@@ -3,14 +3,14 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// TODO: Reemplaza lo siguiente con la configuración de tu propio proyecto de Firebase
+// La configuración ahora lee las variables de entorno de Vite
 const firebaseConfig = {
-    apiKey: "AIzaSyDG4HIAQRcbhf8VFzf1A3G2pdHULsW8lPI",
-    authDomain: "ryr-constructora-app.firebaseapp.com",
-    projectId: "ryr-constructora-app",
-    storageBucket: "ryr-constructora-app.firebasestorage.app",
-    messagingSenderId: "1061579478680",
-    appId: "1:1061579478680:web:2709e19b6eb7002b94a2ed"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Inicializa Firebase

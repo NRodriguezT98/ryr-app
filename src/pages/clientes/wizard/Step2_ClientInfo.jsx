@@ -5,24 +5,10 @@ import { FileText, XCircle } from 'lucide-react';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
-const Step2_ClientInfo = ({ formData, dispatch, errors }) => {
+const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange }) => {
 
-    const handleInputChange = useCallback((e) => {
-        const { name, value } = e.target;
-        const inputFilters = {
-            nombres: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/,
-            apellidos: /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/,
-            cedula: /^[0-9]*$/,
-            telefono: /^[0-9]*$/,
-        };
-
-        if (inputFilters[name] && !inputFilters[name].test(value)) {
-            dispatch({ type: 'SET_ERRORS', payload: { [name]: 'Caracter no permitido.' } });
-            return;
-        }
-
-        dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field: name, value } });
-    }, [dispatch]);
+    // La lógica de validación en tiempo real ha sido movida al hook.
+    // Este componente ahora es más simple y solo se encarga de mostrar la UI.
 
     const handleValueChange = useCallback((field, value) => {
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field, value } });
@@ -56,7 +42,6 @@ const Step2_ClientInfo = ({ formData, dispatch, errors }) => {
                         Cédula <span className="text-red-600">*</span>
                         <HelpTooltip id="cedula" content="Número de identificación único del cliente. Este campo no podrá ser editado posteriormente." />
                     </label>
-                    {/* --- CORRECCIÓN AQUÍ: SE ELIMINÓ readOnly --- */}
                     <input id="cedula" name="cedula" type="text" value={formData.cedula} onChange={handleInputChange} className={`w-full border p-2 rounded-lg ${errors.cedula ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.cedula && <p className="text-red-600 text-sm mt-1">{errors.cedula}</p>}
                 </div>

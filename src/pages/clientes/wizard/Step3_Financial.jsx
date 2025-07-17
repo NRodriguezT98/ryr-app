@@ -6,8 +6,43 @@ import HelpTooltip from '../../../components/HelpTooltip';
 import { formatCurrency } from '../../../utils/textFormatters';
 import { useClienteFinanciero } from '../../../hooks/clientes/useClienteFinanciero';
 
-const creditoOptions = [{ value: 'Bancolombia', label: 'Bancolombia' }, /* ...otras opciones */];
-const cajaOptions = [{ value: 'Comfandi', label: 'Comfandi' }, /* ...otras opciones */];
+// --- CONSTANTES AÑADIDAS PARA CORREGIR EL ERROR ---
+const creditoOptions = [
+    { value: 'Bancolombia', label: 'Bancolombia' },
+    { value: 'Davivienda', label: 'Davivienda' },
+    { value: 'Banco de Bogotá', label: 'Banco de Bogotá' },
+    { value: 'BBVA', label: 'BBVA' },
+    { value: 'Banco Agrario', label: 'Banco Agrario' },
+    { value: 'Otro', label: 'Otro' }
+];
+const cajaOptions = [
+    { value: 'Comfandi', label: 'Comfandi' },
+    { value: 'Comfenalco', label: 'Comfenalco' },
+    { value: 'Otra', label: 'Otra' }
+];
+// ----------------------------------------------------
+
+const GASTOS_NOTARIALES_FIJOS = 5000000;
+
+const BreakdownRow = ({ label, value }) => (
+    <div className="flex justify-between items-center">
+        <span className="text-gray-600">{label}</span>
+        <span className="font-semibold text-gray-800">{formatCurrency(value)}</span>
+    </div>
+);
+
+const getSelectStyles = (hasError) => ({
+    control: (base) => ({
+        ...base,
+        borderColor: hasError ? '#ef4444' : '#d1d5db',
+        '&:hover': {
+            borderColor: hasError ? '#ef4444' : '#9ca3af',
+        },
+        boxShadow: 'none',
+        padding: '0.1rem'
+    }),
+});
+
 
 const Step3_Financial = ({ formData, dispatch, errors }) => {
     const { financiero, viviendaSeleccionada } = formData;
@@ -31,26 +66,25 @@ const Step3_Financial = ({ formData, dispatch, errors }) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border">
                     <div className="text-center flex flex-col">
                         <p className="text-sm font-semibold text-gray-500">Valor Vivienda</p>
-                        <div className="flex-grow text-xs mt-2 grid grid-cols-2 gap-x-2 px-2 border-b pb-2 mb-2">
-                            <BreakdownRow label="Valor Base" value={viviendaSeleccionada.valorBase || 0} />
-                            {viviendaSeleccionada.recargoEsquinera > 0 && <BreakdownRow label="R. Esquinera" value={viviendaSeleccionada.recargoEsquinera} />}
-                            <BreakdownRow label="G. Notariales" value={GASTOS_NOTARIALES_FIJOS} />
+                        <div className="flex-grow text-xs mt-2 space-y-1 px-2 border-b pb-2 mb-2">
+                            <BreakdownRow label="Valor Base:" value={viviendaSeleccionada.valorBase || 0} />
+                            {viviendaSeleccionada.recargoEsquinera > 0 && <BreakdownRow label="R. Esquinera:" value={viviendaSeleccionada.recargoEsquinera} />}
+                            <BreakdownRow label="G. Notariales:" value={GASTOS_NOTARIALES_FIJOS} />
                         </div>
                         <p className="text-lg font-bold text-blue-600">{formatCurrency(resumenFinanciero.totalAPagar)}</p>
                     </div>
 
                     <div className="text-center flex flex-col">
                         <p className="text-sm font-semibold text-gray-500">Total Recursos</p>
-                        <div className="flex-grow text-xs mt-2 grid grid-cols-2 gap-x-2 px-2 border-b pb-2 mb-2">
-                            {financiero.aplicaCuotaInicial && financiero.cuotaInicial.monto > 0 && <BreakdownRow label="Cuota Inicial" value={financiero.cuotaInicial.monto} />}
-                            {financiero.aplicaCredito && financiero.credito.monto > 0 && <BreakdownRow label="Crédito" value={financiero.credito.monto} />}
-                            {financiero.aplicaSubsidioVivienda && financiero.subsidioVivienda.monto > 0 && <BreakdownRow label="Subsidio MCY" value={financiero.subsidioVivienda.monto} />}
-                            {financiero.aplicaSubsidioCaja && financiero.subsidioCaja.monto > 0 && <BreakdownRow label="Sub. Caja" value={financiero.subsidioCaja.monto} />}
+                        <div className="flex-grow text-xs mt-2 space-y-1 px-2 border-b pb-2 mb-2">
+                            {financiero.aplicaCuotaInicial && financiero.cuotaInicial.monto > 0 && <BreakdownRow label="Cuota Inicial:" value={financiero.cuotaInicial.monto} />}
+                            {financiero.aplicaCredito && financiero.credito.monto > 0 && <BreakdownRow label="Crédito:" value={financiero.credito.monto} />}
+                            {financiero.aplicaSubsidioVivienda && financiero.subsidioVivienda.monto > 0 && <BreakdownRow label="Subsidio MCY:" value={financiero.subsidioVivienda.monto} />}
+                            {financiero.aplicaSubsidioCaja && financiero.subsidioCaja.monto > 0 && <BreakdownRow label="Sub. Caja:" value={financiero.subsidioCaja.monto} />}
                         </div>
                         <p className="text-lg font-bold text-gray-800">{formatCurrency(resumenFinanciero.totalRecursos)}</p>
                     </div>
 
-                    {/* --- CAMBIO AQUÍ --- */}
                     <div className="text-center flex flex-col justify-center">
                         <p className="text-sm font-semibold text-gray-500">Diferencia</p>
                         <p className={`text-2xl font-bold ${resumenFinanciero.diferencia === 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(resumenFinanciero.diferencia)}</p>

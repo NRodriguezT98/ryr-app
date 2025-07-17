@@ -2,7 +2,7 @@ import React, { Fragment } from 'react';
 import AnimatedPage from '../../components/AnimatedPage';
 import FormularioCliente from './FormularioCliente';
 import { Home, User, CircleDollarSign, Check, Loader } from 'lucide-react';
-import { useCrearCliente } from '../../hooks/clientes/useCrearCliente.jsx'; // <-- RUTA ACTUALIZADA
+import { useClienteForm } from '../../hooks/clientes/useClienteForm.jsx';
 
 const CrearCliente = () => {
     const {
@@ -11,13 +11,9 @@ const CrearCliente = () => {
         dispatch,
         errors,
         isSubmitting,
-        viviendaOptions,
-        handleNextStep,
-        handlePrevStep,
-        handleSave,
-        handleInputChange,
-        handleValueChange
-    } = useCrearCliente();
+        viviendasOptions,
+        handlers,
+    } = useClienteForm(false);
 
     const STEPS_CONFIG = [
         { number: 1, title: 'Vivienda', icon: Home },
@@ -52,23 +48,22 @@ const CrearCliente = () => {
                         formData={formData}
                         dispatch={dispatch}
                         errors={errors}
-                        viviendaOptions={viviendaOptions}
-                        handleInputChange={handleInputChange}
-                        handleValueChange={handleValueChange}
+                        viviendaOptions={viviendasOptions}
+                        handleInputChange={handlers.handleInputChange} // <-- Lo pasamos como prop
                     />
                     <div className="mt-10 flex justify-between">
                         {step > 1 ? (
-                            <button onClick={handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">
+                            <button onClick={handlers.handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">
                                 Anterior
                             </button>
                         ) : <div />}
                         {step < 3 ? (
-                            <button onClick={handleNextStep} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
+                            <button onClick={handlers.handleNextStep} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
                                 Siguiente
                             </button>
                         ) : (
                             <button
-                                onClick={handleSave}
+                                onClick={handlers.handleSave}
                                 disabled={isSubmitting}
                                 className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto flex items-center justify-center gap-2"
                             >

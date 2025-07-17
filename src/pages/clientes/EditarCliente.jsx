@@ -1,6 +1,6 @@
 import React, { Fragment } from 'react';
 import { Tooltip } from 'react-tooltip';
-import { useEditarCliente } from '../../hooks/clientes/useEditarCliente';
+import { useClienteForm } from '../../hooks/clientes/useClienteForm';
 import Modal from '../../components/Modal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import FormularioCliente from './FormularioCliente';
@@ -14,13 +14,13 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         dispatch,
         errors,
         isConfirming,
-        setIsConfirming, // Obtenemos la función directamente
+        setIsConfirming,
         isSubmitting,
         cambios,
         hayCambios,
-        viviendaOptions,
+        viviendasOptions,
         handlers,
-    } = useEditarCliente(clienteAEditar, isOpen, onGuardar, onClose);
+    } = useClienteForm(true, clienteAEditar, onGuardar);
 
     const STEPS_CONFIG = [
         { number: 1, title: 'Vivienda', icon: Home },
@@ -33,7 +33,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
     return (
         <>
             <Modal isOpen={isOpen} onClose={onClose} title="Editar Cliente" icon={<UserCog size={32} className="text-[#1976d2]" />}>
-                {!formData ? (
+                {!formData.datosCliente.nombres ? (
                     <div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos...</div>
                 ) : (
                     <>
@@ -56,9 +56,10 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                                 formData={formData}
                                 dispatch={dispatch}
                                 errors={errors}
-                                viviendaOptions={viviendaOptions}
+                                viviendaOptions={viviendasOptions}
                                 isEditing={true}
                                 clienteAEditar={clienteAEditar}
+                                handleInputChange={handlers.handleInputChange}
                             />
                         </div>
                         <div className="mt-10 pt-6 border-t flex justify-between">
@@ -66,8 +67,9 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                             {step < 3 ? (
                                 <button type="button" onClick={handlers.handleNextStep} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">Siguiente</button>
                             ) : (
+                                // --- BOTÓN CON TOOLTIP ---
                                 <span className="ml-auto" data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
-                                    <button onClick={handlers.handlePreSave} disabled={!hayCambios || isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full flex items-center justify-center gap-2">
+                                    <button onClick={handlers.handleSave} disabled={!hayCambios || isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full flex items-center justify-center gap-2">
                                         {isSubmitting ? <Loader size={20} className="animate-spin" /> : null}
                                         {isSubmitting ? "Guardando..." : "Guardar Cambios"}
                                     </button>
@@ -80,15 +82,13 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
 
             <ModalConfirmacion
                 isOpen={isConfirming}
-                onClose={() => setIsConfirming(false)} // <-- LLAMADA CORREGIDA
+                onClose={() => setIsConfirming(false)}
                 onConfirm={handlers.executeSave}
                 titulo="Confirmar Cambios del Cliente"
-                mensaje="¿Estás seguro de que deseas guardar estos cambios?"
                 cambios={cambios}
                 isSubmitting={isSubmitting}
             />
-
-            <Tooltip id="app-tooltip" />
+            {/* El Tooltip se renderiza en el Layout principal, por lo que no es necesario añadirlo aquí de nuevo */}
         </>
     );
 };
