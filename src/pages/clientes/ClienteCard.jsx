@@ -2,8 +2,8 @@ import React, { Fragment, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, User, Eye, Pencil, Trash, UserX, RefreshCw, Home } from 'lucide-react';
-import { getInitials, formatID } from '../../utils/textFormatters';
-import { determineClientStatus } from '../../utils/statusHelper.jsx'; // <-- RUTA ACTUALIZADA
+import { getInitials, formatID, formatCurrency } from '../../utils/textFormatters';
+import { determineClientStatus } from '../../utils/statusHelper.jsx';
 
 const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) => {
     const { datosCliente, vivienda, status } = cliente;
@@ -11,8 +11,14 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) =>
     const clientStatus = determineClientStatus(cliente);
     const isRenunciado = status === 'renunciado';
 
+    const valorFinal = vivienda?.valorFinal || 0;
+    const totalAbonado = vivienda?.totalAbonado || 0;
+    const porcentajePagado = valorFinal > 0 ? (totalAbonado / valorFinal) * 100 : (vivienda ? 100 : 0);
+
+
     return (
         <div className={`bg-white rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl`}>
+            {/* Encabezado con información del cliente */}
             <div className="flex items-center p-5 border-b">
                 <div className={`w-14 h-14 rounded-full text-white flex items-center justify-center font-bold text-2xl mr-4 flex-shrink-0 bg-blue-500`}>
                     {getInitials(datosCliente?.nombres, datosCliente?.apellidos)}
@@ -22,30 +28,53 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) =>
                         {`${datosCliente?.nombres} ${datosCliente?.apellidos}`}
                     </h3>
                     <p className="text-sm text-gray-500 truncate" title={datosCliente?.correo}>
-                        {datosCliente?.correo}
+                        C.C. {formatID(datosCliente?.cedula)}
                     </p>
                 </div>
             </div>
 
+            {/* Cuerpo con información financiera */}
             <div className="p-5 space-y-4 text-sm flex-grow">
                 <div className="space-y-2">
-                    <p className="flex items-center gap-3 text-gray-700"><User size={16} className="text-gray-400" /><span>C.C. {formatID(datosCliente?.cedula)}</span></p>
                     <p className="flex items-center gap-3 font-semibold">
                         <Home size={16} className={vivienda ? 'text-green-600' : 'text-gray-400'} />
                         {vivienda ? (
-                            <span className="text-green-700">{`Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}</span>
+                            // --- ENLACE AÑADIDO A LA VIVIENDA ---
+                            <Link to={`/viviendas/detalle/${vivienda.id}`} className="text-green-700 hover:underline">
+                                {`Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
+                            </Link>
                         ) : (
                             <span className="text-gray-500">Sin vivienda asignada</span>
                         )}
                     </p>
                 </div>
+
+                {vivienda && (
+                    <div className="space-y-3 pt-4 border-t">
+                        <div className="flex justify-between items-center">
+                            <h4 className="font-semibold text-gray-700">Progreso de Pago</h4>
+                            <span className="text-sm font-bold text-blue-600">{`${Math.round(porcentajePagado)}%`}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div className={`h-2.5 rounded-full ${vivienda.saldoPendiente <= 0 ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${porcentajePagado}%` }}></div>
+                        </div>
+                        <div className="flex justify-between text-sm pt-1">
+                            <span className="text-gray-600">Abonado: <strong className="text-green-600">{formatCurrency(totalAbonado)}</strong></span>
+                            <span className="text-gray-600">Saldo: <strong className="text-red-600">{formatCurrency(vivienda.saldoPendiente)}</strong></span>
+                        </div>
+                    </div>
+                )}
             </div>
 
+            {/* Pie de tarjeta con estado y acciones */}
             <div className="mt-auto p-4 border-t bg-gray-50 flex items-center justify-between">
-                <div className={`flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-full ${clientStatus.color}`}>
-                    {clientStatus.icon}
-                    <span>{clientStatus.text}</span>
-                </div>
+                {/* --- ENLACE AÑADIDO AL ESTADO DEL PROCESO --- */}
+                <Link to={`/clientes/detalle/${cliente.id}`} state={{ defaultTab: 'seguimiento' }} className="flex">
+                    <div className={`flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-full transition-transform hover:scale-105 ${clientStatus.color}`}>
+                        {clientStatus.icon}
+                        <span>{clientStatus.text}</span>
+                    </div>
+                </Link>
 
                 <Menu as="div" className="relative">
                     <Menu.Button className="p-2 text-gray-500 hover:bg-gray-200 rounded-full">

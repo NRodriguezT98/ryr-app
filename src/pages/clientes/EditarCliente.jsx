@@ -85,7 +85,6 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                 onClose={() => setIsConfirming(false)}
                 onConfirm={handlers.executeSave}
                 titulo="Confirmar Cambios del Cliente"
-                mensaje="¿Estás seguro de que deseas guardar estos cambios?"
                 cambios={cambios}
                 isSubmitting={isSubmitting}
             />

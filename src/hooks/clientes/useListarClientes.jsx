@@ -5,10 +5,9 @@ import toast from 'react-hot-toast';
 import UndoToast from '../../components/UndoToast';
 
 export const useListarClientes = () => {
-    // --- CORRECCIÓN AQUÍ: Añadimos recargarDatos ---
     const { isLoading, clientes, renuncias, recargarDatos } = useData();
 
-    // Estados para modales (sin cambios)
+    // Estados para modales
     const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [clienteARenunciar, setClienteARenunciar] = useState(null);
@@ -20,12 +19,10 @@ export const useListarClientes = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('activo');
 
-    const [sortConfig, setSortConfig] = useState({ key: 'nombres', direction: 'ascending' });
-
     const [clientesOcultos, setClientesOcultos] = useState([]);
     const deletionTimeouts = useRef({});
 
-    const clientesFiltradosYOrdenados = useMemo(() => {
+    const clientesFiltrados = useMemo(() => {
         let itemsProcesados = clientes.map(cliente => {
             const renunciaPendiente = renuncias.find(r => r.clienteId === cliente.id && r.estadoDevolucion === 'Pendiente');
             return { ...cliente, tieneRenunciaPendiente: !!renunciaPendiente };
@@ -43,43 +40,14 @@ export const useListarClientes = () => {
             );
         }
 
-        if (sortConfig.key) {
-            itemsProcesados.sort((a, b) => {
-                let valA, valB;
+        return itemsProcesados.sort((a, b) => {
+            const nameA = `${a.datosCliente?.nombres || ''} ${a.datosCliente?.apellidos || ''}`.toLowerCase();
+            const nameB = `${b.datosCliente?.nombres || ''} ${b.datosCliente?.apellidos || ''}`.toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+    }, [clientes, renuncias, searchTerm, statusFilter]);
 
-                if (sortConfig.key === 'nombres') {
-                    valA = `${a.datosCliente.nombres} ${a.datosCliente.apellidos}`.toLowerCase();
-                    valB = `${b.datosCliente.nombres} ${b.datosCliente.apellidos}`.toLowerCase();
-                } else if (sortConfig.key === 'vivienda') {
-                    valA = a.vivienda ? `${a.vivienda.manzana}${a.vivienda.numeroCasa}` : '';
-                    valB = b.vivienda ? `${b.vivienda.manzana}${b.vivienda.numeroCasa}` : '';
-                } else {
-                    valA = a[sortConfig.key];
-                    valB = b[sortConfig.key];
-                }
-
-                if (valA < valB) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
-                }
-                if (valA > valB) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-
-        return itemsProcesados;
-    }, [clientes, renuncias, searchTerm, statusFilter, sortConfig]);
-
-    const requestSort = (key) => {
-        let direction = 'ascending';
-        if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-            direction = 'descending';
-        }
-        setSortConfig({ key, direction });
-    };
-
-    const clientesVisibles = clientesFiltradosYOrdenados.filter(c => !clientesOcultos.includes(c.id));
+    const clientesVisibles = clientesFiltrados.filter(c => !clientesOcultos.includes(c.id));
 
     const handleGuardado = useCallback(() => { recargarDatos(); setClienteAEditar(null); }, [recargarDatos]);
     const iniciarRenuncia = (cliente) => setClienteARenunciar(cliente);
@@ -155,7 +123,6 @@ export const useListarClientes = () => {
         statusFilter, setStatusFilter,
         searchTerm, setSearchTerm,
         modals: { clienteAEditar, setClienteAEditar, clienteAEliminar, setClienteAEliminar, clienteARenunciar, setClienteARenunciar, clienteAReactivar, setClienteAReactivar, datosRenuncia, setDatosRenuncia, isSubmitting },
-        handlers: { handleGuardado, iniciarEliminacion, iniciarReactivacion, iniciarRenuncia, handleConfirmarMotivo, confirmarRenunciaFinal, confirmarReactivacion, confirmarEliminar, requestSort },
-        sortConfig
+        handlers: { handleGuardado, iniciarEliminacion, iniciarReactivacion, iniciarRenuncia, handleConfirmarMotivo, confirmarRenunciaFinal, confirmarReactivacion, confirmarEliminar }
     };
 };

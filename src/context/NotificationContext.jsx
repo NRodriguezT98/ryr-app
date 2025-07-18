@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase/config';
-// --- CORRECCIÓN AQUÍ: Añadimos 'doc' y 'updateDoc' a la importación ---
-import { collection, onSnapshot, query, orderBy, limit, writeBatch, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit, writeBatch, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import toast from 'react-hot-toast';
 
 const NotificationContext = createContext(null);
 
@@ -37,17 +37,24 @@ export const NotificationProvider = ({ children }) => {
         return notifications.filter(n => !n.read).length;
     }, [notifications]);
 
+    // --- LÓGICA DE AGRUPACIÓN AÑADIDA ---
+    const groupedNotifications = useMemo(() => {
+        const newNotifs = notifications.filter(n => !n.read);
+        const readNotifs = notifications.filter(n => n.read);
+        return {
+            new: newNotifs,
+            previous: readNotifs,
+        };
+    }, [notifications]);
+
     const markAllAsRead = async () => {
         const batch = writeBatch(db);
         const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
-
         if (unreadIds.length === 0) return;
-
         unreadIds.forEach(id => {
             const notifRef = doc(db, 'notifications', id);
             batch.update(notifRef, { read: true });
         });
-
         try {
             await batch.commit();
         } catch (error) {
@@ -64,12 +71,35 @@ export const NotificationProvider = ({ children }) => {
         }
     };
 
+    const clearAllNotifications = async () => {
+        if (notifications.length === 0) {
+            toast.success("No hay notificaciones para limpiar.");
+            return;
+        }
+
+        const batch = writeBatch(db);
+        notifications.forEach(notif => {
+            const notifRef = doc(db, 'notifications', notif.id);
+            batch.delete(notifRef);
+        });
+
+        try {
+            await batch.commit();
+            toast.success("Todas las notificaciones han sido eliminadas.");
+        } catch (error) {
+            toast.error("No se pudieron eliminar las notificaciones.");
+            console.error("Error al limpiar notificaciones:", error);
+        }
+    };
+
     const value = {
         notifications,
         unreadCount,
+        groupedNotifications, // Exportamos las notificaciones agrupadas
         isLoading,
         markAllAsRead,
-        markAsRead // <-- Aquí se expone la función que necesitamos
+        markAsRead,
+        clearAllNotifications
     };
 
     return (

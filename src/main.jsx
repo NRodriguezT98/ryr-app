@@ -25,9 +25,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <Toaster
-        position="top-right" // Mantenemos la posición a la derecha
+        position="top-right"
         containerStyle={{
-          top: 80, // <-- AÑADIMOS ESTA LÍNEA para bajar el contenedor
+          top: 80,
+          zIndex: 9999, // --- AÑADIMOS ESTA LÍNEA ---
         }}
         toastOptions={{
           duration: 4000,

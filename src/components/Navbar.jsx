@@ -3,11 +3,10 @@ import { useState, useEffect, useRef, Fragment } from "react";
 import { Menu, Popover, Transition } from '@headlessui/react';
 import logo1 from "../assets/logo1.png";
 import logo2 from "../assets/logo2.png";
-import { Bell, Home, Users, Wallet, UserX, ChevronDown, PlusCircle, List, UserPlus, Landmark, History } from "lucide-react";
+import { Bell, Home, Users, Wallet, UserX, ChevronDown, PlusCircle, List, UserPlus, Landmark, History, Trash2 } from "lucide-react";
 import { useNotifications } from "../context/NotificationContext";
 import NotificationItem from "./notifications/NotificationItem";
 
-// --- COMPONENTE MEJORADO: AHORA ACEPTA Y USA UN onClick HANDLER ---
 const DropdownLink = ({ to, icon, children, onClick }) => {
     const location = useLocation();
     const isActive = location.pathname === to;
@@ -15,7 +14,7 @@ const DropdownLink = ({ to, icon, children, onClick }) => {
     return (
         <Link
             to={to}
-            onClick={onClick} // Se añade el manejador de clic aquí
+            onClick={onClick}
             className={`flex items-center w-full p-3 text-sm rounded-lg transition-colors duration-200 ${isActive ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 hover:bg-gray-100'}`}
         >
             {icon}
@@ -24,10 +23,9 @@ const DropdownLink = ({ to, icon, children, onClick }) => {
     );
 };
 
-
 const Navbar = () => {
     const location = useLocation();
-    const { notifications, unreadCount, markAllAsRead } = useNotifications();
+    const { notifications, unreadCount, markAllAsRead, clearAllNotifications, groupedNotifications } = useNotifications();
 
     const [isRinging, setIsRinging] = useState(false);
     const prevUnreadCount = useRef(unreadCount);
@@ -48,7 +46,6 @@ const Navbar = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-20">
 
-                    {/* Izquierda: Logo */}
                     <div className="flex-shrink-0">
                         <Link to="/" className="flex items-center space-x-3">
                             <img src={logo1} alt="Logo 1" className="h-9" />
@@ -56,7 +53,6 @@ const Navbar = () => {
                         </Link>
                     </div>
 
-                    {/* Centro: Navegación Principal */}
                     <div className="hidden md:flex items-center justify-center">
                         <nav className="flex items-center space-x-2 bg-white p-2 rounded-full">
                             <Menu as="div" className="relative">
@@ -66,8 +62,7 @@ const Navbar = () => {
                                     <ChevronDown size={16} />
                                 </Menu.Button>
                                 <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                    <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2">
-                                        {/* --- CADA ITEM AHORA USA LA FUNCIÓN `close` --- */}
+                                    <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2 z-10">
                                         <Menu.Item>{({ close }) => (<DropdownLink to="/viviendas/crear" icon={<PlusCircle size={18} />} onClick={close}>Registrar Vivienda</DropdownLink>)}</Menu.Item>
                                         <Menu.Item>{({ close }) => (<DropdownLink to="/viviendas/listar" icon={<List size={18} />} onClick={close}>Ver Viviendas</DropdownLink>)}</Menu.Item>
                                     </Menu.Items>
@@ -81,7 +76,7 @@ const Navbar = () => {
                                     <ChevronDown size={16} />
                                 </Menu.Button>
                                 <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                    <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2">
+                                    <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2 z-10">
                                         <Menu.Item>{({ close }) => (<DropdownLink to="/clientes/crear" icon={<UserPlus size={18} />} onClick={close}>Registrar Cliente</DropdownLink>)}</Menu.Item>
                                         <Menu.Item>{({ close }) => (<DropdownLink to="/clientes/listar" icon={<Users size={18} />} onClick={close}>Ver Clientes</DropdownLink>)}</Menu.Item>
                                     </Menu.Items>
@@ -95,7 +90,7 @@ const Navbar = () => {
                                     <ChevronDown size={16} />
                                 </Menu.Button>
                                 <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                    <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2">
+                                    <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2 z-10">
                                         <Menu.Item>{({ close }) => (<DropdownLink to="/abonos" icon={<Landmark size={18} />} onClick={close}>Gestionar Pagos</DropdownLink>)}</Menu.Item>
                                         <Menu.Item>{({ close }) => (<DropdownLink to="/abonos/listar" icon={<History size={18} />} onClick={close}>Historial de Abonos</DropdownLink>)}</Menu.Item>
                                     </Menu.Items>
@@ -109,9 +104,8 @@ const Navbar = () => {
                         </nav>
                     </div>
 
-                    {/* Derecha: Notificaciones y Perfil */}
                     <div className="flex items-center justify-end">
-                        <Popover>
+                        <Popover as="div" className="relative">
                             {({ open, close }) => (
                                 <>
                                     <Popover.Button className="relative p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -123,20 +117,44 @@ const Navbar = () => {
                                         )}
                                     </Popover.Button>
                                     <Transition as={Fragment} show={open} enter="transition ease-out duration-200" enterFrom="opacity-0 translate-y-1" enterTo="opacity-100 translate-y-0" leave="transition ease-in duration-150" leaveFrom="opacity-100 translate-y-0" leaveTo="opacity-0 translate-y-1">
-                                        <Popover.Panel className="absolute right-0 mt-2 w-80 max-w-sm transform z-10 bg-white shadow-lg rounded-lg border">
+                                        <Popover.Panel className="absolute right-0 mt-4 w-80 max-w-sm transform z-50 bg-white shadow-lg rounded-lg border">
                                             <div className="p-3 flex justify-between items-center border-b">
                                                 <h3 className="text-md font-bold text-gray-800">Notificaciones</h3>
                                                 {unreadCount > 0 && (
-                                                    <button onClick={() => { markAllAsRead(); close(); }} className="text-xs text-blue-600 hover:underline">Marcar todas como leídas</button>
+                                                    <button onClick={() => { markAllAsRead(); close(); }} className="text-xs text-blue-600 hover:underline">Marcar leídas</button>
                                                 )}
                                             </div>
-                                            <div className="overflow-hidden p-2 max-h-96 overflow-y-auto">
-                                                {notifications.length > 0 ? (
-                                                    notifications.map(notif => <NotificationItem key={notif.id} notification={notif} />)
-                                                ) : (
+                                            <div className="overflow-hidden max-h-96 overflow-y-auto">
+                                                {(groupedNotifications.new.length === 0 && groupedNotifications.previous.length === 0) ? (
                                                     <p className="text-center text-gray-500 py-8 text-sm">No hay notificaciones</p>
+                                                ) : (
+                                                    <div>
+                                                        {groupedNotifications.new.length > 0 && (
+                                                            <div className="p-2">
+                                                                <h4 className="px-3 text-xs font-bold text-gray-400 uppercase">Nuevas</h4>
+                                                                {groupedNotifications.new.map(notif => <NotificationItem key={notif.id} notification={notif} />)}
+                                                            </div>
+                                                        )}
+                                                        {groupedNotifications.previous.length > 0 && (
+                                                            <div className="p-2 border-t">
+                                                                <h4 className="px-3 text-xs font-bold text-gray-400 uppercase">Anteriores</h4>
+                                                                {groupedNotifications.previous.map(notif => <NotificationItem key={notif.id} notification={notif} />)}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
+                                            {(groupedNotifications.new.length > 0 || groupedNotifications.previous.length > 0) && (
+                                                <div className="p-2 border-t bg-gray-50">
+                                                    <button
+                                                        onClick={() => { clearAllNotifications(); close(); }}
+                                                        className="w-full flex items-center justify-center gap-2 text-sm text-red-600 hover:bg-red-100 font-semibold p-2 rounded-md transition-colors"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                        Limpiar Todo
+                                                    </button>
+                                                </div>
+                                            )}
                                         </Popover.Panel>
                                     </Transition>
                                 </>

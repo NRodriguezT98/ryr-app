@@ -90,11 +90,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field: name, value } });
     }, [dispatch]);
 
-    // --- NUEVO HANDLER CENTRALIZADO PARA CAMPOS FINANCIEROS ---
     const handleFinancialFieldChange = useCallback((section, field, value) => {
-        // Lógica de filtrado para el campo 'caso'
         if (field === 'caso') {
-            const filter = /^[a-zA-Z0-9_-]*$/; // Permite letras, números, guion bajo y guion medio
+            const filter = /^[a-zA-Z0-9_-]*$/;
             if (!filter.test(value)) {
                 dispatch({ type: 'SET_ERRORS', payload: { [`${section}_${field}`]: 'Solo se permiten letras, números, _ y -.' } });
                 return;
@@ -212,39 +210,55 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
         if (isEditing) {
             const cambiosDetectados = [];
-            const labels = { nombres: "Nombres", apellidos: "Apellidos", telefono: "Teléfono", correo: "Correo", direccion: "Dirección", fechaIngreso: "Fecha de Ingreso", caso: "Número de Caso" };
+            const initial = initialData;
+            const current = formData;
 
-            const formatValue = (key, value) => {
-                if (key === 'fechaIngreso') return formatDisplayDate(value);
-                return value || 'Vacío';
+            const formatValue = (value, type = 'text') => {
+                if (value === null || value === undefined) return 'Vacío';
+                if (type === 'date') return formatDisplayDate(value);
+                if (type === 'currency') return formatCurrency(value || 0);
+                if (type === 'boolean') return value ? 'Sí' : 'No';
+                return String(value) || 'Vacío';
             };
 
-            if (initialData.viviendaSeleccionada?.id !== formData.viviendaSeleccionada?.id) {
-                cambiosDetectados.push({
-                    campo: 'Vivienda Asignada',
-                    anterior: initialData.viviendaSeleccionada ? `Mz ${initialData.viviendaSeleccionada.manzana} - Casa ${initialData.viviendaSeleccionada.numeroCasa}` : 'Ninguna',
-                    actual: formData.viviendaSeleccionada ? `Mz ${formData.viviendaSeleccionada.manzana} - Casa ${formData.viviendaSeleccionada.numeroCasa}` : 'Ninguna'
-                });
-            }
-
-            for (const key in formData.datosCliente) {
-                if (!labels[key]) continue;
-                if (String(initialData.datosCliente[key] || '') !== String(formData.datosCliente[key] || '')) {
+            const compareAndPush = (label, initialVal, currentVal, type = 'text') => {
+                if (String(initialVal || '') !== String(currentVal || '')) {
                     cambiosDetectados.push({
-                        campo: labels[key],
-                        anterior: formatValue(key, initialData.datosCliente[key]),
-                        actual: formatValue(key, formData.datosCliente[key])
+                        campo: label,
+                        anterior: formatValue(initialVal, type),
+                        actual: formatValue(currentVal, type)
                     });
                 }
+            };
+
+            if (initial.viviendaSeleccionada?.id !== current.viviendaSeleccionada?.id) {
+                const viviendaInicial = viviendas.find(v => v.id === initial.viviendaSeleccionada?.id);
+                const viviendaActual = viviendas.find(v => v.id === current.viviendaSeleccionada?.id);
+                compareAndPush('Vivienda Asignada',
+                    viviendaInicial ? `Mz ${viviendaInicial.manzana} - C ${viviendaInicial.numeroCasa}` : 'Ninguna',
+                    viviendaActual ? `Mz ${viviendaActual.manzana} - C ${viviendaActual.numeroCasa}` : 'Ninguna'
+                );
             }
 
-            if (initialData.financiero?.credito?.caso !== formData.financiero?.credito?.caso) {
-                cambiosDetectados.push({
-                    campo: labels.caso,
-                    anterior: formatValue('caso', initialData.financiero.credito.caso),
-                    actual: formatValue('caso', formData.financiero.credito.caso)
-                });
-            }
+            compareAndPush('Nombres', initial.datosCliente.nombres, current.datosCliente.nombres);
+            compareAndPush('Apellidos', initial.datosCliente.apellidos, current.datosCliente.apellidos);
+            compareAndPush('Teléfono', initial.datosCliente.telefono, current.datosCliente.telefono);
+            compareAndPush('Correo', initial.datosCliente.correo, current.datosCliente.correo);
+            compareAndPush('Dirección', initial.datosCliente.direccion, current.datosCliente.direccion);
+            compareAndPush('Fecha de Ingreso', initial.datosCliente.fechaIngreso, current.datosCliente.fechaIngreso, 'date');
+
+            // Financiero
+            compareAndPush('Aplica Cuota Inicial', initial.financiero.aplicaCuotaInicial, current.financiero.aplicaCuotaInicial, 'boolean');
+            compareAndPush('Monto Cuota Inicial', initial.financiero.cuotaInicial.monto, current.financiero.cuotaInicial.monto, 'currency');
+            compareAndPush('Aplica Crédito', initial.financiero.aplicaCredito, current.financiero.aplicaCredito, 'boolean');
+            compareAndPush('Monto Crédito', initial.financiero.credito.monto, current.financiero.credito.monto, 'currency');
+            compareAndPush('Banco (Crédito)', initial.financiero.credito.banco, current.financiero.credito.banco);
+            compareAndPush('Número de Caso (Crédito)', initial.financiero.credito.caso, current.financiero.credito.caso);
+            compareAndPush('Aplica Sub. Mi Casa Ya', initial.financiero.aplicaSubsidioVivienda, current.financiero.aplicaSubsidioVivienda, 'boolean');
+            compareAndPush('Monto Sub. Mi Casa Ya', initial.financiero.subsidioVivienda.monto, current.financiero.subsidioVivienda.monto, 'currency');
+            compareAndPush('Aplica Sub. Caja Comp.', initial.financiero.aplicaSubsidioCaja, current.financiero.aplicaSubsidioCaja, 'boolean');
+            compareAndPush('Monto Sub. Caja Comp.', initial.financiero.subsidioCaja.monto, current.financiero.subsidioCaja.monto, 'currency');
+            compareAndPush('Caja de Compensación', initial.financiero.subsidioCaja.caja, current.financiero.subsidioCaja.caja);
 
             setCambios(cambiosDetectados);
             setIsConfirming(true);
@@ -252,7 +266,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             executeSave();
         }
 
-    }, [formData, todosLosClientes, isEditing, clienteAEditar, abonosDelCliente, initialData, executeSave]);
+    }, [formData, todosLosClientes, isEditing, clienteAEditar, abonosDelCliente, initialData, executeSave, viviendas]);
 
     return {
         step,
@@ -271,7 +285,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             handleSave,
             executeSave,
             handleInputChange,
-            handleFinancialFieldChange // <-- Exportamos el nuevo handler
+            handleFinancialFieldChange
         }
     };
 };

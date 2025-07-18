@@ -22,9 +22,6 @@ export const useDetalleCliente = () => {
             return { isLoading: false, data: null };
         }
 
-        // --- AÑADE ESTE CONSOLE.LOG ---
-        console.log("Datos del Cliente en el Hook:", cliente);
-        // -----------------------------
 
         const historialAbonos = abonos
             .filter(a => a.clienteId === clienteId && a.estadoProceso === 'activo')
