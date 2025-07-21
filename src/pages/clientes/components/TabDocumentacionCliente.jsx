@@ -1,92 +1,58 @@
-import React, { useCallback, useState } from 'react';
-import toast from 'react-hot-toast';
-import { updateCliente } from '../../../utils/storage';
-import DocumentoRow from '../../../components/documentos/DocumentoRow';
-import ModalConfirmacion from '../../../components/ModalConfirmacion'; // <-- 1. Importamos el modal
+import React from 'react';
+import { FileText, Eye, Calendar } from 'lucide-react';
+import { formatDisplayDate } from '../../../utils/textFormatters';
+import { useDocumentacion } from '../../../hooks/clientes/useDocumentacion'; // <-- 1. Importamos el nuevo hook
 
-const TabDocumentacionCliente = ({ cliente, onDatosRecargados }) => {
+const DocumentoItem = ({ documento }) => (
+    <div className="flex items-center justify-between p-4 border-b last:border-b-0">
+        <div className="flex items-center gap-4">
+            <FileText size={24} className="text-gray-400 flex-shrink-0" />
+            <div>
+                <p className="font-semibold text-gray-800">{documento.label}</p>
+                <p className="text-xs text-gray-500">{`Paso del proceso: "${documento.pasoLabel}"`}</p>
+                {documento.fechaSubida && (
+                    <p className="text-xs text-blue-600 font-semibold flex items-center gap-1.5 mt-1">
+                        <Calendar size={12} />
+                        {`Subido el ${formatDisplayDate(documento.fechaSubida)}`}
+                    </p>
+                )}
+            </div>
+        </div>
+        <a
+            href={documento.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-blue-100 text-blue-700 font-semibold px-3 py-1.5 rounded-lg text-sm hover:bg-blue-200 transition-colors"
+        >
+            <Eye size={16} />
+            Ver Documento
+        </a>
+    </div>
+);
 
-    if (!cliente) {
-        return <p className="p-4 text-center text-gray-500">No hay información de cliente disponible.</p>;
-    }
-
-    // --- 2. AÑADIMOS ESTADO PARA MANEJAR EL MODAL ---
-    const [documentoAEliminar, setDocumentoAEliminar] = useState(null);
-
-    const datosCliente = cliente.datosCliente || {};
-    const financiero = cliente.financiero || {};
-
-    const handleFileUpload = useCallback(async (fieldPath, url) => {
-        const clienteActualizado = JSON.parse(JSON.stringify(cliente));
-
-        const keys = fieldPath.split('.');
-        let current = clienteActualizado;
-        for (let i = 0; i < keys.length - 1; i++) {
-            current[keys[i]] = current[keys[i]] || {};
-            current = current[keys[i]];
-        }
-        current[keys[keys.length - 1]] = url;
-
-        try {
-            const { vivienda, ...datosParaGuardar } = clienteActualizado;
-            await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId);
-            toast.success('Documento actualizado correctamente.');
-            onDatosRecargados();
-        } catch (error) {
-            console.error("Error al actualizar el documento:", error);
-            toast.error("No se pudo actualizar el documento.");
-        } finally {
-            setDocumentoAEliminar(null); // Cerramos el modal después de la acción
-        }
-    }, [cliente, onDatosRecargados]);
-
-    const todosLosPosiblesDocumentos = [
-        { label: "Cédula de Ciudadanía", isRequired: true, currentFileUrl: datosCliente.urlCedula, fieldPath: 'datosCliente.urlCedula', filePath: (fileName) => `documentos_clientes/${cliente.id}/cedula-${fileName}` },
-        { label: "Carta Aprobación Crédito", isRequired: financiero.aplicaCredito, currentFileUrl: financiero.credito?.urlCartaAprobacion, fieldPath: 'financiero.credito.urlCartaAprobacion', filePath: (fileName) => `documentos_clientes/${cliente.id}/aprobacion-credito-${fileName}` },
-        { label: "Soporte Subsidio Mi Casa Ya", isRequired: financiero.aplicaSubsidioVivienda, currentFileUrl: financiero.subsidioVivienda?.urlSoporte, fieldPath: 'financiero.subsidioVivienda.urlSoporte', filePath: (fileName) => `documentos_clientes/${cliente.id}/subsidio-vivienda-${fileName}` },
-        { label: "Soporte Subsidio Caja Comp.", isRequired: financiero.aplicaSubsidioCaja, currentFileUrl: financiero.subsidioCaja?.urlSoporte, fieldPath: 'financiero.subsidioCaja.urlSoporte', filePath: (fileName) => `documentos_clientes/${cliente.id}/subsidio-caja-${fileName}` }
-    ];
-
-    const documentosRequeridos = todosLosPosiblesDocumentos.filter(doc => doc.isRequired);
+const TabDocumentacionCliente = ({ cliente }) => {
+    // --- 2. El componente ahora solo consume el hook ---
+    const { filtro, setFiltro, documentosFiltrados } = useDocumentacion(cliente);
 
     return (
-        <>
-            <div className="animate-fade-in bg-white border rounded-xl shadow-sm">
-                <div className="p-4 border-b">
-                    <h3 className="font-bold text-lg">Lista de Documentos Requeridos</h3>
-                </div>
-                <div className="divide-y">
-                    {documentosRequeridos.length > 0 ? (
-                        documentosRequeridos.map(doc => (
-                            <DocumentoRow
-                                key={doc.label}
-                                label={doc.label}
-                                isRequired={doc.isRequired}
-                                currentFileUrl={doc.currentFileUrl}
-                                filePath={doc.filePath}
-                                onUploadSuccess={(url) => handleFileUpload(doc.fieldPath, url)}
-                                // --- 3. AHORA 'onRemove' ABRE EL MODAL ---
-                                onRemove={() => setDocumentoAEliminar(doc)}
-                                disabled={!cliente.id}
-                            />
-                        ))
-                    ) : (
-                        <p className="p-4 text-center text-gray-500">Este cliente no tiene documentos requeridos según su estructura financiera.</p>
-                    )}
+        <div className="animate-fade-in bg-white border rounded-xl shadow-sm">
+            <div className="p-4 border-b flex justify-between items-center">
+                <h3 className="font-bold text-lg">Repositorio de Documentos</h3>
+                <div className="flex-shrink-0 bg-gray-100 p-1 rounded-lg">
+                    <button onClick={() => setFiltro('importantes')} className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${filtro === 'importantes' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200'}`}>Importantes</button>
+                    <button onClick={() => setFiltro('todos')} className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${filtro === 'todos' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:bg-gray-200'}`}>Todos</button>
                 </div>
             </div>
-
-            {/* --- 4. RENDERIZADO CONDICIONAL DEL MODAL --- */}
-            {documentoAEliminar && (
-                <ModalConfirmacion
-                    isOpen={!!documentoAEliminar}
-                    onClose={() => setDocumentoAEliminar(null)}
-                    onConfirm={() => handleFileUpload(documentoAEliminar.fieldPath, null)}
-                    titulo="¿Eliminar Documento?"
-                    mensaje={`¿Estás seguro de que deseas eliminar el documento "${documentoAEliminar.label}"? Esta acción no se puede deshacer.`}
-                />
-            )}
-        </>
+            <div>
+                {documentosFiltrados.length > 0 ? (
+                    documentosFiltrados.map(doc => <DocumentoItem key={doc.id} documento={doc} />)
+                ) : (
+                    <p className="p-8 text-center text-gray-500">
+                        No hay documentos que coincidan con el filtro actual.
+                    </p>
+                )}
+            </div>
+        </div>
     );
 };
 

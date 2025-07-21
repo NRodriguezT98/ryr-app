@@ -1,9 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, Home, Info, BarChart2, User, Star, Tag } from 'lucide-react';
+import { ArrowLeft, Home, Info, BarChart2, Star, Tag, CheckCircle2 } from 'lucide-react';
 import { useDetalleVivienda } from '../../hooks/viviendas/useDetalleVivienda.jsx';
-import { toTitleCase } from '../../utils/textFormatters';
 import TabInformacion from './components/TabInformacion';
 import TabFinanciero from './components/TabFinanciero';
 import Button from '../../components/Button';

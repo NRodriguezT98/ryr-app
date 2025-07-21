@@ -21,6 +21,8 @@ export const DataProvider = ({ children }) => {
     const [renuncias, setRenuncias] = useState([]);
 
     const recargarDatos = useCallback(() => {
+        // Esta función podría forzar una recarga si fuera necesario,
+        // pero onSnapshot ya lo hace en tiempo real.
     }, []);
 
     useEffect(() => {
@@ -57,28 +59,26 @@ export const DataProvider = ({ children }) => {
         };
     }, []);
 
-    // MEJORA 1: Memoizamos los datos derivados de forma aislada.
-    // Este cálculo ahora solo se ejecutará si 'clientes' o 'viviendas' cambian.
-    const clientesConVivienda = useMemo(() => {
+    // --- LÓGICA DE ENRIQUECIMIENTO DE DATOS CORREGIDA ---
+    const clientesEnriquecidos = useMemo(() => {
         return clientes.map((cliente) => {
             const viviendaAsignada = viviendas.find((v) => v.id === cliente.viviendaId);
-            return { ...cliente, vivienda: viviendaAsignada || null };
+            // Creamos un nuevo objeto de cliente para no mutar el original.
+            const clienteConVivienda = { ...cliente, vivienda: viviendaAsignada || null };
+            return clienteConVivienda;
         });
     }, [clientes, viviendas]);
 
-
-    // MEJORA 2: El 'value' del contexto ahora depende del array ya memoizado.
-    // No se creará un nuevo objeto 'value' si solo cambian 'abonos' o 'renuncias'.
     const value = useMemo(() => {
         return {
             isLoading,
             viviendas,
-            clientes: clientesConVivienda, // Usamos el valor ya procesado y estable.
+            clientes: clientesEnriquecidos, // Usamos el valor ya procesado.
             abonos,
             renuncias,
             recargarDatos
         };
-    }, [isLoading, viviendas, clientesConVivienda, abonos, renuncias, recargarDatos]);
+    }, [isLoading, viviendas, clientesEnriquecidos, abonos, renuncias, recargarDatos]);
 
     return (
         <DataContext.Provider value={value}>

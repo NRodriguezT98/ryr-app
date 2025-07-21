@@ -5,6 +5,8 @@ import AnimatedPage from '../../../components/AnimatedPage';
 import HelpTooltip from '../../../components/HelpTooltip';
 import { formatCurrency } from '../../../utils/textFormatters';
 import { useClienteFinanciero } from '../../../hooks/clientes/useClienteFinanciero';
+import FileUpload from '../../../components/FileUpload';
+import { FileText, XCircle } from 'lucide-react';
 
 const creditoOptions = [
     { value: 'Bancolombia', label: 'Bancolombia' },
@@ -42,11 +44,15 @@ const getSelectStyles = (hasError) => ({
 });
 
 const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange }) => {
-    const { financiero, viviendaSeleccionada } = formData;
+    const { financiero, viviendaSeleccionada, documentos, datosCliente } = formData;
     const resumenFinanciero = useClienteFinanciero(financiero, viviendaSeleccionada?.valorTotal);
 
     const handleCheckboxChange = useCallback((e) => {
         dispatch({ type: 'TOGGLE_FINANCIAL_OPTION', payload: { field: e.target.name, value: e.target.checked } });
+    }, [dispatch]);
+
+    const handleDocumentUpload = useCallback((docId, url) => {
+        dispatch({ type: 'UPDATE_DOCUMENTO_URL', payload: { docId, url } });
     }, [dispatch]);
 
     return (
@@ -93,6 +99,30 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                 }
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 pt-6 border-t">
+                    <div className="lg:col-span-2 p-4 border rounded-xl bg-gray-50">
+                        <label className="block font-semibold mb-2 text-gray-700 flex items-center">
+                            Promesa de Compraventa Enviada <span className="text-red-600">*</span>
+                            <HelpTooltip id="promesaFile" content="Adjunte la promesa de compraventa que se envió al cliente. Este paso marcará el inicio del seguimiento." />
+                        </label>
+                        {documentos.promesaEnviadaUrl ? (
+                            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center justify-between">
+                                <div className='flex items-center gap-2 text-green-800 font-semibold'>
+                                    <FileText />
+                                    <a href={documentos.promesaEnviadaUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Promesa Cargada</a>
+                                </div>
+                                <button type="button" onClick={() => handleDocumentUpload('promesaEnviadaUrl', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar documento"><XCircle size={20} /></button>
+                            </div>
+                        ) : (
+                            <FileUpload
+                                label="Subir Promesa de Compraventa"
+                                filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/promesa-enviada-${fileName}`}
+                                onUploadSuccess={(url) => handleDocumentUpload('promesaEnviadaUrl', url)}
+                                disabled={!datosCliente.cedula}
+                            />
+                        )}
+                        {errors.promesaEnviadaUrl && <p className="text-red-600 text-sm mt-1">{errors.promesaEnviadaUrl}</p>}
+                    </div>
+
                     <div className="p-4 border rounded-xl h-full">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaCuotaInicial" checked={financiero.aplicaCuotaInicial} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />

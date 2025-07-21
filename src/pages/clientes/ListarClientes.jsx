@@ -1,11 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useListarClientes } from "../../hooks/clientes/useListarClientes.jsx";
 import ResourcePageLayout from "../../layout/ResourcePageLayout";
-import ClienteCard from './ClienteCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
 import ModalMotivoRenuncia from "./components/ModalMotivoRenuncia";
-import { User } from "lucide-react";
+import { User, Search } from "lucide-react"; // Importamos el ícono de búsqueda
+import ClienteCard from "./ClienteCard.jsx";
 import ClienteCardSkeleton from "./ClienteCardSkeleton.jsx";
 
 const ListarClientes = () => {
@@ -24,14 +24,24 @@ const ListarClientes = () => {
             icon={<User size={40} />}
             color="#1976d2"
             filterControls={
-                <div className="flex flex-col md:flex-row items-center justify-end gap-4 w-full">
+                // --- ESTRUCTURA DE FILTROS REORGANIZADA Y ESTILIZADA ---
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+                    {/* Filtros de estado a la izquierda */}
                     <div className="flex-shrink-0 bg-gray-100 p-1 rounded-lg">
                         <button onClick={() => setStatusFilter('activo')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'activo' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-200'}`}>Activos</button>
                         <button onClick={() => setStatusFilter('renunciado')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'renunciado' ? 'bg-white shadow text-orange-600' : 'text-gray-600 hover:bg-gray-200'}`}>Renunciaron</button>
                         <button onClick={() => setStatusFilter('todos')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'todos' ? 'bg-white shadow text-gray-800' : 'text-gray-600 hover:bg-gray-200'}`}>Todos</button>
                     </div>
-                    <div className="w-full md:w-1/3">
-                        <input type="text" placeholder="Buscar por nombre o cédula..." className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    {/* Buscador a la derecha */}
+                    <div className="relative w-full md:w-1/3">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre o cédula..."
+                            className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-shadow"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
                 </div>
             }

@@ -2,6 +2,7 @@ import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch, setDoc, query, where, serverTimestamp } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { toSentenceCase, formatCurrency } from './textFormatters';
+import { PROCESO_CONFIG } from './procesoConfig.js';
 
 // --- FUNCIÓN HELPER PARA CREAR NOTIFICACIONES (EXPORTADA) ---
 export const createNotification = async (type, message, link = '#') => {
@@ -152,10 +153,42 @@ export const deleteVivienda = async (viviendaId) => {
 
 export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId) => {
     const clienteRef = doc(db, "clientes", String(clienteId));
+
+    const procesoSincronizado = { ...(clienteActualizado.proceso || {}) };
+
+    PROCESO_CONFIG.forEach(pasoConfig => {
+        const aplicaAhora = pasoConfig.aplicaA(clienteActualizado.financiero || {});
+        const existeEnProceso = procesoSincronizado[pasoConfig.key];
+
+        if (existeEnProceso && !aplicaAhora) {
+            procesoSincronizado[pasoConfig.key].archivado = true;
+        }
+
+        if (!existeEnProceso && aplicaAhora) {
+            const evidencias = {};
+            pasoConfig.evidenciasRequeridas.forEach(ev => {
+                evidencias[ev.id] = { url: null, estado: 'pendiente' };
+            });
+            procesoSincronizado[pasoConfig.key] = {
+                completado: false,
+                fecha: null,
+                evidencias,
+                archivado: false
+            };
+        }
+
+        if (existeEnProceso && aplicaAhora && existeEnProceso.archivado) {
+            procesoSincronizado[pasoConfig.key].archivado = false;
+        }
+    });
+
+    const datosFinales = { ...clienteActualizado, proceso: procesoSincronizado };
+
     const batch = writeBatch(db);
-    batch.update(clienteRef, clienteActualizado);
-    const nuevaViviendaId = clienteActualizado.viviendaId;
-    const nombreCompleto = `${clienteActualizado.datosCliente.nombres} ${clienteActualizado.datosCliente.apellidos}`.trim();
+    batch.update(clienteRef, datosFinales);
+
+    const nuevaViviendaId = datosFinales.viviendaId;
+    const nombreCompleto = `${datosFinales.datosCliente.nombres} ${datosFinales.datosCliente.apellidos}`.trim();
     if (viviendaOriginalId !== nuevaViviendaId) {
         if (viviendaOriginalId) {
             const viviendaAntiguaRef = doc(db, "viviendas", String(viviendaOriginalId));

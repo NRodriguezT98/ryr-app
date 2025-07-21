@@ -1,15 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, Edit, User, FileDown, Info, CheckSquare, Briefcase } from 'lucide-react';
+import { ArrowLeft, Edit, User, FileDown, Info, GitCommit, Briefcase } from 'lucide-react';
 import { useDetalleCliente } from '../../hooks/clientes/useDetalleCliente.jsx';
 import { getInitials } from '../../utils/textFormatters';
 import { generateClientStatementPDF } from '../../utils/pdfGenerator';
 import toast from 'react-hot-toast';
 import TabInfoGeneralCliente from './components/TabInfoGeneralCliente';
-import TabDocumentacionCliente from './components/TabDocumentacionCliente';
-import SeguimientoCliente from './components/SeguimientoCliente';
-import { updateCliente } from '../../utils/storage';
+import TabProcesoCliente from './components/TabProcesoCliente';
+import TabDocumentacionCliente from './components/TabDocumentacionCliente'; // <-- 1. Importamos el nuevo componente
 
 const TabButton = ({ activeTab, tabName, label, icon, onClick }) => (
     <button
@@ -35,19 +34,6 @@ const DetalleCliente = () => {
             generateClientStatementPDF(cliente, vivienda, historialAbonos);
         } else {
             toast.error("No se puede generar el reporte. El cliente no tiene una vivienda asignada.");
-        }
-    };
-
-    const handleGuardarSeguimiento = async (nuevoSeguimiento) => {
-        if (!cliente) return;
-        try {
-            const clienteActualizado = { ...cliente, seguimiento: nuevoSeguimiento };
-            const { vivienda, ...datosParaGuardar } = clienteActualizado;
-            await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId);
-            toast.success('El seguimiento del cliente ha sido actualizado.');
-            recargarDatos();
-        } catch (error) {
-            toast.error('No se pudo actualizar el seguimiento.');
         }
     };
 
@@ -77,15 +63,17 @@ const DetalleCliente = () => {
                 <div className="border-b border-gray-200 mb-6">
                     <nav className="flex space-x-2">
                         <TabButton activeTab={activeTab} tabName="info" label="Información General" icon={<Info size={16} />} onClick={setActiveTab} />
+                        <TabButton activeTab={activeTab} tabName="proceso" label="Proceso" icon={<GitCommit size={16} />} onClick={setActiveTab} />
+                        {/* --- 2. AÑADIMOS LA PESTAÑA DE DOCUMENTACIÓN --- */}
                         <TabButton activeTab={activeTab} tabName="documentos" label="Documentación" icon={<Briefcase size={16} />} onClick={setActiveTab} />
-                        <TabButton activeTab={activeTab} tabName="seguimiento" label="Seguimiento" icon={<CheckSquare size={16} />} onClick={setActiveTab} />
                     </nav>
                 </div>
 
                 <div>
                     {activeTab === 'info' && <TabInfoGeneralCliente cliente={cliente} vivienda={vivienda} historialAbonos={historialAbonos} />}
-                    {activeTab === 'documentos' && <TabDocumentacionCliente cliente={cliente} onDatosRecargados={recargarDatos} />}
-                    {activeTab === 'seguimiento' && <SeguimientoCliente cliente={cliente} onSave={handleGuardarSeguimiento} />}
+                    {activeTab === 'proceso' && <TabProcesoCliente cliente={cliente} onDatosRecargados={recargarDatos} />}
+                    {/* --- 3. RENDERIZAMOS EL NUEVO COMPONENTE --- */}
+                    {activeTab === 'documentos' && <TabDocumentacionCliente cliente={cliente} />}
                 </div>
             </div>
         </AnimatedPage>

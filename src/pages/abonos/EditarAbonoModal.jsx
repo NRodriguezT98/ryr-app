@@ -174,7 +174,6 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
                     </div>
                 </form>
             </Modal>
-            <Tooltip id="app-tooltip" />
         </>
     );
 };

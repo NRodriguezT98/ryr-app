@@ -1,102 +1,130 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { PASOS_SEGUIMIENTO_CONFIG } from '../../utils/seguimientoConfig';
 import toast from 'react-hot-toast';
+import { PROCESO_CONFIG } from '../../utils/procesoConfig';
+import { updateCliente } from '../../utils/storage';
 
-export const useSeguimientoLogic = (cliente, onSave) => {
-    const [seguimiento, setSeguimiento] = useState(cliente.seguimiento || {});
+const getTodayString = () => new Date().toISOString().split('T')[0];
+
+export const useProcesoLogic = (cliente, onSave) => {
+    const [procesoState, setProcesoState] = useState(cliente.proceso || {});
+    const [initialProcesoState, setInitialProcesoState] = useState(cliente.proceso || {});
 
     useEffect(() => {
-        setSeguimiento(cliente.seguimiento || {});
-    }, [cliente.seguimiento]);
+        setProcesoState(cliente.proceso || {});
+        setInitialProcesoState(cliente.proceso || {});
+    }, [cliente.proceso]);
 
-    const handleUpdate = useCallback((pasoKey, newData) => {
-        setSeguimiento(prev => ({
-            ...prev,
-            [pasoKey]: newData
-        }));
+    const handleUpdateEvidencia = useCallback((pasoKey, evidenciaId, url) => {
+        setProcesoState(prev => {
+            const newProceso = JSON.parse(JSON.stringify(prev));
+            // Aseguramos que el paso exista antes de modificarlo
+            if (!newProceso[pasoKey]) {
+                newProceso[pasoKey] = { completado: false, fecha: null, evidencias: {} };
+            }
+            if (!newProceso[pasoKey].evidencias) {
+                newProceso[pasoKey].evidencias = {};
+            }
+            newProceso[pasoKey].evidencias[evidenciaId] = { url, estado: url ? 'subido' : 'pendiente' };
+            return newProceso;
+        });
     }, []);
 
-    const { pasosRenderizables, isSaveDisabled } = useMemo(() => {
-        const pasosAplicables = PASOS_SEGUIMIENTO_CONFIG.filter(paso =>
-            paso.aplicaA(cliente.financiero || {})
-        );
-
-        let lastCompletedDate = cliente.datosCliente.fechaIngreso;
-        const errors = {};
-
-        const pasosConDatos = pasosAplicables.map((paso, index) => {
-            let previousStepDate = cliente.datosCliente.fechaIngreso;
-            if (index > 0) {
-                for (let i = index - 1; i >= 0; i--) {
-                    const prevPasoKey = pasosAplicables[i].key;
-                    const prevPasoData = seguimiento[prevPasoKey];
-                    if (prevPasoData?.completado && prevPasoData?.fecha) {
-                        previousStepDate = prevPasoData.fecha;
-                        break;
-                    }
-                }
+    const handleCompletarPaso = useCallback((pasoKey, fecha) => {
+        setProcesoState(prev => {
+            const newProceso = JSON.parse(JSON.stringify(prev));
+            if (newProceso[pasoKey]) {
+                newProceso[pasoKey].completado = true;
+                newProceso[pasoKey].fecha = fecha;
             }
-            return { ...paso, data: seguimiento[paso.key], minDate: cliente.datosCliente.fechaIngreso, previousStepDate };
+            return newProceso;
         });
+    }, []);
 
-        let previousStepValid = true;
-        pasosConDatos.forEach(paso => {
-            const pasoActual = paso.data;
-            const isStepCompleted = (key) => seguimiento[key]?.completado && seguimiento[key]?.fecha && !errors[key];
+    const { pasosRenderizables, validationErrors } = useMemo(() => {
+        const errores = {};
+        let ultimaFechaValida = cliente.datosCliente.fechaIngreso;
 
+        const pasosAplicables = PROCESO_CONFIG.filter(paso => paso.aplicaA(cliente.financiero || {}));
+
+        pasosAplicables.forEach(paso => {
+            const pasoActual = procesoState[paso.key];
             if (pasoActual?.completado) {
                 if (!pasoActual.fecha) {
-                    errors[paso.key] = "Se requiere una fecha.";
+                    errores[paso.key] = "Se requiere una fecha.";
                 } else {
                     const fechaSeleccionada = new Date(pasoActual.fecha + 'T00:00:00');
-                    if (new Date(lastCompletedDate) > fechaSeleccionada) {
-                        errors[paso.key] = `La fecha no puede ser anterior al último paso válido (${new Date(lastCompletedDate).toLocaleDateString('es-ES')}).`;
+                    if (new Date(ultimaFechaValida) > fechaSeleccionada) {
+                        errores[paso.key] = `La fecha no puede ser anterior al último paso válido (${new Date(ultimaFechaValida).toLocaleDateString('es-ES')}).`;
                     } else {
-                        lastCompletedDate = pasoActual.fecha;
+                        ultimaFechaValida = pasoActual.fecha;
                     }
                 }
             }
+        });
 
-            const isBoletaRegistroCompleted = isStepCompleted('pagoBoletaRegistro');
-            const allPreviousStepsForInvoiceCompleted = pasosAplicables.filter(p => p.key !== 'facturaVenta').every(p => isStepCompleted(p.key));
+        let previousStepCompleted = true;
+        const resultado = pasosAplicables.map(pasoConfig => {
+            // --- SOLUCIÓN DEFINITIVA AQUÍ ---
+            // Aseguramos que pasoData siempre tenga una estructura completa
+            const pasoData = procesoState[pasoConfig.key] || { completado: false, fecha: null, evidencias: {} };
 
-            let isLocked = !previousStepValid;
-            switch (paso.key) {
+            const isStepValidAndCompleted = (key) => procesoState[key]?.completado && procesoState[key]?.fecha && !errores[key];
+            const isBoletaRegistroCompleted = isStepValidAndCompleted('pagoBoletaRegistro');
+            const allPreviousStepsForInvoiceCompleted = pasosAplicables.filter(p => p.key !== 'facturaVenta').every(p => isStepValidAndCompleted(p.key));
+
+            let isLocked = !previousStepCompleted;
+            switch (pasoConfig.key) {
                 case 'solicitudDesembolsoCredito': case 'solicitudDesembolsoMCY': case 'solicitudDesembolsoCaja':
                     isLocked = !isBoletaRegistroCompleted; break;
-                case 'desembolsoCredito': isLocked = !isStepCompleted('solicitudDesembolsoCredito'); break;
-                case 'desembolsoMCY': isLocked = !isStepCompleted('solicitudDesembolsoMCY'); break;
-                case 'desembolsoCaja': isLocked = !isStepCompleted('solicitudDesembolsoCaja'); break;
+                case 'desembolsoCredito': isLocked = !isStepValidAndCompleted('solicitudDesembolsoCredito'); break;
+                case 'desembolsoMCY': isLocked = !isStepValidAndCompleted('solicitudDesembolsoMCY'); break;
+                case 'desembolsoCaja': isLocked = !isStepValidAndCompleted('solicitudDesembolsoCaja'); break;
                 case 'facturaVenta': isLocked = !allPreviousStepsForInvoiceCompleted; break;
             }
 
-            paso.isLocked = isLocked;
-            paso.error = errors[paso.key];
-
-            if (!isStepCompleted(paso.key) && ['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].indexOf(paso.key) === -1) {
-                previousStepValid = false;
+            if (!isStepValidAndCompleted(pasoConfig.key) && ['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].indexOf(pasoConfig.key) === -1) {
+                previousStepCompleted = false;
             }
+
+            const todasEvidenciasSubidas = pasoConfig.evidenciasRequeridas.every(ev => pasoData.evidencias[ev.id]?.url);
+            const puedeCompletarse = todasEvidenciasSubidas && !pasoData.completado && !isLocked;
+
+            return { ...pasoConfig, data: pasoData, isLocked, puedeCompletarse, error: errores[pasoConfig.key] };
         });
 
         return {
-            pasosRenderizables: pasosConDatos,
-            isSaveDisabled: Object.keys(errors).length > 0,
+            pasosRenderizables: resultado,
+            validationErrors: errores
         };
 
-    }, [cliente, seguimiento]);
+    }, [cliente.financiero, cliente.datosCliente.fechaIngreso, procesoState]);
 
-    const handleSave = () => {
+    const isSaveDisabled = useMemo(() => {
+        if (Object.keys(validationErrors).length > 0) return true;
+        if (JSON.stringify(procesoState) === JSON.stringify(initialProcesoState)) return true;
+        return false;
+    }, [procesoState, initialProcesoState, validationErrors]);
+
+    const handleSaveChanges = async () => {
         if (isSaveDisabled) {
-            toast.error("Hay errores en el formulario. Por favor, corrígelos antes de guardar.");
+            toast.error("No hay cambios para guardar o existen errores.");
             return;
         }
-        onSave(seguimiento);
+        try {
+            await onSave(procesoState);
+            toast.success("Proceso del cliente actualizado con éxito.");
+            setInitialProcesoState(procesoState);
+        } catch (error) {
+            toast.error("No se pudo guardar los cambios en el proceso.");
+            console.error("Error al guardar proceso:", error);
+        }
     };
 
     return {
-        handleUpdate,
         pasosRenderizables,
-        isSaveDisabled,
-        handleSave,
+        handleUpdateEvidencia,
+        handleCompletarPaso,
+        handleSaveChanges,
+        isSaveDisabled
     };
 };

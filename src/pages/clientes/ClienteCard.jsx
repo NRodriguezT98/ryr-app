@@ -39,7 +39,6 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) =>
                     <p className="flex items-center gap-3 font-semibold">
                         <Home size={16} className={vivienda ? 'text-green-600' : 'text-gray-400'} />
                         {vivienda ? (
-                            // --- ENLACE AÑADIDO A LA VIVIENDA ---
                             <Link to={`/viviendas/detalle/${vivienda.id}`} className="text-green-700 hover:underline">
                                 {`Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
                             </Link>
@@ -68,9 +67,9 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) =>
 
             {/* Pie de tarjeta con estado y acciones */}
             <div className="mt-auto p-4 border-t bg-gray-50 flex items-center justify-between">
-                {/* --- ENLACE AÑADIDO AL ESTADO DEL PROCESO --- */}
                 <Link to={`/clientes/detalle/${cliente.id}`} state={{ defaultTab: 'seguimiento' }} className="flex">
-                    <div className={`flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-full transition-transform hover:scale-105 ${clientStatus.color}`}>
+                    {/* --- EFECTO HOVER CORREGIDO AQUÍ --- */}
+                    <div className={`flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded-full transition-all duration-200 hover:brightness-110 ${clientStatus.color}`}>
                         {clientStatus.icon}
                         <span>{clientStatus.text}</span>
                     </div>

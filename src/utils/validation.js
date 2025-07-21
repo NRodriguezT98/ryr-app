@@ -110,7 +110,7 @@ export const validateEditarCliente = (formData, todosLosClientes, clienteIdActua
     return baseErrors;
 };
 
-export const validateFinancialStep = (financiero, valorVivienda) => {
+export const validateFinancialStep = (financiero, valorVivienda, documentos) => {
     const errors = {};
     const { aplicaCuotaInicial, cuotaInicial, aplicaCredito, credito, aplicaSubsidioVivienda, subsidioVivienda, aplicaSubsidioCaja, subsidioCaja } = financiero;
 
@@ -122,7 +122,6 @@ export const validateFinancialStep = (financiero, valorVivienda) => {
     if (aplicaCredito) {
         if (!credito.banco) errors.credito_banco = "Selecciona un banco.";
         if (!credito.monto || credito.monto <= 0) errors.credito_monto = "El monto debe ser > 0.";
-        // --- VALIDACIÓN AÑADIDA PARA EL CAMPO 'caso' ---
         if (credito.banco === 'Bancolombia' && !credito.caso?.trim()) {
             errors.credito_caso = "El número de caso es obligatorio para Bancolombia.";
         }
@@ -136,6 +135,10 @@ export const validateFinancialStep = (financiero, valorVivienda) => {
         if (!subsidioCaja.caja) errors.subsidioCaja_caja = "Selecciona una caja.";
         if (!subsidioCaja.monto || subsidioCaja.monto <= 0) errors.subsidioCaja_monto = "El monto debe ser > 0.";
         totalRecursos += subsidioCaja.monto || 0;
+    }
+
+    if (documentos && !documentos.promesaEnviadaUrl) {
+        errors.promesaEnviadaUrl = "Es obligatorio adjuntar la promesa de compraventa enviada.";
     }
 
     const totalAPagar = valorVivienda || 0;

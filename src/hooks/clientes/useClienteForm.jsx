@@ -5,6 +5,7 @@ import { validateCliente, validateFinancialStep, validateEditarCliente } from '.
 import { getClientes, addClienteAndAssignVivienda, updateCliente, getAbonos, createNotification } from '../../utils/storage.js';
 import { useData } from '../../context/DataContext.jsx';
 import { PASOS_SEGUIMIENTO_CONFIG } from '../../utils/seguimientoConfig.js';
+import { DOCUMENTACION_CONFIG } from '../../utils/documentacionConfig.js';
 import { formatCurrency, toTitleCase, formatDisplayDate } from '../../utils/textFormatters.js';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
@@ -21,6 +22,9 @@ const blankInitialState = {
         aplicaCredito: false, credito: { banco: '', monto: 0, caso: '' },
         aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
         aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 },
+    },
+    documentos: {
+        promesaEnviadaUrl: null
     },
     errors: {}
 };
@@ -46,6 +50,12 @@ function formReducer(state, action) {
             const newErrors = { ...state.errors };
             delete newErrors[`${section}_${field}`];
             return { ...state, financiero: newFinancials, errors: newErrors };
+        }
+        case 'UPDATE_DOCUMENTO_URL': {
+            const { docId, url } = action.payload;
+            const newErrors = { ...state.errors };
+            delete newErrors[docId];
+            return { ...state, documentos: { ...state.documentos, [docId]: url }, errors: newErrors };
         }
         case 'TOGGLE_FINANCIAL_OPTION': {
             const newFinancials = { ...state.financiero, [action.payload.field]: action.payload.value };
@@ -131,8 +141,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             return;
         }
         if (step === 2) {
-            const validationFunction = isEditing ? validateEditarCliente : validateCliente;
-            errors = validationFunction(formData.datosCliente, todosLosClientes, clienteAEditar?.id, abonosDelCliente);
+            errors = validateCliente(formData.datosCliente, todosLosClientes);
             if (Object.keys(errors).length > 0) {
                 dispatch({ type: 'SET_ERRORS', payload: errors });
                 return;
@@ -160,16 +169,34 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 createNotification('cliente', `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`, `/clientes/detalle/${clienteAEditar.id}`);
             } else {
                 const nuevoSeguimiento = {};
+                const documentosIniciales = {};
+
                 PASOS_SEGUIMIENTO_CONFIG.forEach(paso => {
                     if (paso.aplicaA(formData.financiero)) {
                         nuevoSeguimiento[paso.key] = { completado: false, fecha: null };
                     }
                 });
 
+                DOCUMENTACION_CONFIG.forEach(doc => {
+                    if (doc.aplicaA(formData.financiero)) {
+                        documentosIniciales[doc.id] = { url: null, estado: 'pendiente' };
+                    }
+                });
+
+                if (formData.datosCliente.urlCedula) {
+                    documentosIniciales.cedula = { url: formData.datosCliente.urlCedula, estado: 'subido' };
+                }
+
+                if (formData.documentos.promesaEnviadaUrl) {
+                    documentosIniciales.promesaEnviada = { url: formData.documentos.promesaEnviadaUrl, estado: 'subido' };
+                    nuevoSeguimiento.promesaEnviada = { completado: true, fecha: getTodayString() };
+                }
+
                 const clienteParaGuardar = {
                     datosCliente: formData.datosCliente,
                     financiero: formData.financiero,
                     seguimiento: nuevoSeguimiento,
+                    documentos: documentosIniciales,
                     viviendaId: formData.viviendaSeleccionada.id
                 };
                 await addClienteAndAssignVivienda(clienteParaGuardar);
@@ -188,7 +215,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             setIsSubmitting(false);
             setIsConfirming(false);
         }
-    }, [formData, navigate, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId]);
+    }, [formData, navigate, todosLosClientes, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId]);
 
     const hayCambios = useMemo(() => {
         if (!initialData || !formData) return false;
@@ -197,9 +224,8 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
     const handleSave = useCallback(() => {
         const valorTotalVivienda = formData.viviendaSeleccionada?.valorTotal || 0;
-        const validationFunction = isEditing ? validateEditarCliente : validateCliente;
-        const clientErrors = validationFunction(formData.datosCliente, todosLosClientes, clienteAEditar?.id, abonosDelCliente);
-        const financialErrors = validateFinancialStep(formData.financiero, valorTotalVivienda);
+        const clientErrors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar?.id, abonosDelCliente);
+        const financialErrors = validateFinancialStep(formData.financiero, valorTotalVivienda, formData.documentos);
         const totalErrors = { ...clientErrors, ...financialErrors };
 
         if (Object.keys(totalErrors).length > 0) {
@@ -212,7 +238,6 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             const cambiosDetectados = [];
             const initial = initialData;
             const current = formData;
-
             const formatValue = (value, type = 'text') => {
                 if (value === null || value === undefined) return 'Vacío';
                 if (type === 'date') return formatDisplayDate(value);
@@ -220,7 +245,6 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 if (type === 'boolean') return value ? 'Sí' : 'No';
                 return String(value) || 'Vacío';
             };
-
             const compareAndPush = (label, initialVal, currentVal, type = 'text') => {
                 if (String(initialVal || '') !== String(currentVal || '')) {
                     cambiosDetectados.push({
@@ -230,7 +254,6 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     });
                 }
             };
-
             if (initial.viviendaSeleccionada?.id !== current.viviendaSeleccionada?.id) {
                 const viviendaInicial = viviendas.find(v => v.id === initial.viviendaSeleccionada?.id);
                 const viviendaActual = viviendas.find(v => v.id === current.viviendaSeleccionada?.id);
@@ -239,15 +262,12 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     viviendaActual ? `Mz ${viviendaActual.manzana} - C ${viviendaActual.numeroCasa}` : 'Ninguna'
                 );
             }
-
             compareAndPush('Nombres', initial.datosCliente.nombres, current.datosCliente.nombres);
             compareAndPush('Apellidos', initial.datosCliente.apellidos, current.datosCliente.apellidos);
             compareAndPush('Teléfono', initial.datosCliente.telefono, current.datosCliente.telefono);
             compareAndPush('Correo', initial.datosCliente.correo, current.datosCliente.correo);
             compareAndPush('Dirección', initial.datosCliente.direccion, current.datosCliente.direccion);
             compareAndPush('Fecha de Ingreso', initial.datosCliente.fechaIngreso, current.datosCliente.fechaIngreso, 'date');
-
-            // Financiero
             compareAndPush('Aplica Cuota Inicial', initial.financiero.aplicaCuotaInicial, current.financiero.aplicaCuotaInicial, 'boolean');
             compareAndPush('Monto Cuota Inicial', initial.financiero.cuotaInicial.monto, current.financiero.cuotaInicial.monto, 'currency');
             compareAndPush('Aplica Crédito', initial.financiero.aplicaCredito, current.financiero.aplicaCredito, 'boolean');
@@ -259,7 +279,6 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             compareAndPush('Aplica Sub. Caja Comp.', initial.financiero.aplicaSubsidioCaja, current.financiero.aplicaSubsidioCaja, 'boolean');
             compareAndPush('Monto Sub. Caja Comp.', initial.financiero.subsidioCaja.monto, current.financiero.subsidioCaja.monto, 'currency');
             compareAndPush('Caja de Compensación', initial.financiero.subsidioCaja.caja, current.financiero.subsidioCaja.caja);
-
             setCambios(cambiosDetectados);
             setIsConfirming(true);
         } else {
