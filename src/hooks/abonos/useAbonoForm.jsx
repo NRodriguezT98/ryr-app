@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useForm } from '../useForm.jsx';
 import toast from 'react-hot-toast';
-import { addAbono, createNotification } from '../../utils/storage';
-import { validateAbono } from '../../utils/validation.js'; // <-- RUTA ACTUALIZADA
+import { addAbonoAndUpdateProceso } from '../../utils/storage'; // Importamos la nueva función
+import { validateAbono } from '../../utils/validation.js';
 import { formatCurrency } from '../../utils/textFormatters.js';
+import { FUENTE_PROCESO_MAP } from '../../utils/procesoConfig.js'; // Importamos el mapa
 
 const getTodayString = () => {
     const today = new Date();
@@ -25,7 +26,13 @@ export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente
 
     const form = useForm({
         initialState: initialAbonoFormState,
-        validate: (data) => validateAbono(data, { saldoPendiente }, cliente?.datosCliente?.fechaIngreso),
+        // --- INICIO DE LA MODIFICACIÓN ---
+        validate: (data) => {
+            const pasoConfig = FUENTE_PROCESO_MAP[fuente];
+            // Pasamos el proceso del cliente a la función de validación
+            return validateAbono(data, { saldoPendiente }, cliente?.datosCliente?.fechaIngreso, cliente?.proceso, pasoConfig);
+        },
+        // --- FIN DE LA MODIFICACIÓN ---
         onSubmit: async (data) => {
             const nuevoAbono = {
                 fechaPago: data.fechaPago,
@@ -39,16 +46,22 @@ export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente
             };
 
             try {
-                await addAbono(nuevoAbono);
-                toast.success("Abono registrado con éxito.");
+                // Usamos la nueva función que actualiza todo en una transacción
+                await addAbonoAndUpdateProceso(nuevoAbono, cliente);
+                toast.success("Abono registrado y proceso actualizado con éxito.");
 
                 const message = `Nuevo abono de ${formatCurrency(nuevoAbono.monto)} para la vivienda Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`;
-                await createNotification('abono', message, `/viviendas/detalle/${nuevoAbono.viviendaId}`);
+                // La notificación ahora se crea dentro de la función de storage para mayor consistencia
 
                 form.resetForm();
                 onAbonoRegistrado(true);
             } catch (error) {
-                toast.error("No se pudo registrar el abono.");
+                // Manejamos el error específico de validación que ahora puede venir de `storage`
+                if (error.message === 'SOLICITUD_PENDIENTE') {
+                    toast.error("El paso de solicitud de desembolso aún no está completado en el proceso.");
+                } else {
+                    toast.error("No se pudo registrar el abono.");
+                }
             }
         }
     });

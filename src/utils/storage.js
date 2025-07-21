@@ -1,8 +1,8 @@
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch, setDoc, query, where, serverTimestamp } from "firebase/firestore";
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { toSentenceCase, formatCurrency } from './textFormatters';
-import { PROCESO_CONFIG } from './procesoConfig.js';
+import { PROCESO_CONFIG, FUENTE_PROCESO_MAP } from './procesoConfig.js';
 
 // --- FUNCIÓN HELPER PARA CREAR NOTIFICACIONES (EXPORTADA) ---
 export const createNotification = async (type, message, link = '#') => {
@@ -34,28 +34,7 @@ export const getAbonos = () => getData("abonos");
 export const getRenuncias = () => getData("renuncias");
 
 
-// --- CREACIÓN DE DATOS ---
-export const addVivienda = async (viviendaData) => {
-    const valorTotalFinal = viviendaData.valorTotal;
-
-    const nuevaVivienda = {
-        ...viviendaData,
-        nomenclatura: toSentenceCase(viviendaData.nomenclatura),
-        linderoNorte: toSentenceCase(viviendaData.linderoNorte),
-        linderoSur: toSentenceCase(viviendaData.linderoSur),
-        linderoOriente: toSentenceCase(viviendaData.linderoOriente),
-        linderoOccidente: toSentenceCase(viviendaData.linderoOccidente),
-        areaLote: parseFloat(String(viviendaData.areaLote).replace(',', '.')) || 0,
-        areaConstruida: parseFloat(String(viviendaData.areaConstruida).replace(',', '.')) || 0,
-        clienteId: null,
-        clienteNombre: "",
-        totalAbonado: 0,
-        saldoPendiente: valorTotalFinal,
-        valorFinal: valorTotalFinal,
-    };
-    await addDoc(collection(db, "viviendas"), nuevaVivienda);
-};
-
+// --- CREACIÓN Y MANEJO DE ARCHIVOS ---
 const storage = getStorage();
 
 export const uploadFile = (file, path, onProgress) => {
@@ -77,6 +56,33 @@ export const uploadFile = (file, path, onProgress) => {
             }
         );
     });
+};
+
+export const deleteFile = async (filePath) => {
+    const fileRef = ref(storage, filePath);
+    await deleteObject(fileRef);
+};
+
+
+// --- CREACIÓN DE DATOS ---
+export const addVivienda = async (viviendaData) => {
+    const valorTotalFinal = viviendaData.valorTotal;
+    const nuevaVivienda = {
+        ...viviendaData,
+        nomenclatura: toSentenceCase(viviendaData.nomenclatura),
+        linderoNorte: toSentenceCase(viviendaData.linderoNorte),
+        linderoSur: toSentenceCase(viviendaData.linderoSur),
+        linderoOriente: toSentenceCase(viviendaData.linderoOriente),
+        linderoOccidente: toSentenceCase(viviendaData.linderoOccidente),
+        areaLote: parseFloat(String(viviendaData.areaLote).replace(',', '.')) || 0,
+        areaConstruida: parseFloat(String(viviendaData.areaConstruida).replace(',', '.')) || 0,
+        clienteId: null,
+        clienteNombre: "",
+        totalAbonado: 0,
+        saldoPendiente: valorTotalFinal,
+        valorFinal: valorTotalFinal,
+    };
+    await addDoc(collection(db, "viviendas"), nuevaVivienda);
 };
 
 export const addClienteAndAssignVivienda = async (clienteData) => {
@@ -101,20 +107,66 @@ export const addClienteAndAssignVivienda = async (clienteData) => {
     }
 };
 
-export const addAbono = async (abonoData) => {
+export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
     const viviendaRef = doc(db, "viviendas", abonoData.viviendaId);
+    const clienteRef = doc(db, "clientes", abonoData.clienteId);
     const abonoRef = doc(collection(db, "abonos"));
-    const abonoParaGuardar = { ...abonoData, id: abonoRef.id, estadoProceso: 'activo' };
+
+    const abonoParaGuardar = {
+        ...abonoData,
+        id: abonoRef.id,
+        estadoProceso: 'activo',
+        clienteNombre: `${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`.trim()
+    };
+
     await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);
-        if (!viviendaDoc.exists()) throw new Error("La vivienda asociada a este abono ya no existe.");
+        const clienteDoc = await transaction.get(clienteRef);
+
+        if (!viviendaDoc.exists()) throw new Error("La vivienda ya no existe.");
+        if (!clienteDoc.exists()) throw new Error("El cliente ya no existe.");
+
         const viviendaData = viviendaDoc.data();
+        const clienteData = clienteDoc.data();
+
+        const pasoConfig = FUENTE_PROCESO_MAP[abonoData.fuente];
+        if (pasoConfig) {
+            const solicitudKey = pasoConfig.solicitudKey;
+            const pasoSolicitud = clienteData.proceso?.[solicitudKey];
+            if (!pasoSolicitud?.completado) {
+                throw new Error('SOLICITUD_PENDIENTE');
+            }
+        }
+
         const nuevoTotalAbonado = (viviendaData.totalAbonado || 0) + abonoData.monto;
         const valorFinal = viviendaData.valorFinal || viviendaData.valorTotal;
         const nuevoSaldo = valorFinal - nuevoTotalAbonado;
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
+
         transaction.set(abonoRef, abonoParaGuardar);
+
+        if (pasoConfig) {
+            const desembolsoKey = pasoConfig.desembolsoKey;
+            const evidenciaId = pasoConfig.evidenciaId;
+            const nuevoProceso = { ...clienteData.proceso };
+
+            if (!nuevoProceso[desembolsoKey]) nuevoProceso[desembolsoKey] = { evidencias: {} };
+            if (!nuevoProceso[desembolsoKey].evidencias) nuevoProceso[desembolsoKey].evidencias = {};
+
+            nuevoProceso[desembolsoKey].completado = true;
+            nuevoProceso[desembolsoKey].fecha = abonoData.fechaPago;
+            nuevoProceso[desembolsoKey].evidencias[evidenciaId] = {
+                url: abonoData.urlComprobante,
+                estado: abonoData.urlComprobante ? 'subido' : 'pendiente'
+            };
+
+            transaction.update(clienteRef, { proceso: nuevoProceso });
+        }
     });
+
+    const viviendaInfo = (await getDoc(viviendaRef)).data();
+    const message = `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaInfo.manzana} - Casa ${viviendaInfo.numeroCasa}`;
+    await createNotification('abono', message, `/viviendas/detalle/${abonoData.viviendaId}`);
 };
 
 

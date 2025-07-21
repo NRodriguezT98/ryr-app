@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'; // Importar useEffect
+import React from 'react';
 import { useBlocker } from 'react-router-dom';
 import { useProcesoLogic } from '../../../hooks/clientes/useProcesoLogic';
 import { updateCliente } from '../../../utils/storage';
@@ -7,9 +7,7 @@ import { Tooltip } from 'react-tooltip';
 import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
 
-// --- INICIO DE CAMBIOS ---
 const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) => {
-    // --- FIN DE CAMBIOS ---
 
     const handleSave = async (nuevoProceso) => {
         const clienteActualizado = {
@@ -30,16 +28,8 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
         justSaved,
         isSaveDisabled,
         tooltipMessage,
-        hayCambiosSinGuardar,
         handlers,
     } = useProcesoLogic(cliente, handleSave);
-
-    // --- INICIO DE LA NUEVA LÓGICA ---
-    // Este efecto le informa al componente padre si hay cambios
-    useEffect(() => {
-        onHayCambiosChange(hayCambiosSinGuardar);
-    }, [hayCambiosSinGuardar, onHayCambiosChange]);
-    // --- FIN DE LA NUEVA LÓGICA ---
 
     const pasoAReabrirInfo = pasoAReabrir ? pasosRenderizables.find(p => p.key === pasoAReabrir) : null;
     const nombrePasoAReabrir = pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '';
@@ -48,8 +38,8 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
 
     return (
         <div className="animate-fade-in space-y-4">
-            <div className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center sticky top-20 z-10">
-                <h3 className="font-bold text-lg">Línea de Tiempo del Proceso</h3>
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm flex justify-between items-center sticky top-20 z-10">
+                <h3 className="font-bold text-lg dark:text-gray-200">Línea de Tiempo del Proceso</h3>
                 <span data-tooltip-id="app-tooltip" data-tooltip-content={tooltipMessage}>
                     <button
                         onClick={handlers.handleSaveChanges}
@@ -60,13 +50,13 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
                     </button>
                 </span>
             </div>
-            <div className="bg-white p-4 rounded-xl border shadow-sm">
+            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm">
                 <div>
                     <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-semibold text-gray-700">Progreso General</span>
-                        <span className="text-sm font-bold text-blue-600">{`${progreso.completados} / ${progreso.total} Pasos`}</span>
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Progreso General</span>
+                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{`${progreso.completados} / ${progreso.total} Pasos`}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
                         <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${porcentajeProgreso}%` }}></div>
                     </div>
                 </div>
@@ -79,7 +69,7 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
                             ...paso,
                             label: `${index + 1}. ${paso.label}`,
                             stepNumber: index + 1,
-                            hayPasoEnReapertura: hayPasoEnReapertura
+                            hayPasoEnReapertura
                         }}
                         justSaved={justSaved}
                         onUpdateEvidencia={handlers.handleUpdateEvidencia}

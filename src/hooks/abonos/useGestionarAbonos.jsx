@@ -1,4 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
+// --- INICIO DE LA MODIFICACIÓN ---
+import { useParams } from 'react-router-dom'; // 1. Importamos useParams
+// --- FIN DE LA MODIFICACIÓN ---
 import { useData } from '../../context/DataContext';
 import { deleteAbono } from '../../utils/storage';
 import toast from 'react-hot-toast';
@@ -6,8 +9,10 @@ import UndoToast from '../../components/UndoToast';
 
 export const useGestionarAbonos = () => {
     const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos } = useData();
-    const [selectedClienteId, setSelectedClienteId] = useState(null);
-    const [searchTerm, setSearchTerm] = useState("");
+    // --- INICIO DE LA MODIFICACIÓN ---
+    const { clienteId: clienteIdDesdeUrl } = useParams(); // 2. Obtenemos el ID del cliente desde la URL
+    const [selectedClienteId, setSelectedClienteId] = useState(clienteIdDesdeUrl || null); // 3. Usamos ese ID para el estado inicial
+    // --- FIN DE LA MODIFICACIÓN ---
 
     const [abonoAEditar, setAbonoAEditar] = useState(null);
     const [abonoAEliminar, setAbonoAEliminar] = useState(null);
@@ -53,27 +58,15 @@ export const useGestionarAbonos = () => {
 
     const isLoading = isDataLoading;
 
-    const clientesConVivienda = useMemo(() => clientes.filter(c => c.vivienda && c.status === 'activo'), [clientes]);
-
-    const clientesFiltrados = useMemo(() => {
-        // --- LÓGICA DE FILTRADO Y ORDENACIÓN MEJORADA ---
-        const clientesActivos = clientes.filter(c => c.vivienda && c.status === 'activo');
-
-        const filtrados = searchTerm.trim()
-            ? clientesActivos.filter(c => {
-                const nombreCompleto = `${c.datosCliente.nombres} ${c.datosCliente.apellidos}`.toLowerCase();
-                const ubicacion = `mz ${c.vivienda.manzana} casa ${c.vivienda.numeroCasa}`.toLowerCase().replace(/\s/g, '');
-                const cedula = c.datosCliente.cedula;
-                return nombreCompleto.includes(searchTerm.toLowerCase()) || ubicacion.includes(searchTerm.toLowerCase().replace(/\s/g, '')) || cedula.includes(searchTerm);
-            })
-            : clientesActivos;
-
-        return filtrados.sort((a, b) => {
-            const manzanaComp = a.vivienda.manzana.localeCompare(b.vivienda.manzana);
-            if (manzanaComp !== 0) return manzanaComp;
-            return a.vivienda.numeroCasa - b.vivienda.numeroCasa;
-        });
-    }, [clientes, searchTerm]);
+    const clientesConVivienda = useMemo(() =>
+        clientes.filter(c => c.vivienda && c.status === 'activo')
+            .sort((a, b) => {
+                const manzanaComp = a.vivienda.manzana.localeCompare(b.vivienda.manzana);
+                if (manzanaComp !== 0) return manzanaComp;
+                return a.vivienda.numeroCasa - b.vivienda.numeroCasa;
+            }),
+        [clientes]
+    );
 
     const handleGuardadoEdicion = useCallback(() => {
         recargarDatos();
@@ -111,8 +104,7 @@ export const useGestionarAbonos = () => {
 
     return {
         isLoading,
-        searchTerm, setSearchTerm,
-        clientesFiltrados,
+        clientesParaLaLista: clientesConVivienda, // Renombramos para mayor claridad
         selectedClienteId, setSelectedClienteId,
         datosClienteSeleccionado,
         abonosOcultos,

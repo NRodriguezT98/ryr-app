@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Importar useState y useEffect
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useBlocker } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ArrowLeft, Edit, User, FileDown, Info, GitCommit, Briefcase } from 'lucide-react';
@@ -9,12 +9,12 @@ import toast from 'react-hot-toast';
 import TabInfoGeneralCliente from './components/TabInfoGeneralCliente';
 import TabProcesoCliente from './components/TabProcesoCliente';
 import TabDocumentacionCliente from './components/TabDocumentacionCliente';
-import ModalConfirmacion from '../../components/ModalConfirmacion'; // Importar Modal
+import ModalConfirmacion from '../../components/ModalConfirmacion';
 
 const TabButton = ({ activeTab, tabName, label, icon, onClick }) => (
     <button
         onClick={() => onClick(tabName)}
-        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === tabName ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === tabName ? 'bg-blue-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
     >
         {icon}
         {label}
@@ -24,18 +24,15 @@ const TabButton = ({ activeTab, tabName, label, icon, onClick }) => (
 const DetalleCliente = () => {
     const { isLoading, data: datosDetalle, activeTab, setActiveTab, recargarDatos, navigate } = useDetalleCliente();
 
-    // --- INICIO DE LA NUEVA LÓGICA ---
     const [procesoTieneCambios, setProcesoTieneCambios] = useState(false);
     const [navegacionBloqueada, setNavegacionBloqueada] = useState(null);
 
-    // Este blocker SÍ funciona para salir de la página (ej: con el navbar principal)
     const blocker = useBlocker(
         ({ currentLocation, nextLocation }) =>
             procesoTieneCambios && currentLocation.pathname !== nextLocation.pathname
     );
 
     const handleTabClick = (tabName) => {
-        // Si hay cambios en la pestaña de proceso y queremos salir de ella, mostramos el modal
         if (procesoTieneCambios && activeTab === 'proceso' && tabName !== 'proceso') {
             setNavegacionBloqueada({ proximaTab: tabName });
         } else {
@@ -45,11 +42,10 @@ const DetalleCliente = () => {
 
     const handleConfirmarSalida = () => {
         if (navegacionBloqueada) {
-            setProcesoTieneCambios(false); // Permitimos la salida
+            setProcesoTieneCambios(false);
             setActiveTab(navegacionBloqueada.proximaTab);
             setNavegacionBloqueada(null);
         } else if (blocker.state === 'blocked') {
-            // Esto es para el blocker de react-router
             blocker.proceed();
         }
     };
@@ -57,18 +53,15 @@ const DetalleCliente = () => {
     const handleCancelarSalida = () => {
         setNavegacionBloqueada(null);
         if (blocker.state === 'blocked') {
-            // Esto es para el blocker de react-router
             blocker.reset();
         }
     };
 
-    // Forzamos la recarga de datos si salimos de la página para descartar cambios
     useEffect(() => {
         if (blocker.state === 'blocked' && !procesoTieneCambios) {
             blocker.proceed();
         }
     }, [blocker, procesoTieneCambios]);
-    // --- FIN DE LA NUEVA LÓGICA ---
 
     if (isLoading || !datosDetalle) {
         return <div className="text-center p-10 animate-pulse">Cargando perfil del cliente...</div>;
@@ -86,19 +79,19 @@ const DetalleCliente = () => {
 
     return (
         <AnimatedPage>
-            <div className="bg-gray-50 p-6 rounded-2xl shadow-lg">
+            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
                     <div className="flex items-center gap-4">
                         <div className="w-20 h-20 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-3xl flex-shrink-0">
                             {getInitials(cliente.datosCliente.nombres, cliente.datosCliente.apellidos)}
                         </div>
                         <div>
-                            <h2 className="text-3xl font-bold text-gray-800">{`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`}</h2>
-                            <p className="text-gray-500">{cliente.datosCliente.correo}</p>
+                            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`}</h2>
+                            <p className="text-gray-500 dark:text-gray-400">{cliente.datosCliente.correo}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                        <button onClick={() => navigate('/clientes/listar')} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-300 transition-colors">
+                        <button onClick={() => navigate('/clientes/listar')} className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
                             <ArrowLeft size={16} /> Volver
                         </button>
                         <button onClick={handleGeneratePdf} className="bg-red-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-600 transition-colors" disabled={!vivienda}>
@@ -107,9 +100,8 @@ const DetalleCliente = () => {
                     </div>
                 </div>
 
-                <div className="border-b border-gray-200 mb-6">
+                <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                     <nav className="flex space-x-2">
-                        {/* Ahora los botones llaman a handleTabClick */}
                         <TabButton activeTab={activeTab} tabName="info" label="Información General" icon={<Info size={16} />} onClick={handleTabClick} />
                         <TabButton activeTab={activeTab} tabName="proceso" label="Proceso" icon={<GitCommit size={16} />} onClick={handleTabClick} />
                         <TabButton activeTab={activeTab} tabName="documentos" label="Documentación" icon={<Briefcase size={16} />} onClick={handleTabClick} />
@@ -123,7 +115,6 @@ const DetalleCliente = () => {
                 </div>
             </div>
 
-            {/* Modal para la navegación interna de pestañas */}
             <ModalConfirmacion
                 isOpen={!!navegacionBloqueada}
                 onClose={handleCancelarSalida}
@@ -132,7 +123,6 @@ const DetalleCliente = () => {
                 mensaje="Tienes cambios pendientes en el proceso. ¿Estás seguro de que quieres salir sin guardar? Se perderán los cambios."
             />
 
-            {/* Modal para la navegación fuera de la página (react-router) */}
             <ModalConfirmacion
                 isOpen={blocker.state === 'blocked'}
                 onClose={handleCancelarSalida}

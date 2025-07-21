@@ -1,23 +1,19 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import Select, { components } from 'react-select';
-import toast from 'react-hot-toast';
 import AnimatedPage from '../../../components/AnimatedPage';
 import { Home, Search } from 'lucide-react';
-import { useData } from '../../../context/DataContext';
 import { formatCurrency } from '../../../utils/textFormatters';
 
-// Componente personalizado para las opciones del dropdown
 const CustomOption = (props) => {
     const { innerProps, label, data } = props;
     return (
-        <div {...innerProps} className="p-3 hover:bg-blue-50 cursor-pointer border-b last:border-b-0">
-            <p className="font-semibold text-gray-800">{label}</p>
-            <p className="text-xs text-gray-500">{`Matrícula: ${data.vivienda.matricula}`}</p>
+        <div {...innerProps} className="p-3 hover:bg-blue-50 dark:hover:bg-blue-900/50 cursor-pointer border-b last:border-b-0 dark:border-gray-700">
+            <p className="font-semibold text-gray-800 dark:text-gray-200">{label}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{`Matrícula: ${data.vivienda.matricula}`}</p>
         </div>
     );
 };
 
-// Componente personalizado para el ícono de búsqueda
 const DropdownIndicator = (props) => {
     return (
         <components.DropdownIndicator {...props}>
@@ -37,34 +33,43 @@ const Step1_SelectVivienda = ({ formData, dispatch, options }) => {
 
     const currentValue = options.find(op => op.value === formData.viviendaSeleccionada?.id) || null;
 
-    // Estilos personalizados para el Select
     const selectStyles = {
-        control: (base) => ({
+        control: (base, state) => ({
             ...base,
-            border: '2px solid #e5e7eb', // Borde gris claro
+            backgroundColor: 'var(--color-bg-form)',
+            borderColor: state.isFocused ? '#3b82f6' : '#4b5563',
             boxShadow: 'none',
             '&:hover': {
-                borderColor: '#3b82f6' // Borde azul al pasar el cursor
+                borderColor: '#3b82f6'
             },
             padding: '4px',
-            borderRadius: '0.75rem', // 12px
+            borderRadius: '0.75rem',
         }),
         placeholder: (base) => ({
             ...base,
             color: '#9ca3af',
         }),
-        indicatorSeparator: () => ({ display: 'none' }), // Oculta el separador
+        singleValue: (base) => ({ ...base, color: 'var(--color-text-form)' }),
+        indicatorSeparator: () => ({ display: 'none' }),
+        menu: (base) => ({ ...base, backgroundColor: 'var(--color-bg-form)' }),
+        input: (base) => ({ ...base, color: 'var(--color-text-form)' }),
     };
 
     return (
         <AnimatedPage>
-            <div className="bg-white p-6 rounded-xl">
+            <style>{`
+                :root {
+                  --color-bg-form: ${document.documentElement.classList.contains('dark') ? '#374151' : '#ffffff'};
+                  --color-text-form: ${document.documentElement.classList.contains('dark') ? '#ffffff' : '#1f2937'};
+                }
+            `}</style>
+            <div className="bg-white dark:bg-gray-800/50 p-6 rounded-xl">
                 <div className="text-center">
-                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
-                        <Home className="h-6 w-6 text-blue-600" />
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/50">
+                        <Home className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <h3 className="mt-4 text-xl font-bold text-gray-900">Selecciona la Vivienda</h3>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-gray-100">Selecciona la Vivienda</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         Busca y asigna una propiedad disponible al nuevo cliente.
                     </p>
                 </div>
@@ -83,9 +88,9 @@ const Step1_SelectVivienda = ({ formData, dispatch, options }) => {
                 </div>
 
                 {formData.viviendaSeleccionada && (
-                    <div className="mt-6 bg-green-50 border-2 border-dashed border-green-200 p-4 rounded-xl animate-fade-in">
-                        <h4 className="font-bold text-green-800">Propiedad Asignada</h4>
-                        <div className='mt-2 space-y-1 text-green-700 text-sm'>
+                    <div className="mt-6 bg-green-50 dark:bg-green-900/50 border-2 border-dashed border-green-200 dark:border-green-700 p-4 rounded-xl animate-fade-in">
+                        <h4 className="font-bold text-green-800 dark:text-green-300">Propiedad Asignada</h4>
+                        <div className='mt-2 space-y-1 text-green-700 dark:text-green-400 text-sm'>
                             <p><strong>Ubicación:</strong>{` Mz ${formData.viviendaSeleccionada.manzana} - Casa ${formData.viviendaSeleccionada.numeroCasa}`}</p>
                             <p><strong>Valor:</strong>{` ${formatCurrency(formData.viviendaSeleccionada.valorTotal)}`}</p>
                         </div>

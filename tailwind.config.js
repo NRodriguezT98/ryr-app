@@ -1,5 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  // --- INICIO DE LA MODIFICACIÓN ---
+  darkMode: 'class', // Habilitamos la estrategia de clase para el modo oscuro
+  // --- FIN DE LA MODIFICACIÓN ---
   content: [
     "./index.html",
     "./src/**/*.{js,jsx,ts,tsx}",
@@ -28,12 +31,10 @@ export default {
           '10%, 50%, 90%': { transform: 'rotate(-15deg)' },
           '30%, 70%': { transform: 'rotate(15deg)' },
         },
-        // --- INICIO DE LA NUEVA ANIMACIÓN ---
         'pulse-once': {
           '0%, 100%': { transform: 'scale(1)', opacity: '1' },
           '50%': { transform: 'scale(1.02)', opacity: '0.9' },
         }
-        // --- FIN DE LA NUEVA ANIMACIÓN ---
       },
       animation: {
         "fade-in": "fade-in 0.3s ease-out",
@@ -41,9 +42,7 @@ export default {
         "fade-slide-down": "fade-slide-down 0.25s ease-out forwards",
         "fade-slide-up": "fade-slide-up 0.25s ease-in forwards",
         'ring': 'ring 0.5s ease-in-out',
-        // --- INICIO DE LA NUEVA CLASE DE ANIMACIÓN ---
         'pulse-once': 'pulse-once 1.5s ease-out',
-        // --- FIN DE LA NUEVA CLASE DE ANIMACIÓN ---
       },
       fontFamily: {
         montserrat: ['Montserrat', 'sans-serif'],

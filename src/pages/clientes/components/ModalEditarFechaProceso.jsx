@@ -2,23 +2,63 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import { Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { parseDateAsUTC, formatDisplayDate } from '../../../utils/textFormatters';
 
 const ModalEditarFechaProceso = ({ isOpen, onClose, onConfirm, pasoInfo }) => {
     const [nuevaFecha, setNuevaFecha] = useState('');
     const [motivo, setMotivo] = useState('');
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // 1. Añadimos un estado para manejar el error del formulario
+    const [errorFecha, setErrorFecha] = useState(null);
+    // --- FIN DE LA MODIFICACIÓN ---
 
     useEffect(() => {
         if (pasoInfo) {
             setNuevaFecha(pasoInfo.fecha);
-            setMotivo(''); // Reiniciar motivo cada vez que se abre
+            setMotivo('');
+            setErrorFecha(null); // Limpiamos errores al abrir el modal
         }
     }, [pasoInfo]);
 
+    // Al cambiar la fecha, limpiamos el error para que el usuario pueda corregir
+    const handleFechaChange = (e) => {
+        setNuevaFecha(e.target.value);
+        if (errorFecha) {
+            setErrorFecha(null);
+        }
+    };
+
     const handleConfirmar = () => {
+        // Validamos el motivo primero
         if (!motivo.trim()) {
             toast.error("Debes especificar un motivo para el cambio.");
             return;
         }
+
+        // --- INICIO DE LA LÓGICA DE VALIDACIÓN ---
+        if (!nuevaFecha) {
+            setErrorFecha("Debes seleccionar una fecha válida.");
+            return;
+        }
+
+        const fechaSeleccionada = parseDateAsUTC(nuevaFecha);
+        const fechaMinima = parseDateAsUTC(pasoInfo.minDate);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        if (fechaSeleccionada > hoy) {
+            setErrorFecha("La fecha no puede ser futura.");
+            return;
+        }
+
+        if (fechaSeleccionada < fechaMinima) {
+            setErrorFecha(`La fecha no puede ser anterior al ${formatDisplayDate(pasoInfo.minDate)}.`);
+            return;
+        }
+        // --- FIN DE LA LÓGICA DE VALIDACIÓN ---
+
+        // Si todo es válido, limpiamos cualquier error y confirmamos
+        setErrorFecha(null);
         onConfirm(pasoInfo.key, nuevaFecha, motivo);
     };
 
@@ -40,11 +80,14 @@ const ModalEditarFechaProceso = ({ isOpen, onClose, onConfirm, pasoInfo }) => {
                     <input
                         type="date"
                         value={nuevaFecha}
-                        onChange={(e) => setNuevaFecha(e.target.value)}
+                        onChange={handleFechaChange} // Usamos el nuevo handler
                         min={pasoInfo.minDate}
                         max={pasoInfo.maxDate}
-                        className="w-full border p-2.5 rounded-lg"
+                        // Aplicamos un borde rojo si hay error
+                        className={`w-full border p-2.5 rounded-lg ${errorFecha ? 'border-red-500' : 'border-gray-300'}`}
                     />
+                    {/* Mostramos el mensaje de error directamente debajo del input */}
+                    {errorFecha && <p className="text-red-600 text-sm mt-1">{errorFecha}</p>}
                 </div>
                 <div>
                     <label className="block font-medium mb-1">Motivo del Cambio (Obligatorio)</label>

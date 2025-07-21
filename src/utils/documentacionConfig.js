@@ -1,172 +1,170 @@
 // Este archivo define todos los documentos requeridos y su lógica de negocio.
+// *** VERSIÓN CORREGIDA Y REORDENADA ***
 
 export const DOCUMENTACION_CONFIG = [
-    // --- Documentos de Identificación y Contrato ---
+    // --- 1. DOCUMENTOS INICIALES OBLIGATORIOS (NUEVO ORDEN) ---
     {
         id: 'cedula',
         label: 'Cédula de Ciudadanía',
         aplicaA: () => true,
         vinculadoA: null,
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
     },
-    {
-        id: 'promesaEnviada',
-        label: 'Promesa de Compraventa Enviada',
-        aplicaA: () => true,
-        vinculadoA: 'promesaEnviada',
-    },
-    {
-        id: 'promesaRecibida',
-        label: 'Promesa de Compraventa Firmada',
-        aplicaA: () => true,
-        vinculadoA: 'promesaRecibida',
-        esImportante: true, // <-- Marcado como importante
-    },
-
-    // --- Documentos de Fuentes de Pago (Informativos) ---
     {
         id: 'cartaAprobacionCredito',
         label: 'Carta de Aprobación Crédito Hipotecario',
         aplicaA: (financiero) => financiero.aplicaCredito,
         vinculadoA: null,
-        esImportante: true, // <-- Marcado como importante
-    },
-    {
-        id: 'resolucionSubsidioMCY',
-        label: 'Resolución Aprobación Subsidio Mi Casa Ya',
-        aplicaA: (financiero) => financiero.aplicaSubsidioVivienda,
-        vinculadoA: null,
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
     },
     {
         id: 'actaAprobacionCaja',
-        label: 'Acta Aprobación Caja de Compensación',
+        label: 'Carta de Aprobación Subsidio Caja de Compensación',
         aplicaA: (financiero) => financiero.aplicaSubsidioCaja,
         vinculadoA: null,
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
+    },
+    // --- INICIO DE LA MODIFICACIÓN ---
+    {
+        id: 'promesaEnviadaCorreo', // ID coincide con la evidencia en procesoConfig
+        label: 'Soporte de Envío Promesa de Compraventa',
+        aplicaA: () => true,
+        vinculadoA: 'promesaEnviada',
+    },
+    // --- FIN DE LA MODIFICACIÓN ---
+    {
+        id: 'promesaEnviadaDoc',
+        label: 'Documento de Promesa Enviado (PDF)',
+        aplicaA: () => true,
+        vinculadoA: 'promesaEnviada',
+        esImportante: true,
+    },
+    {
+        id: 'promesaRecibidaDoc',
+        label: 'Promesa de Compraventa Firmada',
+        aplicaA: () => true,
+        vinculadoA: 'promesaRecibida',
+        esImportante: true,
     },
 
-    // --- Documentos del Proceso de Crédito ---
+    // --- 2. RESTO DE DOCUMENTOS DEL PROCESO ---
     {
         id: 'docAvaluo',
-        label: 'Documentación para Avalúo',
+        label: 'Soporte de Envío de Documentos para Avalúo',
         aplicaA: (financiero) => financiero.aplicaCredito,
         vinculadoA: 'envioDocumentacionAvaluo',
     },
     {
-        id: 'pagoEstudioTitulos',
-        label: 'Soporte Pago Estudio de Títulos',
+        id: 'cartaRatificacionDoc',
+        label: 'Documento Carta de Ratificación (PDF)',
         aplicaA: (financiero) => financiero.aplicaCredito,
-        vinculadoA: 'pagoEstudioTitulos',
+        vinculadoA: 'cartaRatificacionRecibida',
+        esImportante: true,
     },
     {
-        id: 'envioMinuta',
-        label: 'Envío Minuta de Compraventa a Abogada',
+        id: 'pagoEstudioTitulosSoporte',
+        label: 'Comprobante de Pago Estudio de Títulos',
+        aplicaA: (financiero) => financiero.aplicaCredito,
+        vinculadoA: 'pagoEstudioTitulos',
+        esImportante: true,
+    },
+    {
+        id: 'minutaEnviadaSoporte',
+        label: 'Soporte de Envío de Minuta a Abogada',
         aplicaA: (financiero) => financiero.aplicaCredito,
         vinculadoA: 'minutaEnviadaAbogada',
     },
     {
-        id: 'minutaAprobada',
-        label: 'Minuta de Compraventa Aprobada por Abogada',
+        id: 'minutaAprobadaSoporte',
+        label: 'Soporte de Aprobación de Minuta',
         aplicaA: (financiero) => financiero.aplicaCredito,
         vinculadoA: 'minutaAprobadaAbogada',
     },
-
-    // --- Documentos de Notaría y Registro ---
     {
-        id: 'minutaEnviadaNotaria',
-        label: 'Minuta Enviada a Notaría',
+        id: 'minutaNotariaSoporte',
+        label: 'Soporte de Envío Minuta a Notaría',
         aplicaA: () => true,
         vinculadoA: 'minutaEnviadaNotaria',
     },
     {
-        id: 'facturaNotaria',
-        label: 'Factura Notaría',
+        id: 'minutaFirmadaDoc',
+        label: 'Documento Minuta Firmada (Escritura)',
         aplicaA: () => true,
         vinculadoA: 'minutaFirmada',
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
     },
     {
-        id: 'actaEntregaEnviada',
-        label: 'Acta de Entrega Enviada',
+        id: 'actaEnviadaSoporte',
+        label: 'Soporte de Envío Acta de Entrega',
         aplicaA: () => true,
         vinculadoA: 'actaEntregaEnviada',
     },
     {
-        id: 'actaEntregaFirmada',
-        label: 'Acta de Entrega Firmada',
+        id: 'actaFirmadaDoc',
+        label: 'Documento Acta de Entrega Firmada',
         aplicaA: () => true,
         vinculadoA: 'actaEntregaRecibida',
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
     },
     {
-        id: 'pagoBoletaFiscal',
-        label: 'Soporte Pago Boleta Fiscal',
+        id: 'pagoBoletaFiscalSoporte',
+        label: 'Comprobante de Pago Boleta Fiscal',
         aplicaA: () => true,
         vinculadoA: 'pagoBoletaFiscal',
     },
     {
-        id: 'boletaFiscal',
-        label: 'Boleta Fiscal',
-        aplicaA: () => true,
-        vinculadoA: null,
-        esImportante: true, // <-- Marcado como importante
-    },
-    {
-        id: 'boletaRegistro',
-        label: 'Boleta de Registro',
+        id: 'pagoBoletaRegistroSoporte',
+        label: 'Comprobante de Pago Boleta de Registro',
         aplicaA: () => true,
         vinculadoA: 'pagoBoletaRegistro',
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
     },
 
-    // --- Documentos de Desembolsos ---
+    // --- 3. DOCUMENTOS DE DESEMBOLSOS ---
     {
-        id: 'solicitudDesembolsoCredito',
+        id: 'solicitudCreditoSoporte',
         label: 'Soporte Solicitud Desembolso Crédito',
         aplicaA: (financiero) => financiero.aplicaCredito,
         vinculadoA: 'solicitudDesembolsoCredito',
     },
     {
-        id: 'desembolsoCredito',
+        id: 'desembolsoCreditoSoporte',
         label: 'Soporte Desembolso Crédito Hipotecario',
         aplicaA: (financiero) => financiero.aplicaCredito,
         vinculadoA: 'desembolsoCredito',
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
     },
     {
-        id: 'solicitudDesembolsoMCY',
+        id: 'solicitudMCYSoporte',
         label: 'Soporte Solicitud Desembolso Sub. MCY',
         aplicaA: (financiero) => financiero.aplicaSubsidioVivienda,
         vinculadoA: 'solicitudDesembolsoMCY',
     },
     {
-        id: 'desembolsoMCY',
+        id: 'desembolsoMCYSoporte',
         label: 'Soporte Desembolso Sub. MCY',
         aplicaA: (financiero) => financiero.aplicaSubsidioVivienda,
         vinculadoA: 'desembolsoMCY',
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
     },
     {
-        id: 'solicitudDesembolsoCaja',
+        id: 'solicitudCajaSoporte',
         label: 'Soporte Solicitud Desembolso Sub. Caja',
         aplicaA: (financiero) => financiero.aplicaSubsidioCaja,
         vinculadoA: 'solicitudDesembolsoCaja',
     },
     {
-        id: 'desembolsoCaja',
+        id: 'desembolsoCajaSoporte',
         label: 'Soporte Desembolso Sub. Caja',
         aplicaA: (financiero) => financiero.aplicaSubsidioCaja,
         vinculadoA: 'desembolsoCaja',
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
     },
-
-    // --- Documento Final ---
     {
-        id: 'facturaVenta',
-        label: 'Factura de Venta RyR',
+        id: 'facturaVentaDoc',
+        label: 'Documento Factura de Venta',
         aplicaA: () => true,
         vinculadoA: 'facturaVenta',
-        esImportante: true, // <-- Marcado como importante
+        esImportante: true,
     },
 ];

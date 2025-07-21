@@ -57,7 +57,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                                 dispatch={dispatch}
                                 errors={errors}
                                 viviendaOptions={viviendasOptions}
-                                isEditing={true}
+                                isEditing={true} // <-- Pasamos la propiedad 'isEditing'
                                 clienteAEditar={clienteAEditar}
                                 handleInputChange={handlers.handleInputChange}
                                 handleFinancialFieldChange={handlers.handleFinancialFieldChange}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, Home, Info, BarChart2, Star, Tag, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Home, Info, BarChart2, Star, Tag } from 'lucide-react';
 import { useDetalleVivienda } from '../../hooks/viviendas/useDetalleVivienda.jsx';
 import TabInformacion from './components/TabInformacion';
 import TabFinanciero from './components/TabFinanciero';
@@ -10,7 +10,7 @@ import Button from '../../components/Button';
 const TabButton = ({ tabName, label, icon, activeTab, onClick }) => (
     <button
         onClick={() => onClick(tabName)}
-        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-colors ${activeTab === tabName ? 'bg-red-500 text-white' : 'text-gray-600 hover:bg-gray-200'}`}
+        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-colors ${activeTab === tabName ? 'bg-red-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
     >
         {icon}
         {label}
@@ -29,11 +29,11 @@ const DetalleVivienda = () => {
     return (
         <AnimatedPage>
             <div className="space-y-6">
-                <div className="bg-white p-6 rounded-2xl shadow-lg border flex items-center justify-between">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border dark:border-gray-700 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Home size={40} className="text-red-500" />
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800">{`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}</h1>
+                            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}</h1>
                             <div className="flex items-center gap-2 mt-1">
                                 {vivienda.recargoEsquinera > 0 ? (
                                     <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full"><Star size={14} />Casa Esquinera</span>
@@ -54,7 +54,7 @@ const DetalleVivienda = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-2 rounded-xl shadow-sm border">
+                <div className="bg-white dark:bg-gray-800 p-2 rounded-xl shadow-sm border dark:border-gray-700">
                     <nav className="flex space-x-2">
                         <TabButton tabName="info" label="Información General" icon={<Info size={16} />} activeTab={activeTab} onClick={setActiveTab} />
                         {cliente && (

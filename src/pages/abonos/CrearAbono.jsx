@@ -28,10 +28,10 @@ const CrearAbono = () => {
     return (
         <AnimatedPage>
             <div className="max-w-2xl mx-auto">
-                <div className="bg-white p-8 rounded-2xl shadow-xl border">
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border dark:border-gray-700">
                     <div className="text-center mb-8">
                         <h2 className="text-3xl font-bold text-[#1976d2] mb-2">Gestionar Pagos</h2>
-                        <p className="text-gray-500">Busca y selecciona un cliente para ver su estado de cuenta y registrar abonos.</p>
+                        <p className="text-gray-500 dark:text-gray-400">Busca y selecciona un cliente para ver su estado de cuenta y registrar abonos.</p>
                     </div>
 
                     <div className="relative">
@@ -39,7 +39,7 @@ const CrearAbono = () => {
                         <input
                             type="text"
                             placeholder="Buscar por nombre, cédula o vivienda (ej: Mz A Casa 1)..."
-                            className="w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-lg"
+                            className="w-full pl-12 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 text-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -51,16 +51,16 @@ const CrearAbono = () => {
                                 <li key={cliente.id}>
                                     <Link
                                         to={`/abonos/gestionar/${cliente.id}`}
-                                        className="w-full text-left p-4 rounded-lg transition-colors hover:bg-blue-50 block border"
+                                        className="w-full text-left p-4 rounded-lg transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/50 block border dark:border-gray-700"
                                     >
-                                        <p className="font-semibold text-blue-800">{`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`}</p>
-                                        <p className="text-sm text-gray-600">{`C.C. ${cliente.datosCliente.cedula}`}</p>
-                                        <p className="text-sm text-green-700 font-medium">{`Vivienda: Mz ${cliente.vivienda.manzana} - Casa ${cliente.vivienda.numeroCasa}`}</p>
+                                        <p className="font-semibold text-blue-800 dark:text-blue-400">{`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">{`C.C. ${cliente.datosCliente.cedula}`}</p>
+                                        <p className="text-sm text-green-700 dark:text-green-400 font-medium">{`Vivienda: Mz ${cliente.vivienda.manzana} - Casa ${cliente.vivienda.numeroCasa}`}</p>
                                     </Link>
                                 </li>
                             ))}
                             {clientesFiltrados.length === 0 && (
-                                <li className="p-4 text-center text-sm text-gray-500">No se encontraron clientes que coincidan con la búsqueda.</li>
+                                <li className="p-4 text-center text-sm text-gray-500 dark:text-gray-400">No se encontraron clientes que coincidan con la búsqueda.</li>
                             )}
                         </ul>
                     )}

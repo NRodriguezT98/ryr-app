@@ -2,7 +2,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DollarSign, UserPlus, UserX } from 'lucide-react';
-import { formatCurrency } from '../../utils/textFormatters'; // <-- IMPORTAMOS LA FUNCIÓN
+import { formatCurrency } from '../../utils/textFormatters';
 
 const formatDate = (dateString) => {
     if (!dateString) return "Fecha inválida";
@@ -21,29 +21,29 @@ const ActivityItem = ({ item, clientes }) => {
             case 'abono':
                 const clienteAbono = clientes.find(c => c.id === item.clienteId);
                 return {
-                    icon: <DollarSign className="text-green-600" />,
-                    bgColor: 'bg-green-100',
+                    icon: <DollarSign className="text-green-600 dark:text-green-400" />,
+                    bgColor: 'bg-green-100 dark:bg-green-900/50',
                     title: `Abono de ${clienteAbono?.datosCliente.nombres || 'Cliente Desconocido'}`,
                     value: `+ ${formatCurrency(item.monto)}`
                 };
             case 'clienteNuevo':
                 return {
-                    icon: <UserPlus className="text-blue-600" />,
-                    bgColor: 'bg-blue-100',
+                    icon: <UserPlus className="text-blue-600 dark:text-blue-400" />,
+                    bgColor: 'bg-blue-100 dark:bg-blue-900/50',
                     title: `Nuevo Cliente: ${item.datosCliente.nombres}`,
                     value: `Se unió`
                 };
             case 'renuncia':
                 return {
-                    icon: <UserX className="text-orange-600" />,
-                    bgColor: 'bg-orange-100',
+                    icon: <UserX className="text-orange-600 dark:text-orange-400" />,
+                    bgColor: 'bg-orange-100 dark:bg-orange-900/50',
                     title: `Renuncia de ${item.clienteNombre}`,
                     value: `Devolución: ${formatCurrency(item.monto)}`
                 };
             default:
                 return {
                     icon: '?',
-                    bgColor: 'bg-gray-100',
+                    bgColor: 'bg-gray-100 dark:bg-gray-700',
                     title: 'Actividad desconocida',
                     value: ''
                 };
@@ -59,11 +59,11 @@ const ActivityItem = ({ item, clientes }) => {
                     {config.icon}
                 </div>
                 <div className="min-w-0">
-                    <p className="font-medium text-gray-800 truncate">{config.title}</p>
-                    <p className="text-sm text-gray-500">{formatDate(item.fecha)}</p>
+                    <p className="font-medium text-gray-800 dark:text-gray-200 truncate">{config.title}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{formatDate(item.fecha)}</p>
                 </div>
             </div>
-            <p className="font-semibold text-gray-900 text-sm ml-2">{config.value}</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm ml-2">{config.value}</p>
         </li>
     );
 };

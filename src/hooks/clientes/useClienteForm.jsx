@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { validateCliente, validateFinancialStep, validateEditarCliente } from '../../utils/validation.js';
 import { getClientes, addClienteAndAssignVivienda, updateCliente, getAbonos, createNotification } from '../../utils/storage.js';
 import { useData } from '../../context/DataContext.jsx';
-import { PASOS_SEGUIMIENTO_CONFIG } from '../../utils/seguimientoConfig.js';
+import { PROCESO_CONFIG } from '../../utils/procesoConfig.js';
 import { DOCUMENTACION_CONFIG } from '../../utils/documentacionConfig.js';
 import { formatCurrency, toTitleCase, formatDisplayDate } from '../../utils/textFormatters.js';
 
@@ -19,12 +19,13 @@ const blankInitialState = {
     },
     financiero: {
         aplicaCuotaInicial: false, cuotaInicial: { monto: 0 },
-        aplicaCredito: false, credito: { banco: '', monto: 0, caso: '' },
+        aplicaCredito: false, credito: { banco: '', monto: 0, caso: '', urlCartaAprobacion: null },
         aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
-        aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0 },
+        aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0, urlCartaAprobacion: null },
     },
     documentos: {
-        promesaEnviadaUrl: null
+        promesaEnviadaUrl: null,
+        promesaEnviadaCorreoUrl: null
     },
     errors: {}
 };
@@ -32,7 +33,7 @@ const blankInitialState = {
 function formReducer(state, action) {
     switch (action.type) {
         case 'INITIALIZE_FORM':
-            return { ...action.payload, errors: {} };
+            return { ...(action.payload || {}), errors: {} };
         case 'UPDATE_VIVIENDA_SELECCIONADA':
             return { ...state, viviendaSeleccionada: action.payload, errors: { ...state.errors, financiero: null } };
         case 'UPDATE_DATOS_CLIENTE': {
@@ -49,6 +50,9 @@ function formReducer(state, action) {
             };
             const newErrors = { ...state.errors };
             delete newErrors[`${section}_${field}`];
+            if (field === 'urlCartaAprobacion') {
+                delete newErrors[`${section}_urlCartaAprobacion`];
+            }
             return { ...state, financiero: newFinancials, errors: newErrors };
         }
         case 'UPDATE_DOCUMENTO_URL': {
@@ -141,7 +145,10 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             return;
         }
         if (step === 2) {
-            errors = validateCliente(formData.datosCliente, todosLosClientes);
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Le pasamos el ID del cliente que se está editando a la función de validación.
+            errors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar?.id);
+            // --- FIN DE LA CORRECCIÓN ---
             if (Object.keys(errors).length > 0) {
                 dispatch({ type: 'SET_ERRORS', payload: errors });
                 return;
@@ -160,7 +167,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 const clienteParaActualizar = {
                     datosCliente: formData.datosCliente,
                     financiero: formData.financiero,
-                    seguimiento: formData.seguimiento,
+                    proceso: formData.proceso,
                     viviendaId: formData.viviendaSeleccionada?.id || null,
                     status: formData.status
                 };
@@ -168,37 +175,44 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 toast.success("¡Cliente actualizado con éxito!");
                 createNotification('cliente', `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`, `/clientes/detalle/${clienteAEditar.id}`);
             } else {
-                const nuevoSeguimiento = {};
-                const documentosIniciales = {};
+                const nuevoProceso = {};
 
-                PASOS_SEGUIMIENTO_CONFIG.forEach(paso => {
+                PROCESO_CONFIG.forEach(paso => {
                     if (paso.aplicaA(formData.financiero)) {
-                        nuevoSeguimiento[paso.key] = { completado: false, fecha: null };
+                        const evidencias = {};
+                        paso.evidenciasRequeridas.forEach(ev => {
+                            evidencias[ev.id] = { url: null, estado: 'pendiente' };
+                        });
+                        nuevoProceso[paso.key] = { completado: false, fecha: null, evidencias };
                     }
                 });
 
-                DOCUMENTACION_CONFIG.forEach(doc => {
-                    if (doc.aplicaA(formData.financiero)) {
-                        documentosIniciales[doc.id] = { url: null, estado: 'pendiente' };
-                    }
-                });
-
-                if (formData.datosCliente.urlCedula) {
-                    documentosIniciales.cedula = { url: formData.datosCliente.urlCedula, estado: 'subido' };
-                }
-
-                if (formData.documentos.promesaEnviadaUrl) {
-                    documentosIniciales.promesaEnviada = { url: formData.documentos.promesaEnviadaUrl, estado: 'subido' };
-                    nuevoSeguimiento.promesaEnviada = { completado: true, fecha: getTodayString() };
+                if (formData.documentos.promesaEnviadaUrl && formData.documentos.promesaEnviadaCorreoUrl) {
+                    nuevoProceso.promesaEnviada = {
+                        completado: true,
+                        fecha: getTodayString(),
+                        evidencias: {
+                            promesaEnviadaDoc: {
+                                url: formData.documentos.promesaEnviadaUrl,
+                                estado: 'subido',
+                                fechaSubida: getTodayString()
+                            },
+                            promesaEnviadaCorreo: {
+                                url: formData.documentos.promesaEnviadaCorreoUrl,
+                                estado: 'subido',
+                                fechaSubida: getTodayString()
+                            }
+                        }
+                    };
                 }
 
                 const clienteParaGuardar = {
                     datosCliente: formData.datosCliente,
                     financiero: formData.financiero,
-                    seguimiento: nuevoSeguimiento,
-                    documentos: documentosIniciales,
+                    proceso: nuevoProceso,
                     viviendaId: formData.viviendaSeleccionada.id
                 };
+
                 await addClienteAndAssignVivienda(clienteParaGuardar);
                 toast.success("¡Cliente y proceso iniciados con éxito!");
                 const clienteNombre = `${clienteParaGuardar.datosCliente.nombres} ${clienteParaGuardar.datosCliente.apellidos}`.trim();
@@ -224,7 +238,12 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
     const handleSave = useCallback(() => {
         const valorTotalVivienda = formData.viviendaSeleccionada?.valorTotal || 0;
-        const clientErrors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar?.id, abonosDelCliente);
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Nos aseguramos de usar la validación correcta dependiendo si es edición o creación
+        const clientErrors = isEditing
+            ? validateEditarCliente(formData.datosCliente, todosLosClientes, clienteAEditar?.id, abonosDelCliente)
+            : validateCliente(formData.datosCliente, todosLosClientes);
+        // --- FIN DE LA CORRECCIÓN ---
         const financialErrors = validateFinancialStep(formData.financiero, valorTotalVivienda, formData.documentos);
         const totalErrors = { ...clientErrors, ...financialErrors };
 

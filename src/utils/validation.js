@@ -1,7 +1,6 @@
 import { formatCurrency } from './textFormatters';
 
 // --- VALIDACIONES DE VIVIENDA ---
-
 export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = null) => {
     const errors = {};
     const { manzana, numero, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente, areaLote, areaConstruida } = formData;
@@ -59,18 +58,19 @@ export const validateDescuento = (formData, vivienda) => {
         errors.descuentoMotivo = "El motivo es obligatorio si se aplica un descuento.";
     }
 
+    // --- INICIO DE LA MODIFICACIÓN ---
     if (vivienda) {
         const saldoPendiente = vivienda.saldoPendiente || 0;
         if (montoDescuentoNuevo > saldoPendiente) {
             errors.descuentoMonto = `El descuento no puede superar el saldo pendiente de ${formatCurrency(saldoPendiente)}.`;
         }
     }
+    // --- FIN DE LA MODIFICACIÓN ---
 
     return errors;
 };
 
 // --- VALIDACIONES DE CLIENTE ---
-
 export const validateCliente = (formData, todosLosClientes, clienteIdActual = null) => {
     const errors = {};
     if (!formData.nombres?.trim()) errors.nombres = "El nombre es requerido.";
@@ -96,6 +96,8 @@ export const validateCliente = (formData, todosLosClientes, clienteIdActual = nu
 
 export const validateEditarCliente = (formData, todosLosClientes, clienteIdActual, abonosDelCliente = []) => {
     const baseErrors = validateCliente(formData, todosLosClientes, clienteIdActual);
+
+    // --- INICIO DE LA MODIFICACIÓN ---
     if (formData.fechaIngreso && abonosDelCliente.length > 0) {
         const nuevaFechaIngreso = new Date(formData.fechaIngreso + 'T00:00:00');
         const abonoMasAntiguo = abonosDelCliente.reduce((masAntiguo, abonoActual) => {
@@ -107,6 +109,8 @@ export const validateEditarCliente = (formData, todosLosClientes, clienteIdActua
             baseErrors.fechaIngreso = `No puedes usar esta fecha. Ya existen abonos registrados desde el ${abonoMasAntiguo.toLocaleDateString('es-ES')}.`;
         }
     }
+    // --- FIN DE LA MODIFICACIÓN ---
+
     return baseErrors;
 };
 
@@ -125,6 +129,9 @@ export const validateFinancialStep = (financiero, valorVivienda, documentos) => 
         if (credito.banco === 'Bancolombia' && !credito.caso?.trim()) {
             errors.credito_caso = "El número de caso es obligatorio para Bancolombia.";
         }
+        if (!credito.urlCartaAprobacion) {
+            errors.credito_urlCartaAprobacion = "La carta de aprobación es obligatoria.";
+        }
         totalRecursos += credito.monto || 0;
     }
     if (aplicaSubsidioVivienda) {
@@ -134,26 +141,37 @@ export const validateFinancialStep = (financiero, valorVivienda, documentos) => 
     if (aplicaSubsidioCaja) {
         if (!subsidioCaja.caja) errors.subsidioCaja_caja = "Selecciona una caja.";
         if (!subsidioCaja.monto || subsidioCaja.monto <= 0) errors.subsidioCaja_monto = "El monto debe ser > 0.";
+        if (!subsidioCaja.urlCartaAprobacion) {
+            errors.subsidioCaja_urlCartaAprobacion = "La carta de aprobación es obligatoria.";
+        }
         totalRecursos += subsidioCaja.monto || 0;
     }
 
-    if (documentos && !documentos.promesaEnviadaUrl) {
-        errors.promesaEnviadaUrl = "Es obligatorio adjuntar la promesa de compraventa enviada.";
+    if (!documentos.promesaEnviadaUrl) {
+        errors.promesaEnviadaUrl = "Es obligatorio adjuntar la promesa.";
+    }
+    if (!documentos.promesaEnviadaCorreoUrl) {
+        errors.promesaEnviadaCorreoUrl = "Es obligatorio adjuntar la evidencia de envío.";
     }
 
     const totalAPagar = valorVivienda || 0;
     if (totalRecursos !== totalAPagar && totalAPagar > 0) {
-        errors.financiero = `La suma de los recursos (${formatCurrency(totalRecursos)}) debe ser igual al valor de la vivienda.`;
+        errors.financiero = `La suma de los recursos (${formatCurrency(totalRecursos)}) debe ser igual al valor de la vivienda (${formatCurrency(totalAPagar)}).`;
     }
     return errors;
 };
 
-
 // --- VALIDACIONES DE ABONO ---
-
-export const validateAbono = (formData, resumenPago, fechaIngresoCliente) => {
+export const validateAbono = (formData, resumenPago, fechaIngresoCliente, procesoCliente, pasoConfig) => {
     const errors = {};
     const montoNumerico = parseInt(String(formData.monto || '0').replace(/\D/g, ''), 10);
+
+    if (pasoConfig && procesoCliente) {
+        const pasoSolicitud = procesoCliente[pasoConfig.solicitudKey];
+        if (!pasoSolicitud?.completado) {
+            errors.monto = `El paso de solicitud de desembolso debe estar completado.`;
+        }
+    }
 
     if (!formData.fechaPago) {
         errors.fechaPago = "La fecha del abono es obligatoria.";
@@ -179,7 +197,7 @@ export const validateAbono = (formData, resumenPago, fechaIngresoCliente) => {
     }
 
     if (resumenPago && montoNumerico > resumenPago.saldoPendiente && resumenPago.saldoPendiente > 0) {
-        errors.monto = `El abono no puede superar el saldo pendiente de ${resumenPago.saldoPendiente.toLocaleString("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 })}`;
+        errors.monto = `El abono no puede superar el saldo pendiente de ${formatCurrency(resumenPago.saldoPendiente)}`;
     }
 
     if (!formData.metodoPago || formData.metodoPago.trim() === "") {

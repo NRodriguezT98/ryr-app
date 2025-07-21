@@ -9,7 +9,7 @@ import BarChartIngresos from '../components/dashboard/BarChartIngresos';
 import DocumentosPendientes from '../components/dashboard/DocumentosPendientes';
 import RenunciasPendientes from '../components/dashboard/RenunciasPendientes';
 import GraficoOcupacion from '../components/dashboard/GraficoOcupacion';
-import { Home, User, CheckCircle, DollarSign, UserX, Wallet } from 'lucide-react';
+import { Home, User, CheckCircle, Wallet } from 'lucide-react';
 import { formatCurrency } from '../utils/textFormatters';
 
 const DashboardPage = () => {
@@ -25,33 +25,26 @@ const DashboardPage = () => {
     if (isLoading) {
         return (
             <div className="flex justify-center items-center h-[calc(100vh-100px)]">
-                <p className="text-xl text-gray-500 animate-pulse">Cargando dashboard...</p>
+                <p className="text-xl text-gray-500 dark:text-gray-400 animate-pulse">Cargando dashboard...</p>
             </div>
         );
     }
 
     return (
         <AnimatedPage>
-            <div className="p-6 bg-gray-50 min-h-screen">
-                <h1 className="text-3xl font-bold text-gray-800 mb-8">Panel de Control</h1>
+            <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-8">Panel de Control</h1>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {/* Tarjeta de Total de Viviendas (sin filtro) */}
                     <Link to="/viviendas/listar">
                         <StatCard title="Total de Viviendas" value={stats.totalViviendas} icon={<Home />} colorClass="text-red-500" />
                     </Link>
-
-                    {/* Tarjeta de Clientes Activos (con filtro) */}
                     <Link to="/clientes/listar" state={{ statusFilter: 'activo' }}>
                         <StatCard title="Clientes Activos" value={stats.totalClientes} icon={<User />} colorClass="text-blue-500" />
                     </Link>
-
-                    {/* Tarjeta de Viviendas Disponibles (con filtro) */}
                     <Link to="/viviendas/listar" state={{ statusFilter: 'disponibles' }}>
                         <StatCard title="Viviendas Disponibles" value={stats.viviendasDisponibles} icon={<CheckCircle />} colorClass="text-green-500" />
                     </Link>
-
-                    {/* Tarjeta de Total Recaudado (lleva a la lista de abonos) */}
                     <Link to="/abonos/listar">
                         <StatCard title="Total Recaudado" value={formatCurrency(stats.totalRecaudado)} icon={<Wallet />} colorClass="text-yellow-500" />
                     </Link>
@@ -60,21 +53,21 @@ const DashboardPage = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                     <DocumentosPendientes clientes={clientes} />
                     <RenunciasPendientes renuncias={renuncias} />
-                    <div className="bg-white p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-gray-700 mb-4">Ocupación Actual</h2>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Ocupación Actual</h2>
                         <GraficoOcupacion data={chartDataOcupacion} />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-lg flex flex-col">
-                        <h2 className="text-xl font-bold text-gray-700 mb-4">Ingresos por Mes</h2>
+                    <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg flex flex-col">
+                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Ingresos por Mes</h2>
                         <div className="flex-grow">
                             <BarChartIngresos data={ingresosPorMes} />
                         </div>
                     </div>
-                    <div className="bg-white p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-gray-700 mb-4">Actividad Reciente</h2>
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Actividad Reciente</h2>
                         <ul className="space-y-2">
                             {actividadReciente.length > 0 ? (
                                 actividadReciente.map((item) => (
@@ -85,7 +78,7 @@ const DashboardPage = () => {
                                     />
                                 ))
                             ) : (
-                                <p className="text-sm text-gray-500 text-center mt-10">No hay actividad reciente.</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-10">No hay actividad reciente.</p>
                             )}
                         </ul>
                     </div>

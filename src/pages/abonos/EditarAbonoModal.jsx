@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NumericFormat } from 'react-number-format';
 import { useForm } from '../../hooks/useForm.jsx';
-import { validateAbono } from '../../utils/validation.js'; // <-- RUTA CORREGIDA AQUÍ
+import { validateAbono } from '../../utils/validation.js';
 import { updateAbono } from '../../utils/storage.js';
 import toast from 'react-hot-toast';
 import Modal from '../../components/Modal.jsx';
@@ -92,7 +92,7 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
                     <div className="grid grid-cols-1 gap-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
-                                <label className="block font-semibold mb-1" htmlFor="fechaPago-edit">Fecha del Abono</label>
+                                <label className="block font-semibold mb-1 dark:text-gray-200" htmlFor="fechaPago-edit">Fecha del Abono</label>
                                 <input
                                     type="date"
                                     id="fechaPago-edit"
@@ -101,40 +101,40 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
                                     onChange={handleInputChange}
                                     max={getTodayString()}
                                     min={abonoEnriquecido?.cliente?.datosCliente?.fechaIngreso?.split('T')[0]}
-                                    className={`w-full border p-2 rounded-lg ${errors.fechaPago ? "border-red-500" : "border-gray-300"}`}
+                                    className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.fechaPago ? "border-red-500" : "border-gray-300"}`}
                                 />
                                 {errors.fechaPago && <p className="text-red-600 text-sm mt-1">{errors.fechaPago}</p>}
                             </div>
                             <div>
-                                <label className="block font-semibold mb-1" htmlFor="monto-edit">Monto del Abono</label>
+                                <label className="block font-semibold mb-1 dark:text-gray-200" htmlFor="monto-edit">Monto del Abono</label>
                                 <NumericFormat
                                     id="monto-edit"
                                     name="monto"
                                     value={formData.monto || ''}
                                     onValueChange={(values) => handleValueChange('monto', values.value)}
-                                    className={`w-full border p-2 rounded-lg ${errors.monto ? "border-red-500" : "border-gray-300"}`}
+                                    className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.monto ? "border-red-500" : "border-gray-300"}`}
                                     thousandSeparator="." decimalSeparator="," prefix="$ " allowNegative={false} decimalScale={0}
                                 />
                                 {errors.monto && <p className="text-red-600 text-sm mt-1">{errors.monto}</p>}
                             </div>
                         </div>
                         <div>
-                            <label className="block font-semibold mb-1" htmlFor="observacion-edit">Observación (Opcional)</label>
+                            <label className="block font-semibold mb-1 dark:text-gray-200" htmlFor="observacion-edit">Observación (Opcional)</label>
                             <textarea
                                 id="observacion-edit"
                                 name="observacion"
                                 value={formData.observacion || ''}
                                 onChange={handleInputChange}
                                 rows="3"
-                                className="w-full border p-2 rounded-lg text-sm"
+                                className="w-full border p-2 rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                 placeholder="Ej: Abono correspondiente a..."
                             />
                         </div>
                         <div>
-                            <label className="block font-semibold mb-2 text-gray-700">Comprobante de Pago</label>
+                            <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200">Comprobante de Pago</label>
                             {formData.urlComprobante ? (
-                                <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center justify-between">
-                                    <div className='flex items-center gap-2 text-green-800 font-semibold'>
+                                <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-4 flex items-center justify-between">
+                                    <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold'>
                                         <FileText />
                                         <a href={formData.urlComprobante} target="_blank" rel="noopener noreferrer" className="hover:underline">
                                             Ver Comprobante Actual
@@ -143,7 +143,7 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
                                     <button
                                         type="button"
                                         onClick={() => handleValueChange('urlComprobante', null)}
-                                        className="p-1 text-red-500 rounded-full hover:bg-red-100"
+                                        className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
                                         title="Eliminar comprobante"
                                     >
                                         <XCircle size={20} />
@@ -158,7 +158,7 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
                             )}
                         </div>
                     </div>
-                    <div className="flex justify-end gap-4 mt-8 pt-6 border-t">
+                    <div className="flex justify-end gap-4 mt-8 pt-6 border-t dark:border-gray-600">
                         <button type="button" onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-5 py-2 rounded-lg">Cancelar</button>
 
                         <span data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>

@@ -26,7 +26,6 @@ export const PROCESO_CONFIG = [
             { id: 'docAvaluo', label: 'Soporte de Envío de Documentos', tipo: 'documento' }
         ]
     },
-    // --- INICIO DEL NUEVO PASO AÑADIDO ---
     {
         key: 'cartaRatificacionRecibida',
         label: 'Carta de Ratificación Recibida',
@@ -35,7 +34,6 @@ export const PROCESO_CONFIG = [
             { id: 'cartaRatificacionDoc', label: 'Documento Carta de Ratificación (PDF)', tipo: 'documento' }
         ]
     },
-    // --- FIN DEL NUEVO PASO AÑADIDO ---
     {
         key: 'pagoEstudioTitulos',
         label: 'Pago Estudio de Títulos',
@@ -66,7 +64,7 @@ export const PROCESO_CONFIG = [
         key: 'minutaFirmada',
         label: 'Minuta Firmada por Ambas Partes',
         aplicaA: () => true,
-        esHito: true, // <-- Hito
+        esHito: true,
         evidenciasRequeridas: [{ id: 'minutaFirmadaDoc', label: 'Documento Minuta Firmada', tipo: 'documento' }]
     },
     {
@@ -103,7 +101,7 @@ export const PROCESO_CONFIG = [
         key: 'desembolsoCredito',
         label: 'Crédito Desembolsado',
         aplicaA: (financiero) => financiero.aplicaCredito,
-        esHito: true, // <-- Hito
+        esHito: true,
         evidenciasRequeridas: [{ id: 'desembolsoCreditoSoporte', label: 'Soporte de Desembolso', tipo: 'documento' }]
     },
     {
@@ -116,7 +114,7 @@ export const PROCESO_CONFIG = [
         key: 'desembolsoMCY',
         label: 'Subsidio MCY Desembolsado',
         aplicaA: (financiero) => financiero.aplicaSubsidioVivienda,
-        esHito: true, // <-- Hito
+        esHito: true,
         evidenciasRequeridas: [{ id: 'desembolsoMCYSoporte', label: 'Soporte de Desembolso', tipo: 'documento' }]
     },
     {
@@ -129,14 +127,35 @@ export const PROCESO_CONFIG = [
         key: 'desembolsoCaja',
         label: 'Subsidio Caja Comp. Desembolsado',
         aplicaA: (financiero) => financiero.aplicaSubsidioCaja,
-        esHito: true, // <-- Hito
+        esHito: true,
         evidenciasRequeridas: [{ id: 'desembolsoCajaSoporte', label: 'Soporte de Desembolso', tipo: 'documento' }]
     },
     {
         key: 'facturaVenta',
         label: 'Factura de Venta',
         aplicaA: () => true,
-        esHito: true, // <-- Hito
+        esHito: true,
         evidenciasRequeridas: [{ id: 'facturaVentaDoc', label: 'Documento Factura de Venta', tipo: 'documento' }]
     },
 ];
+
+// --- INICIO DE LA NUEVA LÓGICA ---
+// Mapa para conectar fuentes de pago con los pasos del proceso
+export const FUENTE_PROCESO_MAP = {
+    credito: {
+        solicitudKey: 'solicitudDesembolsoCredito',
+        desembolsoKey: 'desembolsoCredito',
+        evidenciaId: 'desembolsoCreditoSoporte'
+    },
+    subsidioVivienda: {
+        solicitudKey: 'solicitudDesembolsoMCY',
+        desembolsoKey: 'desembolsoMCY',
+        evidenciaId: 'desembolsoMCYSoporte'
+    },
+    subsidioCaja: {
+        solicitudKey: 'solicitudDesembolsoCaja',
+        desembolsoKey: 'desembolsoCaja',
+        evidenciaId: 'desembolsoCajaSoporte'
+    }
+};
+// --- FIN DE LA NUEVA LÓGICA ---

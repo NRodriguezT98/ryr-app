@@ -52,7 +52,17 @@ export const useListarClientes = () => {
     const handleGuardado = useCallback(() => { recargarDatos(); setClienteAEditar(null); }, [recargarDatos]);
     const iniciarRenuncia = (cliente) => setClienteARenunciar(cliente);
     const iniciarReactivacion = (cliente) => setClienteAReactivar(cliente);
-    const iniciarEliminacion = (cliente) => setClienteAEliminar(cliente);
+    const iniciarEliminacion = (cliente) => {
+        // --- LÓGICA A AÑADIR ---
+        const renunciaAsociada = renuncias.find(r => r.clienteId === cliente.id);
+        if (renunciaAsociada) {
+            toast.error("No se puede eliminar: el cliente tiene un historial de renuncias.");
+            return;
+        }
+        // --- FIN DE LA LÓGICA ---
+        setClienteAEliminar(cliente);
+    };
+
     const handleConfirmarMotivo = (motivo, observacion, fechaRenuncia) => {
         setDatosRenuncia({ cliente: clienteARenunciar, motivo, observacion, fechaRenuncia });
         setClienteARenunciar(null);

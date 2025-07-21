@@ -3,6 +3,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+/* --- INICIO DE LA MODIFICACIÓN --- */
+@layer base {
+    body {
+        @apply bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300;
+    }
+}
+
+/* --- FIN DE LA MODIFICACIÓN --- */

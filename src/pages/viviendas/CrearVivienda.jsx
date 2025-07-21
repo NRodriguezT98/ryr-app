@@ -5,7 +5,6 @@ import { MapPin, FileText, CircleDollarSign, Check, Loader } from 'lucide-react'
 import FormularioVivienda from "./FormularioVivienda";
 
 const CrearVivienda = () => {
-    // El componente ahora es simple: solo llama al hook y obtiene lo que necesita.
     const {
         step, isLoading, formData, errors, isSubmitting,
         valorTotalCalculado, gastosNotarialesFijos, handlers
@@ -22,7 +21,7 @@ const CrearVivienda = () => {
     return (
         <AnimatedPage>
             <div className="max-w-2xl mx-auto">
-                <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
                     <h2 className="text-3xl font-extrabold mb-4 text-center text-[#c62828]">
                         🏠 Registrar Nueva Vivienda
                     </h2>
@@ -30,13 +29,13 @@ const CrearVivienda = () => {
                         {STEPS_CONFIG.map((s, index) => (
                             <Fragment key={s.number}>
                                 <div className="flex flex-col items-center">
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${step >= s.number ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${step >= s.number ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500'}`}>
                                         {step > s.number ? <Check size={24} /> : <s.icon size={24} />}
                                     </div>
-                                    <p className={`mt-2 text-xs font-semibold ${step >= s.number ? 'text-red-500' : 'text-gray-400'}`}>{s.title}</p>
+                                    <p className={`mt-2 text-xs font-semibold ${step >= s.number ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>{s.title}</p>
                                 </div>
                                 {index < STEPS_CONFIG.length - 1 && (
-                                    <div className={`flex-auto border-t-2 transition-all duration-300 mx-4 ${step > s.number ? 'border-red-500' : 'border-gray-300'}`}></div>
+                                    <div className={`flex-auto border-t-2 transition-all duration-300 mx-4 ${step > s.number ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}></div>
                                 )}
                             </Fragment>
                         ))}

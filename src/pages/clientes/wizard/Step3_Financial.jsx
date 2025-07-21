@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { NumericFormat } from 'react-number-format';
-import Select from 'react-select';
+import Select, { components } from 'react-select';
 import AnimatedPage from '../../../components/AnimatedPage';
 import HelpTooltip from '../../../components/HelpTooltip';
 import { formatCurrency } from '../../../utils/textFormatters';
@@ -26,24 +26,29 @@ const GASTOS_NOTARIALES_FIJOS = 5000000;
 
 const BreakdownRow = ({ label, value }) => (
     <div className="flex justify-between items-center">
-        <span className="text-gray-600">{label}</span>
-        <span className="font-semibold text-gray-800">{formatCurrency(value)}</span>
+        <span className="text-gray-600 dark:text-gray-400">{label}</span>
+        <span className="font-semibold text-gray-800 dark:text-gray-200">{formatCurrency(value)}</span>
     </div>
 );
 
 const getSelectStyles = (hasError) => ({
-    control: (base) => ({
+    control: (base, state) => ({
         ...base,
-        borderColor: hasError ? '#ef4444' : '#d1d5db',
+        backgroundColor: 'var(--color-bg-form)',
+        borderColor: hasError ? '#ef4444' : (state.isFocused ? '#3b82f6' : '#4b5563'),
         '&:hover': {
-            borderColor: hasError ? '#ef4444' : '#9ca3af',
+            borderColor: hasError ? '#ef4444' : '#3b82f6',
         },
         boxShadow: 'none',
         padding: '0.1rem'
     }),
+    singleValue: (base) => ({ ...base, color: 'var(--color-text-form)' }),
+    menu: (base) => ({ ...base, backgroundColor: 'var(--color-bg-form)' }),
+    option: (base, state) => ({ ...base, backgroundColor: state.isFocused ? '#2563eb' : 'var(--color-bg-form)', color: state.isFocused ? 'white' : 'var(--color-text-form)' }),
+    input: (base) => ({ ...base, color: 'var(--color-text-form)' }),
 });
 
-const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange }) => {
+const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange, isEditing }) => {
     const { financiero, viviendaSeleccionada, documentos, datosCliente } = formData;
     const resumenFinanciero = useClienteFinanciero(financiero, viviendaSeleccionada?.valorTotal);
 
@@ -57,37 +62,43 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
 
     return (
         <AnimatedPage>
+            <style>{`
+                :root {
+                  --color-bg-form: ${document.documentElement.classList.contains('dark') ? '#374151' : '#ffffff'};
+                  --color-text-form: ${document.documentElement.classList.contains('dark') ? '#ffffff' : '#1f2937'};
+                }
+            `}</style>
             <div className="space-y-6">
                 <div className='text-center'>
-                    <h3 className="text-2xl font-bold text-gray-800">3. Cierre Financiero</h3>
-                    <p className="text-sm text-gray-500 mt-1">La suma de los recursos debe ser igual al Valor de la Vivienda.</p>
+                    <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">3. Cierre Financiero</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">La suma de los recursos debe ser igual al Valor de la Vivienda.</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border dark:border-gray-700">
                     <div className="text-center flex flex-col">
-                        <p className="text-sm font-semibold text-gray-500">Valor Vivienda</p>
-                        <div className="flex-grow text-xs mt-2 space-y-1 px-2 border-b pb-2 mb-2">
+                        <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Valor Vivienda</p>
+                        <div className="flex-grow text-xs mt-2 space-y-1 px-2 border-b dark:border-gray-600 pb-2 mb-2">
                             <BreakdownRow label="Valor Base:" value={viviendaSeleccionada.valorBase || 0} />
                             {viviendaSeleccionada.recargoEsquinera > 0 && <BreakdownRow label="R. Esquinera:" value={viviendaSeleccionada.recargoEsquinera} />}
                             <BreakdownRow label="G. Notariales:" value={GASTOS_NOTARIALES_FIJOS} />
                         </div>
-                        <p className="text-lg font-bold text-blue-600">{formatCurrency(resumenFinanciero.totalAPagar)}</p>
+                        <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(resumenFinanciero.totalAPagar)}</p>
                     </div>
 
                     <div className="text-center flex flex-col">
-                        <p className="text-sm font-semibold text-gray-500">Total Recursos</p>
-                        <div className="flex-grow text-xs mt-2 space-y-1 px-2 border-b pb-2 mb-2">
+                        <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Recursos</p>
+                        <div className="flex-grow text-xs mt-2 space-y-1 px-2 border-b dark:border-gray-600 pb-2 mb-2">
                             {financiero.aplicaCuotaInicial && financiero.cuotaInicial.monto > 0 && <BreakdownRow label="Cuota Inicial:" value={financiero.cuotaInicial.monto} />}
                             {financiero.aplicaCredito && financiero.credito.monto > 0 && <BreakdownRow label="Crédito:" value={financiero.credito.monto} />}
                             {financiero.aplicaSubsidioVivienda && financiero.subsidioVivienda.monto > 0 && <BreakdownRow label="Subsidio MCY:" value={financiero.subsidioVivienda.monto} />}
                             {financiero.aplicaSubsidioCaja && financiero.subsidioCaja.monto > 0 && <BreakdownRow label="Sub. Caja:" value={financiero.subsidioCaja.monto} />}
                         </div>
-                        <p className="text-lg font-bold text-gray-800">{formatCurrency(resumenFinanciero.totalRecursos)}</p>
+                        <p className="text-lg font-bold text-gray-800 dark:text-gray-200">{formatCurrency(resumenFinanciero.totalRecursos)}</p>
                     </div>
 
                     <div className="text-center flex flex-col justify-center">
-                        <p className="text-sm font-semibold text-gray-500">Diferencia</p>
-                        <p className={`text-2xl font-bold ${resumenFinanciero.diferencia === 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(resumenFinanciero.diferencia)}</p>
+                        <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Diferencia</p>
+                        <p className={`text-2xl font-bold ${resumenFinanciero.diferencia === 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(resumenFinanciero.diferencia)}</p>
                     </div>
                 </div>
 
@@ -98,114 +109,187 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                     </div>
                 }
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 pt-6 border-t">
-                    <div className="lg:col-span-2 p-4 border rounded-xl bg-gray-50">
-                        <label className="block font-semibold mb-2 text-gray-700 flex items-center">
-                            Promesa de Compraventa Enviada <span className="text-red-600">*</span>
-                            <HelpTooltip id="promesaFile" content="Adjunte la promesa de compraventa que se envió al cliente. Este paso marcará el inicio del seguimiento." />
-                        </label>
-                        {documentos.promesaEnviadaUrl ? (
-                            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center justify-between">
-                                <div className='flex items-center gap-2 text-green-800 font-semibold'>
-                                    <FileText />
-                                    <a href={documentos.promesaEnviadaUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Promesa Cargada</a>
-                                </div>
-                                <button type="button" onClick={() => handleDocumentUpload('promesaEnviadaUrl', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100" title="Eliminar documento"><XCircle size={20} /></button>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 pt-6 border-t dark:border-gray-700">
+                    {!isEditing && (
+                        <div className="lg:col-span-2 p-4 border rounded-xl bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700 space-y-4">
+                            <div>
+                                <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200 flex items-center">
+                                    Documento de Promesa Enviado (PDF) <span className="text-red-600">*</span>
+                                    <HelpTooltip id="promesaFile" content="Adjunte la promesa de compraventa que se envió al cliente." />
+                                </label>
+                                {documentos.promesaEnviadaUrl ? (
+                                    <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-4 flex items-center justify-between">
+                                        <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold'>
+                                            <FileText />
+                                            <a href={documentos.promesaEnviadaUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Promesa Cargada</a>
+                                        </div>
+                                        <button type="button" onClick={() => handleDocumentUpload('promesaEnviadaUrl', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar documento"><XCircle size={20} /></button>
+                                    </div>
+                                ) : (
+                                    <FileUpload
+                                        label="Subir Promesa de Compraventa"
+                                        filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/promesa-enviada-${fileName}`}
+                                        onUploadSuccess={(url) => handleDocumentUpload('promesaEnviadaUrl', url)}
+                                        disabled={!datosCliente.cedula}
+                                    />
+                                )}
+                                {errors.promesaEnviadaUrl && <p className="text-red-600 text-sm mt-1">{errors.promesaEnviadaUrl}</p>}
                             </div>
-                        ) : (
-                            <FileUpload
-                                label="Subir Promesa de Compraventa"
-                                filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/promesa-enviada-${fileName}`}
-                                onUploadSuccess={(url) => handleDocumentUpload('promesaEnviadaUrl', url)}
-                                disabled={!datosCliente.cedula}
-                            />
-                        )}
-                        {errors.promesaEnviadaUrl && <p className="text-red-600 text-sm mt-1">{errors.promesaEnviadaUrl}</p>}
-                    </div>
 
-                    <div className="p-4 border rounded-xl h-full">
+                            <div>
+                                <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200 flex items-center">
+                                    Captura del Correo de Envío <span className="text-red-600">*</span>
+                                    <HelpTooltip id="promesaCorreoFile" content="Adjunte una captura de pantalla o evidencia del correo con el que se envió la promesa." />
+                                </label>
+                                {documentos.promesaEnviadaCorreoUrl ? (
+                                    <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-4 flex items-center justify-between">
+                                        <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold'>
+                                            <FileText />
+                                            <a href={documentos.promesaEnviadaCorreoUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Captura Cargada</a>
+                                        </div>
+                                        <button type="button" onClick={() => handleDocumentUpload('promesaEnviadaCorreoUrl', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar documento"><XCircle size={20} /></button>
+                                    </div>
+                                ) : (
+                                    <FileUpload
+                                        label="Subir Captura de Correo"
+                                        filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/promesa-correo-${fileName}`}
+                                        onUploadSuccess={(url) => handleDocumentUpload('promesaEnviadaCorreoUrl', url)}
+                                        disabled={!datosCliente.cedula}
+                                    />
+                                )}
+                                {errors.promesaEnviadaCorreoUrl && <p className="text-red-600 text-sm mt-1">{errors.promesaEnviadaCorreoUrl}</p>}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="p-4 border rounded-xl h-full dark:border-gray-700">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaCuotaInicial" checked={financiero.aplicaCuotaInicial} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
-                            <span className="font-semibold text-gray-700">Cuota Inicial</span>
+                            <span className="font-semibold text-gray-700 dark:text-gray-200">Cuota Inicial</span>
                         </label>
                         {financiero.aplicaCuotaInicial && (
-                            <div className="space-y-1 mt-4 pt-4 border-t border-dashed animate-fade-in">
-                                <label className="text-xs font-medium text-gray-500 flex items-center">Monto<HelpTooltip id="cuota" content="Monto que el cliente aporta como cuota inicial." /></label>
-                                <NumericFormat value={financiero.cuotaInicial.monto} onValueChange={(values) => handleFinancialFieldChange('cuotaInicial', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.cuotaInicial_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                            <div className="space-y-1 mt-4 pt-4 border-t border-dashed dark:border-gray-600 animate-fade-in">
+                                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Monto<HelpTooltip id="cuota" content="Monto que el cliente aporta como cuota inicial." /></label>
+                                <NumericFormat value={financiero.cuotaInicial.monto} onValueChange={(values) => handleFinancialFieldChange('cuotaInicial', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.cuotaInicial_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                 {errors.cuotaInicial_monto && <p className="text-red-600 text-sm mt-1">{errors.cuotaInicial_monto}</p>}
                             </div>
                         )}
                     </div>
 
-                    <div className="p-4 border rounded-xl h-full">
+                    <div className="p-4 border rounded-xl h-full dark:border-gray-700">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaCredito" checked={financiero.aplicaCredito} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
-                            <span className="font-semibold text-gray-700">Crédito Hipotecario</span>
+                            <span className="font-semibold text-gray-700 dark:text-gray-200">Crédito Hipotecario</span>
                         </label>
                         {financiero.aplicaCredito && (
-                            <div className="space-y-4 mt-4 pt-4 border-t border-dashed animate-fade-in">
+                            <div className="space-y-4 mt-4 pt-4 border-t border-dashed dark:border-gray-600 animate-fade-in">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className='space-y-1'>
-                                        <label className="text-xs font-medium text-gray-500">Banco</label>
+                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Banco</label>
                                         <Select options={creditoOptions} value={creditoOptions.find(o => o.value === financiero.credito.banco)} onChange={(opt) => handleFinancialFieldChange('credito', 'banco', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.credito_banco)} />
                                         {errors.credito_banco && <p className="text-red-600 text-sm mt-1">{errors.credito_banco}</p>}
                                     </div>
                                     <div className='space-y-1'>
-                                        <label className="text-xs font-medium text-gray-500 flex items-center">Monto<HelpTooltip id="credito" content="Monto total del crédito aprobado." /></label>
-                                        <NumericFormat value={financiero.credito.monto} onValueChange={(values) => handleFinancialFieldChange('credito', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.credito_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Monto<HelpTooltip id="credito" content="Monto total del crédito aprobado." /></label>
+                                        <NumericFormat value={financiero.credito.monto} onValueChange={(values) => handleFinancialFieldChange('credito', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.credito_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                         {errors.credito_monto && <p className="text-red-600 text-sm mt-1">{errors.credito_monto}</p>}
                                     </div>
                                 </div>
 
                                 {financiero.credito.banco === 'Bancolombia' && (
                                     <div className='space-y-1 animate-fade-in'>
-                                        <label className="text-xs font-medium text-gray-500 flex items-center">Número de Caso<HelpTooltip id="caso" content="Número de caso SIB asignado por Bancolombia." /></label>
+                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Número de Caso<HelpTooltip id="caso" content="Número de caso SIB asignado por Bancolombia." /></label>
                                         <input
                                             name="caso"
                                             type="text"
                                             value={financiero.credito.caso || ''}
                                             onChange={(e) => handleFinancialFieldChange('credito', 'caso', e.target.value)}
-                                            className={`w-full border p-2 rounded-lg ${errors.credito_caso ? 'border-red-500' : 'border-gray-300'}`}
+                                            className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.credito_caso ? 'border-red-500' : 'border-gray-300'}`}
                                         />
                                         {errors.credito_caso && <p className="text-red-600 text-sm mt-1">{errors.credito_caso}</p>}
                                     </div>
                                 )}
+
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">
+                                        Carta Aprobación Crédito <span className="text-red-600 ml-1">*</span>
+                                    </label>
+                                    {financiero.credito.urlCartaAprobacion ? (
+                                        <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
+                                            <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'>
+                                                <FileText size={16} />
+                                                <a href={financiero.credito.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
+                                            </div>
+                                            <button type="button" onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar"><XCircle size={18} /></button>
+                                        </div>
+                                    ) : (
+                                        <FileUpload
+                                            label="Subir Carta"
+                                            filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/carta-aprobacion-credito-${fileName}`}
+                                            onUploadSuccess={(url) => handleFinancialFieldChange('credito', 'urlCartaAprobacion', url)}
+                                            disabled={!datosCliente.cedula}
+                                        />
+                                    )}
+                                    {errors.credito_urlCartaAprobacion && <p className="text-red-600 text-sm mt-1">{errors.credito_urlCartaAprobacion}</p>}
+                                </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="p-4 border rounded-xl h-full">
+                    <div className="p-4 border rounded-xl h-full dark:border-gray-700">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaSubsidioVivienda" checked={financiero.aplicaSubsidioVivienda} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
-                            <span className="font-semibold text-gray-700">Subsidio Mi Casa Ya</span>
+                            <span className="font-semibold text-gray-700 dark:text-gray-200">Subsidio Mi Casa Ya</span>
                         </label>
                         {financiero.aplicaSubsidioVivienda && (
-                            <div className="space-y-1 mt-4 pt-4 border-t border-dashed animate-fade-in">
-                                <label className="text-xs font-medium text-gray-500 flex items-center">Monto del Subsidio<HelpTooltip id="sub-vivienda" content="Monto aprobado del subsidio del gobierno." /></label>
-                                <NumericFormat value={financiero.subsidioVivienda.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioVivienda', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioVivienda_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                            <div className="space-y-1 mt-4 pt-4 border-t border-dashed dark:border-gray-600 animate-fade-in">
+                                <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Monto del Subsidio<HelpTooltip id="sub-vivienda" content="Monto aprobado del subsidio del gobierno." /></label>
+                                <NumericFormat value={financiero.subsidioVivienda.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioVivienda', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.subsidioVivienda_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                 {errors.subsidioVivienda_monto && <p className="text-red-600 text-sm mt-1">{errors.subsidioVivienda_monto}</p>}
                             </div>
                         )}
                     </div>
 
-                    <div className="p-4 border rounded-xl h-full">
+                    <div className="p-4 border rounded-xl h-full dark:border-gray-700">
                         <label className="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" name="aplicaSubsidioCaja" checked={financiero.aplicaSubsidioCaja} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
-                            <span className="font-semibold text-gray-700">Subsidio Caja de Compensación</span>
+                            <span className="font-semibold text-gray-700 dark:text-gray-200">Subsidio Caja de Compensación</span>
                         </label>
                         {financiero.aplicaSubsidioCaja && (
-                            <div className="space-y-4 mt-4 pt-4 border-t border-dashed animate-fade-in">
+                            <div className="space-y-4 mt-4 pt-4 border-t border-dashed dark:border-gray-600 animate-fade-in">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className='space-y-1'>
-                                        <label className="text-xs font-medium text-gray-500">Caja</label>
+                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Caja</label>
                                         <Select options={cajaOptions} value={cajaOptions.find(o => o.value === financiero.subsidioCaja.caja)} onChange={(opt) => handleFinancialFieldChange('subsidioCaja', 'caja', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.subsidioCaja_caja)} />
                                         {errors.subsidioCaja_caja && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_caja}</p>}
                                     </div>
                                     <div className='space-y-1'>
-                                        <label className="text-xs font-medium text-gray-500 flex items-center">Monto<HelpTooltip id="sub-caja" content="Monto aprobado del subsidio de la caja." /></label>
-                                        <NumericFormat value={financiero.subsidioCaja.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioCaja', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg ${errors.subsidioCaja_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Monto<HelpTooltip id="sub-caja" content="Monto aprobado del subsidio de la caja." /></label>
+                                        <NumericFormat value={financiero.subsidioCaja.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioCaja', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.subsidioCaja_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
                                         {errors.subsidioCaja_monto && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_monto}</p>}
                                     </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">
+                                        Carta Aprobación Subsidio <span className="text-red-600 ml-1">*</span>
+                                    </label>
+                                    {financiero.subsidioCaja.urlCartaAprobacion ? (
+                                        <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
+                                            <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'>
+                                                <FileText size={16} />
+                                                <a href={financiero.subsidioCaja.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
+                                            </div>
+                                            <button type="button" onClick={() => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar"><XCircle size={18} /></button>
+                                        </div>
+                                    ) : (
+                                        <FileUpload
+                                            label="Subir Carta"
+                                            filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/carta-aprobacion-subsidio-${fileName}`}
+                                            onUploadSuccess={(url) => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', url)}
+                                            disabled={!datosCliente.cedula}
+                                        />
+                                    )}
+                                    {errors.subsidioCaja_urlCartaAprobacion && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_urlCartaAprobacion}</p>}
                                 </div>
                             </div>
                         )}

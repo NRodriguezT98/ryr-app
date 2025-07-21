@@ -8,59 +8,58 @@ const Step1_Ubicacion = ({ formData, errors, handleInputChange }) => {
             <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block font-semibold mb-1 flex items-center" htmlFor="manzana">
+                        <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="manzana">
                             Manzana <span className="text-red-600">*</span>
                             <HelpTooltip id="manzana" content="Seleccione la manzana a la que pertenece la vivienda a registrar" />
                         </label>
-                        <select id="manzana" name="manzana" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.manzana ? "border-red-500" : "border-gray-300"}`}>
+                        <select id="manzana" name="manzana" value={formData.manzana} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.manzana ? "border-red-500" : "border-gray-300"}`}>
                             <option value="">Selecciona</option>
                             {["A", "B", "C", "D", "E", "F"].map((op) => (<option key={op} value={op}>{op}</option>))}
                         </select>
                         {errors.manzana && <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>}
                     </div>
                     <div>
-                        <label className="block font-semibold mb-1 flex items-center" htmlFor="numero">
+                        <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="numero">
                             Número de casa <span className="text-red-600">*</span>
                             <HelpTooltip id="numero" content="Indique aquí el número de la vivienda a registrar" />
                         </label>
-                        <input id="numero" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.numero ? "border-red-500" : "border-gray-300"}`} maxLength={6} />
+                        <input id="numero" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.numero ? "border-red-500" : "border-gray-300"}`} maxLength={6} />
                         {errors.numero && <p className="text-red-600 text-sm mt-1">{errors.numero}</p>}
                     </div>
                 </div>
-                <div className="mt-6 pt-6 border-t border-dashed">
-                    <h3 className="font-semibold text-lg mb-4 text-gray-700">Linderos</h3>
+                <div className="mt-6 pt-6 border-t border-dashed dark:border-gray-600">
+                    <h3 className="font-semibold text-lg mb-4 text-gray-700 dark:text-gray-200">Linderos</h3>
                     <div className="grid grid-cols-1 gap-y-4">
-                        {/* --- LABELS RESTAURADOS AQUÍ --- */}
                         <div>
-                            <label className="block font-semibold mb-1 flex items-center" htmlFor="linderoNorte">
+                            <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="linderoNorte">
                                 Norte <span className="text-red-600">*</span>
                                 <HelpTooltip id="linderoNorte" content="Indique aquí el lindero norte de la vivienda a registrar" />
                             </label>
-                            <input id="linderoNorte" name="linderoNorte" type="text" value={formData.linderoNorte} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.linderoNorte ? "border-red-500" : "border-gray-300"}`} />
+                            <input id="linderoNorte" name="linderoNorte" type="text" value={formData.linderoNorte} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.linderoNorte ? "border-red-500" : "border-gray-300"}`} />
                             {errors.linderoNorte && <p className="text-red-600 text-sm mt-1">{errors.linderoNorte}</p>}
                         </div>
                         <div>
-                            <label className="block font-semibold mb-1 flex items-center" htmlFor="linderoSur">
+                            <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="linderoSur">
                                 Sur <span className="text-red-600">*</span>
                                 <HelpTooltip id="linderoSur" content="Indique aquí el lindero sur de la vivienda a registrar" />
                             </label>
-                            <input id="linderoSur" name="linderoSur" type="text" value={formData.linderoSur} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.linderoSur ? "border-red-500" : "border-gray-300"}`} />
+                            <input id="linderoSur" name="linderoSur" type="text" value={formData.linderoSur} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.linderoSur ? "border-red-500" : "border-gray-300"}`} />
                             {errors.linderoSur && <p className="text-red-600 text-sm mt-1">{errors.linderoSur}</p>}
                         </div>
                         <div>
-                            <label className="block font-semibold mb-1 flex items-center" htmlFor="linderoOriente">
+                            <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="linderoOriente">
                                 Oriente <span className="text-red-600">*</span>
                                 <HelpTooltip id="linderoOriente" content="Indique aquí el lindero oriente de la vivienda a registrar" />
                             </label>
-                            <input id="linderoOriente" name="linderoOriente" type="text" value={formData.linderoOriente} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.linderoOriente ? "border-red-500" : "border-gray-300"}`} />
+                            <input id="linderoOriente" name="linderoOriente" type="text" value={formData.linderoOriente} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.linderoOriente ? "border-red-500" : "border-gray-300"}`} />
                             {errors.linderoOriente && <p className="text-red-600 text-sm mt-1">{errors.linderoOriente}</p>}
                         </div>
                         <div>
-                            <label className="block font-semibold mb-1 flex items-center" htmlFor="linderoOccidente">
+                            <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="linderoOccidente">
                                 Occidente <span className="text-red-600">*</span>
                                 <HelpTooltip id="inderoOccidente" content="Indique aquí el lindero occidente de la vivienda a registrar" />
                             </label>
-                            <input id="linderoOccidente" name="linderoOccidente" type="text" value={formData.linderoOccidente} onChange={handleInputChange} className={`w-full border p-3 rounded-lg ${errors.linderoOccidente ? "border-red-500" : "border-gray-300"}`} />
+                            <input id="linderoOccidente" name="linderoOccidente" type="text" value={formData.linderoOccidente} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.linderoOccidente ? "border-red-500" : "border-gray-300"}`} />
                             {errors.linderoOccidente && <p className="text-red-600 text-sm mt-1">{errors.linderoOccidente}</p>}
                         </div>
                     </div>

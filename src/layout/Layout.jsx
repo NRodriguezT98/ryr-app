@@ -6,7 +6,7 @@ import ErrorBoundary from "../components/ErrorBoundary";
 
 export default function Layout() {
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
             <Navbar />
             <main>
                 <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -15,7 +15,15 @@ export default function Layout() {
                     </ErrorBoundary>
                 </div>
             </main>
-            <Tooltip id="app-tooltip" style={{ backgroundColor: "#334155", color: "#ffffff", borderRadius: '8px', zIndex: 100 }} />
+            <Tooltip
+                id="app-tooltip"
+                style={{
+                    backgroundColor: "#334155",
+                    color: "#ffffff",
+                    borderRadius: '8px',
+                    zIndex: 9999
+                }}
+            />
         </div>
     );
 }

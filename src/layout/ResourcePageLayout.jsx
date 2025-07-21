@@ -4,7 +4,7 @@ import AnimatedPage from '../components/AnimatedPage';
 const ResourcePageLayout = ({ title, icon, color, filterControls, children }) => {
     return (
         <AnimatedPage>
-            <div className="bg-white p-6 rounded-2xl shadow-xl border border-gray-100 relative">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 relative">
                 <div className="text-center mb-10">
                     <h2
                         className="text-4xl font-extrabold uppercase font-poppins inline-flex items-center gap-4"
@@ -19,7 +19,6 @@ const ResourcePageLayout = ({ title, icon, color, filterControls, children }) =>
                     ></div>
                 </div>
 
-                {/* La sección de filtros ahora es completamente opcional y controlada por la página */}
                 {filterControls && (
                     <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
                         {filterControls}

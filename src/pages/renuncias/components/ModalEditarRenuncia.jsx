@@ -5,7 +5,7 @@ import { Edit } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useForm } from '../../../hooks/useForm';
 import { updateRenuncia } from '../../../utils/storage';
-import { Tooltip } from 'react-tooltip'; // <-- 1. Importar Tooltip
+import { Tooltip } from 'react-tooltip';
 
 const motivosOptions = [
     { value: 'Crédito Negado', label: 'Crédito Negado por el Banco' },
@@ -35,7 +35,7 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                 console.error("Error al editar renuncia:", error);
             }
         },
-        options: { resetOnSuccess: false } // Para mantener los datos en el form
+        options: { resetOnSuccess: false }
     });
 
     useEffect(() => {
@@ -44,15 +44,10 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
         }
     }, [isOpen, initialState, setFormData]);
 
-    // 2. Lógica para detectar si hay cambios
     const hayCambios = useMemo(() => {
         if (!initialData) return false;
         return JSON.stringify(formData) !== JSON.stringify(initialData);
     }, [formData, initialData]);
-
-    const portalStyles = {
-        menuPortal: base => ({ ...base, zIndex: 9999 })
-    };
 
     return (
         <>
@@ -63,39 +58,53 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                 icon={<Edit size={28} className="text-orange-500" />}
             >
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <p className="text-center text-gray-600 -mt-4 mb-4">
-                        Estás editando la renuncia de <strong className='text-gray-800'>{renuncia.clienteNombre}</strong>.
+                    <p className="text-center text-gray-600 dark:text-gray-400 -mt-4 mb-4">
+                        Estás editando la renuncia de <strong className='text-gray-800 dark:text-gray-200'>{renuncia.clienteNombre}</strong>.
                     </p>
                     <div>
-                        <label className="block font-medium mb-1">Motivo Principal</label>
+                        <label className="block font-medium mb-1 dark:text-gray-300">Motivo Principal</label>
                         <Select
                             options={motivosOptions}
                             value={motivosOptions.find(opt => opt.value === formData.motivo) || null}
                             onChange={(opt) => handleInputChange({ target: { name: 'motivo', value: opt.value } })}
                             placeholder="Selecciona un motivo..."
-                            menuPortalTarget={document.body}
-                            styles={portalStyles}
+                            // Estilos para el modo oscuro en react-select
+                            theme={(theme) => ({
+                                ...theme,
+                                colors: {
+                                    ...theme.colors,
+                                    primary: '#3b82f6',
+                                    primary25: '#1e40af',
+                                    neutral0: 'var(--color-bg-dark)',
+                                    neutral80: 'var(--color-text-dark)',
+                                },
+                            })}
+                            styles={{
+                                control: (base) => ({ ...base, backgroundColor: 'var(--color-bg-dark)', borderColor: '#4b5563' }),
+                                singleValue: (base) => ({ ...base, color: 'var(--color-text-dark)' }),
+                                menu: (base) => ({ ...base, backgroundColor: 'var(--color-bg-dark)' }),
+                                option: (base, state) => ({ ...base, backgroundColor: state.isFocused ? '#2563eb' : 'var(--color-bg-dark)', color: state.isFocused ? 'white' : 'var(--color-text-dark)' }),
+                            }}
                         />
                     </div>
 
                     {formData.motivo === 'Otro' && (
                         <div className='animate-fade-in'>
-                            <label className="block font-medium mb-1">Por favor, especifica el motivo</label>
+                            <label className="block font-medium mb-1 dark:text-gray-300">Por favor, especifica el motivo</label>
                             <textarea
                                 name="observacion"
                                 value={formData.observacion}
                                 onChange={handleInputChange}
                                 rows="3"
-                                className="w-full border p-2 rounded-lg text-sm"
+                                className="w-full border p-2 rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
                                 placeholder="Detalla aquí la razón específica de la renuncia..."
                             />
                         </div>
                     )}
 
-                    <div className="flex justify-end gap-4 pt-6 border-t">
+                    <div className="flex justify-end gap-4 pt-6 border-t dark:border-gray-700">
                         <button onClick={onClose} type="button" className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>
 
-                        {/* 3. Envolvemos el botón en un span para el tooltip */}
                         <span
                             data-tooltip-id="app-tooltip"
                             data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}
@@ -111,7 +120,12 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                     </div>
                 </form>
             </Modal>
-            {/* 4. Asegurarnos que el Tooltip se renderice */}
+            <style>{`
+                :root {
+                  --color-bg-dark: #1f2937;
+                  --color-text-dark: #d1d5db;
+                }
+            `}</style>
             <Tooltip id="app-tooltip" />
         </>
     );
