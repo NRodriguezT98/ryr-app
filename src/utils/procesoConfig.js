@@ -26,6 +26,16 @@ export const PROCESO_CONFIG = [
             { id: 'docAvaluo', label: 'Soporte de Envío de Documentos', tipo: 'documento' }
         ]
     },
+    // --- INICIO DEL NUEVO PASO AÑADIDO ---
+    {
+        key: 'cartaRatificacionRecibida',
+        label: 'Carta de Ratificación Recibida',
+        aplicaA: (financiero) => financiero.aplicaCredito,
+        evidenciasRequeridas: [
+            { id: 'cartaRatificacionDoc', label: 'Documento Carta de Ratificación (PDF)', tipo: 'documento' }
+        ]
+    },
+    // --- FIN DEL NUEVO PASO AÑADIDO ---
     {
         key: 'pagoEstudioTitulos',
         label: 'Pago Estudio de Títulos',

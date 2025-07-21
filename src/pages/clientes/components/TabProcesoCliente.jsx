@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // Importar useEffect
+import { useBlocker } from 'react-router-dom';
 import { useProcesoLogic } from '../../../hooks/clientes/useProcesoLogic';
 import { updateCliente } from '../../../utils/storage';
 import PasoProcesoCard from './PasoProcesoCard';
 import { Tooltip } from 'react-tooltip';
+import ModalConfirmacion from '../../../components/ModalConfirmacion';
+import ModalEditarFechaProceso from './ModalEditarFechaProceso';
 
-const TabProcesoCliente = ({ cliente, onDatosRecargados }) => {
+// --- INICIO DE CAMBIOS ---
+const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) => {
+    // --- FIN DE CAMBIOS ---
 
     const handleSave = async (nuevoProceso) => {
         const clienteActualizado = {
@@ -18,15 +23,26 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados }) => {
 
     const {
         pasosRenderizables,
-        handleUpdateEvidencia,
-        handleCompletarPaso,
-        handleDateChange,
-        handleReabrirPaso, // <-- Obtenemos la función del hook
-        handleSaveChanges,
-        isSaveDisabled,
         progreso,
-        tooltipMessage
+        hayPasoEnReapertura,
+        pasoAReabrir,
+        pasoAEditarFecha,
+        justSaved,
+        isSaveDisabled,
+        tooltipMessage,
+        hayCambiosSinGuardar,
+        handlers,
     } = useProcesoLogic(cliente, handleSave);
+
+    // --- INICIO DE LA NUEVA LÓGICA ---
+    // Este efecto le informa al componente padre si hay cambios
+    useEffect(() => {
+        onHayCambiosChange(hayCambiosSinGuardar);
+    }, [hayCambiosSinGuardar, onHayCambiosChange]);
+    // --- FIN DE LA NUEVA LÓGICA ---
+
+    const pasoAReabrirInfo = pasoAReabrir ? pasosRenderizables.find(p => p.key === pasoAReabrir) : null;
+    const nombrePasoAReabrir = pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '';
 
     const porcentajeProgreso = progreso.total > 0 ? (progreso.completados / progreso.total) * 100 : 0;
 
@@ -36,7 +52,7 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados }) => {
                 <h3 className="font-bold text-lg">Línea de Tiempo del Proceso</h3>
                 <span data-tooltip-id="app-tooltip" data-tooltip-content={tooltipMessage}>
                     <button
-                        onClick={handleSaveChanges}
+                        onClick={handlers.handleSaveChanges}
                         disabled={isSaveDisabled}
                         className="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
@@ -59,16 +75,38 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados }) => {
                 {pasosRenderizables.map((paso, index) => (
                     <PasoProcesoCard
                         key={paso.key}
-                        paso={{ ...paso, label: `${index + 1}. ${paso.label.substring(paso.label.indexOf(' ') + 1)}` }}
-                        stepNumber={index + 1}
-                        onUpdateEvidencia={handleUpdateEvidencia}
-                        onCompletarPaso={handleCompletarPaso}
-                        onDateChange={handleDateChange}
-                        onReabrirPaso={handleReabrirPaso} // <-- Pasamos la función como prop
+                        paso={{
+                            ...paso,
+                            label: `${index + 1}. ${paso.label}`,
+                            stepNumber: index + 1,
+                            hayPasoEnReapertura: hayPasoEnReapertura
+                        }}
+                        justSaved={justSaved}
+                        onUpdateEvidencia={handlers.handleUpdateEvidencia}
+                        onCompletarPaso={handlers.handleCompletarPaso}
+                        onIniciarReapertura={handlers.iniciarReapertura}
+                        onDeshacerReapertura={handlers.deshacerReapertura}
+                        onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
                         clienteId={cliente.id}
                     />
                 ))}
             </div>
+
+            <ModalConfirmacion
+                isOpen={!!pasoAReabrir}
+                onClose={handlers.cancelarReapertura}
+                onConfirm={handlers.confirmarReapertura}
+                titulo="¿Reabrir este paso?"
+                mensaje={`Estás a punto de reabrir el paso ${nombrePasoAReabrir}. Perderás la fecha de completado y deberás volver a validarlo. ¿Estás seguro?`}
+            />
+
+            <ModalEditarFechaProceso
+                isOpen={!!pasoAEditarFecha}
+                onClose={handlers.cancelarEdicionFecha}
+                onConfirm={handlers.confirmarEdicionFecha}
+                pasoInfo={pasoAEditarFecha ? { ...pasoAEditarFecha, ...pasosRenderizables.find(p => p.key === pasoAEditarFecha.key) } : null}
+            />
+
             <Tooltip id="app-tooltip" />
         </div>
     );
