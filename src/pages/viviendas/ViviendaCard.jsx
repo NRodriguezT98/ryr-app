@@ -2,13 +2,13 @@ import React, { Fragment, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home } from 'lucide-react';
-import { Tooltip } from 'react-tooltip';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 
 const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
     const {
         manzana, numeroCasa, matricula, nomenclatura, valorFinal, totalAbonado,
-        saldoPendiente, clienteNombre, clienteId, descuentoMonto, recargoEsquinera, areaConstruida
+        saldoPendiente, clienteNombre, clienteId, descuentoMonto, recargoEsquinera, areaConstruida,
+        puedeEditar, puedeEliminar, puedeAplicarDescuento // <-- Recibimos la nueva propiedad
     } = vivienda;
 
     const porcentajePagado = valorFinal > 0 ? (totalAbonado / valorFinal) * 100 : 0;
@@ -19,7 +19,7 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
     const esIrregular = String(areaConstruida) !== "41";
 
     return (
-        <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600 shadow-green-100' : 'border-gray-200 dark:border-gray-700'} overflow-hidden`}>
+        <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600 shadow-green-100 dark:shadow-green-900/50' : 'border-gray-200 dark:border-gray-700'} overflow-hidden`}>
             <div className={`flex items-center justify-between p-4 border-b dark:border-gray-700 rounded-t-2xl ${isDisponible ? 'bg-gray-50 dark:bg-gray-700/50' : (isPagada ? 'bg-green-50 dark:bg-green-900/50' : 'bg-blue-50 dark:bg-blue-900/50')}`}>
                 <div className="flex items-center gap-3 flex-grow min-w-0">
                     <Home className={`w-6 h-6 flex-shrink-0 ${isDisponible ? 'text-gray-500' : (isPagada ? 'text-green-700' : 'text-blue-700')}`} />
@@ -44,19 +44,9 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
             <div className="p-5 space-y-4 flex-grow">
                 <div className='space-y-3'>
                     <div className="flex items-center gap-2 flex-wrap">
-                        {esEsquinera ? (
-                            <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full"><Star size={14} />Esquinera</span>
-                        ) : (
-                            <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded-full"><Building size={14} />Medianera</span>
-                        )}
-                        {esIrregular ? (
-                            <span className="flex items-center gap-1.5 text-xs font-semibold text-red-800 bg-red-100 px-2 py-1 rounded-full"><Ruler size={14} />Irregular</span>
-                        ) : (
-                            <span className="flex items-center gap-1.5 text-xs font-semibold text-cyan-800 bg-cyan-100 px-2 py-1 rounded-full"><Ruler size={14} />Regular</span>
-                        )}
-                        {tieneDescuento && (
-                            <span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-800 bg-indigo-100 px-2 py-1 rounded-full"><Tag size={14} />Con Descuento</span>
-                        )}
+                        {esEsquinera ? (<span className="flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full"><Star size={14} />Esquinera</span>) : (<span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded-full"><Building size={14} />Medianera</span>)}
+                        {esIrregular ? (<span className="flex items-center gap-1.5 text-xs font-semibold text-red-800 bg-red-100 px-2 py-1 rounded-full"><Ruler size={14} />Irregular</span>) : (<span className="flex items-center gap-1.5 text-xs font-semibold text-cyan-800 bg-cyan-100 px-2 py-1 rounded-full"><Ruler size={14} />Regular</span>)}
+                        {tieneDescuento && (<span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-800 bg-indigo-100 px-2 py-1 rounded-full"><Tag size={14} />Con Descuento</span>)}
                     </div>
                     <div className='text-sm text-gray-600 dark:text-gray-400 pt-3 border-t dark:border-gray-700'>
                         <p><strong className='font-medium text-gray-800 dark:text-gray-200'>Matrícula:</strong> {matricula}</p>
@@ -86,18 +76,10 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
             <div className="mt-auto p-4 border-t bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm overflow-hidden">
                     {!isDisponible ? (
-                        <>
+                        <Link to={`/clientes/detalle/${clienteId}`} className='flex items-center gap-2 font-bold text-gray-800 dark:text-gray-200 truncate hover:underline hover:text-blue-600 dark:hover:text-blue-400' title={toTitleCase(clienteNombre)}>
                             <User size={16} className="text-gray-400" />
-                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
-                            <Link
-                                to={`/clientes/detalle/${clienteId}`}
-                                className='font-bold text-gray-800 dark:text-gray-200 truncate hover:underline hover:text-blue-600 dark:hover:text-blue-400'
-                                title={toTitleCase(clienteNombre)}
-                            >
-                                {toTitleCase(clienteNombre)}
-                            </Link>
-                            {/* --- FIN DE LA MODIFICACIÓN --- */}
-                        </>
+                            {toTitleCase(clienteNombre)}
+                        </Link>
                     ) : (
                         <p className='text-xs text-gray-500 dark:text-gray-400'>Vivienda sin asignar</p>
                     )}
@@ -110,9 +92,41 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                     <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                         <Menu.Items className="absolute bottom-full right-0 mb-2 w-56 origin-bottom-right bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
                             <div className="px-1 py-1"><Menu.Item>{({ active }) => (<Link to={`/viviendas/detalle/${vivienda.id}`} className={`${active ? 'bg-indigo-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Eye className="w-5 h-5 mr-2" /> Ver Detalle</Link>)}</Menu.Item></div>
-                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onEdit(vivienda)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Pencil className="w-5 h-5 mr-2" /> Editar Datos</button>)}</Menu.Item></div>
-                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onApplyDiscount(vivienda)} className={`${active ? 'bg-purple-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Tag className="w-5 h-5 mr-2" /> Aplicar/Ver Descuento</button>)}</Menu.Item></div>
-                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onDelete(vivienda)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Trash className="w-5 h-5 mr-2" /> Eliminar</button>)}</Menu.Item></div>
+                            <div className="px-1 py-1">
+                                <Menu.Item disabled={!puedeEditar}>
+                                    {({ active, disabled }) => (
+                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede editar una vivienda con proceso de cliente finalizado." : ''}>
+                                            <button onClick={() => onEdit(vivienda)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeEditar}>
+                                                <Pencil className="w-5 h-5 mr-2" /> Editar Datos
+                                            </button>
+                                        </div>
+                                    )}
+                                </Menu.Item>
+                            </div>
+                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                            <div className="px-1 py-1">
+                                <Menu.Item disabled={!puedeAplicarDescuento}>
+                                    {({ active, disabled }) => (
+                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede aplicar un descuento a una vivienda pagada o con proceso finalizado." : ''}>
+                                            <button onClick={() => onApplyDiscount(vivienda)} className={`${active ? 'bg-purple-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeAplicarDescuento}>
+                                                <Tag className="w-5 h-5 mr-2" /> Aplicar/Ver Descuento
+                                            </button>
+                                        </div>
+                                    )}
+                                </Menu.Item>
+                            </div>
+                            {/* --- FIN DE LA MODIFICACIÓN --- */}
+                            <div className="px-1 py-1">
+                                <Menu.Item disabled={!puedeEliminar}>
+                                    {({ active, disabled }) => (
+                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede eliminar una vivienda con historial de clientes." : ''}>
+                                            <button onClick={() => onDelete(vivienda)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeEliminar}>
+                                                <Trash className="w-5 h-5 mr-2" /> Eliminar
+                                            </button>
+                                        </div>
+                                    )}
+                                </Menu.Item>
+                            </div>
                         </Menu.Items>
                     </Transition>
                 </Menu>

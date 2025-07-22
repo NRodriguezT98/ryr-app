@@ -1,5 +1,7 @@
 import React, { useMemo, useEffect } from 'react';
-import Modal from '../../../components/Modal';
+// --- INICIO DE LA CORRECCIÓN ---
+import Modal from '../../../components/Modal.jsx'; // Se añade la extensión .jsx explícitamente
+// --- FIN DE LA CORRECCIÓN ---
 import Select from 'react-select';
 import { Edit } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -68,7 +70,6 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                             value={motivosOptions.find(opt => opt.value === formData.motivo) || null}
                             onChange={(opt) => handleInputChange({ target: { name: 'motivo', value: opt.value } })}
                             placeholder="Selecciona un motivo..."
-                            // Estilos para el modo oscuro en react-select
                             theme={(theme) => ({
                                 ...theme,
                                 colors: {

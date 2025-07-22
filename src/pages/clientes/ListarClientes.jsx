@@ -1,14 +1,21 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { useListarClientes } from "../../hooks/clientes/useListarClientes.jsx";
-import ResourcePageLayout from "../../layout/ResourcePageLayout";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useListarClientes } from '../../hooks/clientes/useListarClientes.jsx';
+import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic.jsx';
+import ResourcePageLayout from '../../layout/ResourcePageLayout';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
 import ModalMotivoRenuncia from "./components/ModalMotivoRenuncia";
 import { User, Search, UserPlus } from "lucide-react";
 import ClienteCard from "./ClienteCard.jsx";
 import ClienteCardSkeleton from "./ClienteCardSkeleton.jsx";
-import { useData } from "../../context/DataContext"; // Importamos useData
+import { useData } from "../../context/DataContext";
+
+// Componente intermedio para usar el hook de lógica de la tarjeta
+const ClienteCardWrapper = ({ cliente, ...handlers }) => {
+    const cardData = useClienteCardLogic(cliente);
+    return <ClienteCard cardData={cardData} {...handlers} />;
+};
 
 const ListarClientes = () => {
     const {
@@ -20,7 +27,6 @@ const ListarClientes = () => {
         handlers
     } = useListarClientes();
 
-    // Obtenemos la lista total de clientes para la validación de estado vacío
     const { clientes: todosLosClientes } = useData();
 
     return (
@@ -55,7 +61,7 @@ const ListarClientes = () => {
             ) : clientesVisibles.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {clientesVisibles.map(cliente => (
-                        <ClienteCard
+                        <ClienteCardWrapper
                             key={cliente.id}
                             cliente={cliente}
                             onEdit={modals.setClienteAEditar}
@@ -81,7 +87,7 @@ const ListarClientes = () => {
                 </div>
             )}
 
-            {modals.clienteAEliminar && (<ModalConfirmacion isOpen={!!modals.clienteAEliminar} onClose={() => modals.setClienteAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Cliente?" mensaje="¿Estás seguro? Tendrás 5 segundos para deshacer." />)}
+            {modals.clienteAEliminar && (<ModalConfirmacion isOpen={!!modals.clienteAEliminar} onClose={() => modals.setClienteAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Archivar o Eliminar Cliente?" mensaje={modals.clienteAEliminar.esBorradoFisico ? 'Este cliente no tiene historial, por lo que será eliminado permanentemente. ¿Estás seguro?' : 'Este cliente tiene historial, por lo que será archivado y ocultado de las listas. ¿Estás seguro?'} />)}
             {modals.clienteAEditar && (<EditarCliente isOpen={!!modals.clienteAEditar} onClose={() => modals.setClienteAEditar(null)} onGuardar={handlers.handleGuardado} clienteAEditar={modals.clienteAEditar} />)}
             {modals.clienteARenunciar && (<ModalMotivoRenuncia isOpen={!!modals.clienteARenunciar} onClose={() => modals.setClienteARenunciar(null)} onConfirm={handlers.handleConfirmarMotivo} cliente={modals.clienteARenunciar} />)}
             {modals.datosRenuncia && (<ModalConfirmacion isOpen={!!modals.datosRenuncia} onClose={() => modals.setDatosRenuncia(null)} onConfirm={handlers.confirmarRenunciaFinal} titulo="¿Confirmar Renuncia?" mensaje={`¿Seguro de procesar la renuncia para ${modals.datosRenuncia.cliente.datosCliente.nombres} con motivo "${modals.datosRenuncia.motivo}"?`} isSubmitting={modals.isSubmitting} />)}

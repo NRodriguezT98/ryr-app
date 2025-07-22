@@ -197,25 +197,18 @@ export const updateVivienda = async (id, datosActualizados) => {
 
 export const deleteVivienda = async (viviendaId) => {
     const viviendaRef = doc(db, "viviendas", String(viviendaId));
-    const viviendaSnap = await getDoc(viviendaRef);
-    if (!viviendaSnap.exists()) throw new Error("Esta vivienda ya no existe.");
-    if (viviendaSnap.data().clienteId) throw new Error("CLIENTE_ASIGNADO");
     await deleteDoc(viviendaRef);
 };
 
 export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId) => {
     const clienteRef = doc(db, "clientes", String(clienteId));
-
     const procesoSincronizado = { ...(clienteActualizado.proceso || {}) };
-
     PROCESO_CONFIG.forEach(pasoConfig => {
         const aplicaAhora = pasoConfig.aplicaA(clienteActualizado.financiero || {});
         const existeEnProceso = procesoSincronizado[pasoConfig.key];
-
         if (existeEnProceso && !aplicaAhora) {
             procesoSincronizado[pasoConfig.key].archivado = true;
         }
-
         if (!existeEnProceso && aplicaAhora) {
             const evidencias = {};
             pasoConfig.evidenciasRequeridas.forEach(ev => {
@@ -228,17 +221,13 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
                 archivado: false
             };
         }
-
         if (existeEnProceso && aplicaAhora && existeEnProceso.archivado) {
             procesoSincronizado[pasoConfig.key].archivado = false;
         }
     });
-
     const datosFinales = { ...clienteActualizado, proceso: procesoSincronizado };
-
     const batch = writeBatch(db);
     batch.update(clienteRef, datosFinales);
-
     const nuevaViviendaId = datosFinales.viviendaId;
     const nombreCompleto = `${datosFinales.datosCliente.nombres} ${datosFinales.datosCliente.apellidos}`.trim();
     if (viviendaOriginalId !== nuevaViviendaId) {
@@ -257,106 +246,77 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
     await batch.commit();
 };
 
-export const updateClienteAndAbonos = async (clienteId, clienteData, abonosAActualizar) => {
-    const batch = writeBatch(db);
-
-    const clienteRef = doc(db, "clientes", clienteId);
-    batch.update(clienteRef, clienteData);
-
-    abonosAActualizar.forEach(abono => {
-        const abonoRef = doc(db, "abonos", abono.id);
-        batch.update(abonoRef, {
-            fechaPago: clienteData.datosCliente.fechaIngreso,
-            observacion: `${abono.observacion || ''} (Fecha ajustada por cambio de contrato)`.trim()
-        });
-    });
-
-    await batch.commit();
-};
-
 export const deleteCliente = async (clienteId) => {
-    const clienteRef = doc(db, "clientes", String(clienteId));
-    const clienteDoc = await getDoc(clienteRef);
-    if (clienteDoc.exists() && clienteDoc.data().viviendaId) {
-        const viviendaRef = doc(db, "viviendas", clienteDoc.data().viviendaId);
-        await updateDoc(viviendaRef, { clienteId: null, clienteNombre: "" });
-    }
-    await deleteDoc(clienteRef);
+    await deleteDoc(doc(db, "clientes", String(clienteId)));
 };
 
-export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observacion = '', fechaRenuncia) => {
+export const inactivarCliente = async (clienteId) => {
+    const clienteRef = doc(db, "clientes", String(clienteId));
+    await updateDoc(clienteRef, {
+        status: 'inactivo',
+        fechaInactivacion: new Date().toISOString()
+    });
+};
+
+export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observacion = '', fechaRenuncia, penalidadMonto = 0, penalidadMotivo = '') => {
     const clienteRef = doc(db, "clientes", clienteId);
     const viviendaRef = doc(db, "viviendas", viviendaId);
     const renunciaRef = doc(collection(db, "renuncias"));
-
     const abonosActivosQuery = query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("viviendaId", "==", viviendaId), where("estadoProceso", "==", "activo"));
     const abonosSnapshot = await getDocs(abonosActivosQuery);
     const abonosDelCiclo = abonosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
     let clienteNombre = '';
-
     await runTransaction(db, async (transaction) => {
         const clienteDoc = await transaction.get(clienteRef);
         const viviendaDoc = await transaction.get(viviendaRef);
         if (!clienteDoc.exists() || !viviendaDoc.exists()) throw new Error("El cliente o la vivienda ya no existen.");
-
         clienteNombre = `${clienteDoc.data().datosCliente.nombres} ${clienteDoc.data().datosCliente.apellidos}`.trim();
         const totalAbonado = abonosDelCiclo.reduce((sum, abono) => sum + abono.monto, 0);
-        const estadoInicial = totalAbonado > 0 ? 'Pendiente' : 'Pagada';
-
+        const totalADevolver = totalAbonado - penalidadMonto;
+        const estadoInicial = totalADevolver > 0 ? 'Pendiente' : 'Pagada';
         const registroRenuncia = {
             id: renunciaRef.id,
-            clienteId: clienteId,
-            clienteNombre: clienteNombre,
-            viviendaId: viviendaId,
+            clienteId,
+            clienteNombre,
+            viviendaId,
             viviendaInfo: `Mz. ${viviendaDoc.data().manzana} - Casa ${viviendaDoc.data().numeroCasa}`,
-            fechaRenuncia: fechaRenuncia,
-            totalAbonadoParaDevolucion: totalAbonado,
+            fechaRenuncia,
+            totalAbonadoOriginal: totalAbonado,
+            penalidadMonto,
+            penalidadMotivo,
+            totalAbonadoParaDevolucion: totalADevolver,
             estadoDevolucion: estadoInicial,
-            motivo: motivo,
-            observacion: observacion,
+            motivo,
+            observacion,
             historialAbonos: abonosDelCiclo
         };
-
         transaction.set(renunciaRef, registroRenuncia);
         transaction.update(viviendaRef, { clienteId: null, clienteNombre: "", totalAbonado: 0, saldoPendiente: viviendaDoc.data().valorTotal });
         transaction.update(clienteRef, { viviendaId: null });
-
         if (estadoInicial === 'Pagada') {
             registroRenuncia.fechaDevolucion = new Date().toISOString();
             transaction.update(renunciaRef, { fechaDevolucion: registroRenuncia.fechaDevolucion });
             transaction.update(clienteRef, { status: 'renunciado' });
             abonosDelCiclo.forEach(abono => {
-                const abonoRef = doc(db, "abonos", abono.id);
-                transaction.update(abonoRef, { estadoProceso: 'archivado' });
+                transaction.update(doc(db, "abonos", abono.id), { estadoProceso: 'archivado' });
             });
         }
     });
-
-    return { renunciaId: renunciaRef.id, clienteNombre: clienteNombre };
+    return { renunciaId: renunciaRef.id, clienteNombre };
 };
 
 export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) => {
     const renunciaRef = doc(db, "renuncias", renunciaId);
-
     await runTransaction(db, async (transaction) => {
         const renunciaDoc = await transaction.get(renunciaRef);
         if (!renunciaDoc.exists()) throw new Error("El registro de renuncia no existe.");
-
         const renunciaData = renunciaDoc.data();
-        const clienteId = renunciaData.clienteId;
-        const abonosParaArchivar = renunciaData.historialAbonos || [];
-
         transaction.update(renunciaRef, { estadoDevolucion: 'Pagada', ...datosDevolucion });
-
-        if (clienteId) {
-            const clienteRef = doc(db, "clientes", clienteId);
-            transaction.update(clienteRef, { status: 'renunciado' });
+        if (renunciaData.clienteId) {
+            transaction.update(doc(db, "clientes", renunciaData.clienteId), { status: 'renunciado' });
         }
-
-        abonosParaArchivar.forEach(abono => {
-            const abonoRef = doc(db, "abonos", abono.id);
-            transaction.update(abonoRef, { estadoProceso: 'archivado' });
+        (renunciaData.historialAbonos || []).forEach(abono => {
+            transaction.update(doc(db, "abonos", abono.id), { estadoProceso: 'archivado' });
         });
     });
 };
@@ -385,14 +345,10 @@ export const cancelarRenuncia = async (renuncia) => {
             totalAbonado: renuncia.totalAbonadoParaDevolucion,
             saldoPendiente: viviendaDoc.data().valorTotal - renuncia.totalAbonadoParaDevolucion
         });
-
         transaction.update(clienteRef, { viviendaId: renuncia.viviendaId });
-
         renuncia.historialAbonos.forEach(abono => {
-            const abonoRef = doc(db, "abonos", abono.id);
-            transaction.update(abonoRef, { estadoProceso: 'activo' });
+            transaction.update(doc(db, "abonos", abono.id), { estadoProceso: 'activo' });
         });
-
         transaction.delete(renunciaRef);
     });
 };

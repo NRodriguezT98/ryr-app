@@ -1,6 +1,6 @@
 import React, { Fragment } from "react";
 import { useEditarVivienda } from "../../hooks/viviendas/useEditarVivienda.jsx";
-import { MapPin, FileText, CircleDollarSign, Check, Edit, Loader } from 'lucide-react';
+import { MapPin, FileText, CircleDollarSign, Check, Edit, Loader, Lock } from 'lucide-react';
 import FormularioVivienda from "./FormularioVivienda";
 import Modal from "../../components/Modal";
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
@@ -30,17 +30,28 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                 title="Editar Vivienda"
                 icon={<Edit size={28} className="text-[#c62828]" />}
             >
+                {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                {vivienda.camposFinancierosBloqueados && (
+                    <div className="p-4 mb-6 bg-yellow-50 dark:bg-yellow-900/50 border-l-4 border-yellow-400 text-yellow-700 dark:text-yellow-300">
+                        <div className="flex items-center gap-3">
+                            <Lock />
+                            <p className="font-bold">Los campos financieros están bloqueados porque la vivienda ya está asignada a un cliente.</p>
+                        </div>
+                    </div>
+                )}
+                {/* --- FIN DE LA MODIFICACIÓN --- */}
+
                 <div className="flex items-center justify-center my-6">
                     {STEPS_CONFIG.map((s, index) => (
                         <Fragment key={s.number}>
                             <div className="flex flex-col items-center">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${step >= s.number ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-100 border-gray-300 text-gray-400'}`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${step >= s.number ? 'bg-red-500 border-red-500 text-white' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500'}`}>
                                     {step > s.number ? <Check size={24} /> : <s.icon size={24} />}
                                 </div>
-                                <p className={`mt-2 text-xs font-semibold ${step >= s.number ? 'text-red-500' : 'text-gray-400'}`}>{s.title}</p>
+                                <p className={`mt-2 text-xs font-semibold ${step >= s.number ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>{s.title}</p>
                             </div>
                             {index < STEPS_CONFIG.length - 1 && (
-                                <div className={`flex-auto border-t-2 transition-all duration-300 mx-4 ${step > s.number ? 'border-red-500' : 'border-gray-300'}`}></div>
+                                <div className={`flex-auto border-t-2 transition-all duration-300 mx-4 ${step > s.number ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}></div>
                             )}
                         </Fragment>
                     ))}
@@ -56,12 +67,13 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                         handleCheckboxChange={handlers.handleCheckboxChange}
                         valorTotalCalculado={valorTotalCalculado}
                         gastosNotarialesFijos={gastosNotarialesFijos}
+                        isFinancialLocked={vivienda.camposFinancierosBloqueados} // <-- Pasamos la nueva prop
                     />
                 )}
 
-                <div className="mt-10 pt-6 border-t flex justify-between">
+                <div className="mt-10 pt-6 border-t dark:border-gray-700 flex justify-between">
                     {step > 1 ? (
-                        <button type="button" onClick={handlers.handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
+                        <button type="button" onClick={handlers.handlePrevStep} className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
                     ) : <div />}
 
                     {step < 3 ? (

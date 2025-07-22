@@ -7,32 +7,42 @@ import toast from 'react-hot-toast';
 
 export const useListarViviendas = () => {
     const location = useLocation();
-    const { isLoading, viviendas, recargarDatos } = useData();
+    const { isLoading, viviendas, clientes, renuncias, recargarDatos } = useData();
 
-    // El estado inicial ahora puede ser uno de los nuevos filtros
     const initialStateFromLink = location.state?.statusFilter || 'todas';
     const [statusFilter, setStatusFilter] = useState(initialStateFromLink);
     const [searchTerm, setSearchTerm] = useState('');
 
     const viviendasFiltradasYOrdenadas = useMemo(() => {
-        let itemsProcesados = [...viviendas];
+        let itemsProcesados = viviendas.map(vivienda => {
+            const clienteAsignado = clientes.find(c => c.id === vivienda.clienteId);
 
-        // --- LÓGICA DE FILTRADO ACTUALIZADA ---
+            // --- INICIO DE LA MODIFICACIÓN ---
+            const procesoFinalizado = clienteAsignado?.proceso?.facturaVenta?.completado === true;
+            const viviendaPagada = vivienda.saldoPendiente <= 0;
+            const tieneHistorial = !!vivienda.clienteId || renuncias.some(r => r.viviendaId === vivienda.id);
+
+            return {
+                ...vivienda,
+                puedeEditar: !procesoFinalizado,
+                puedeEliminar: !tieneHistorial,
+                puedeAplicarDescuento: !procesoFinalizado && !viviendaPagada, // La nueva lógica
+                camposFinancierosBloqueados: !!vivienda.clienteId
+            };
+            // --- FIN DE LA MODIFICACIÓN ---
+        });
+
         switch (statusFilter) {
             case 'disponibles':
                 itemsProcesados = itemsProcesados.filter(v => !v.clienteId);
                 break;
             case 'asignadas':
-                // Asignada = Tiene cliente Y su saldo pendiente es mayor a 0
                 itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente > 0);
                 break;
             case 'pagadas':
-                // Pagada = Tiene cliente Y su saldo pendiente es 0 o menos
                 itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente <= 0);
                 break;
-            case 'todas':
             default:
-                // No se aplica ningún filtro de estado
                 break;
         }
 
@@ -47,7 +57,7 @@ export const useListarViviendas = () => {
         }
 
         return itemsProcesados.sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa);
-    }, [viviendas, statusFilter, searchTerm]);
+    }, [viviendas, clientes, renuncias, statusFilter, searchTerm]);
 
     const { hiddenItems: viviendasOcultas, initiateDelete } = useUndoableDelete(
         async (vivienda) => deleteVivienda(vivienda.id),
@@ -67,8 +77,8 @@ export const useListarViviendas = () => {
     }, [recargarDatos]);
 
     const handleIniciarEliminacion = (vivienda) => {
-        if (vivienda.clienteId) {
-            toast.error("No se puede eliminar: la vivienda ya tiene un cliente asignado.");
+        if (!vivienda.puedeEliminar) {
+            toast.error("No se puede eliminar: la vivienda tiene un historial de clientes.");
             return;
         }
         setViviendaAEliminar(vivienda);

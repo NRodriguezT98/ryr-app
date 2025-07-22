@@ -113,17 +113,25 @@ export const useListarClientes = () => {
 
     }, [clienteAEliminar, recargarDatos]);
 
-    const handleConfirmarMotivo = (motivo, observacion, fechaRenuncia) => {
-        setDatosRenuncia({ cliente: clienteARenunciar, motivo, observacion, fechaRenuncia });
+    const handleConfirmarMotivo = (motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo) => {
+        setDatosRenuncia({ cliente: clienteARenunciar, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo });
         setClienteARenunciar(null);
     };
 
     const confirmarRenunciaFinal = useCallback(async () => {
         if (!datosRenuncia || !datosRenuncia.cliente) return;
         setIsSubmitting(true);
-        const { cliente, motivo, observacion, fechaRenuncia } = datosRenuncia;
+        const { cliente, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo } = datosRenuncia;
         try {
-            const { renunciaId, clienteNombre } = await renunciarAVivienda(cliente.id, cliente.viviendaId, motivo, observacion, fechaRenuncia);
+            const { renunciaId, clienteNombre } = await renunciarAVivienda(
+                cliente.id,
+                cliente.viviendaId,
+                motivo,
+                observacion,
+                fechaRenuncia,
+                penalidadMonto,
+                penalidadMotivo
+            );
             toast.success("La renuncia se ha procesado correctamente.");
             await createNotification('renuncia', `Se registró una renuncia del cliente ${clienteNombre}.`, `/renuncias/detalle/${renunciaId}`);
             recargarDatos();

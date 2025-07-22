@@ -121,10 +121,10 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
     };
 
     const cardClasses = `p-5 rounded-xl border-2 transition-all ${justSaved && data?.completado ? 'border-green-500 animate-pulse-once' :
-            error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
-                data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
-                    (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
-                        esSiguientePaso ? 'border-blue-500 bg-white dark:bg-gray-700 shadow-lg dark:border-blue-500' : 'border-blue-200 bg-white dark:bg-gray-700 dark:border-gray-600'
+        error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+            data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
+                (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
+                    esSiguientePaso ? 'border-blue-500 bg-white dark:bg-gray-700 shadow-lg dark:border-blue-500' : 'border-blue-200 bg-white dark:bg-gray-700 dark:border-gray-600'
         }`;
 
     return (
