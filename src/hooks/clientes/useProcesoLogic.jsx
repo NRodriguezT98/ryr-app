@@ -71,7 +71,7 @@ export const useProcesoLogic = (cliente, onSave) => {
 
     const cancelarEdicionFecha = useCallback(() => setPasoAEditarFecha(null), []);
 
-    const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura } = useMemo(() => {
+    const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura, procesoCompletado } = useMemo(() => {
         const errores = {};
         let ultimaFechaValida = cliente.datosCliente.fechaIngreso;
         const fechaInicioProceso = parseDateAsUTC(cliente.datosCliente.fechaIngreso);
@@ -110,7 +110,7 @@ export const useProcesoLogic = (cliente, onSave) => {
                 } else if (fechaSeleccionada < fechaMinima) {
                     errores[paso.key] = `La fecha no puede ser anterior a la ${etiquetaFechaMinima}.`;
                 } else {
-                    ultimaFechaValida = pasoActual.fecha;
+                    ultimaFechaValida = paso.fecha;
                 }
             } else if (pasoActual?.completado && !pasoActual.fecha) {
                 errores[paso.key] = "Se requiere una fecha.";
@@ -122,6 +122,16 @@ export const useProcesoLogic = (cliente, onSave) => {
         let algunPasoEnReapertura = false;
 
         const allPreviousStepsForInvoiceCompleted = pasosAplicables.filter(p => p.key !== 'facturaVenta').every(p => isStepValidAndCompletedGlobal(p.key));
+
+        let maxDateBeforeInvoice = cliente.datosCliente.fechaIngreso;
+        pasosAplicables.forEach(paso => {
+            if (paso.key !== 'facturaVenta' && isStepValidAndCompletedGlobal(paso.key)) {
+                const fechaPaso = procesoState[paso.key]?.fecha;
+                if (fechaPaso && parseDateAsUTC(fechaPaso) > parseDateAsUTC(maxDateBeforeInvoice)) {
+                    maxDateBeforeInvoice = fechaPaso;
+                }
+            }
+        });
 
         const resultado = pasosAplicables.map((pasoConfig, index) => {
             const pasoData = procesoState[pasoConfig.key] || { completado: false, fecha: null, evidencias: {} };
@@ -150,16 +160,14 @@ export const useProcesoLogic = (cliente, onSave) => {
                 case 'facturaVenta': isLocked = !allPreviousStepsForInvoiceCompleted; break;
             }
 
-            // --- INICIO DE LA MODIFICACIÓN ---
             let facturaBloqueadaPorSaldo = false;
             if (pasoConfig.key === 'facturaVenta' && !isLocked) {
                 const saldoPendiente = cliente.vivienda?.saldoPendiente ?? 1;
                 if (saldoPendiente > 0) {
                     isLocked = true;
-                    facturaBloqueadaPorSaldo = true; // Creamos una nueva bandera para ser más específicos
+                    facturaBloqueadaPorSaldo = true;
                 }
             }
-            // --- FIN DE LA MODIFICACIÓN ---
 
             if (!isStepValidAndCompleted(pasoConfig.key) && !pasoConfig.esAutomatico) {
                 previousStepCompleted = false;
@@ -185,6 +193,9 @@ export const useProcesoLogic = (cliente, onSave) => {
             if (['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(pasoConfig.key)) {
                 minDateForStep = fechaBoletaRegistro || cliente.datosCliente.fechaIngreso;
             }
+            if (pasoConfig.key === 'facturaVenta') {
+                minDateForStep = maxDateBeforeInvoice;
+            }
 
             return {
                 ...pasoConfig,
@@ -196,17 +207,19 @@ export const useProcesoLogic = (cliente, onSave) => {
                 error: errores[pasoConfig.key],
                 minDate: minDateForStep,
                 maxDate: getTodayString(),
-                facturaBloqueadaPorSaldo // Pasamos la nueva bandera al componente
+                facturaBloqueadaPorSaldo
             };
         });
 
         const pasosCompletados = resultado.filter(p => p.data?.completado && p.data?.fecha && !p.error).length;
+        const procesoEstaCompleto = pasosCompletados === resultado.length && resultado.length > 0;
 
         return {
             pasosRenderizables: resultado,
             validationErrors: errores,
             progreso: { completados: pasosCompletados, total: resultado.length },
             hayPasoEnReapertura: algunPasoEnReapertura,
+            procesoCompletado: procesoEstaCompleto, // <-- Exportamos la nueva variable
         };
     }, [cliente, procesoState, initialProcesoState]);
 
@@ -270,6 +283,7 @@ export const useProcesoLogic = (cliente, onSave) => {
         isSaveDisabled,
         tooltipMessage,
         hayCambiosSinGuardar,
+        procesoCompletado, // <-- Exportamos la nueva variable
         handlers: {
             handleUpdateEvidencia,
             handleCompletarPaso,

@@ -22,7 +22,7 @@ const DropdownIndicator = (props) => {
     );
 };
 
-const Step1_SelectVivienda = ({ formData, dispatch, options }) => {
+const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked }) => {
 
     const handleSelectChange = useCallback((selectedOption) => {
         dispatch({
@@ -84,6 +84,7 @@ const Step1_SelectVivienda = ({ formData, dispatch, options }) => {
                         isClearable
                         styles={selectStyles}
                         components={{ Option: CustomOption, DropdownIndicator }}
+                        isDisabled={isLocked} // <-- Aplicamos el bloqueo aquí
                     />
                 </div>
 

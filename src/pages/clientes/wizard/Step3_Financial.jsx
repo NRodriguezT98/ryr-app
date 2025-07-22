@@ -1,12 +1,12 @@
 import React, { useCallback } from 'react';
 import { NumericFormat } from 'react-number-format';
-import Select, { components } from 'react-select';
+import Select from 'react-select';
 import AnimatedPage from '../../../components/AnimatedPage';
 import HelpTooltip from '../../../components/HelpTooltip';
 import { formatCurrency } from '../../../utils/textFormatters';
 import { useClienteFinanciero } from '../../../hooks/clientes/useClienteFinanciero';
 import FileUpload from '../../../components/FileUpload';
-import { FileText, XCircle } from 'lucide-react';
+import { FileText, XCircle, Lock } from 'lucide-react';
 
 const creditoOptions = [
     { value: 'Bancolombia', label: 'Bancolombia' },
@@ -48,7 +48,7 @@ const getSelectStyles = (hasError) => ({
     input: (base) => ({ ...base, color: 'var(--color-text-form)' }),
 });
 
-const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange, isEditing }) => {
+const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange, isEditing, isLocked }) => {
     const { financiero, viviendaSeleccionada, documentos, datosCliente } = formData;
     const resumenFinanciero = useClienteFinanciero(financiero, viviendaSeleccionada?.valorTotal);
 
@@ -59,6 +59,18 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
     const handleDocumentUpload = useCallback((docId, url) => {
         dispatch({ type: 'UPDATE_DOCUMENTO_URL', payload: { docId, url } });
     }, [dispatch]);
+
+    if (isLocked) {
+        return (
+            <div className="animate-fade-in p-6 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-center">
+                <Lock className="mx-auto text-gray-400" size={40} />
+                <h4 className="mt-4 font-bold text-gray-800 dark:text-gray-200">Información Financiera Bloqueada</h4>
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    La información financiera del cliente ya no puede ser modificada porque el proceso ha alcanzado la etapa de firma de escritura.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <AnimatedPage>
@@ -164,13 +176,13 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
 
                     <div className="p-4 border rounded-xl h-full dark:border-gray-700">
                         <label className="flex items-center space-x-3 cursor-pointer">
-                            <input type="checkbox" name="aplicaCuotaInicial" checked={financiero.aplicaCuotaInicial} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
+                            <input type="checkbox" name="aplicaCuotaInicial" checked={financiero.aplicaCuotaInicial} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" disabled={isLocked} />
                             <span className="font-semibold text-gray-700 dark:text-gray-200">Cuota Inicial</span>
                         </label>
                         {financiero.aplicaCuotaInicial && (
                             <div className="space-y-1 mt-4 pt-4 border-t border-dashed dark:border-gray-600 animate-fade-in">
                                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Monto<HelpTooltip id="cuota" content="Monto que el cliente aporta como cuota inicial." /></label>
-                                <NumericFormat value={financiero.cuotaInicial.monto} onValueChange={(values) => handleFinancialFieldChange('cuotaInicial', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.cuotaInicial_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                <NumericFormat value={financiero.cuotaInicial.monto} onValueChange={(values) => handleFinancialFieldChange('cuotaInicial', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.cuotaInicial_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " disabled={isLocked} />
                                 {errors.cuotaInicial_monto && <p className="text-red-600 text-sm mt-1">{errors.cuotaInicial_monto}</p>}
                             </div>
                         )}
@@ -178,7 +190,7 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
 
                     <div className="p-4 border rounded-xl h-full dark:border-gray-700">
                         <label className="flex items-center space-x-3 cursor-pointer">
-                            <input type="checkbox" name="aplicaCredito" checked={financiero.aplicaCredito} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
+                            <input type="checkbox" name="aplicaCredito" checked={financiero.aplicaCredito} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" disabled={isLocked} />
                             <span className="font-semibold text-gray-700 dark:text-gray-200">Crédito Hipotecario</span>
                         </label>
                         {financiero.aplicaCredito && (
@@ -186,12 +198,12 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className='space-y-1'>
                                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Banco</label>
-                                        <Select options={creditoOptions} value={creditoOptions.find(o => o.value === financiero.credito.banco)} onChange={(opt) => handleFinancialFieldChange('credito', 'banco', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.credito_banco)} />
+                                        <Select options={creditoOptions} value={creditoOptions.find(o => o.value === financiero.credito.banco)} onChange={(opt) => handleFinancialFieldChange('credito', 'banco', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.credito_banco)} isDisabled={isLocked} />
                                         {errors.credito_banco && <p className="text-red-600 text-sm mt-1">{errors.credito_banco}</p>}
                                     </div>
                                     <div className='space-y-1'>
                                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Monto<HelpTooltip id="credito" content="Monto total del crédito aprobado." /></label>
-                                        <NumericFormat value={financiero.credito.monto} onValueChange={(values) => handleFinancialFieldChange('credito', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.credito_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                        <NumericFormat value={financiero.credito.monto} onValueChange={(values) => handleFinancialFieldChange('credito', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.credito_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " disabled={isLocked} />
                                         {errors.credito_monto && <p className="text-red-600 text-sm mt-1">{errors.credito_monto}</p>}
                                     </div>
                                 </div>
@@ -204,7 +216,8 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                             type="text"
                                             value={financiero.credito.caso || ''}
                                             onChange={(e) => handleFinancialFieldChange('credito', 'caso', e.target.value)}
-                                            className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.credito_caso ? 'border-red-500' : 'border-gray-300'}`}
+                                            className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.credito_caso ? 'border-red-500' : 'border-gray-300'}`}
+                                            disabled={isLocked}
                                         />
                                         {errors.credito_caso && <p className="text-red-600 text-sm mt-1">{errors.credito_caso}</p>}
                                     </div>
@@ -220,14 +233,14 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                                 <FileText size={16} />
                                                 <a href={financiero.credito.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
                                             </div>
-                                            <button type="button" onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar"><XCircle size={18} /></button>
+                                            {!isLocked && (<button type="button" onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar"><XCircle size={18} /></button>)}
                                         </div>
                                     ) : (
                                         <FileUpload
                                             label="Subir Carta"
                                             filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/carta-aprobacion-credito-${fileName}`}
                                             onUploadSuccess={(url) => handleFinancialFieldChange('credito', 'urlCartaAprobacion', url)}
-                                            disabled={!datosCliente.cedula}
+                                            disabled={!datosCliente.cedula || isLocked}
                                         />
                                     )}
                                     {errors.credito_urlCartaAprobacion && <p className="text-red-600 text-sm mt-1">{errors.credito_urlCartaAprobacion}</p>}
@@ -238,13 +251,13 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
 
                     <div className="p-4 border rounded-xl h-full dark:border-gray-700">
                         <label className="flex items-center space-x-3 cursor-pointer">
-                            <input type="checkbox" name="aplicaSubsidioVivienda" checked={financiero.aplicaSubsidioVivienda} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
+                            <input type="checkbox" name="aplicaSubsidioVivienda" checked={financiero.aplicaSubsidioVivienda} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" disabled={isLocked} />
                             <span className="font-semibold text-gray-700 dark:text-gray-200">Subsidio Mi Casa Ya</span>
                         </label>
                         {financiero.aplicaSubsidioVivienda && (
                             <div className="space-y-1 mt-4 pt-4 border-t border-dashed dark:border-gray-600 animate-fade-in">
                                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Monto del Subsidio<HelpTooltip id="sub-vivienda" content="Monto aprobado del subsidio del gobierno." /></label>
-                                <NumericFormat value={financiero.subsidioVivienda.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioVivienda', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.subsidioVivienda_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                <NumericFormat value={financiero.subsidioVivienda.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioVivienda', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.subsidioVivienda_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " disabled={isLocked} />
                                 {errors.subsidioVivienda_monto && <p className="text-red-600 text-sm mt-1">{errors.subsidioVivienda_monto}</p>}
                             </div>
                         )}
@@ -252,7 +265,7 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
 
                     <div className="p-4 border rounded-xl h-full dark:border-gray-700">
                         <label className="flex items-center space-x-3 cursor-pointer">
-                            <input type="checkbox" name="aplicaSubsidioCaja" checked={financiero.aplicaSubsidioCaja} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" />
+                            <input type="checkbox" name="aplicaSubsidioCaja" checked={financiero.aplicaSubsidioCaja} onChange={handleCheckboxChange} className="h-5 w-5 rounded text-blue-600" disabled={isLocked} />
                             <span className="font-semibold text-gray-700 dark:text-gray-200">Subsidio Caja de Compensación</span>
                         </label>
                         {financiero.aplicaSubsidioCaja && (
@@ -260,12 +273,12 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className='space-y-1'>
                                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Caja</label>
-                                        <Select options={cajaOptions} value={cajaOptions.find(o => o.value === financiero.subsidioCaja.caja)} onChange={(opt) => handleFinancialFieldChange('subsidioCaja', 'caja', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.subsidioCaja_caja)} />
+                                        <Select options={cajaOptions} value={cajaOptions.find(o => o.value === financiero.subsidioCaja.caja)} onChange={(opt) => handleFinancialFieldChange('subsidioCaja', 'caja', opt ? opt.value : '')} placeholder="Selecciona..." styles={getSelectStyles(!!errors.subsidioCaja_caja)} isDisabled={isLocked} />
                                         {errors.subsidioCaja_caja && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_caja}</p>}
                                     </div>
                                     <div className='space-y-1'>
                                         <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Monto<HelpTooltip id="sub-caja" content="Monto aprobado del subsidio de la caja." /></label>
-                                        <NumericFormat value={financiero.subsidioCaja.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioCaja', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.subsidioCaja_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                        <NumericFormat value={financiero.subsidioCaja.monto} onValueChange={(values) => handleFinancialFieldChange('subsidioCaja', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.subsidioCaja_monto ? 'border-red-500' : 'border-gray-300'}`} thousandSeparator="." decimalSeparator="," prefix="$ " disabled={isLocked} />
                                         {errors.subsidioCaja_monto && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_monto}</p>}
                                     </div>
                                 </div>
@@ -279,14 +292,14 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                                 <FileText size={16} />
                                                 <a href={financiero.subsidioCaja.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
                                             </div>
-                                            <button type="button" onClick={() => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar"><XCircle size={18} /></button>
+                                            {!isLocked && (<button type="button" onClick={() => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar"><XCircle size={18} /></button>)}
                                         </div>
                                     ) : (
                                         <FileUpload
                                             label="Subir Carta"
                                             filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/carta-aprobacion-subsidio-${fileName}`}
                                             onUploadSuccess={(url) => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', url)}
-                                            disabled={!datosCliente.cedula}
+                                            disabled={!datosCliente.cedula || isLocked}
                                         />
                                     )}
                                     {errors.subsidioCaja_urlCartaAprobacion && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_urlCartaAprobacion}</p>}

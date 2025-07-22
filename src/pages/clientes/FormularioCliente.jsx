@@ -3,13 +3,14 @@ import Step1_SelectVivienda from './wizard/Step1_SelectVivienda';
 import Step2_ClientInfo from './wizard/Step2_ClientInfo';
 import Step3_Financial from './wizard/Step3_Financial';
 
-const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, handleInputChange, handleFinancialFieldChange, isEditing = false }) => { // <-- Recibimos 'isEditing'
+const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, handleInputChange, handleFinancialFieldChange, isEditing = false, isFinancialLocked = false, isPersonalInfoLocked = false }) => {
     const stepsComponents = [
         <Step1_SelectVivienda
             key="step1"
             formData={formData}
             dispatch={dispatch}
             options={viviendaOptions}
+            isLocked={isPersonalInfoLocked}
         />,
         <Step2_ClientInfo
             key="step2"
@@ -17,7 +18,8 @@ const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, 
             dispatch={dispatch}
             errors={errors}
             handleInputChange={handleInputChange}
-            isEditing={isEditing} // <-- La pasamos al Paso 2
+            isEditing={isEditing}
+            isLocked={isPersonalInfoLocked}
         />,
         <Step3_Financial
             key="step3"
@@ -25,7 +27,8 @@ const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, 
             dispatch={dispatch}
             errors={errors}
             handleFinancialFieldChange={handleFinancialFieldChange}
-            isEditing={isEditing} // <-- La pasamos al Paso 3
+            isEditing={isEditing}
+            isLocked={isFinancialLocked}
         />,
     ];
 

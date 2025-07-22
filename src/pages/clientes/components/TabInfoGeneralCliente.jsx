@@ -36,6 +36,9 @@ const FuenteFinanciera = ({ titulo, montoPactado, abonos, fuente, banco = '', ca
 const TabInfoGeneralCliente = ({ cliente, vivienda, historialAbonos }) => {
     const { datosCliente, financiero } = cliente;
 
+    // Se determina si la vivienda está pagada para cambiar el color del saldo
+    const isPagada = vivienda && vivienda.saldoPendiente <= 0;
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
             <div className="lg:col-span-1 space-y-6">
@@ -54,7 +57,7 @@ const TabInfoGeneralCliente = ({ cliente, vivienda, historialAbonos }) => {
                             <p className="flex items-center gap-3 dark:text-gray-300"><Home className="text-gray-400" size={16} /> {`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}</p>
                             {vivienda.descuentoMonto > 0 && <p className="flex items-center gap-3 text-purple-600 dark:text-purple-400"><BadgePercent className="text-purple-400" size={16} /> ¡Con descuento aplicado!</p>}
                             <div className="pt-2 border-t dark:border-gray-700 text-right">
-                                <p className='dark:text-gray-300'>Saldo Pendiente: <span className="font-bold text-red-600 dark:text-red-400">{formatCurrency(vivienda.saldoPendiente)}</span></p>
+                                <p className='dark:text-gray-300'>Saldo Pendiente: <span className={`font-bold ${isPagada ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(vivienda.saldoPendiente)}</span></p>
                             </div>
                         </Link>
                     </div>

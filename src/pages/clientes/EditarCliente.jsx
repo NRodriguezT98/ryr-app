@@ -22,6 +22,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         handlers,
     } = useClienteForm(true, clienteAEditar, onGuardar);
 
+    const escrituraFirmada = clienteAEditar?.proceso?.minutaFirmada?.completado === true;
+
     const STEPS_CONFIG = [
         { number: 1, title: 'Vivienda', icon: Home },
         { number: 2, title: 'Datos Cliente', icon: User },
@@ -57,7 +59,9 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                                 dispatch={dispatch}
                                 errors={errors}
                                 viviendaOptions={viviendasOptions}
-                                isEditing={true} // <-- Pasamos la propiedad 'isEditing'
+                                isEditing={true}
+                                isFinancialLocked={escrituraFirmada}
+                                isPersonalInfoLocked={escrituraFirmada}
                                 clienteAEditar={clienteAEditar}
                                 handleInputChange={handlers.handleInputChange}
                                 handleFinancialFieldChange={handlers.handleFinancialFieldChange}

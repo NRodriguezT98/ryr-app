@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react'; // Se importa useEffect
-import { useBlocker } from 'react-router-dom';
+import React, { useEffect } from 'react';
 import { useProcesoLogic } from '../../../hooks/clientes/useProcesoLogic';
 import { updateCliente } from '../../../utils/storage';
 import PasoProcesoCard from './PasoProcesoCard';
 import { Tooltip } from 'react-tooltip';
 import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
+import { CheckCircle, PartyPopper } from 'lucide-react'; // Importamos un ícono de celebración
 
 const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) => {
 
@@ -28,16 +28,14 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
         justSaved,
         isSaveDisabled,
         tooltipMessage,
-        hayCambiosSinGuardar, // <-- Se obtiene el estado de cambios
+        hayCambiosSinGuardar,
+        procesoCompletado, // <-- Obtenemos la nueva variable
         handlers,
     } = useProcesoLogic(cliente, handleSave);
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Este efecto le informa al componente padre si hay cambios
     useEffect(() => {
         onHayCambiosChange(hayCambiosSinGuardar);
     }, [hayCambiosSinGuardar, onHayCambiosChange]);
-    // --- FIN DE LA CORRECCIÓN ---
 
     const pasoAReabrirInfo = pasoAReabrir ? pasosRenderizables.find(p => p.key === pasoAReabrir) : null;
     const nombrePasoAReabrir = pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '';
@@ -48,27 +46,47 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
         <div className="animate-fade-in space-y-4">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm flex justify-between items-center sticky top-20 z-10">
                 <h3 className="font-bold text-lg dark:text-gray-200">Línea de Tiempo del Proceso</h3>
-                <span data-tooltip-id="app-tooltip" data-tooltip-content={tooltipMessage}>
-                    <button
-                        onClick={handlers.handleSaveChanges}
-                        disabled={isSaveDisabled}
-                        className="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    >
-                        Guardar Cambios
-                    </button>
-                </span>
+                {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                {/* Ocultamos el botón si el proceso está completado */}
+                {!procesoCompletado && (
+                    <span data-tooltip-id="app-tooltip" data-tooltip-content={tooltipMessage}>
+                        <button
+                            onClick={handlers.handleSaveChanges}
+                            disabled={isSaveDisabled}
+                            className="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                            Guardar Cambios
+                        </button>
+                    </span>
+                )}
+                {/* --- FIN DE LA MODIFICACIÓN --- */}
             </div>
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm">
-                <div>
-                    <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Progreso General</span>
-                        <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{`${progreso.completados} / ${progreso.total} Pasos`}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
-                        <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${porcentajeProgreso}%` }}></div>
+
+            {/* --- INICIO DE LA MODIFICACIÓN --- */}
+            {/* Mostramos el banner de éxito si el proceso está completado */}
+            {procesoCompletado ? (
+                <div className="p-4 bg-green-100 dark:bg-green-900/50 border-2 border-green-300 dark:border-green-700 rounded-xl shadow-md flex items-center gap-4">
+                    <PartyPopper size={32} className="text-green-600 dark:text-green-400" />
+                    <div>
+                        <h4 className="font-bold text-green-800 dark:text-green-300">¡Proceso Completado!</h4>
+                        <p className="text-sm text-green-700 dark:text-green-400">Todos los pasos de este cliente se han completado exitosamente.</p>
                     </div>
                 </div>
-            </div>
+            ) : (
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm">
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Progreso General</span>
+                            <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{`${progreso.completados} / ${progreso.total} Pasos`}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+                            <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${porcentajeProgreso}%` }}></div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* --- FIN DE LA MODIFICACIÓN --- */}
+
             <div className="space-y-4">
                 {pasosRenderizables.map((paso, index) => (
                     <PasoProcesoCard

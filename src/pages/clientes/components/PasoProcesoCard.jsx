@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { CheckCircle, Lock, FileText, Calendar, AlertCircle, RotateCcw, Eye, Trash2, Replace, X, Pencil, Info } from 'lucide-react';
 import FileUpload from '../../../components/FileUpload';
 import toast from 'react-hot-toast';
-import { getTodayString, formatDisplayDate, formatCurrency } from '../../../utils/textFormatters'; // Importamos formatCurrency
+import { getTodayString, formatDisplayDate, formatCurrency, parseDateAsUTC } from '../../../utils/textFormatters';
 
 const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPermanentlyLocked, esHito }) => {
     const evidenciaData = evidencia.data || {};
@@ -80,6 +80,7 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
 const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, onIniciarReapertura, onDeshacerReapertura, onIniciarEdicionFecha, clienteId }) => {
     const { key, label, data, isLocked, puedeCompletarse, evidenciasRequeridas, error, esSiguientePaso, isPermanentlyLocked, hayPasoEnReapertura, esHito, esAutomatico, facturaBloqueadaPorSaldo } = paso;
     const [fechaCompletado, setFechaCompletado] = useState(getTodayString());
+    const [fechaErrorLocal, setFechaErrorLocal] = useState(null);
 
     const evidenciasSubidas = useMemo(() => {
         if (!data?.evidencias) return 0;
@@ -90,14 +91,37 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
 
     const handleConfirmar = () => {
         if (!fechaCompletado) {
-            toast.error("Debes seleccionar una fecha.");
+            setFechaErrorLocal("Debes seleccionar una fecha.");
             return;
         }
+
+        const fechaSeleccionada = parseDateAsUTC(fechaCompletado);
+        const fechaMinima = parseDateAsUTC(paso.minDate);
+        const hoy = parseDateAsUTC(getTodayString());
+
+        if (fechaSeleccionada > hoy) {
+            setFechaErrorLocal("La fecha no puede ser futura.");
+            return;
+        }
+
+        if (fechaSeleccionada < fechaMinima) {
+            setFechaErrorLocal(`La fecha no puede ser anterior al último paso válido (${formatDisplayDate(paso.minDate)}).`);
+            return;
+        }
+
+        setFechaErrorLocal(null);
         onCompletarPaso(key, fechaCompletado);
     };
 
+    const handleFechaChange = (e) => {
+        setFechaCompletado(e.target.value);
+        if (fechaErrorLocal) {
+            setFechaErrorLocal(null);
+        }
+    };
+
     const cardClasses = `p-5 rounded-xl border-2 transition-all ${justSaved && data?.completado ? 'border-green-500 animate-pulse-once' :
-            error ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+            error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
                 data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
                     (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
                         esSiguientePaso ? 'border-blue-500 bg-white dark:bg-gray-700 shadow-lg dark:border-blue-500' : 'border-blue-200 bg-white dark:bg-gray-700 dark:border-gray-600'
@@ -155,19 +179,31 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
                                 />
                             ))}
                             {puedeCompletarse && (
-                                <div className="flex items-center justify-end gap-3 pt-3 border-t dark:border-gray-600">
-                                    <button onClick={() => onDeshacerReapertura(key)} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center gap-2">
-                                        <X size={16} /> Cancelar
-                                    </button>
-                                    <input type="date" value={fechaCompletado} onChange={(e) => setFechaCompletado(e.target.value)} min={paso.minDate} max={paso.maxDate} className="text-sm border p-1.5 rounded-md dark:bg-gray-700 dark:border-gray-600" />
-                                    <button onClick={handleConfirmar} className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Marcar como Completado</button>
+                                <div className="pt-3 border-t dark:border-gray-600">
+                                    <div className="flex items-center justify-end gap-3">
+                                        <button onClick={() => onDeshacerReapertura(key)} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center gap-2">
+                                            <X size={16} /> Cancelar
+                                        </button>
+                                        <input type="date" value={fechaCompletado} onChange={handleFechaChange} min={paso.minDate} max={paso.maxDate} className={`text-sm border p-1.5 rounded-md dark:bg-gray-700 ${fechaErrorLocal || error ? 'border-red-500' : 'dark:border-gray-600'}`} />
+                                        <button onClick={handleConfirmar} className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Marcar como Completado</button>
+                                    </div>
+                                    {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                                    {fechaErrorLocal && (
+                                        <div className="mt-2 text-right">
+                                            <p className="inline-flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold">
+                                                <AlertCircle size={16} />
+                                                {fechaErrorLocal}
+                                            </p>
+                                        </div>
+                                    )}
+                                    {/* --- FIN DE LA MODIFICACIÓN --- */}
                                 </div>
                             )}
                         </>
                     ) : null}
                 </div>
             )}
-            {error && <div className="mt-2 pl-9 flex items-center gap-2 text-red-600 dark:text-red-400 text-xs font-semibold"><AlertCircle size={14} /><p>{error}</p></div>}
+            {error && !fechaErrorLocal && <div className="mt-2 pl-9 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold"><AlertCircle size={14} /><p>{error}</p></div>}
         </div>
     );
 };
