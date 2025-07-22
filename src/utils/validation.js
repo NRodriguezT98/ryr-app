@@ -1,4 +1,4 @@
-import { formatCurrency } from './textFormatters';
+import { formatCurrency, formatDisplayDate } from './textFormatters';
 
 // --- VALIDACIONES DE VIVIENDA ---
 export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = null) => {
@@ -58,14 +58,12 @@ export const validateDescuento = (formData, vivienda) => {
         errors.descuentoMotivo = "El motivo es obligatorio si se aplica un descuento.";
     }
 
-    // --- INICIO DE LA MODIFICACIÓN ---
     if (vivienda) {
         const saldoPendiente = vivienda.saldoPendiente || 0;
         if (montoDescuentoNuevo > saldoPendiente) {
             errors.descuentoMonto = `El descuento no puede superar el saldo pendiente de ${formatCurrency(saldoPendiente)}.`;
         }
     }
-    // --- FIN DE LA MODIFICACIÓN ---
 
     return errors;
 };
@@ -96,8 +94,6 @@ export const validateCliente = (formData, todosLosClientes, clienteIdActual = nu
 
 export const validateEditarCliente = (formData, todosLosClientes, clienteIdActual, abonosDelCliente = []) => {
     const baseErrors = validateCliente(formData, todosLosClientes, clienteIdActual);
-
-    // --- INICIO DE LA MODIFICACIÓN ---
     if (formData.fechaIngreso && abonosDelCliente.length > 0) {
         const nuevaFechaIngreso = new Date(formData.fechaIngreso + 'T00:00:00');
         const abonoMasAntiguo = abonosDelCliente.reduce((masAntiguo, abonoActual) => {
@@ -109,8 +105,6 @@ export const validateEditarCliente = (formData, todosLosClientes, clienteIdActua
             baseErrors.fechaIngreso = `No puedes usar esta fecha. Ya existen abonos registrados desde el ${abonoMasAntiguo.toLocaleDateString('es-ES')}.`;
         }
     }
-    // --- FIN DE LA MODIFICACIÓN ---
-
     return baseErrors;
 };
 
@@ -166,6 +160,12 @@ export const validateAbono = (formData, resumenPago, fechaIngresoCliente, proces
     const errors = {};
     const montoNumerico = parseInt(String(formData.monto || '0').replace(/\D/g, ''), 10);
 
+    // --- INICIO DE LA MODIFICACIÓN ---
+    if (!formData.urlComprobante) {
+        errors.urlComprobante = "El comprobante de pago es obligatorio.";
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
+
     if (pasoConfig && procesoCliente) {
         const pasoSolicitud = procesoCliente[pasoConfig.solicitudKey];
         if (!pasoSolicitud?.completado) {
@@ -187,9 +187,21 @@ export const validateAbono = (formData, resumenPago, fechaIngresoCliente, proces
         if (fechaIngresoCliente) {
             const fechaIngreso = new Date(fechaIngresoCliente.split('T')[0] + 'T00:00:00');
             if (fechaSeleccionada < fechaIngreso) {
-                errors.fechaPago = `La fecha no puede ser anterior al ingreso del cliente (${fechaIngreso.toLocaleDateString('es-ES')}).`;
+                errors.fechaPago = `La fecha no puede ser anterior al ingreso del cliente (${formatDisplayDate(fechaIngresoCliente)}).`;
             }
         }
+
+        // --- INICIO DE LA MODIFICACIÓN ---
+        if (pasoConfig && procesoCliente) {
+            const pasoSolicitud = procesoCliente[pasoConfig.solicitudKey];
+            if (pasoSolicitud?.completado && pasoSolicitud.fecha) {
+                const fechaSolicitud = new Date(pasoSolicitud.fecha + 'T00:00:00');
+                if (fechaSeleccionada < fechaSolicitud) {
+                    errors.fechaPago = `La fecha no puede ser anterior a la solicitud de desembolso (${formatDisplayDate(pasoSolicitud.fecha)}).`;
+                }
+            }
+        }
+        // --- FIN DE LA MODIFICACIÓN ---
     }
 
     if (!montoNumerico || montoNumerico <= 0) {

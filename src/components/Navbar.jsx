@@ -1,8 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef, Fragment } from "react";
 import { Menu, Popover, Transition } from '@headlessui/react';
-import logo1 from "../assets/logo1.png";
-import logo2 from "../assets/logo2.png";
+// --- INICIO DE LA MODIFICACIÓN ---
+import logo1Light from "../assets/logo1.png";
+import logo2Light from "../assets/logo2.png";
+import logo1Dark from "../assets/logo1-dark.png"; // Asumiendo este nombre
+import logo2Dark from "../assets/logo2-dark.png"; // Asumiendo este nombre
+import { useTheme } from "../hooks/useTheme"; // Importamos nuestro hook de tema
+// --- FIN DE LA MODIFICACIÓN ---
 import { Bell, Home, Users, Wallet, UserX, ChevronDown, PlusCircle, List, UserPlus, Landmark, History, Trash2 } from "lucide-react";
 import { useNotifications } from "../context/NotificationContext";
 import NotificationItem from "./notifications/NotificationItem";
@@ -27,6 +32,7 @@ const DropdownLink = ({ to, icon, children, onClick }) => {
 const Navbar = () => {
     const location = useLocation();
     const { notifications, unreadCount, markAllAsRead, clearAllNotifications, groupedNotifications } = useNotifications();
+    const { theme } = useTheme(); // Obtenemos el tema actual
 
     const [isRinging, setIsRinging] = useState(false);
     const prevUnreadCount = useRef(unreadCount);
@@ -49,8 +55,10 @@ const Navbar = () => {
 
                     <div className="flex-shrink-0">
                         <Link to="/" className="flex items-center space-x-3">
-                            <img src={logo1} alt="Logo 1" className="h-9" />
-                            <img src={logo2} alt="Logo 2" className="h-9" />
+                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                            <img src={theme === 'dark' ? logo1Dark : logo1Light} alt="Logo 1" className="h-9" />
+                            <img src={theme === 'dark' ? logo2Dark : logo2Light} alt="Logo 2" className="h-9" />
+                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                         </Link>
                     </div>
 
@@ -108,9 +116,7 @@ const Navbar = () => {
                     <div className="flex items-center justify-end gap-2">
                         <ThemeSwitcher />
                         <Popover as="div" className="relative">
-                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
                             {({ open, close: closePopover }) => (
-                                // --- FIN DE LA MODIFICACIÓN ---
                                 <>
                                     <Popover.Button className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                         <Bell className={isRinging ? 'animate-ring' : ''} />
@@ -125,9 +131,7 @@ const Navbar = () => {
                                             <div className="p-3 flex justify-between items-center border-b dark:border-gray-700">
                                                 <h3 className="text-md font-bold text-gray-800 dark:text-white">Notificaciones</h3>
                                                 {unreadCount > 0 && (
-                                                    // --- INICIO DE LA MODIFICACIÓN ---
                                                     <button onClick={async () => { await markAllAsRead(); closePopover(); }} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Marcar leídas</button>
-                                                    // --- FIN DE LA MODIFICACIÓN ---
                                                 )}
                                             </div>
                                             <div className="overflow-hidden max-h-96 overflow-y-auto">
@@ -153,9 +157,7 @@ const Navbar = () => {
                                             {(groupedNotifications.new.length > 0 || groupedNotifications.previous.length > 0) && (
                                                 <div className="p-2 border-t bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700">
                                                     <button
-                                                        // --- INICIO DE LA MODIFICACIÓN ---
                                                         onClick={async () => { await clearAllNotifications(); closePopover(); }}
-                                                        // --- FIN DE LA MODIFICACIÓN ---
                                                         className="w-full flex items-center justify-center gap-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 font-semibold p-2 rounded-md transition-colors"
                                                     >
                                                         <Trash2 size={14} />

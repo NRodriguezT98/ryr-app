@@ -82,7 +82,27 @@ const ClienteCard = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) =>
                                 <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onEdit(cliente)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Pencil className="w-5 h-5 mr-2" /> Editar</button>)}</Menu.Item></div>
                             )}
                             {vivienda && !isRenunciado && !cliente.tieneRenunciaPendiente && (
-                                <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onRenunciar(cliente)} className={`${active ? 'bg-orange-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><UserX className="w-5 h-5 mr-2" /> Renunciar a Vivienda</button>)}</Menu.Item></div>
+                                <div className="px-1 py-1">
+                                    {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                                    <Menu.Item disabled={!cliente.puedeRenunciar}>
+                                        {({ active, disabled }) => (
+                                            <div
+                                                // El tooltip se ancla a este div, que siempre puede recibir eventos del mouse
+                                                data-tooltip-id="app-tooltip"
+                                                data-tooltip-content={disabled ? "No se puede renunciar: el cliente ha superado un paso clave en el proceso (Firmar Minuta de Compraventa)." : ''}
+                                            >
+                                                <button
+                                                    onClick={() => onRenunciar(cliente)}
+                                                    className={`${active ? 'bg-orange-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                                                    disabled={!cliente.puedeRenunciar}
+                                                >
+                                                    <UserX className="w-5 h-5 mr-2" /> Renunciar a Vivienda
+                                                </button>
+                                            </div>
+                                        )}
+                                    </Menu.Item>
+                                    {/* --- FIN DE LA MODIFICACIÓN --- */}
+                                </div>
                             )}
                             {isRenunciado && !cliente.tieneRenunciaPendiente && (
                                 <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onReactivar(cliente)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><RefreshCw className="w-5 h-5 mr-2" /> Reactivar Cliente</button>)}</Menu.Item></div>

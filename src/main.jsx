@@ -1,12 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-// --- INICIO DE CAMBIOS ---
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-// --- FIN DE CAMBIOS ---
 import './index.css';
 import { Toaster } from 'react-hot-toast';
 import { DataProvider } from './context/DataContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Importación de todos tus componentes de página
 import Layout from './layout/Layout';
@@ -24,7 +23,6 @@ import GestionarAbonos from './pages/abonos/GestionarAbonos';
 import ListarRenuncias from './pages/renuncias/ListarRenuncias';
 import DetalleRenuncia from './pages/renuncias/DetalleRenuncia';
 
-// --- INICIO DE LA NUEVA ESTRUCTURA DE RUTAS ---
 // Definimos las rutas como un array de objetos
 const router = createBrowserRouter([
   {
@@ -90,29 +88,29 @@ const router = createBrowserRouter([
     ],
   },
 ]);
-// --- FIN DE LA NUEVA ESTRUCTURA DE RUTAS ---
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Toaster
-      position="top-right"
-      containerStyle={{
-        top: 80,
-        zIndex: 9999,
-      }}
-      toastOptions={{
-        duration: 4000,
-        style: {
-          background: '#363636',
-          color: '#fff',
-        },
-      }}
-    />
-    <DataProvider>
-      <NotificationProvider>
-        {/* Usamos RouterProvider en lugar de BrowserRouter */}
-        <RouterProvider router={router} />
-      </NotificationProvider>
-    </DataProvider>
+    <ThemeProvider>
+      <Toaster
+        position="top-right"
+        containerStyle={{
+          top: 80,
+          zIndex: 9999,
+        }}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
+      />
+      <DataProvider>
+        <NotificationProvider>
+          <RouterProvider router={router} />
+        </NotificationProvider>
+      </DataProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // Se importa useEffect
 import { useBlocker } from 'react-router-dom';
 import { useProcesoLogic } from '../../../hooks/clientes/useProcesoLogic';
 import { updateCliente } from '../../../utils/storage';
@@ -28,8 +28,16 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
         justSaved,
         isSaveDisabled,
         tooltipMessage,
+        hayCambiosSinGuardar, // <-- Se obtiene el estado de cambios
         handlers,
     } = useProcesoLogic(cliente, handleSave);
+
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Este efecto le informa al componente padre si hay cambios
+    useEffect(() => {
+        onHayCambiosChange(hayCambiosSinGuardar);
+    }, [hayCambiosSinGuardar, onHayCambiosChange]);
+    // --- FIN DE LA CORRECCIÓN ---
 
     const pasoAReabrirInfo = pasoAReabrir ? pasosRenderizables.find(p => p.key === pasoAReabrir) : null;
     const nombrePasoAReabrir = pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '';

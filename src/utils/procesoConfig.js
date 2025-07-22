@@ -102,6 +102,7 @@ export const PROCESO_CONFIG = [
         label: 'Crédito Desembolsado',
         aplicaA: (financiero) => financiero.aplicaCredito,
         esHito: true,
+        esAutomatico: true,
         evidenciasRequeridas: [{ id: 'desembolsoCreditoSoporte', label: 'Soporte de Desembolso', tipo: 'documento' }]
     },
     {
@@ -115,6 +116,7 @@ export const PROCESO_CONFIG = [
         label: 'Subsidio MCY Desembolsado',
         aplicaA: (financiero) => financiero.aplicaSubsidioVivienda,
         esHito: true,
+        esAutomatico: true,
         evidenciasRequeridas: [{ id: 'desembolsoMCYSoporte', label: 'Soporte de Desembolso', tipo: 'documento' }]
     },
     {
@@ -128,6 +130,7 @@ export const PROCESO_CONFIG = [
         label: 'Subsidio Caja Comp. Desembolsado',
         aplicaA: (financiero) => financiero.aplicaSubsidioCaja,
         esHito: true,
+        esAutomatico: true,
         evidenciasRequeridas: [{ id: 'desembolsoCajaSoporte', label: 'Soporte de Desembolso', tipo: 'documento' }]
     },
     {
@@ -139,7 +142,6 @@ export const PROCESO_CONFIG = [
     },
 ];
 
-// --- INICIO DE LA NUEVA LÓGICA ---
 // Mapa para conectar fuentes de pago con los pasos del proceso
 export const FUENTE_PROCESO_MAP = {
     credito: {
@@ -158,4 +160,3 @@ export const FUENTE_PROCESO_MAP = {
         evidenciaId: 'desembolsoCajaSoporte'
     }
 };
-// --- FIN DE LA NUEVA LÓGICA ---

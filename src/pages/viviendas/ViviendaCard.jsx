@@ -88,7 +88,15 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                     {!isDisponible ? (
                         <>
                             <User size={16} className="text-gray-400" />
-                            <span className='font-bold text-gray-800 dark:text-gray-200 truncate' title={toTitleCase(clienteNombre)}>{toTitleCase(clienteNombre)}</span>
+                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                            <Link
+                                to={`/clientes/detalle/${clienteId}`}
+                                className='font-bold text-gray-800 dark:text-gray-200 truncate hover:underline hover:text-blue-600 dark:hover:text-blue-400'
+                                title={toTitleCase(clienteNombre)}
+                            >
+                                {toTitleCase(clienteNombre)}
+                            </Link>
+                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                         </>
                     ) : (
                         <p className='text-xs text-gray-500 dark:text-gray-400'>Vivienda sin asignar</p>

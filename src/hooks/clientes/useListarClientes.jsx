@@ -3,6 +3,7 @@ import { useData } from '../../context/DataContext';
 import { deleteCliente, renunciarAVivienda, reactivarCliente, createNotification } from '../../utils/storage';
 import toast from 'react-hot-toast';
 import UndoToast from '../../components/UndoToast';
+import { PROCESO_CONFIG } from '../../utils/procesoConfig'; // <-- 1. Importamos la configuración del proceso
 
 export const useListarClientes = () => {
     const { isLoading, clientes, renuncias, recargarDatos } = useData();
@@ -25,7 +26,22 @@ export const useListarClientes = () => {
     const clientesFiltrados = useMemo(() => {
         let itemsProcesados = clientes.map(cliente => {
             const renunciaPendiente = renuncias.find(r => r.clienteId === cliente.id && r.estadoDevolucion === 'Pendiente');
-            return { ...cliente, tieneRenunciaPendiente: !!renunciaPendiente };
+
+            // --- INICIO DE LA MODIFICACIÓN ---
+            // Verificamos si el cliente puede renunciar
+            let puedeRenunciar = true;
+            if (cliente.proceso) {
+                // Buscamos si algún paso que es un "Hito" ya fue completado
+                const hitoCompletado = PROCESO_CONFIG.some(pasoConfig =>
+                    pasoConfig.esHito && cliente.proceso[pasoConfig.key]?.completado
+                );
+                if (hitoCompletado) {
+                    puedeRenunciar = false;
+                }
+            }
+            // --- FIN DE LA MODIFICACIÓN ---
+
+            return { ...cliente, tieneRenunciaPendiente: !!renunciaPendiente, puedeRenunciar }; // Añadimos la nueva propiedad
         });
 
         if (statusFilter !== 'todos') {
@@ -50,16 +66,24 @@ export const useListarClientes = () => {
     const clientesVisibles = clientesFiltrados.filter(c => !clientesOcultos.includes(c.id));
 
     const handleGuardado = useCallback(() => { recargarDatos(); setClienteAEditar(null); }, [recargarDatos]);
-    const iniciarRenuncia = (cliente) => setClienteARenunciar(cliente);
+
+    // --- INICIO DE LA MODIFICACIÓN ---
+    const iniciarRenuncia = (cliente) => {
+        if (!cliente.puedeRenunciar) {
+            toast.error("No se puede iniciar la renuncia: el cliente ya ha superado un hito clave en el proceso (ej: firma de escritura).");
+            return;
+        }
+        setClienteARenunciar(cliente);
+    };
+    // --- FIN DE LA MODIFICACIÓN ---
+
     const iniciarReactivacion = (cliente) => setClienteAReactivar(cliente);
     const iniciarEliminacion = (cliente) => {
-        // --- LÓGICA A AÑADIR ---
         const renunciaAsociada = renuncias.find(r => r.clienteId === cliente.id);
         if (renunciaAsociada) {
             toast.error("No se puede eliminar: el cliente tiene un historial de renuncias.");
             return;
         }
-        // --- FIN DE LA LÓGICA ---
         setClienteAEliminar(cliente);
     };
 

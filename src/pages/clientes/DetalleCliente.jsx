@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useBlocker } from 'react-router-dom';
+import { useBlocker } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, Edit, User, FileDown, Info, GitCommit, Briefcase } from 'lucide-react';
+import { ArrowLeft, User, FileDown, Info, GitCommit, Briefcase } from 'lucide-react';
 import { useDetalleCliente } from '../../hooks/clientes/useDetalleCliente.jsx';
 import { getInitials } from '../../utils/textFormatters';
 import { generateClientStatementPDF } from '../../utils/pdfGenerator';
@@ -67,7 +67,7 @@ const DetalleCliente = () => {
         return <div className="text-center p-10 animate-pulse">Cargando perfil del cliente...</div>;
     }
 
-    const { cliente, vivienda, historialAbonos } = datosDetalle;
+    const { cliente, vivienda, historialAbonos, renuncias } = datosDetalle;
 
     const handleGeneratePdf = () => {
         if (cliente && vivienda) {
@@ -110,7 +110,13 @@ const DetalleCliente = () => {
 
                 <div>
                     {activeTab === 'info' && <TabInfoGeneralCliente cliente={cliente} vivienda={vivienda} historialAbonos={historialAbonos} />}
-                    {activeTab === 'proceso' && <TabProcesoCliente cliente={cliente} onDatosRecargados={recargarDatos} onHayCambiosChange={setProcesoTieneCambios} />}
+                    {activeTab === 'proceso' && (
+                        <TabProcesoCliente
+                            cliente={cliente}
+                            onDatosRecargados={recargarDatos}
+                            onHayCambiosChange={setProcesoTieneCambios} // <-- Se restaura la prop
+                        />
+                    )}
                     {activeTab === 'documentos' && <TabDocumentacionCliente cliente={cliente} />}
                 </div>
             </div>

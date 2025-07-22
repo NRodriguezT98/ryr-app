@@ -104,7 +104,11 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                         <textarea name="observacion" value={formData.observacion} onChange={handleInputChange} rows="2" className="w-full border p-2 rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600" placeholder="Ej: Pago parcial..." />
                     </div>
                     <div>
-                        <label className="block font-medium mb-2 text-xs dark:text-gray-300">Comprobante de Pago (Opcional)</label>
+                        {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                        <label className="block font-medium mb-2 text-xs dark:text-gray-300">
+                            Comprobante de Pago <span className="text-red-500">*</span>
+                        </label>
+                        {/* --- FIN DE LA MODIFICACIÓN --- */}
                         {formData.urlComprobante ? (
                             <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
                                 <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'>
@@ -120,6 +124,9 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                                 onUploadSuccess={(url) => handleValueChange('urlComprobante', url)}
                             />
                         )}
+                        {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                        {errors.urlComprobante && <p className="text-red-600 text-sm mt-1">{errors.urlComprobante}</p>}
+                        {/* --- FIN DE LA MODIFICACIÓN --- */}
                     </div>
                     <div className="flex justify-end gap-2">
                         <button type="button" onClick={() => setMostrandoFormulario(false)} className="bg-gray-200 dark:bg-gray-600 px-4 py-1.5 rounded-md text-sm">Cancelar</button>

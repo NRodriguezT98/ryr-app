@@ -2,13 +2,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 import { updateCliente } from '../../utils/storage';
-import { parseDateAsUTC, formatDisplayDate, getTodayString } from '../../utils/textFormatters';
+import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency } from '../../utils/textFormatters';
 
 export const useProcesoLogic = (cliente, onSave) => {
     const [procesoState, setProcesoState] = useState(cliente.proceso || {});
     const [initialProcesoState, setInitialProcesoState] = useState(cliente.proceso || {});
 
-    // Estados para manejar los modales de confirmación
     const [pasoAReabrir, setPasoAReabrir] = useState(null);
     const [pasoAEditarFecha, setPasoAEditarFecha] = useState(null);
     const [justSaved, setJustSaved] = useState(false);
@@ -79,6 +78,9 @@ export const useProcesoLogic = (cliente, onSave) => {
         const hoy = parseDateAsUTC(getTodayString());
 
         const pasosAplicables = PROCESO_CONFIG.filter(paso => paso.aplicaA(cliente.financiero || {}));
+        const isStepValidAndCompletedGlobal = (key) => procesoState[key]?.completado && procesoState[key]?.fecha && !errores[key];
+
+        const fechaBoletaRegistro = isStepValidAndCompletedGlobal('pagoBoletaRegistro') ? procesoState['pagoBoletaRegistro'].fecha : null;
 
         let ultimoHitoIndex = -1;
         for (let i = pasosAplicables.length - 1; i >= 0; i--) {
@@ -91,27 +93,35 @@ export const useProcesoLogic = (cliente, onSave) => {
 
         pasosAplicables.forEach(paso => {
             const pasoActual = procesoState[paso.key];
-            if (pasoActual?.completado) {
-                if (!pasoActual.fecha) {
-                    errores[paso.key] = "Se requiere una fecha.";
-                } else {
-                    const fechaSeleccionada = parseDateAsUTC(pasoActual.fecha);
-                    if (fechaSeleccionada > hoy) {
-                        errores[paso.key] = "La fecha no puede ser futura.";
-                    } else if (fechaSeleccionada < fechaInicioProceso) {
-                        errores[paso.key] = `La fecha no puede ser anterior al inicio del proceso (${formatDisplayDate(cliente.datosCliente.fechaIngreso)}).`;
-                    } else if (parseDateAsUTC(ultimaFechaValida) > fechaSeleccionada) {
-                        errores[paso.key] = `La fecha no puede ser anterior al último paso válido (${formatDisplayDate(ultimaFechaValida)}).`;
-                    } else {
-                        ultimaFechaValida = pasoActual.fecha;
-                    }
+            if (pasoActual?.completado && pasoActual.fecha) {
+                const fechaSeleccionada = parseDateAsUTC(pasoActual.fecha);
+                let fechaMinima = parseDateAsUTC(ultimaFechaValida);
+                let etiquetaFechaMinima = `último paso válido (${formatDisplayDate(ultimaFechaValida)})`;
+
+                if (['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(paso.key) && fechaBoletaRegistro) {
+                    fechaMinima = parseDateAsUTC(fechaBoletaRegistro);
+                    etiquetaFechaMinima = `boleta de registro (${formatDisplayDate(fechaBoletaRegistro)})`;
                 }
+
+                if (fechaSeleccionada > hoy) {
+                    errores[paso.key] = "La fecha no puede ser futura.";
+                } else if (fechaSeleccionada < fechaInicioProceso) {
+                    errores[paso.key] = `La fecha no puede ser anterior al inicio del proceso (${formatDisplayDate(cliente.datosCliente.fechaIngreso)}).`;
+                } else if (fechaSeleccionada < fechaMinima) {
+                    errores[paso.key] = `La fecha no puede ser anterior a la ${etiquetaFechaMinima}.`;
+                } else {
+                    ultimaFechaValida = pasoActual.fecha;
+                }
+            } else if (pasoActual?.completado && !pasoActual.fecha) {
+                errores[paso.key] = "Se requiere una fecha.";
             }
         });
 
         let previousStepCompleted = true;
         let primerPasoIncompletoEncontrado = false;
         let algunPasoEnReapertura = false;
+
+        const allPreviousStepsForInvoiceCompleted = pasosAplicables.filter(p => p.key !== 'facturaVenta').every(p => isStepValidAndCompletedGlobal(p.key));
 
         const resultado = pasosAplicables.map((pasoConfig, index) => {
             const pasoData = procesoState[pasoConfig.key] || { completado: false, fecha: null, evidencias: {} };
@@ -129,7 +139,6 @@ export const useProcesoLogic = (cliente, onSave) => {
             }
 
             const isBoletaRegistroCompleted = isStepValidAndCompleted('pagoBoletaRegistro');
-            const allPreviousStepsForInvoiceCompleted = pasosAplicables.filter(p => p.key !== 'facturaVenta').every(p => isStepValidAndCompleted(p.key));
 
             let isLocked = !previousStepCompleted;
             switch (pasoConfig.key) {
@@ -141,7 +150,18 @@ export const useProcesoLogic = (cliente, onSave) => {
                 case 'facturaVenta': isLocked = !allPreviousStepsForInvoiceCompleted; break;
             }
 
-            if (!isStepValidAndCompleted(pasoConfig.key) && ['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].indexOf(pasoConfig.key) === -1) {
+            // --- INICIO DE LA MODIFICACIÓN ---
+            let facturaBloqueadaPorSaldo = false;
+            if (pasoConfig.key === 'facturaVenta' && !isLocked) {
+                const saldoPendiente = cliente.vivienda?.saldoPendiente ?? 1;
+                if (saldoPendiente > 0) {
+                    isLocked = true;
+                    facturaBloqueadaPorSaldo = true; // Creamos una nueva bandera para ser más específicos
+                }
+            }
+            // --- FIN DE LA MODIFICACIÓN ---
+
+            if (!isStepValidAndCompleted(pasoConfig.key) && !pasoConfig.esAutomatico) {
                 previousStepCompleted = false;
             }
 
@@ -156,10 +176,15 @@ export const useProcesoLogic = (cliente, onSave) => {
             const todasEvidenciasSubidas = pasoConfig.evidenciasRequeridas.every(ev => pasoData.evidencias?.[ev.id]?.url);
             const puedeCompletarse = todasEvidenciasSubidas && !pasoData.completado && !isLocked;
 
-            if (puedeCompletarse) {
+            const initialPasoData = initialProcesoState[pasoConfig.key] || {};
+            if (puedeCompletarse && initialPasoData.completado === true) {
                 algunPasoEnReapertura = true;
             }
 
+            let minDateForStep = previousStepDate;
+            if (['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(pasoConfig.key)) {
+                minDateForStep = fechaBoletaRegistro || cliente.datosCliente.fechaIngreso;
+            }
 
             return {
                 ...pasoConfig,
@@ -169,8 +194,9 @@ export const useProcesoLogic = (cliente, onSave) => {
                 puedeCompletarse,
                 esSiguientePaso,
                 error: errores[pasoConfig.key],
-                minDate: previousStepDate,
-                maxDate: getTodayString()
+                minDate: minDateForStep,
+                maxDate: getTodayString(),
+                facturaBloqueadaPorSaldo // Pasamos la nueva bandera al componente
             };
         });
 
@@ -182,7 +208,7 @@ export const useProcesoLogic = (cliente, onSave) => {
             progreso: { completados: pasosCompletados, total: resultado.length },
             hayPasoEnReapertura: algunPasoEnReapertura,
         };
-    }, [cliente, procesoState]);
+    }, [cliente, procesoState, initialProcesoState]);
 
     const hayCambiosSinGuardar = useMemo(() => {
         return JSON.stringify(procesoState) !== JSON.stringify(initialProcesoState);
@@ -203,10 +229,19 @@ export const useProcesoLogic = (cliente, onSave) => {
                 const nombrePaso = pasoPendiente.label.substring(pasoPendiente.label.indexOf('.') + 1).trim();
                 return `Debes marcar el paso "${nombrePaso}" como completado o cancelar la reapertura.`;
             }
+
+            const pasoFactura = pasosRenderizables.find(p => p.key === 'facturaVenta');
+            if (pasoFactura?.isLocked && pasoFactura.esSiguientePaso) {
+                const saldo = cliente.vivienda?.saldoPendiente ?? 0;
+                if (saldo > 0) {
+                    return `La vivienda debe estar 100% pagada para generar la factura. Saldo pendiente: ${formatCurrency(saldo)}`;
+                }
+            }
+
             return 'No hay cambios para guardar.';
         }
         return 'Guardar los cambios realizados';
-    }, [isSaveDisabled, validationErrors, pasosRenderizables, hayPasoEnReapertura]);
+    }, [isSaveDisabled, validationErrors, pasosRenderizables, hayPasoEnReapertura, cliente.vivienda]);
 
     const handleSaveChanges = async () => {
         if (isSaveDisabled) {
