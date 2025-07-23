@@ -7,7 +7,6 @@ export const useListarRenuncias = () => {
     const { isLoading, renuncias, recargarDatos } = useData();
     const [statusFilter, setStatusFilter] = useState('Pendiente');
 
-    // Estados para los modales
     const [renunciaADevolver, setRenunciaADevolver] = useState(null);
     const [renunciaAEditar, setRenunciaAEditar] = useState(null);
     const [renunciaACancelar, setRenunciaACancelar] = useState(null);
@@ -17,6 +16,12 @@ export const useListarRenuncias = () => {
         if (statusFilter === 'Todas') {
             return sortedRenuncias;
         }
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Si el filtro es 'Cerrada', incluimos también los registros antiguos 'Pagada'.
+        if (statusFilter === 'Cerrada') {
+            return sortedRenuncias.filter(r => r.estadoDevolucion === 'Cerrada' || r.estadoDevolucion === 'Pagada');
+        }
+        // --- FIN DE LA CORRECCIÓN ---
         return sortedRenuncias.filter(r => r.estadoDevolucion === statusFilter);
     }, [renuncias, statusFilter]);
 

@@ -48,7 +48,7 @@ const getSelectStyles = (hasError) => ({
     input: (base) => ({ ...base, color: 'var(--color-text-form)' }),
 });
 
-const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange, isEditing, isLocked }) => {
+const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange, isEditing, isLocked, modo }) => {
     const { financiero, viviendaSeleccionada, documentos, datosCliente } = formData;
     const resumenFinanciero = useClienteFinanciero(financiero, viviendaSeleccionada?.valorTotal);
 
@@ -90,8 +90,10 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                     <div className="text-center flex flex-col">
                         <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Valor Vivienda</p>
                         <div className="flex-grow text-xs mt-2 space-y-1 px-2 border-b dark:border-gray-600 pb-2 mb-2">
-                            <BreakdownRow label="Valor Base:" value={viviendaSeleccionada.valorBase || 0} />
-                            {viviendaSeleccionada.recargoEsquinera > 0 && <BreakdownRow label="R. Esquinera:" value={viviendaSeleccionada.recargoEsquinera} />}
+                            {/* --- INICIO DE LA CORRECCIÓN --- */}
+                            <BreakdownRow label="Valor Base:" value={viviendaSeleccionada?.valorBase || 0} />
+                            {viviendaSeleccionada?.recargoEsquinera > 0 && <BreakdownRow label="R. Esquinera:" value={viviendaSeleccionada.recargoEsquinera} />}
+                            {/* --- FIN DE LA CORRECCIÓN --- */}
                             <BreakdownRow label="G. Notariales:" value={GASTOS_NOTARIALES_FIJOS} />
                         </div>
                         <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(resumenFinanciero.totalAPagar)}</p>
@@ -122,7 +124,7 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                 }
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6 pt-6 border-t dark:border-gray-700">
-                    {!isEditing && (
+                    {(!isEditing || modo === 'reactivar') && (
                         <div className="lg:col-span-2 p-4 border rounded-xl bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700 space-y-4">
                             <div>
                                 <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200 flex items-center">

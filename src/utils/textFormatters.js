@@ -1,15 +1,35 @@
 /**
- * --- FUNCIÓN NUEVA Y CORREGIDA ---
- * Obtiene la fecha local actual en formato YYYY-MM-DD.
- * Esta función evita los problemas de conversión a UTC.
- * @returns {string} La fecha de hoy en el formato correcto.
+ * --- FUNCIÓN CORREGIDA Y DEFINITIVA ---
+ * Obtiene la fecha actual en la zona horaria de Colombia (America/Bogota) 
+ * y la devuelve en formato YYYY-MM-DD.
+ * Esta versión utiliza la API Intl.DateTimeFormat para obtener las partes de la fecha
+ * de forma explícita y segura, evitando errores de parsing de strings.
+ * @returns {string} La fecha de hoy en Colombia en el formato correcto.
  */
 export const getTodayString = () => {
+    // Para depuración, podemos ver qué se está ejecutando.
     const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+
+    const options = {
+        timeZone: 'America/Bogota',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    };
+
+    // Usamos un formatter para obtener las partes de la fecha (año, mes, día)
+    // de forma individual para la zona horaria de Colombia.
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const parts = formatter.formatToParts(today);
+
+    // Encontramos cada parte y la extraemos.
+    const year = parts.find(part => part.type === 'year').value;
+    const month = parts.find(part => part.type === 'month').value;
+    const day = parts.find(part => part.type === 'day').value;
+
+    // Construimos el string final en el formato YYYY-MM-DD.
+    const finalDate = `${year}-${month}-${day}`;
+    return finalDate;
 };
 
 /**
@@ -49,7 +69,7 @@ export const formatID = (cedula) => {
 };
 
 /**
- * Parsea un string de fecha 'YYYY-MM-DD' como si fuera UTC.
+ * Parsea un string de fecha 'YYYY-MM-DD' como si fuera UTC para evitar desfases.
  */
 export const parseDateAsUTC = (dateString) => {
     if (!dateString) return null;

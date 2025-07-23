@@ -5,7 +5,8 @@ import PasoProcesoCard from './PasoProcesoCard';
 import { Tooltip } from 'react-tooltip';
 import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
-import { CheckCircle, PartyPopper } from 'lucide-react'; // Importamos un ícono de celebración
+import { PartyPopper, UserX } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) => {
 
@@ -19,6 +20,8 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
         onDatosRecargados();
     };
 
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Se pasa la función 'handleSave' correctamente definida en lugar de la variable 'onSave' que no existe.
     const {
         pasosRenderizables,
         progreso,
@@ -29,9 +32,28 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
         isSaveDisabled,
         tooltipMessage,
         hayCambiosSinGuardar,
-        procesoCompletado, // <-- Obtenemos la nueva variable
+        procesoCompletado,
         handlers,
     } = useProcesoLogic(cliente, handleSave);
+    // --- FIN DE LA CORRECCIÓN ---
+
+    if (cliente.status === 'renunciado') {
+        return (
+            <div className="animate-fade-in text-center p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed dark:border-gray-700">
+                <UserX size={48} className="mx-auto text-orange-400" />
+                <h3 className="mt-4 text-xl font-bold text-gray-800 dark:text-gray-100">Proceso Anterior Finalizado por Renuncia</h3>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    Este cliente completó un proceso de renuncia. Su línea de tiempo y documentos anteriores han sido archivados.
+                </p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Para iniciar un nuevo proceso de venta, utiliza la opción "Iniciar Nuevo Proceso" en la lista de clientes.
+                </p>
+                <Link to="/renuncias" className="mt-6 inline-flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                    Ver Historial de Renuncias
+                </Link>
+            </div>
+        );
+    }
 
     useEffect(() => {
         onHayCambiosChange(hayCambiosSinGuardar);
@@ -46,8 +68,6 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
         <div className="animate-fade-in space-y-4">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm flex justify-between items-center sticky top-20 z-10">
                 <h3 className="font-bold text-lg dark:text-gray-200">Línea de Tiempo del Proceso</h3>
-                {/* --- INICIO DE LA MODIFICACIÓN --- */}
-                {/* Ocultamos el botón si el proceso está completado */}
                 {!procesoCompletado && (
                     <span data-tooltip-id="app-tooltip" data-tooltip-content={tooltipMessage}>
                         <button
@@ -59,11 +79,8 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
                         </button>
                     </span>
                 )}
-                {/* --- FIN DE LA MODIFICACIÓN --- */}
             </div>
 
-            {/* --- INICIO DE LA MODIFICACIÓN --- */}
-            {/* Mostramos el banner de éxito si el proceso está completado */}
             {procesoCompletado ? (
                 <div className="p-4 bg-green-100 dark:bg-green-900/50 border-2 border-green-300 dark:border-green-700 rounded-xl shadow-md flex items-center gap-4">
                     <PartyPopper size={32} className="text-green-600 dark:text-green-400" />
@@ -85,7 +102,6 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
                     </div>
                 </div>
             )}
-            {/* --- FIN DE LA MODIFICACIÓN --- */}
 
             <div className="space-y-4">
                 {pasosRenderizables.map((paso, index) => (

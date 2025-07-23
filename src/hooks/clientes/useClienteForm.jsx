@@ -2,13 +2,10 @@ import { useReducer, useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
 import { validateCliente, validateFinancialStep, validateEditarCliente } from '../../utils/validation.js';
-import { getClientes, addClienteAndAssignVivienda, updateCliente, getAbonos, createNotification } from '../../utils/storage.js';
+import { addClienteAndAssignVivienda, updateCliente, getAbonos, createNotification } from '../../utils/storage.js';
 import { useData } from '../../context/DataContext.jsx';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig.js';
-import { DOCUMENTACION_CONFIG } from '../../utils/documentacionConfig.js';
-import { formatCurrency, toTitleCase, formatDisplayDate } from '../../utils/textFormatters.js';
-
-const getTodayString = () => new Date().toISOString().split('T')[0];
+import { formatCurrency, toTitleCase, formatDisplayDate, getTodayString } from '../../utils/textFormatters.js';
 
 const blankInitialState = {
     viviendaSeleccionada: null,
@@ -72,7 +69,7 @@ function formReducer(state, action) {
     }
 }
 
-export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveSuccess) => {
+export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveSuccess, modo = 'editar') => {
     const navigate = useNavigate();
     const { clientes: todosLosClientes, viviendas } = useData();
     const [step, setStep] = useState(1);
@@ -94,13 +91,11 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             correo: { regex: /^[a-zA-Z0-9._%+\-@]*$/, message: 'El correo contiene caracteres no permitidos.' },
             direccion: { regex: /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s#\-.]*$/, message: 'La dirección contiene caracteres no permitidos.' },
         };
-
         const filter = inputFilters[name];
         if (filter && !filter.regex.test(value)) {
             dispatch({ type: 'SET_ERRORS', payload: { [name]: filter.message } });
             return;
         }
-
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field: name, value } });
     }, [dispatch]);
 
@@ -115,17 +110,28 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         dispatch({ type: 'UPDATE_FINANCIAL_FIELD', payload: { section, field, value } });
     }, [dispatch]);
 
-
     useEffect(() => {
         if (isEditing && clienteAEditar) {
             const viviendaAsignada = viviendas.find(v => v.id === clienteAEditar.viviendaId);
             setViviendaOriginalId(clienteAEditar.viviendaId);
             getAbonos().then(abonos => setAbonosDelCliente(abonos.filter(a => a.clienteId === clienteAEditar.id)));
-            const initialStateForEdit = { ...blankInitialState, ...clienteAEditar, financiero: { ...blankInitialState.financiero, ...clienteAEditar.financiero }, viviendaSeleccionada: viviendaAsignada || null, errors: {} };
-            dispatch({ type: 'INITIALIZE_FORM', payload: initialStateForEdit });
+            let initialStateForEdit;
+            if (modo === 'reactivar') {
+                initialStateForEdit = {
+                    ...blankInitialState,
+                    datosCliente: {
+                        ...clienteAEditar.datosCliente,
+                        fechaIngreso: clienteAEditar.datosCliente.fechaIngreso
+                    },
+                    status: 'renunciado'
+                };
+            } else {
+                initialStateForEdit = { ...blankInitialState, ...clienteAEditar, financiero: { ...blankInitialState.financiero, ...clienteAEditar.financiero }, viviendaSeleccionada: viviendaAsignada || null };
+            }
+            dispatch({ type: 'INITIALIZE_FORM', payload: { ...initialStateForEdit, errors: {} } });
             setInitialData(JSON.parse(JSON.stringify(initialStateForEdit)));
         }
-    }, [isEditing, clienteAEditar, viviendas]);
+    }, [isEditing, clienteAEditar, viviendas, modo]);
 
     const viviendasOptions = useMemo(() => {
         const disponibles = viviendas.filter(v => !v.clienteId || v.id === clienteAEditar?.viviendaId);
@@ -145,10 +151,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             return;
         }
         if (step === 2) {
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Le pasamos el ID del cliente que se está editando a la función de validación.
             errors = validateCliente(formData.datosCliente, todosLosClientes, clienteAEditar?.id);
-            // --- FIN DE LA CORRECCIÓN ---
             if (Object.keys(errors).length > 0) {
                 dispatch({ type: 'SET_ERRORS', payload: errors });
                 return;
@@ -163,7 +166,45 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
     const executeSave = useCallback(async () => {
         setIsSubmitting(true);
         try {
-            if (isEditing) {
+            if (modo === 'reactivar') {
+                if (!formData.viviendaSeleccionada?.id) {
+                    toast.error("Error: Debes seleccionar una vivienda para reactivar al cliente.");
+                    setIsSubmitting(false);
+                    return;
+                }
+                const nuevoProceso = {};
+                PROCESO_CONFIG.forEach(paso => {
+                    if (paso.aplicaA(formData.financiero)) {
+                        const evidencias = {};
+                        paso.evidenciasRequeridas.forEach(ev => {
+                            evidencias[ev.id] = { url: null, estado: 'pendiente' };
+                        });
+                        nuevoProceso[paso.key] = { completado: false, fecha: null, evidencias };
+                    }
+                });
+                if (formData.documentos.promesaEnviadaUrl && formData.documentos.promesaEnviadaCorreoUrl) {
+                    nuevoProceso.promesaEnviada = {
+                        completado: true,
+                        fecha: getTodayString(),
+                        evidencias: {
+                            promesaEnviadaDoc: { url: formData.documentos.promesaEnviadaUrl, estado: 'subido', fechaSubida: getTodayString() },
+                            promesaEnviadaCorreo: { url: formData.documentos.promesaEnviadaCorreoUrl, estado: 'subido', fechaSubida: getTodayString() }
+                        }
+                    };
+                }
+                const clienteParaActualizar = {
+                    ...clienteAEditar,
+                    datosCliente: formData.datosCliente,
+                    financiero: formData.financiero,
+                    proceso: nuevoProceso,
+                    viviendaId: formData.viviendaSeleccionada.id,
+                    status: 'activo',
+                    fechaInicioProceso: getTodayString() // <-- Se establece la nueva fecha de inicio del proceso
+                };
+                await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
+                toast.success("¡Cliente reactivado con un nuevo proceso!");
+                await createNotification('cliente', `El cliente ${toTitleCase(clienteAEditar.datosCliente.nombres)} fue reactivado.`, `/clientes/detalle/${clienteAEditar.id}`);
+            } else if (isEditing) {
                 const clienteParaActualizar = {
                     datosCliente: formData.datosCliente,
                     financiero: formData.financiero,
@@ -175,8 +216,12 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 toast.success("¡Cliente actualizado con éxito!");
                 createNotification('cliente', `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`, `/clientes/detalle/${clienteAEditar.id}`);
             } else {
+                if (!formData.viviendaSeleccionada?.id) {
+                    toast.error("Error: No hay una vivienda seleccionada.");
+                    setIsSubmitting(false);
+                    return;
+                }
                 const nuevoProceso = {};
-
                 PROCESO_CONFIG.forEach(paso => {
                     if (paso.aplicaA(formData.financiero)) {
                         const evidencias = {};
@@ -186,42 +231,30 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                         nuevoProceso[paso.key] = { completado: false, fecha: null, evidencias };
                     }
                 });
-
                 if (formData.documentos.promesaEnviadaUrl && formData.documentos.promesaEnviadaCorreoUrl) {
                     nuevoProceso.promesaEnviada = {
                         completado: true,
                         fecha: getTodayString(),
                         evidencias: {
-                            promesaEnviadaDoc: {
-                                url: formData.documentos.promesaEnviadaUrl,
-                                estado: 'subido',
-                                fechaSubida: getTodayString()
-                            },
-                            promesaEnviadaCorreo: {
-                                url: formData.documentos.promesaEnviadaCorreoUrl,
-                                estado: 'subido',
-                                fechaSubida: getTodayString()
-                            }
+                            promesaEnviadaDoc: { url: formData.documentos.promesaEnviadaUrl, estado: 'subido', fechaSubida: getTodayString() },
+                            promesaEnviadaCorreo: { url: formData.documentos.promesaEnviadaCorreoUrl, estado: 'subido', fechaSubida: getTodayString() }
                         }
                     };
                 }
-
                 const clienteParaGuardar = {
                     datosCliente: formData.datosCliente,
                     financiero: formData.financiero,
                     proceso: nuevoProceso,
-                    viviendaId: formData.viviendaSeleccionada.id
+                    viviendaId: formData.viviendaSeleccionada.id,
+                    fechaInicioProceso: formData.datosCliente.fechaIngreso // <-- Se establece la fecha de inicio del proceso
                 };
-
                 await addClienteAndAssignVivienda(clienteParaGuardar);
                 toast.success("¡Cliente y proceso iniciados con éxito!");
                 const clienteNombre = `${clienteParaGuardar.datosCliente.nombres} ${clienteParaGuardar.datosCliente.apellidos}`.trim();
                 await createNotification('cliente', `Nuevo cliente registrado: ${clienteNombre}`, `/clientes/detalle/${clienteParaGuardar.datosCliente.cedula}`);
             }
-
             if (onSaveSuccess) onSaveSuccess();
             else navigate('/clientes/listar');
-
         } catch (error) {
             console.error("Error al guardar el cliente:", error);
             toast.error("Hubo un error al guardar los datos.");
@@ -229,7 +262,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             setIsSubmitting(false);
             setIsConfirming(false);
         }
-    }, [formData, navigate, todosLosClientes, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId]);
+    }, [formData, navigate, todosLosClientes, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId, modo]);
 
     const hayCambios = useMemo(() => {
         if (!initialData || !formData) return false;
@@ -238,22 +271,17 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
     const handleSave = useCallback(() => {
         const valorTotalVivienda = formData.viviendaSeleccionada?.valorTotal || 0;
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Nos aseguramos de usar la validación correcta dependiendo si es edición o creación
         const clientErrors = isEditing
             ? validateEditarCliente(formData.datosCliente, todosLosClientes, clienteAEditar?.id, abonosDelCliente)
             : validateCliente(formData.datosCliente, todosLosClientes);
-        // --- FIN DE LA CORRECCIÓN ---
         const financialErrors = validateFinancialStep(formData.financiero, valorTotalVivienda, formData.documentos);
         const totalErrors = { ...clientErrors, ...financialErrors };
-
         if (Object.keys(totalErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: totalErrors });
             toast.error("Por favor, corrige los errores antes de guardar.");
             return;
         }
-
-        if (isEditing) {
+        if (isEditing && modo !== 'reactivar') {
             const cambiosDetectados = [];
             const initial = initialData;
             const current = formData;
@@ -303,8 +331,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         } else {
             executeSave();
         }
-
-    }, [formData, todosLosClientes, isEditing, clienteAEditar, abonosDelCliente, initialData, executeSave, viviendas]);
+    }, [formData, todosLosClientes, isEditing, modo, clienteAEditar, abonosDelCliente, initialData, executeSave, viviendas]);
 
     return {
         step,

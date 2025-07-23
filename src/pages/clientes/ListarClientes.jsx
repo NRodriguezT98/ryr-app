@@ -12,9 +12,15 @@ import ClienteCardSkeleton from "./ClienteCardSkeleton.jsx";
 import { useData } from "../../context/DataContext";
 
 // Componente intermedio para usar el hook de lógica de la tarjeta
-const ClienteCardWrapper = ({ cliente, ...handlers }) => {
+const ClienteCardWrapper = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar }) => {
     const cardData = useClienteCardLogic(cliente);
-    return <ClienteCard cardData={cardData} {...handlers} />;
+    return <ClienteCard
+        cardData={cardData}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onRenunciar={onRenunciar}
+        onReactivar={onReactivar}
+    />;
 };
 
 const ListarClientes = () => {
@@ -64,10 +70,10 @@ const ListarClientes = () => {
                         <ClienteCardWrapper
                             key={cliente.id}
                             cliente={cliente}
-                            onEdit={modals.setClienteAEditar}
-                            onDelete={() => handlers.iniciarEliminacion(cliente)}
-                            onRenunciar={() => handlers.iniciarRenuncia(cliente)}
-                            onReactivar={() => handlers.iniciarReactivacion(cliente)}
+                            onEdit={handlers.iniciarEdicion}
+                            onDelete={handlers.iniciarEliminacion}
+                            onRenunciar={handlers.iniciarRenuncia}
+                            onReactivar={handlers.iniciarReactivacion}
                         />
                     ))}
                 </div>
@@ -88,10 +94,9 @@ const ListarClientes = () => {
             )}
 
             {modals.clienteAEliminar && (<ModalConfirmacion isOpen={!!modals.clienteAEliminar} onClose={() => modals.setClienteAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Archivar o Eliminar Cliente?" mensaje={modals.clienteAEliminar.esBorradoFisico ? 'Este cliente no tiene historial, por lo que será eliminado permanentemente. ¿Estás seguro?' : 'Este cliente tiene historial, por lo que será archivado y ocultado de las listas. ¿Estás seguro?'} />)}
-            {modals.clienteAEditar && (<EditarCliente isOpen={!!modals.clienteAEditar} onClose={() => modals.setClienteAEditar(null)} onGuardar={handlers.handleGuardado} clienteAEditar={modals.clienteAEditar} />)}
+            {modals.clienteEnModal.cliente && (<EditarCliente isOpen={!!modals.clienteEnModal.cliente} onClose={() => modals.setClienteEnModal({ cliente: null, modo: null })} onGuardar={handlers.handleGuardado} clienteAEditar={modals.clienteEnModal.cliente} modo={modals.clienteEnModal.modo} />)}
             {modals.clienteARenunciar && (<ModalMotivoRenuncia isOpen={!!modals.clienteARenunciar} onClose={() => modals.setClienteARenunciar(null)} onConfirm={handlers.handleConfirmarMotivo} cliente={modals.clienteARenunciar} />)}
             {modals.datosRenuncia && (<ModalConfirmacion isOpen={!!modals.datosRenuncia} onClose={() => modals.setDatosRenuncia(null)} onConfirm={handlers.confirmarRenunciaFinal} titulo="¿Confirmar Renuncia?" mensaje={`¿Seguro de procesar la renuncia para ${modals.datosRenuncia.cliente.datosCliente.nombres} con motivo "${modals.datosRenuncia.motivo}"?`} isSubmitting={modals.isSubmitting} />)}
-            {modals.clienteAReactivar && (<ModalConfirmacion isOpen={!!modals.clienteAReactivar} onClose={() => modals.setClienteAReactivar(null)} onConfirm={handlers.confirmarReactivacion} titulo="¿Reactivar Cliente?" mensaje={`¿Estás seguro de reactivar a ${modals.clienteAReactivar.datosCliente.nombres}? Volverá a la lista de clientes activos.`} isSubmitting={modals.isSubmitting} />)}
         </ResourcePageLayout>
     );
 };

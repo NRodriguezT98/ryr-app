@@ -73,8 +73,9 @@ export const useProcesoLogic = (cliente, onSave) => {
 
     const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura, procesoCompletado } = useMemo(() => {
         const errores = {};
-        let ultimaFechaValida = cliente.datosCliente.fechaIngreso;
-        const fechaInicioProceso = parseDateAsUTC(cliente.datosCliente.fechaIngreso);
+        const fechaDeInicio = cliente.fechaInicioProceso || cliente.datosCliente.fechaIngreso;
+        let ultimaFechaValida = fechaDeInicio;
+        const fechaInicioProceso = parseDateAsUTC(fechaDeInicio);
         const hoy = parseDateAsUTC(getTodayString());
 
         const pasosAplicables = PROCESO_CONFIG.filter(paso => paso.aplicaA(cliente.financiero || {}));
@@ -106,11 +107,11 @@ export const useProcesoLogic = (cliente, onSave) => {
                 if (fechaSeleccionada > hoy) {
                     errores[paso.key] = "La fecha no puede ser futura.";
                 } else if (fechaSeleccionada < fechaInicioProceso) {
-                    errores[paso.key] = `La fecha no puede ser anterior al inicio del proceso (${formatDisplayDate(cliente.datosCliente.fechaIngreso)}).`;
+                    errores[paso.key] = `La fecha no puede ser anterior al inicio del proceso (${formatDisplayDate(fechaDeInicio)}).`;
                 } else if (fechaSeleccionada < fechaMinima) {
                     errores[paso.key] = `La fecha no puede ser anterior a la ${etiquetaFechaMinima}.`;
                 } else {
-                    ultimaFechaValida = paso.fecha;
+                    ultimaFechaValida = pasoActual.fecha;
                 }
             } else if (pasoActual?.completado && !pasoActual.fecha) {
                 errores[paso.key] = "Se requiere una fecha.";
@@ -123,7 +124,7 @@ export const useProcesoLogic = (cliente, onSave) => {
 
         const allPreviousStepsForInvoiceCompleted = pasosAplicables.filter(p => p.key !== 'facturaVenta').every(p => isStepValidAndCompletedGlobal(p.key));
 
-        let maxDateBeforeInvoice = cliente.datosCliente.fechaIngreso;
+        let maxDateBeforeInvoice = fechaDeInicio;
         pasosAplicables.forEach(paso => {
             if (paso.key !== 'facturaVenta' && isStepValidAndCompletedGlobal(paso.key)) {
                 const fechaPaso = procesoState[paso.key]?.fecha;
@@ -137,7 +138,7 @@ export const useProcesoLogic = (cliente, onSave) => {
             const pasoData = procesoState[pasoConfig.key] || { completado: false, fecha: null, evidencias: {} };
             const isStepValidAndCompleted = (key) => procesoState[key]?.completado && procesoState[key]?.fecha && !errores[key];
 
-            let previousStepDate = cliente.datosCliente.fechaIngreso;
+            let previousStepDate = fechaDeInicio;
             if (index > 0) {
                 for (let i = index - 1; i >= 0; i--) {
                     const prevPasoKey = pasosAplicables[i].key;
@@ -191,7 +192,7 @@ export const useProcesoLogic = (cliente, onSave) => {
 
             let minDateForStep = previousStepDate;
             if (['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(pasoConfig.key)) {
-                minDateForStep = fechaBoletaRegistro || cliente.datosCliente.fechaIngreso;
+                minDateForStep = fechaBoletaRegistro || fechaDeInicio;
             }
             if (pasoConfig.key === 'facturaVenta') {
                 minDateForStep = maxDateBeforeInvoice;
@@ -219,7 +220,7 @@ export const useProcesoLogic = (cliente, onSave) => {
             validationErrors: errores,
             progreso: { completados: pasosCompletados, total: resultado.length },
             hayPasoEnReapertura: algunPasoEnReapertura,
-            procesoCompletado: procesoEstaCompleto, // <-- Exportamos la nueva variable
+            procesoCompletado: procesoEstaCompleto,
         };
     }, [cliente, procesoState, initialProcesoState]);
 
@@ -283,7 +284,7 @@ export const useProcesoLogic = (cliente, onSave) => {
         isSaveDisabled,
         tooltipMessage,
         hayCambiosSinGuardar,
-        procesoCompletado, // <-- Exportamos la nueva variable
+        procesoCompletado,
         handlers: {
             handleUpdateEvidencia,
             handleCompletarPaso,

@@ -1,4 +1,7 @@
 import React from 'react';
+// --- INICIO DE LA CORRECCIÓN ---
+import { useData } from '../../context/DataContext'; // Se corrige la ruta de importación
+// --- FIN DE LA CORRECCIÓN ---
 import { useListarRenuncias } from '../../hooks/useListarRenuncias';
 import ResourcePageLayout from '../../layout/ResourcePageLayout';
 import RenunciaCard from './components/RenunciaCard';
@@ -30,7 +33,7 @@ const ListarRenuncias = () => {
                 filterControls={
                     <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
                         <button onClick={() => setStatusFilter('Pendiente')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'Pendiente' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600/50'}`}>Pendientes</button>
-                        <button onClick={() => setStatusFilter('Pagada')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'Pagada' ? 'bg-white dark:bg-gray-900 shadow text-green-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600/50'}`}>Completadas</button>
+                        <button onClick={() => setStatusFilter('Cerrada')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'Cerrada' ? 'bg-white dark:bg-gray-900 shadow text-green-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600/50'}`}>Cerradas</button>
                         <button onClick={() => setStatusFilter('Todas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'Todas' ? 'bg-white dark:bg-gray-900 shadow text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600/50'}`}>Todas</button>
                     </div>
                 }

@@ -3,7 +3,10 @@ import { NumericFormat } from 'react-number-format';
 import { useAbonoForm } from '../../hooks/abonos/useAbonoForm.jsx';
 import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle, Loader } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
-import { formatCurrency } from '../../utils/textFormatters.js';
+// --- INICIO DE LA CORRECCIÓN ---
+import { formatCurrency, getTodayString } from '../../utils/textFormatters.js'; // Se importa la función correcta
+// Ya no necesitamos una versión local de getTodayString
+// --- FIN DE LA CORRECCIÓN ---
 
 const ICONS = {
     cuotaInicial: <HandCoins className="w-8 h-8 text-yellow-600" />,
@@ -41,7 +44,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
         if (mostrandoFormulario) {
             setFormData({
                 monto: '',
-                fechaPago: new Date().toISOString().split('T')[0],
+                fechaPago: getTodayString(),
                 observacion: '',
                 urlComprobante: null,
                 metodoPago: titulo
@@ -50,7 +53,6 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
     }, [mostrandoFormulario, setFormData, titulo]);
 
     const minDate = cliente?.datosCliente?.fechaIngreso ? cliente.datosCliente.fechaIngreso.split('T')[0] : null;
-    const getTodayString = () => new Date().toISOString().split('T')[0];
 
     return (
         <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -104,11 +106,9 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                         <textarea name="observacion" value={formData.observacion} onChange={handleInputChange} rows="2" className="w-full border p-2 rounded-lg text-sm dark:bg-gray-700 dark:border-gray-600" placeholder="Ej: Pago parcial..." />
                     </div>
                     <div>
-                        {/* --- INICIO DE LA MODIFICACIÓN --- */}
                         <label className="block font-medium mb-2 text-xs dark:text-gray-300">
                             Comprobante de Pago <span className="text-red-500">*</span>
                         </label>
-                        {/* --- FIN DE LA MODIFICACIÓN --- */}
                         {formData.urlComprobante ? (
                             <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
                                 <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'>
@@ -124,9 +124,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                                 onUploadSuccess={(url) => handleValueChange('urlComprobante', url)}
                             />
                         )}
-                        {/* --- INICIO DE LA MODIFICACIÓN --- */}
                         {errors.urlComprobante && <p className="text-red-600 text-sm mt-1">{errors.urlComprobante}</p>}
-                        {/* --- FIN DE LA MODIFICACIÓN --- */}
                     </div>
                     <div className="flex justify-end gap-2">
                         <button type="button" onClick={() => setMostrandoFormulario(false)} className="bg-gray-200 dark:bg-gray-600 px-4 py-1.5 rounded-md text-sm">Cancelar</button>

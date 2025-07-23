@@ -5,27 +5,39 @@ import { FileText, XCircle } from 'lucide-react';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
-const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEditing, isLocked }) => {
+const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEditing, isLocked, modo }) => {
 
     const handleValueChange = useCallback((field, value) => {
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field, value } });
     }, [dispatch]);
 
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Determinamos si los campos personales deben estar bloqueados.
+    // Esto ocurre si estamos en modo 'editar' y el proceso ha avanzado, O si estamos en modo 'reactivar'.
+    const isPersonalInfoLocked = isLocked || modo === 'reactivar';
+    // --- FIN DE LA MODIFICACIÓN ---
+
     return (
         <div className="animate-fade-in space-y-6">
             <div>
                 <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-100">2. Información del Cliente</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Ingresa los datos personales del nuevo propietario.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    {modo === 'reactivar' ? 'Confirma y actualiza los datos de contacto del cliente.' : 'Ingresa los datos personales del nuevo propietario.'}
+                </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t dark:border-gray-700">
                 <div>
                     <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="nombres">Nombres <span className="text-red-600">*</span></label>
-                    <input id="nombres" name="nombres" type="text" value={formData.nombres} onChange={handleInputChange} disabled={isLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.nombres ? 'border-red-500' : 'border-gray-300'}`} />
+                    <div data-tooltip-id="app-tooltip" data-tooltip-content={isPersonalInfoLocked ? "El nombre no se puede modificar en esta etapa." : ''}>
+                        <input id="nombres" name="nombres" type="text" value={formData.nombres} onChange={handleInputChange} disabled={isPersonalInfoLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.nombres ? 'border-red-500' : 'border-gray-300'}`} />
+                    </div>
                     {errors.nombres && <p className="text-red-600 text-sm mt-1">{errors.nombres}</p>}
                 </div>
                 <div>
                     <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="apellidos">Apellidos <span className="text-red-600">*</span></label>
-                    <input id="apellidos" name="apellidos" type="text" value={formData.apellidos} onChange={handleInputChange} disabled={isLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.apellidos ? 'border-red-500' : 'border-gray-300'}`} />
+                    <div data-tooltip-id="app-tooltip" data-tooltip-content={isPersonalInfoLocked ? "El apellido no se puede modificar en esta etapa." : ''}>
+                        <input id="apellidos" name="apellidos" type="text" value={formData.apellidos} onChange={handleInputChange} disabled={isPersonalInfoLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.apellidos ? 'border-red-500' : 'border-gray-300'}`} />
+                    </div>
                     {errors.apellidos && <p className="text-red-600 text-sm mt-1">{errors.apellidos}</p>}
                 </div>
                 <div>
@@ -52,7 +64,9 @@ const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEdi
                 </div>
                 <div className="md:col-span-2">
                     <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="fechaIngreso">Fecha de Ingreso al Proceso <span className="text-red-600">*</span></label>
-                    <input id="fechaIngreso" name="fechaIngreso" type="date" value={formData.fechaIngreso} onChange={handleInputChange} max={getTodayString()} disabled={isLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.fechaIngreso ? 'border-red-500' : 'border-gray-300'}`} />
+                    <div data-tooltip-id="app-tooltip" data-tooltip-content={isPersonalInfoLocked ? "La fecha de ingreso original no se puede modificar." : ''}>
+                        <input id="fechaIngreso" name="fechaIngreso" type="date" value={formData.fechaIngreso} onChange={handleInputChange} max={getTodayString()} disabled={isPersonalInfoLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.fechaIngreso ? 'border-red-500' : 'border-gray-300'}`} />
+                    </div>
                     {errors.fechaIngreso && <p className="text-red-600 text-sm mt-1">{errors.fechaIngreso}</p>}
                 </div>
                 <div className="md:col-span-2">
@@ -63,7 +77,10 @@ const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEdi
                                 <FileText />
                                 <a href={formData.urlCedula} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Documento Actual</a>
                             </div>
-                            {!isLocked && (<button type="button" onClick={() => handleValueChange('urlCedula', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar documento"><XCircle size={20} /></button>)}
+                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                            {/* El botón de eliminar solo aparece si NO estamos en modo reactivación */}
+                            {modo !== 'reactivar' && !isLocked && (<button type="button" onClick={() => handleValueChange('urlCedula', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar documento"><XCircle size={20} /></button>)}
+                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                         </div>
                     ) : (
                         <FileUpload

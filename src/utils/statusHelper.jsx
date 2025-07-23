@@ -1,18 +1,17 @@
 import React from 'react';
-import { Award, ShieldCheck, Handshake, PenSquare, FileCheck2, Search, FileSignature, FileUp, UserPlus, AlertTriangle, FileText } from 'lucide-react';
+import { Award, ShieldCheck, Handshake, PenSquare, FileCheck2, Search, FileSignature, FileUp, UserPlus, AlertTriangle, FileText, UserX } from 'lucide-react';
 import { PROCESO_CONFIG } from './procesoConfig';
 
-// 1. GENERAMOS EL ORDEN DE LOS PASOS DINÁMICAMENTE
 const PROCESS_STAGES_ORDER = [...PROCESO_CONFIG].map(p => p.key).reverse();
 
-// 2. CONFIGURACIÓN DE ESTADOS MEJORADA Y CENTRALIZADA
 const STATUS_CONFIG = {
-    // Casos especiales
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Se añade un estado específico para clientes que han renunciado.
+    'renunciado': { text: 'Renunció', color: 'bg-orange-100 text-orange-800', icon: <UserX size={14} /> },
+    // --- FIN DE LA MODIFICACIÓN ---
     'renunciaPendiente': { text: 'Renuncia Pendiente', color: 'bg-orange-100 text-orange-800', icon: <AlertTriangle size={14} /> },
     'desconocido': { text: 'Estado Desconocido', color: 'bg-gray-100 text-gray-800', icon: <UserPlus size={14} /> },
     'documentacion': { text: 'Recopilando Documentación', color: 'bg-gray-100 text-gray-800', icon: <FileUp size={14} /> },
-
-    // Mapeo de todos los pasos del proceso
     'promesaEnviada': { text: 'Promesa Enviada', color: 'bg-pink-100 text-pink-800', icon: <FileSignature size={14} /> },
     'promesaRecibida': { text: 'Promesa Firmada', color: 'bg-pink-100 text-pink-800', icon: <FileSignature size={14} /> },
     'envioDocumentacionAvaluo': { text: 'Doc. Avalúo Enviada', color: 'bg-purple-100 text-purple-800', icon: <Search size={14} /> },
@@ -32,32 +31,26 @@ const STATUS_CONFIG = {
     'desembolsoMCY': { text: 'Subsidio MCY Desembolsado', color: 'bg-teal-100 text-teal-800', icon: <ShieldCheck size={14} /> },
     'solicitudDesembolsoCaja': { text: 'Sol. Desembolso Caja Comp.', color: 'bg-teal-100 text-teal-800', icon: <ShieldCheck size={14} /> },
     'desembolsoCaja': { text: 'Subsidio Caja Desembolsado', color: 'bg-teal-100 text-teal-800', icon: <ShieldCheck size={14} /> },
-    // --- INICIO DE LA MODIFICACIÓN ---
-    // Se cambia el texto del último paso para que sea el estado final.
     'facturaVenta': { text: 'A Paz y Salvo', color: 'bg-green-100 text-green-800', icon: <Award size={14} /> },
-    // --- FIN DE LA MODIFICACIÓN ---
 };
 
-
-// 3. LÓGICA DE DETERMINACIÓN DE ESTADO ACTUALIZADA
 export const determineClientStatus = (cliente) => {
     if (!cliente) return STATUS_CONFIG.desconocido;
-    if (cliente.tieneRenunciaPendiente) return STATUS_CONFIG.renunciaPendiente;
 
     // --- INICIO DE LA MODIFICACIÓN ---
-    // Se elimina la comprobación directa del saldo. Ahora el estado se basa 100% en el proceso.
-    // if (cliente.vivienda && cliente.vivienda.saldoPendiente <= 0) return STATUS_CONFIG.pazYSalvo;
+    // Se prioriza el estado de 'renunciado' por encima de todo lo demás.
+    if (cliente.status === 'renunciado') return STATUS_CONFIG.renunciado;
     // --- FIN DE LA MODIFICACIÓN ---
+
+    if (cliente.tieneRenunciaPendiente) return STATUS_CONFIG.renunciaPendiente;
 
     const proceso = cliente.proceso || {};
 
-    // Buscamos el último paso completado en el orden definido dinámicamente
     for (const stage of PROCESS_STAGES_ORDER) {
         if (proceso[stage]?.completado) {
             return STATUS_CONFIG[stage] || STATUS_CONFIG.desconocido;
         }
     }
 
-    // Si ningún paso del proceso está completado, el estado por defecto es 'documentacion'
     return STATUS_CONFIG.documentacion;
 };

@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useData } from '../../context/DataContext';
-import { deleteCliente, inactivarCliente, renunciarAVivienda, reactivarCliente, createNotification } from '../../utils/storage';
+import { deleteCliente, inactivarCliente, renunciarAVivienda, reactivarCliente, createNotification, cancelarRenuncia } from '../../utils/storage';
 import toast from 'react-hot-toast';
 import UndoToast from '../../components/UndoToast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
@@ -9,19 +9,15 @@ export const useListarClientes = () => {
     const { isLoading, clientes, renuncias, abonos, recargarDatos } = useData();
 
     // Estados para modales
-    const [clienteAEditar, setClienteAEditar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [clienteARenunciar, setClienteARenunciar] = useState(null);
-    const [clienteAReactivar, setClienteAReactivar] = useState(null);
     const [datosRenuncia, setDatosRenuncia] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [clienteEnModal, setClienteEnModal] = useState({ cliente: null, modo: null });
 
     // Estados para filtros
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('activo');
-
-    const [clientesOcultos, setClientesOcultos] = useState([]);
-    const deletionTimeouts = useRef({});
 
     const clientesFiltrados = useMemo(() => {
         let itemsProcesados = clientes.map(cliente => {
@@ -61,9 +57,12 @@ export const useListarClientes = () => {
         });
     }, [clientes, renuncias, searchTerm, statusFilter]);
 
-    const clientesVisibles = clientesFiltrados.filter(c => !clientesOcultos.includes(c.id));
+    const clientesVisibles = clientesFiltrados;
 
-    const handleGuardado = useCallback(() => { recargarDatos(); setClienteAEditar(null); }, [recargarDatos]);
+    const handleGuardado = useCallback(() => {
+        recargarDatos();
+        setClienteEnModal({ cliente: null, modo: null });
+    }, [recargarDatos]);
 
     const iniciarRenuncia = (cliente) => {
         if (!cliente.puedeRenunciar) {
@@ -73,7 +72,13 @@ export const useListarClientes = () => {
         setClienteARenunciar(cliente);
     };
 
-    const iniciarReactivacion = (cliente) => setClienteAReactivar(cliente);
+    const iniciarEdicion = (cliente) => {
+        setClienteEnModal({ cliente, modo: 'editar' });
+    };
+
+    const iniciarReactivacion = (cliente) => {
+        setClienteEnModal({ cliente, modo: 'reactivar' });
+    };
 
     const iniciarEliminacion = (cliente) => {
         const abonosDelCliente = abonos.filter(a => a.clienteId === cliente.id);
@@ -90,7 +95,6 @@ export const useListarClientes = () => {
         if (!clienteAEliminar) return;
 
         const { id, esBorradoFisico } = clienteAEliminar;
-
         const accion = esBorradoFisico ? deleteCliente(id) : inactivarCliente(id);
         const mensajeExito = esBorradoFisico ? "Cliente eliminado permanentemente." : "Cliente archivado con éxito.";
         const mensajeError = esBorradoFisico ? "No se pudo eliminar el cliente." : "No se pudo archivar el cliente.";
@@ -103,14 +107,10 @@ export const useListarClientes = () => {
                     recargarDatos();
                     return mensajeExito;
                 },
-                error: () => {
-                    return mensajeError;
-                }
+                error: () => mensajeError
             }
         );
-
         setClienteAEliminar(null);
-
     }, [clienteAEliminar, recargarDatos]);
 
     const handleConfirmarMotivo = (motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo) => {
@@ -124,13 +124,7 @@ export const useListarClientes = () => {
         const { cliente, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo } = datosRenuncia;
         try {
             const { renunciaId, clienteNombre } = await renunciarAVivienda(
-                cliente.id,
-                cliente.viviendaId,
-                motivo,
-                observacion,
-                fechaRenuncia,
-                penalidadMonto,
-                penalidadMotivo
+                cliente.id, cliente.viviendaId, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo
             );
             toast.success("La renuncia se ha procesado correctamente.");
             await createNotification('renuncia', `Se registró una renuncia del cliente ${clienteNombre}.`, `/renuncias/detalle/${renunciaId}`);
@@ -143,27 +137,27 @@ export const useListarClientes = () => {
         }
     }, [datosRenuncia, recargarDatos]);
 
-    const confirmarReactivacion = useCallback(async () => {
-        if (!clienteAReactivar) return;
-        setIsSubmitting(true);
-        try {
-            await reactivarCliente(clienteAReactivar.id);
-            toast.success("El cliente ha sido reactivado.");
-            recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo reactivar el cliente.");
-        } finally {
-            setClienteAReactivar(null);
-            setIsSubmitting(false);
-        }
-    }, [clienteAReactivar, recargarDatos]);
-
     return {
         isLoading,
         clientesVisibles,
         statusFilter, setStatusFilter,
         searchTerm, setSearchTerm,
-        modals: { clienteAEditar, setClienteAEditar, clienteAEliminar, setClienteAEliminar, clienteARenunciar, setClienteARenunciar, clienteAReactivar, setClienteAReactivar, datosRenuncia, setDatosRenuncia, isSubmitting },
-        handlers: { handleGuardado, iniciarEliminacion, iniciarReactivacion, iniciarRenuncia, confirmarEliminar, handleConfirmarMotivo, confirmarRenunciaFinal, confirmarReactivacion }
+        modals: {
+            clienteAEliminar, setClienteAEliminar,
+            clienteARenunciar, setClienteARenunciar,
+            datosRenuncia, setDatosRenuncia,
+            isSubmitting,
+            clienteEnModal, setClienteEnModal
+        },
+        handlers: {
+            handleGuardado,
+            iniciarEliminacion,
+            iniciarRenuncia,
+            confirmarEliminar,
+            handleConfirmarMotivo,
+            confirmarRenunciaFinal,
+            iniciarEdicion,
+            iniciarReactivacion
+        }
     };
 };

@@ -6,7 +6,7 @@ import ModalConfirmacion from '../../components/ModalConfirmacion';
 import FormularioCliente from './FormularioCliente';
 import { Home, User, CircleDollarSign, Check, UserCog, Loader } from 'lucide-react';
 
-const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
+const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => {
 
     const {
         step,
@@ -20,7 +20,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
         hayCambios,
         viviendasOptions,
         handlers,
-    } = useClienteForm(true, clienteAEditar, onGuardar);
+    } = useClienteForm(true, clienteAEditar, onGuardar, modo);
 
     const escrituraFirmada = clienteAEditar?.proceso?.minutaFirmada?.completado === true;
 
@@ -34,7 +34,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title="Editar Cliente" icon={<UserCog size={32} className="text-[#1976d2]" />}>
+            <Modal isOpen={isOpen} onClose={onClose} title={modo === 'reactivar' ? "Reactivar Cliente e Iniciar Proceso" : "Editar Cliente"} icon={<UserCog size={32} className="text-[#1976d2]" />}>
                 {!formData.datosCliente.nombres ? (
                     <div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos...</div>
                 ) : (
@@ -60,8 +60,9 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar }) => {
                                 errors={errors}
                                 viviendaOptions={viviendasOptions}
                                 isEditing={true}
-                                isFinancialLocked={escrituraFirmada}
-                                isPersonalInfoLocked={escrituraFirmada}
+                                isFinancialLocked={modo === 'editar' && escrituraFirmada}
+                                isPersonalInfoLocked={modo === 'editar' && escrituraFirmada}
+                                modo={modo}
                                 clienteAEditar={clienteAEditar}
                                 handleInputChange={handlers.handleInputChange}
                                 handleFinancialFieldChange={handlers.handleFinancialFieldChange}
