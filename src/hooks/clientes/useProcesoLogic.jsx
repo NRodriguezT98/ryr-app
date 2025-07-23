@@ -41,7 +41,7 @@ export const useProcesoLogic = (cliente, onSave) => {
         if (!pasoAReabrir) return;
         setProcesoState(prev => {
             const newState = { ...prev };
-            newState[pasoAReabrir] = { ...newState[pasoAReabrir], completado: false, fecha: null, motivoUltimoCambio: 'Paso reabierto' };
+            newState[pasoAReabrir] = { ...newState[pasoAReabrir], completado: false, fecha: null, motivoUltimoCambio: 'Paso reabierto', fechaUltimaModificacion: getTodayString() };
             return newState;
         });
         setPasoAReabrir(null);
@@ -56,6 +56,7 @@ export const useProcesoLogic = (cliente, onSave) => {
 
     const iniciarEdicionFecha = useCallback((pasoKey) => setPasoAEditarFecha({ key: pasoKey, fecha: procesoState[pasoKey].fecha, motivo: '' }), [procesoState]);
 
+    // --- INICIO DE LA MODIFICACIÓN ---
     const confirmarEdicionFecha = useCallback((pasoKey, nuevaFecha, motivo) => {
         if (!motivo.trim()) {
             toast.error("El motivo del cambio es obligatorio.");
@@ -63,11 +64,17 @@ export const useProcesoLogic = (cliente, onSave) => {
         }
         setProcesoState(prev => ({
             ...prev,
-            [pasoKey]: { ...prev[pasoKey], fecha: nuevaFecha, motivoUltimoCambio: motivo }
+            [pasoKey]: {
+                ...prev[pasoKey],
+                fecha: nuevaFecha,
+                motivoUltimoCambio: motivo,
+                fechaUltimaModificacion: getTodayString() // Guardamos la fecha de hoy como fecha de modificación
+            }
         }));
         setPasoAEditarFecha(null);
         toast.success("Fecha y motivo actualizados.");
     }, []);
+    // --- FIN DE LA MODIFICACIÓN ---
 
     const cancelarEdicionFecha = useCallback(() => setPasoAEditarFecha(null), []);
 

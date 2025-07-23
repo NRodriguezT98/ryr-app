@@ -51,14 +51,18 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
                         {!isPermanentlyLocked && (
                             <>
                                 <button onClick={() => fileInputRef.current?.click()} className="text-yellow-600 dark:text-yellow-400 hover:underline text-sm font-semibold flex items-center gap-1"><Replace size={14} /> Reemplazar</button>
-                                <button
-                                    onClick={handleRemove}
-                                    className="text-red-500 hover:underline text-sm font-semibold flex items-center gap-1 disabled:text-gray-400 disabled:cursor-not-allowed"
-                                    disabled={esHito}
-                                    title={esHito ? "No se puede eliminar la evidencia de un hito." : "Eliminar evidencia"}
+                                <div
+                                    data-tooltip-id="app-tooltip"
+                                    data-tooltip-content={esHito ? "No se puede eliminar la evidencia de un hito." : "Eliminar evidencia"}
                                 >
-                                    <Trash2 size={14} /> Eliminar
-                                </button>
+                                    <button
+                                        onClick={handleRemove}
+                                        className="text-red-500 hover:underline text-sm font-semibold flex items-center gap-1 disabled:text-gray-400 disabled:cursor-not-allowed"
+                                        disabled={esHito}
+                                    >
+                                        <Trash2 size={14} /> Eliminar
+                                    </button>
+                                </div>
                                 <input type="file" ref={fileInputRef} onChange={handleFileChangeForReplace} className="hidden" accept=".pdf,.png,.jpg,.jpeg" />
                             </>
                         )}
@@ -94,21 +98,17 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
             setFechaErrorLocal("Debes seleccionar una fecha.");
             return;
         }
-
         const fechaSeleccionada = parseDateAsUTC(fechaCompletado);
         const fechaMinima = parseDateAsUTC(paso.minDate);
         const hoy = parseDateAsUTC(getTodayString());
-
         if (fechaSeleccionada > hoy) {
             setFechaErrorLocal("La fecha no puede ser futura.");
             return;
         }
-
         if (fechaSeleccionada < fechaMinima) {
             setFechaErrorLocal(`La fecha no puede ser anterior al último paso válido (${formatDisplayDate(paso.minDate)}).`);
             return;
         }
-
         setFechaErrorLocal(null);
         onCompletarPaso(key, fechaCompletado);
     };
@@ -121,10 +121,10 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
     };
 
     const cardClasses = `p-5 rounded-xl border-2 transition-all ${justSaved && data?.completado ? 'border-green-500 animate-pulse-once' :
-        error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
-            data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
-                (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
-                    esSiguientePaso ? 'border-blue-500 bg-white dark:bg-gray-700 shadow-lg dark:border-blue-500' : 'border-blue-200 bg-white dark:bg-gray-700 dark:border-gray-600'
+            error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+                data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
+                    (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
+                        esSiguientePaso ? 'border-blue-500 bg-white dark:bg-gray-700 shadow-lg dark:border-blue-500' : 'border-blue-200 bg-white dark:bg-gray-700 dark:border-gray-600'
         }`;
 
     return (
@@ -136,11 +136,38 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
                 </div>
                 {data?.completado && (
                     <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{formatDisplayDate(data.fecha)}</p>
+                        <div className="flex items-center gap-2">
+                            <Calendar size={16} className="text-gray-500 dark:text-gray-400" />
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{formatDisplayDate(data.fecha)}</p>
+                            {data.motivoUltimoCambio && (
+                                <div
+                                    data-tooltip-id="app-tooltip"
+                                    data-tooltip-content={`Motivo: ${data.motivoUltimoCambio} (Modificado el ${formatDisplayDate(data.fechaUltimaModificacion)})`}
+                                >
+                                    <Info size={16} className="text-blue-500 dark:text-blue-400 cursor-help" />
+                                </div>
+                            )}
+                        </div>
                         {!isPermanentlyLocked && (
                             <>
-                                <button onClick={() => onIniciarEdicionFecha(key)} disabled={hayPasoEnReapertura} className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed" title="Editar fecha y motivo"><Pencil size={16} /></button>
-                                <button onClick={() => onIniciarReapertura(key)} disabled={isLocked || hayPasoEnReapertura} className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed" title="Reabrir este paso"><RotateCcw size={16} /></button>
+                                <button
+                                    onClick={() => onIniciarEdicionFecha(key)}
+                                    disabled={hayPasoEnReapertura}
+                                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    data-tooltip-id="app-tooltip"
+                                    data-tooltip-content="Editar fecha y motivo"
+                                >
+                                    <Pencil size={16} />
+                                </button>
+                                <button
+                                    onClick={() => onIniciarReapertura(key)}
+                                    disabled={isLocked || hayPasoEnReapertura}
+                                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed"
+                                    data-tooltip-id="app-tooltip"
+                                    data-tooltip-content="Reabrir este paso"
+                                >
+                                    <RotateCcw size={16} />
+                                </button>
                             </>
                         )}
                     </div>
@@ -187,7 +214,6 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
                                         <input type="date" value={fechaCompletado} onChange={handleFechaChange} min={paso.minDate} max={paso.maxDate} className={`text-sm border p-1.5 rounded-md dark:bg-gray-700 ${fechaErrorLocal || error ? 'border-red-500' : 'dark:border-gray-600'}`} />
                                         <button onClick={handleConfirmar} className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Marcar como Completado</button>
                                     </div>
-                                    {/* --- INICIO DE LA MODIFICACIÓN --- */}
                                     {fechaErrorLocal && (
                                         <div className="mt-2 text-right">
                                             <p className="inline-flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold">
@@ -196,7 +222,6 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
                                             </p>
                                         </div>
                                     )}
-                                    {/* --- FIN DE LA MODIFICACIÓN --- */}
                                 </div>
                             )}
                         </>

@@ -183,12 +183,13 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     }
                 });
                 if (formData.documentos.promesaEnviadaUrl && formData.documentos.promesaEnviadaCorreoUrl) {
+                    const fechaDeInicio = getTodayString(); // La reactivación siempre usa la fecha actual
                     nuevoProceso.promesaEnviada = {
                         completado: true,
-                        fecha: getTodayString(),
+                        fecha: fechaDeInicio,
                         evidencias: {
-                            promesaEnviadaDoc: { url: formData.documentos.promesaEnviadaUrl, estado: 'subido', fechaSubida: getTodayString() },
-                            promesaEnviadaCorreo: { url: formData.documentos.promesaEnviadaCorreoUrl, estado: 'subido', fechaSubida: getTodayString() }
+                            promesaEnviadaDoc: { url: formData.documentos.promesaEnviadaUrl, estado: 'subido', fechaSubida: fechaDeInicio },
+                            promesaEnviadaCorreo: { url: formData.documentos.promesaEnviadaCorreoUrl, estado: 'subido', fechaSubida: fechaDeInicio }
                         }
                     };
                 }
@@ -199,8 +200,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     proceso: nuevoProceso,
                     viviendaId: formData.viviendaSeleccionada.id,
                     status: 'activo',
-                    fechaInicioProceso: getTodayString() // <-- Se establece la nueva fecha de inicio del proceso
+                    fechaInicioProceso: getTodayString()
                 };
+                delete clienteParaActualizar.vivienda; // Limpiamos datos innecesarios
                 await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
                 toast.success("¡Cliente reactivado con un nuevo proceso!");
                 await createNotification('cliente', `El cliente ${toTitleCase(clienteAEditar.datosCliente.nombres)} fue reactivado.`, `/clientes/detalle/${clienteAEditar.id}`);
@@ -232,12 +234,13 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     }
                 });
                 if (formData.documentos.promesaEnviadaUrl && formData.documentos.promesaEnviadaCorreoUrl) {
+                    const fechaDeInicio = formData.datosCliente.fechaIngreso;
                     nuevoProceso.promesaEnviada = {
                         completado: true,
-                        fecha: getTodayString(),
+                        fecha: fechaDeInicio,
                         evidencias: {
-                            promesaEnviadaDoc: { url: formData.documentos.promesaEnviadaUrl, estado: 'subido', fechaSubida: getTodayString() },
-                            promesaEnviadaCorreo: { url: formData.documentos.promesaEnviadaCorreoUrl, estado: 'subido', fechaSubida: getTodayString() }
+                            promesaEnviadaDoc: { url: formData.documentos.promesaEnviadaUrl, estado: 'subido', fechaSubida: fechaDeInicio },
+                            promesaEnviadaCorreo: { url: formData.documentos.promesaEnviadaCorreoUrl, estado: 'subido', fechaSubida: fechaDeInicio }
                         }
                     };
                 }
@@ -246,7 +249,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     financiero: formData.financiero,
                     proceso: nuevoProceso,
                     viviendaId: formData.viviendaSeleccionada.id,
-                    fechaInicioProceso: formData.datosCliente.fechaIngreso // <-- Se establece la fecha de inicio del proceso
+                    fechaInicioProceso: formData.datosCliente.fechaIngreso
                 };
                 await addClienteAndAssignVivienda(clienteParaGuardar);
                 toast.success("¡Cliente y proceso iniciados con éxito!");
