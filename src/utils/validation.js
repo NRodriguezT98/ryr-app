@@ -4,7 +4,7 @@ import { formatCurrency, formatDisplayDate } from './textFormatters';
 export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = null) => {
     const errors = {};
     const { manzana, numero, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente, areaLote, areaConstruida } = formData;
-    const linderoRegex = /^[a-zA-Z0-9\s.,\(\)-]*$/;
+    const linderoRegex = /^[a-zA-ZáéíóúÁÉÍÓÚ0-9\s.,\(\)-]*$/;
 
     if (!manzana) errors.manzana = "La manzana es obligatoria.";
     if (!numero) errors.numero = "El número de casa es obligatorio.";

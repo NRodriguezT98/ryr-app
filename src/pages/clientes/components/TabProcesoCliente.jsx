@@ -7,7 +7,7 @@ import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
 import { PartyPopper, UserX } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion'; // <-- IMPORTADO
+import { AnimatePresence, motion } from 'framer-motion';
 
 const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) => {
 
@@ -16,7 +16,6 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
             ...cliente,
             proceso: nuevoProceso
         };
-        // Excluimos 'vivienda' antes de guardar para evitar duplicados
         const { vivienda, ...datosParaGuardar } = clienteActualizado;
         await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId);
         onDatosRecargados();
@@ -101,13 +100,12 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
                 </div>
             )}
 
-            {/* --- INICIO DE LA SECCIÓN CORREGIDA --- */}
             <div className="space-y-4">
                 <AnimatePresence>
                     {pasosRenderizables.map((paso, index) => (
                         <motion.div
-                            key={paso.key} // La key se mueve al contenedor de la animación
-                            layout // Anima cambios de posición y tamaño
+                            key={paso.key}
+                            layout
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, transition: { duration: 0.2 } }}
@@ -131,8 +129,6 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
                     ))}
                 </AnimatePresence>
             </div>
-            {/* --- FIN DE LA SECCIÓN CORREGIDA --- */}
-
 
             <ModalConfirmacion
                 isOpen={!!pasoAReabrir}

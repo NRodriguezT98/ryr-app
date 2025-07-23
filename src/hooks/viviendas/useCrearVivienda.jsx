@@ -20,10 +20,10 @@ const inputFilters = {
     areaLote: { regex: /^[0-9.,]*$/, message: "Solo permite números y separadores (, o .)" },
     areaConstruida: { regex: /^[0-9.,]*$/, message: "Solo permite números y separadores (, o .)" },
     nomenclatura: { regex: /^[a-zA-Z0-9\s#\-.]*$/, message: "Caracter no permitido, solo se permiten letras, números, #, () y separadores ( , o . )." },
-    linderoNorte: { regex: /^[a-zA-Z0-9\s.,\(\)-]*$/, message: "Caracter no permitido, solo se permiten letras, números, ( ) y separadores ( , o . )." },
-    linderoSur: { regex: /^[a-zA-Z0-9\s.,\(\)-]*$/, message: "Caracter no permitido, solo se permiten letras, números, ( ) y separadores ( , o . )." },
-    linderoOriente: { regex: /^[a-zA-Z0-9\s.,\(\)-]*$/, message: "Caracter no permitido, solo se permiten letras, números, ( ) y separadores ( , o . )." },
-    linderoOccidente: { regex: /^[a-zA-Z0-9\s.,\(\)-]*$/, message: "Caracter no permitido, solo se permiten letras, números, ( ) y separadores ( , o . )." },
+    linderoNorte: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚ0-9\s.,\(\)-]*$/, message: "Caracter no permitido, solo se permiten letras (incluyendo acentos), números, ( ) y separadores ( , o . )." },
+    linderoSur: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚ0-9\s.,\(\)-]*$/, message: "Caracter no permitido, solo se permiten letras (incluyendo acentos), números, ( ) y separadores ( , o . )." },
+    linderoOriente: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚ0-9\s.,\(\)-]*$/, message: "Caracter no permitido, solo se permiten letras (incluyendo acentos), números, ( ) y separadores ( , o . )." },
+    linderoOccidente: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚ0-9\s.,\(\)-]*$/, message: "Caracter no permitido, solo se permiten letras (incluyendo acentos), números, ( ) y separadores ( , o . )." }
 };
 
 export const useCrearVivienda = () => {
