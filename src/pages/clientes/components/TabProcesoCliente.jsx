@@ -7,6 +7,7 @@ import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
 import { PartyPopper, UserX } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion'; // <-- IMPORTADO
 
 const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) => {
 
@@ -15,13 +16,12 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
             ...cliente,
             proceso: nuevoProceso
         };
+        // Excluimos 'vivienda' antes de guardar para evitar duplicados
         const { vivienda, ...datosParaGuardar } = clienteActualizado;
         await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId);
         onDatosRecargados();
     };
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Se pasa la función 'handleSave' correctamente definida en lugar de la variable 'onSave' que no existe.
     const {
         pasosRenderizables,
         progreso,
@@ -35,7 +35,6 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
         procesoCompletado,
         handlers,
     } = useProcesoLogic(cliente, handleSave);
-    // --- FIN DE LA CORRECCIÓN ---
 
     if (cliente.status === 'renunciado') {
         return (
@@ -61,7 +60,6 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
 
     const pasoAReabrirInfo = pasoAReabrir ? pasosRenderizables.find(p => p.key === pasoAReabrir) : null;
     const nombrePasoAReabrir = pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '';
-
     const porcentajeProgreso = progreso.total > 0 ? (progreso.completados / progreso.total) * 100 : 0;
 
     return (
@@ -103,26 +101,38 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
                 </div>
             )}
 
+            {/* --- INICIO DE LA SECCIÓN CORREGIDA --- */}
             <div className="space-y-4">
-                {pasosRenderizables.map((paso, index) => (
-                    <PasoProcesoCard
-                        key={paso.key}
-                        paso={{
-                            ...paso,
-                            label: `${index + 1}. ${paso.label}`,
-                            stepNumber: index + 1,
-                            hayPasoEnReapertura
-                        }}
-                        justSaved={justSaved}
-                        onUpdateEvidencia={handlers.handleUpdateEvidencia}
-                        onCompletarPaso={handlers.handleCompletarPaso}
-                        onIniciarReapertura={handlers.iniciarReapertura}
-                        onDeshacerReapertura={handlers.deshacerReapertura}
-                        onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
-                        clienteId={cliente.id}
-                    />
-                ))}
+                <AnimatePresence>
+                    {pasosRenderizables.map((paso, index) => (
+                        <motion.div
+                            key={paso.key} // La key se mueve al contenedor de la animación
+                            layout // Anima cambios de posición y tamaño
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                        >
+                            <PasoProcesoCard
+                                paso={{
+                                    ...paso,
+                                    label: `${index + 1}. ${paso.label}`,
+                                    stepNumber: index + 1,
+                                    hayPasoEnReapertura
+                                }}
+                                justSaved={justSaved}
+                                onUpdateEvidencia={handlers.handleUpdateEvidencia}
+                                onCompletarPaso={handlers.handleCompletarPaso}
+                                onIniciarReapertura={handlers.iniciarReapertura}
+                                onDeshacerReapertura={handlers.deshacerReapertura}
+                                onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
+                                clienteId={cliente.id}
+                            />
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
             </div>
+            {/* --- FIN DE LA SECCIÓN CORREGIDA --- */}
+
 
             <ModalConfirmacion
                 isOpen={!!pasoAReabrir}
@@ -139,7 +149,6 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
                 pasoInfo={pasoAEditarFecha ? { ...pasoAEditarFecha, ...pasosRenderizables.find(p => p.key === pasoAEditarFecha.key) } : null}
             />
 
-            <Tooltip id="app-tooltip" />
         </div>
     );
 };
