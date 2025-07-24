@@ -101,17 +101,12 @@ export const addClienteAndAssignVivienda = async (clienteData) => {
     }
 };
 
-export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
+export const addAbono = async (abonoData) => {
     const viviendaRef = doc(db, "viviendas", abonoData.viviendaId);
     const clienteRef = doc(db, "clientes", abonoData.clienteId);
     const abonoRef = doc(collection(db, "abonos"));
 
-    const abonoParaGuardar = {
-        ...abonoData,
-        id: abonoRef.id,
-        estadoProceso: 'activo',
-        clienteNombre: `${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`.trim()
-    };
+    const abonoParaGuardar = { ...abonoData, id: abonoRef.id };
 
     await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);
@@ -246,7 +241,6 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
         const totalAbonado = abonosDelCiclo.reduce((sum, abono) => sum + abono.monto, 0);
         const totalADevolver = totalAbonado - penalidadMonto;
         const estadoInicial = totalADevolver > 0 ? 'Pendiente' : 'Cerrada';
-
         const documentosArchivados = [];
         if (clienteData.datosCliente?.urlCedula) {
             documentosArchivados.push({ label: 'Cédula de Ciudadanía', url: clienteData.datosCliente.urlCedula });
@@ -272,7 +266,6 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
                 }
             });
         }
-
         const registroRenuncia = {
             id: renunciaRef.id, clienteId, clienteNombre, viviendaId,
             viviendaInfo: `Mz. ${viviendaDoc.data().manzana} - Casa ${viviendaDoc.data().numeroCasa}`,
@@ -281,7 +274,6 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
             motivo, observacion, historialAbonos: abonosDelCiclo,
             documentosArchivados
         };
-
         transaction.set(renunciaRef, registroRenuncia);
         transaction.update(viviendaRef, { clienteId: null, clienteNombre: "", totalAbonado: 0, saldoPendiente: viviendaDoc.data().valorTotal });
         transaction.update(clienteRef, { viviendaId: null, proceso: {}, financiero: {} });

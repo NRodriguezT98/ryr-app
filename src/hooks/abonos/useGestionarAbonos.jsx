@@ -24,7 +24,7 @@ export const useGestionarAbonos = () => {
         if (!cliente) return null;
 
         const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
-        if (!vivienda) return { data: { cliente, vivienda: null, historial: [], fuentes: [] } };
+        if (!vivienda) return { data: { cliente, vivienda: null, historial: [], fuentes: [], isPagada: false } };
 
         const historial = abonos
             .filter(a => a.clienteId === selectedClienteId && a.estadoProceso === 'activo')
@@ -42,12 +42,27 @@ export const useGestionarAbonos = () => {
             if (financiero.aplicaSubsidioCaja) fuentes.push(crearFuente(`Subsidio Caja (${financiero.subsidioCaja.caja || 'N/A'})`, "subsidioCaja", financiero.subsidioCaja.monto || 0));
         }
 
+        // --- INICIO DE LA MODIFICACIÓN ---
+        // Buscamos si existen abonos de tipo 'condonacion'
+        const condonaciones = historial.filter(a => a.fuente === 'condonacion');
+        if (condonaciones.length > 0) {
+            const totalCondonado = condonaciones.reduce((sum, abono) => sum + abono.monto, 0);
+            fuentes.push({
+                titulo: "Condonación de Saldo",
+                fuente: "condonacion",
+                montoPactado: totalCondonado, // El "pactado" es lo que se condonó
+                abonos: condonaciones
+            });
+        }
+        // --- FIN DE LA MODIFICACIÓN ---
+
         return {
             data: {
                 cliente,
                 vivienda,
                 historial,
-                fuentes
+                fuentes,
+                isPagada: vivienda.saldoPendiente <= 0
             }
         };
     }, [selectedClienteId, clientes, viviendas, abonos, isDataLoading]);

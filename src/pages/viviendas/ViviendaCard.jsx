@@ -1,14 +1,14 @@
 import React, { Fragment, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home } from 'lucide-react';
+import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, HandCoins } from 'lucide-react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 
-const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
+const ViviendaCard = ({ vivienda, onEdit, onDelete, onCondonarSaldo }) => {
     const {
         manzana, numeroCasa, matricula, nomenclatura, valorFinal, totalAbonado,
         saldoPendiente, clienteNombre, clienteId, descuentoMonto, recargoEsquinera, areaConstruida,
-        puedeEditar, puedeEliminar, puedeAplicarDescuento // <-- Recibimos la nueva propiedad
+        puedeEditar, puedeEliminar, puedeCondonarSaldo
     } = vivienda;
 
     const porcentajePagado = valorFinal > 0 ? (totalAbonado / valorFinal) * 100 : 0;
@@ -103,19 +103,17 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onApplyDiscount }) => {
                                     )}
                                 </Menu.Item>
                             </div>
-                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
                             <div className="px-1 py-1">
-                                <Menu.Item disabled={!puedeAplicarDescuento}>
+                                <Menu.Item disabled={!puedeCondonarSaldo}>
                                     {({ active, disabled }) => (
-                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede aplicar un descuento a una vivienda pagada o con proceso finalizado." : ''}>
-                                            <button onClick={() => onApplyDiscount(vivienda)} className={`${active ? 'bg-purple-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeAplicarDescuento}>
-                                                <Tag className="w-5 h-5 mr-2" /> Aplicar/Ver Descuento
+                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede condonar saldo a una vivienda pagada o sin cliente." : ''}>
+                                            <button onClick={() => onCondonarSaldo(vivienda)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeCondonarSaldo}>
+                                                <HandCoins className="w-5 h-5 mr-2" /> Condonar Saldo
                                             </button>
                                         </div>
                                     )}
                                 </Menu.Item>
                             </div>
-                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                             <div className="px-1 py-1">
                                 <Menu.Item disabled={!puedeEliminar}>
                                     {({ active, disabled }) => (

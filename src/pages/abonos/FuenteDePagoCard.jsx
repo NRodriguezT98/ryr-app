@@ -10,15 +10,20 @@ const ICONS = {
     credito: <Landmark className="w-8 h-8 text-blue-600" />,
     subsidioVivienda: <Gift className="w-8 h-8 text-green-600" />,
     subsidioCaja: <Banknote className="w-8 h-8 text-purple-600" />,
-    gastosNotariales: <FilePlus2 className="w-8 h-8 text-slate-600" />
+    gastosNotariales: <FilePlus2 className="w-8 h-8 text-slate-600" />,
+    condonacion: <HandCoins className="w-8 h-8 text-indigo-600" />
 };
 
 const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, cliente, onAbonoRegistrado }) => {
+    // --- INICIO DE LA CORRECCIÓN ---
     const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
+    // --- FIN DE LA CORRECCIÓN ---
 
     const totalAbonado = abonos.reduce((sum, abono) => sum + abono.monto, 0);
     const saldoPendiente = montoPactado - totalAbonado;
     const porcentajePagado = montoPactado > 0 ? (totalAbonado / montoPactado) * 100 : 100;
+
+    const isViviendaPagada = vivienda.saldoPendiente <= 0;
 
     const {
         formData, errors, handleInputChange, handleValueChange,
@@ -49,12 +54,8 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
         }
     }, [mostrandoFormulario, setFormData, titulo]);
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Ahora, la fecha mínima para el calendario se basa en la fecha de inicio del proceso actual,
-    // que es la fecha de reactivación para clientes que han vuelto.
     const fechaDeInicioDelProceso = cliente?.fechaInicioProceso || cliente?.datosCliente?.fechaIngreso;
     const minDate = fechaDeInicioDelProceso ? fechaDeInicioDelProceso.split('T')[0] : null;
-    // --- FIN DE LA CORRECCIÓN ---
 
     return (
         <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -138,13 +139,14 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                 </form>
             )}
 
-            {saldoPendiente > 0 && !mostrandoFormulario && (
+            {saldoPendiente > 0 && !mostrandoFormulario && !isViviendaPagada && fuente !== 'condonacion' && (
                 <div className="mt-4 pt-4 border-t dark:border-gray-700 text-center">
                     <button onClick={() => setMostrandoFormulario(true)} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline">
                         + Registrar Abono a esta Fuente
                     </button>
                 </div>
             )}
+
             {saldoPendiente <= 0 && (
                 <div className="mt-4 pt-4 border-t dark:border-gray-700 text-center">
                     <p className="text-green-600 dark:text-green-400 font-bold text-sm">✅ Esta fuente de pago ha sido completada.</p>

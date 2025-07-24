@@ -16,36 +16,23 @@ export const useListarViviendas = () => {
     const viviendasFiltradasYOrdenadas = useMemo(() => {
         let itemsProcesados = viviendas.map(vivienda => {
             const clienteAsignado = clientes.find(c => c.id === vivienda.clienteId);
-
-            // --- INICIO DE LA MODIFICACIÓN ---
             const procesoFinalizado = clienteAsignado?.proceso?.facturaVenta?.completado === true;
             const viviendaPagada = vivienda.saldoPendiente <= 0;
             const tieneHistorial = !!vivienda.clienteId || renuncias.some(r => r.viviendaId === vivienda.id);
-
             return {
                 ...vivienda,
                 puedeEditar: !procesoFinalizado,
                 puedeEliminar: !tieneHistorial,
-                puedeAplicarDescuento: !procesoFinalizado && !viviendaPagada, // La nueva lógica
+                puedeCondonarSaldo: !procesoFinalizado && !viviendaPagada && vivienda.clienteId,
                 camposFinancierosBloqueados: !!vivienda.clienteId
             };
-            // --- FIN DE LA MODIFICACIÓN ---
         });
-
         switch (statusFilter) {
-            case 'disponibles':
-                itemsProcesados = itemsProcesados.filter(v => !v.clienteId);
-                break;
-            case 'asignadas':
-                itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente > 0);
-                break;
-            case 'pagadas':
-                itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente <= 0);
-                break;
-            default:
-                break;
+            case 'disponibles': itemsProcesados = itemsProcesados.filter(v => !v.clienteId); break;
+            case 'asignadas': itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente > 0); break;
+            case 'pagadas': itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente <= 0); break;
+            default: break;
         }
-
         if (searchTerm) {
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
             itemsProcesados = itemsProcesados.filter(v =>
@@ -55,7 +42,6 @@ export const useListarViviendas = () => {
                 (v.clienteNombre || '').toLowerCase().includes(lowerCaseSearchTerm)
             );
         }
-
         return itemsProcesados.sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa);
     }, [viviendas, clientes, renuncias, statusFilter, searchTerm]);
 
@@ -68,12 +54,12 @@ export const useListarViviendas = () => {
 
     const [viviendaAEditar, setViviendaAEditar] = useState(null);
     const [viviendaAEliminar, setViviendaAEliminar] = useState(null);
-    const [viviendaConDescuento, setViviendaConDescuento] = useState(null);
+    const [viviendaACondonar, setViviendaACondonar] = useState(null);
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
         setViviendaAEditar(null);
-        setViviendaConDescuento(null);
+        setViviendaACondonar(null);
     }, [recargarDatos]);
 
     const handleIniciarEliminacion = (vivienda) => {
@@ -101,7 +87,7 @@ export const useListarViviendas = () => {
         modals: {
             viviendaAEditar, setViviendaAEditar,
             viviendaAEliminar, setViviendaAEliminar,
-            viviendaConDescuento, setViviendaConDescuento
+            viviendaACondonar, setViviendaACondonar
         },
         handlers: {
             handleGuardado,

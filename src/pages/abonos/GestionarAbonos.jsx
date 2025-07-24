@@ -78,6 +78,7 @@ const GestionarAbonos = () => {
                                         <FuenteDePagoCard key={fuente.fuente} {...fuente} vivienda={datosClienteSeleccionado.data.vivienda} cliente={datosClienteSeleccionado.data.cliente} onAbonoRegistrado={handlers.recargarDatos} />
                                     ))}
                                 </div>
+
                                 <div className="mt-12 pt-6 border-t dark:border-gray-700">
                                     <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Historial de Abonos</h3>
                                     {historialVisible.length > 0 ? (
