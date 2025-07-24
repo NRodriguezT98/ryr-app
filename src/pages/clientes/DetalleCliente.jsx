@@ -67,7 +67,9 @@ const DetalleCliente = () => {
         return <div className="text-center p-10 animate-pulse">Cargando perfil del cliente...</div>;
     }
 
-    const { cliente, vivienda, historialAbonos, renuncias } = datosDetalle;
+    // --- INICIO DE LA MODIFICACIÓN ---
+    const { cliente, vivienda, historialAbonos, renuncia } = datosDetalle;
+    // --- FIN DE LA MODIFICACIÓN ---
 
     const handleGeneratePdf = () => {
         if (cliente && vivienda) {
@@ -113,11 +115,12 @@ const DetalleCliente = () => {
                     {activeTab === 'proceso' && (
                         <TabProcesoCliente
                             cliente={cliente}
+                            renuncia={renuncia} // <-- Pasamos la renuncia como prop
                             onDatosRecargados={recargarDatos}
-                            onHayCambiosChange={setProcesoTieneCambios} // <-- Se restaura la prop
+                            onHayCambiosChange={setProcesoTieneCambios}
                         />
                     )}
-                    {activeTab === 'documentos' && <TabDocumentacionCliente cliente={cliente} />}
+                    {activeTab === 'documentos' && <TabDocumentacionCliente cliente={cliente} renuncia={renuncia} />}
                 </div>
             </div>
 

@@ -2,7 +2,9 @@ import React, { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, User, Home, Calendar, DollarSign, CheckCircle, Download, FileX } from 'lucide-react';
+// --- INICIO DE LA CORRECCIÓN ---
+import { ArrowLeft, User, Home, Calendar, DollarSign, CheckCircle, Download, FileX, Briefcase, FileText, MinusCircle } from 'lucide-react';
+// --- FIN DE LA CORRECCIÓN ---
 import AbonoCard from '../abonos/AbonoCard';
 import { formatCurrency, formatDisplayDate } from '../../utils/textFormatters';
 
@@ -15,31 +17,21 @@ const DetalleRenuncia = () => {
         if (isLoading) return null;
         const renuncia = renuncias.find(r => r.id === renunciaId);
         if (!renuncia) return null;
-
-        // --- INICIO DE LA CORRECCIÓN DEFINITIVA ---
-        // Lógica de búsqueda de cliente mucho más robusta y a prueba de fallos.
         let clienteEncontrado = null;
-
-        // 1. Intento principal: Buscar por el ID guardado en la renuncia.
         if (renuncia.clienteId) {
             clienteEncontrado = clientes.find(c => c.id === renuncia.clienteId);
         }
-
-        // 2. Fallback: Si no se encuentra por ID (caso de datos antiguos), buscar por nombre completo.
         if (!clienteEncontrado && renuncia.clienteNombre) {
             const nombreNormalizado = renuncia.clienteNombre.trim().toLowerCase();
             clienteEncontrado = clientes.find(c =>
                 `${c.datosCliente.nombres} ${c.datosCliente.apellidos}`.trim().toLowerCase() === nombreNormalizado
             );
         }
-        // --- FIN DE LA CORRECCIÓN DEFINITIVA ---
-
         const historialAbonos = (renuncia.historialAbonos || []).map(abono => ({
             ...abono,
             clienteInfo: renuncia.clienteNombre,
             clienteStatus: 'renunciado'
         }));
-
         return { renuncia, cliente: clienteEncontrado, historialAbonos };
     }, [renunciaId, renuncias, clientes, isLoading]);
 
@@ -54,6 +46,7 @@ const DetalleRenuncia = () => {
     const { renuncia, cliente, historialAbonos } = datosDetalle;
     const isCerrada = renuncia.estadoDevolucion === 'Cerrada' || renuncia.estadoDevolucion === 'Pagada';
     const sinAbonosOriginales = renuncia.totalAbonadoOriginal === 0;
+    const conPenalidad = renuncia.penalidadMonto > 0;
 
     return (
         <AnimatedPage>
@@ -95,17 +88,8 @@ const DetalleRenuncia = () => {
                             ) : (
                                 <>
                                     <p className='dark:text-gray-300'><strong>Fecha de Cierre (Devolución):</strong> {renuncia.fechaDevolucion ? formatDisplayDate(renuncia.fechaDevolucion) : 'No registrada'}</p>
-                                    {renuncia.observacionDevolucion && (
-                                        <p className="flex items-start gap-2 dark:text-gray-300">
-                                            <strong className='flex-shrink-0'>Observaciones:</strong>
-                                            <span className='italic text-gray-700 dark:text-gray-300'>"{renuncia.observacionDevolucion}"</span>
-                                        </p>
-                                    )}
-                                    {renuncia.urlComprobanteDevolucion && (
-                                        <a href={renuncia.urlComprobanteDevolucion} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-                                            <Download size={16} /> Ver Comprobante de Devolución
-                                        </a>
-                                    )}
+                                    {renuncia.observacionDevolucion && (<p className="flex items-start gap-2 dark:text-gray-300"><strong className='flex-shrink-0'>Observaciones:</strong><span className='italic text-gray-700 dark:text-gray-300'>"{renuncia.observacionDevolucion}"</span></p>)}
+                                    {renuncia.urlComprobanteDevolucion && (<a href={renuncia.urlComprobanteDevolucion} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-semibold text-blue-600 dark:text-blue-400 hover:underline"><Download size={16} /> Ver Comprobante de Devolución</a>)}
                                 </>
                             )}
                         </div>
@@ -114,11 +98,21 @@ const DetalleRenuncia = () => {
 
                 <div className="mt-8 pt-6 border-t dark:border-gray-700">
                     <h3 className="font-bold text-xl mb-4 flex items-center gap-2 dark:text-gray-100"><DollarSign /> Desglose Financiero</h3>
-                    <div className="bg-blue-50 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-800 p-4 rounded-lg text-center mb-6">
-                        <p className="text-sm text-blue-800 dark:text-blue-300 font-semibold">
-                            {isCerrada ? (sinAbonosOriginales ? 'Total Abonado (Sin devolución)' : 'Total Devuelto al Cliente') : 'Total a Devolver al Cliente'}
-                        </p>
-                        <p className="text-3xl font-bold text-blue-700 dark:text-blue-400">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</p>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 border dark:border-gray-700 p-4 rounded-lg space-y-2 mb-6">
+                        <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">Total Abonado Original:</span><span className="font-medium dark:text-gray-200">{formatCurrency(renuncia.totalAbonadoOriginal)}</span></div>
+                        {conPenalidad && (
+                            <div className="flex justify-between items-start">
+                                <span className="text-gray-600 dark:text-gray-400 flex items-center gap-2"><MinusCircle size={14} /> Penalidad:</span>
+                                <div className="text-right">
+                                    <span className="font-medium text-red-500 dark:text-red-400">- {formatCurrency(renuncia.penalidadMonto)}</span>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 italic">({renuncia.penalidadMotivo})</p>
+                                </div>
+                            </div>
+                        )}
+                        <div className="flex justify-between font-bold text-lg pt-2 border-t dark:border-gray-600 mt-2">
+                            <span className='dark:text-gray-200'>{isCerrada ? 'Total Devuelto' : 'Total a Devolver'}:</span>
+                            <span className="text-green-600 dark:text-green-400">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span>
+                        </div>
                     </div>
 
                     <h4 className="font-semibold mb-4 dark:text-gray-200">Abonos Archivados de este Proceso:</h4>
@@ -130,6 +124,25 @@ const DetalleRenuncia = () => {
                         <p className="text-center text-gray-500 dark:text-gray-400 py-6">No se encontraron abonos registrados para este proceso de renuncia.</p>
                     )}
                 </div>
+
+                {renuncia.documentosArchivados && renuncia.documentosArchivados.length > 0 && (
+                    <div className="mt-8 pt-6 border-t dark:border-gray-700">
+                        <h3 className="font-bold text-xl mb-4 flex items-center gap-2 dark:text-gray-100"><Briefcase /> Documentos Archivados del Proceso</h3>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-5 rounded-xl border dark:border-gray-700">
+                            <ul className="space-y-2">
+                                {renuncia.documentosArchivados.map((doc, index) => (
+                                    <li key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        <span className="flex items-center gap-2 text-sm dark:text-gray-300">
+                                            <FileText size={16} className="text-gray-400" />
+                                            {doc.label}
+                                        </span>
+                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">Ver</a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                )}
             </div>
         </AnimatedPage>
     );

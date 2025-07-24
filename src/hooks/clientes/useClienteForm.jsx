@@ -183,7 +183,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     }
                 });
                 if (formData.documentos.promesaEnviadaUrl && formData.documentos.promesaEnviadaCorreoUrl) {
-                    const fechaDeInicio = getTodayString(); // La reactivación siempre usa la fecha actual
+                    const fechaDeInicio = getTodayString();
                     nuevoProceso.promesaEnviada = {
                         completado: true,
                         fecha: fechaDeInicio,
@@ -194,15 +194,14 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     };
                 }
                 const clienteParaActualizar = {
-                    ...clienteAEditar,
                     datosCliente: formData.datosCliente,
                     financiero: formData.financiero,
                     proceso: nuevoProceso,
                     viviendaId: formData.viviendaSeleccionada.id,
                     status: 'activo',
-                    fechaInicioProceso: getTodayString()
+                    fechaInicioProceso: getTodayString(),
+                    fechaCreacion: clienteAEditar.fechaCreacion // Se preserva la fecha de creación original
                 };
-                delete clienteParaActualizar.vivienda; // Limpiamos datos innecesarios
                 await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
                 toast.success("¡Cliente reactivado con un nuevo proceso!");
                 await createNotification('cliente', `El cliente ${toTitleCase(clienteAEditar.datosCliente.nombres)} fue reactivado.`, `/clientes/detalle/${clienteAEditar.id}`);

@@ -2,13 +2,12 @@ import { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import toast from 'react-hot-toast';
-import { DOCUMENTACION_CONFIG } from '../../utils/documentacionConfig'; // <-- 1. Importamos la configuración
 
 export const useDetalleCliente = () => {
     const { clienteId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { clientes, abonos, isLoading, recargarDatos } = useData();
+    const { clientes, abonos, renuncias, isLoading, recargarDatos } = useData(); // Obtenemos las renuncias
 
     const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'info');
 
@@ -23,17 +22,12 @@ export const useDetalleCliente = () => {
             return { isLoading: false, data: null };
         }
 
-        // --- 2. LÓGICA DE DOCUMENTACIÓN CENTRALIZADA AQUÍ ---
-        // Generamos la lista de documentos que aplican al cliente, basándonos en la configuración.
-        const documentosRequeridos = DOCUMENTACION_CONFIG
-            .filter(docConfig => docConfig.aplicaA(cliente.financiero || {}))
-            .map(docConfig => {
-                const docData = cliente.documentos?.[docConfig.id];
-                return {
-                    ...docConfig, // Traemos la configuración (id, label, etc.)
-                    ...docData    // Traemos los datos guardados (url, estado)
-                };
-            });
+        // --- INICIO DE LA MODIFICACIÓN ---
+        // Buscamos el registro de renuncia más reciente para este cliente
+        const renunciaAsociada = renuncias
+            .filter(r => r.clienteId === cliente.id)
+            .sort((a, b) => new Date(b.fechaRenuncia) - new Date(a.fechaRenuncia))[0] || null;
+        // --- FIN DE LA MODIFICACIÓN ---
 
         const historialAbonos = abonos
             .filter(a => a.clienteId === clienteId && a.estadoProceso === 'activo')
@@ -45,10 +39,10 @@ export const useDetalleCliente = () => {
                 cliente,
                 vivienda: cliente.vivienda,
                 historialAbonos,
-                documentosRequeridos // <-- 3. Devolvemos la lista ya procesada
+                renuncia: renunciaAsociada // Devolvemos la renuncia encontrada
             }
         };
-    }, [clienteId, clientes, abonos, isLoading]);
+    }, [clienteId, clientes, abonos, renuncias, isLoading]);
 
     useEffect(() => {
         if (!isLoading && !datosDetalle?.data) {

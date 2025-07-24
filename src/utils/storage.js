@@ -241,20 +241,50 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
         const clienteDoc = await transaction.get(clienteRef);
         const viviendaDoc = await transaction.get(viviendaRef);
         if (!clienteDoc.exists() || !viviendaDoc.exists()) throw new Error("El cliente o la vivienda ya no existen.");
-        clienteNombre = `${clienteDoc.data().datosCliente.nombres} ${clienteDoc.data().datosCliente.apellidos}`.trim();
+        const clienteData = clienteDoc.data();
+        clienteNombre = `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`.trim();
         const totalAbonado = abonosDelCiclo.reduce((sum, abono) => sum + abono.monto, 0);
         const totalADevolver = totalAbonado - penalidadMonto;
         const estadoInicial = totalADevolver > 0 ? 'Pendiente' : 'Cerrada';
+
+        const documentosArchivados = [];
+        if (clienteData.datosCliente?.urlCedula) {
+            documentosArchivados.push({ label: 'Cédula de Ciudadanía', url: clienteData.datosCliente.urlCedula });
+        }
+        if (clienteData.financiero?.credito?.urlCartaAprobacion) {
+            documentosArchivados.push({ label: 'Carta Aprobación Crédito', url: clienteData.financiero.credito.urlCartaAprobacion });
+        }
+        if (clienteData.financiero?.subsidioCaja?.urlCartaAprobacion) {
+            documentosArchivados.push({ label: 'Carta Aprobación Sub. Caja', url: clienteData.financiero.subsidioCaja.urlCartaAprobacion });
+        }
+        if (clienteData.proceso) {
+            PROCESO_CONFIG.forEach(pasoConfig => {
+                if (pasoConfig.aplicaA(clienteData.financiero || {}) && clienteData.proceso[pasoConfig.key]) {
+                    const pasoData = clienteData.proceso[pasoConfig.key];
+                    if (pasoData.evidencias) {
+                        pasoConfig.evidenciasRequeridas.forEach(evidenciaConfig => {
+                            const evidenciaData = pasoData.evidencias[evidenciaConfig.id];
+                            if (evidenciaData?.url) {
+                                documentosArchivados.push({ label: evidenciaConfig.label, url: evidenciaData.url });
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
         const registroRenuncia = {
             id: renunciaRef.id, clienteId, clienteNombre, viviendaId,
             viviendaInfo: `Mz. ${viviendaDoc.data().manzana} - Casa ${viviendaDoc.data().numeroCasa}`,
             fechaRenuncia, totalAbonadoOriginal: totalAbonado, penalidadMonto, penalidadMotivo,
             totalAbonadoParaDevolucion: totalADevolver, estadoDevolucion: estadoInicial,
-            motivo, observacion, historialAbonos: abonosDelCiclo
+            motivo, observacion, historialAbonos: abonosDelCiclo,
+            documentosArchivados
         };
+
         transaction.set(renunciaRef, registroRenuncia);
         transaction.update(viviendaRef, { clienteId: null, clienteNombre: "", totalAbonado: 0, saldoPendiente: viviendaDoc.data().valorTotal });
-        transaction.update(clienteRef, { viviendaId: null });
+        transaction.update(clienteRef, { viviendaId: null, proceso: {}, financiero: {} });
         if (estadoInicial === 'Cerrada') {
             registroRenuncia.fechaDevolucion = new Date().toISOString();
             transaction.update(renunciaRef, { fechaDevolucion: registroRenuncia.fechaDevolucion });

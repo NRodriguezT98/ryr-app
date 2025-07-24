@@ -7,9 +7,28 @@ import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
 import { PartyPopper, UserX } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
 
-const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) => {
+const ResumenRenuncia = ({ renuncia }) => (
+    <div className="animate-fade-in text-center p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed dark:border-gray-700">
+        <UserX size={48} className="mx-auto text-orange-400" />
+        <h3 className="mt-4 text-xl font-bold text-gray-800 dark:text-gray-100">Proceso Anterior Finalizado por Renuncia</h3>
+        <div className="mt-4 text-sm text-gray-600 dark:text-gray-400 space-y-2 text-left max-w-md mx-auto">
+            <p><strong>Fecha de Renuncia:</strong> {formatDisplayDate(renuncia.fechaRenuncia)}</p>
+            <p><strong>Motivo:</strong> {renuncia.motivo}</p>
+            <p><strong>Total Devuelto:</strong> <span className="font-semibold">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span></p>
+        </div>
+        <Link to={`/renuncias/detalle/${renuncia.id}`} className="mt-6 inline-flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+            Ver Detalle Completo de la Renuncia
+        </Link>
+    </div>
+);
+
+const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange }) => {
+
+    if (cliente.status === 'renunciado' && renuncia) {
+        return <ResumenRenuncia renuncia={renuncia} />;
+    }
 
     const handleSave = async (nuevoProceso) => {
         const clienteActualizado = {
@@ -35,30 +54,13 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
         handlers,
     } = useProcesoLogic(cliente, handleSave);
 
-    if (cliente.status === 'renunciado') {
-        return (
-            <div className="animate-fade-in text-center p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed dark:border-gray-700">
-                <UserX size={48} className="mx-auto text-orange-400" />
-                <h3 className="mt-4 text-xl font-bold text-gray-800 dark:text-gray-100">Proceso Anterior Finalizado por Renuncia</h3>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Este cliente completó un proceso de renuncia. Su línea de tiempo y documentos anteriores han sido archivados.
-                </p>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Para iniciar un nuevo proceso de venta, utiliza la opción "Iniciar Nuevo Proceso" en la lista de clientes.
-                </p>
-                <Link to="/renuncias" className="mt-6 inline-flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-                    Ver Historial de Renuncias
-                </Link>
-            </div>
-        );
-    }
-
     useEffect(() => {
         onHayCambiosChange(hayCambiosSinGuardar);
     }, [hayCambiosSinGuardar, onHayCambiosChange]);
 
     const pasoAReabrirInfo = pasoAReabrir ? pasosRenderizables.find(p => p.key === pasoAReabrir) : null;
     const nombrePasoAReabrir = pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '';
+
     const porcentajeProgreso = progreso.total > 0 ? (progreso.completados / progreso.total) * 100 : 0;
 
     return (
@@ -101,33 +103,24 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
             )}
 
             <div className="space-y-4">
-                <AnimatePresence>
-                    {pasosRenderizables.map((paso, index) => (
-                        <motion.div
-                            key={paso.key}
-                            layout
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                        >
-                            <PasoProcesoCard
-                                paso={{
-                                    ...paso,
-                                    label: `${index + 1}. ${paso.label}`,
-                                    stepNumber: index + 1,
-                                    hayPasoEnReapertura
-                                }}
-                                justSaved={justSaved}
-                                onUpdateEvidencia={handlers.handleUpdateEvidencia}
-                                onCompletarPaso={handlers.handleCompletarPaso}
-                                onIniciarReapertura={handlers.iniciarReapertura}
-                                onDeshacerReapertura={handlers.deshacerReapertura}
-                                onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
-                                clienteId={cliente.id}
-                            />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
+                {pasosRenderizables.map((paso, index) => (
+                    <PasoProcesoCard
+                        key={paso.key}
+                        paso={{
+                            ...paso,
+                            label: `${index + 1}. ${paso.label}`,
+                            stepNumber: index + 1,
+                            hayPasoEnReapertura
+                        }}
+                        justSaved={justSaved}
+                        onUpdateEvidencia={handlers.handleUpdateEvidencia}
+                        onCompletarPaso={handlers.handleCompletarPaso}
+                        onIniciarReapertura={handlers.iniciarReapertura}
+                        onDeshacerReapertura={handlers.deshacerReapertura}
+                        onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
+                        clienteId={cliente.id}
+                    />
+                ))}
             </div>
 
             <ModalConfirmacion
@@ -144,7 +137,6 @@ const TabProcesoCliente = ({ cliente, onDatosRecargados, onHayCambiosChange }) =
                 onConfirm={handlers.confirmarEdicionFecha}
                 pasoInfo={pasoAEditarFecha ? { ...pasoAEditarFecha, ...pasosRenderizables.find(p => p.key === pasoAEditarFecha.key) } : null}
             />
-
         </div>
     );
 };

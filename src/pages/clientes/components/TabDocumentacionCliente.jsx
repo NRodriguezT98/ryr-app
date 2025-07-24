@@ -1,28 +1,31 @@
 import React from 'react';
 import { useDocumentacion } from '../../../hooks/clientes/useDocumentacion';
 import DocumentoRow from '../../../components/documentos/DocumentoRow';
-import { UserX } from 'lucide-react'; // Importamos el ícono
-import { Link } from 'react-router-dom'; // Importamos Link
+import { UserX } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
 
-const TabDocumentacionCliente = ({ cliente }) => {
+const ResumenRenuncia = ({ renuncia }) => (
+    <div className="animate-fade-in text-center p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed dark:border-gray-700">
+        <UserX size={48} className="mx-auto text-orange-400" />
+        <h3 className="mt-4 text-xl font-bold text-gray-800 dark:text-gray-100">Documentación Archivada</h3>
+        <div className="mt-4 text-sm text-gray-600 dark:text-gray-400 space-y-2 text-left max-w-md mx-auto">
+            <p>Los documentos asociados al proceso de venta anterior de este cliente han sido archivados.</p>
+            <p><strong>Fecha de Renuncia:</strong> {formatDisplayDate(renuncia.fechaRenuncia)}</p>
+            <p><strong>Total Devuelto:</strong> <span className="font-semibold">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span></p>
+        </div>
+        <Link to={`/renuncias/detalle/${renuncia.id}`} className="mt-6 inline-flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+            Ver Abonos Archivados en el Detalle
+        </Link>
+    </div>
+);
+
+const TabDocumentacionCliente = ({ cliente, renuncia }) => {
     const { filtro, setFiltro, documentosFiltrados } = useDocumentacion(cliente);
 
-    // --- INICIO DE LA MODIFICACIÓN ---
-    if (cliente.status === 'renunciado') {
-        return (
-            <div className="animate-fade-in text-center p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed dark:border-gray-700">
-                <UserX size={48} className="mx-auto text-orange-400" />
-                <h3 className="mt-4 text-xl font-bold text-gray-800 dark:text-gray-100">Documentación Archivada</h3>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                    Los documentos asociados al proceso de venta anterior de este cliente han sido archivados.
-                </p>
-                <Link to="/renuncias" className="mt-6 inline-flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-                    Consultar el Historial de Renuncias
-                </Link>
-            </div>
-        );
+    if (cliente.status === 'renunciado' && renuncia) {
+        return <ResumenRenuncia renuncia={renuncia} />;
     }
-    // --- FIN DE LA MODIFICACIÓN ---
 
     return (
         <div className="animate-fade-in bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow-sm">
