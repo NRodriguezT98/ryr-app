@@ -1,44 +1,12 @@
-import React, { useMemo } from 'react';
-import { useForm } from '../../../hooks/useForm';
-import toast from 'react-hot-toast';
-import { marcarDevolucionComoPagada } from '../../../utils/storage';
+import React from 'react';
+import { useGestionarDevolucion } from '../../../hooks/renuncias/useGestionarDevolucion';
 import Modal from '../../../components/Modal';
 import FileUpload from '../../../components/FileUpload';
 import { CheckCircle, FileText, XCircle } from 'lucide-react';
-
-const getTodayString = () => new Date().toISOString().split('T')[0];
+import { getTodayString } from '../../../utils/textFormatters';
 
 const ModalGestionarDevolucion = ({ isOpen, onClose, onSave, renuncia }) => {
-
-    const initialState = useMemo(() => ({
-        fechaDevolucion: getTodayString(),
-        observacionDevolucion: '',
-        urlComprobanteDevolucion: null
-    }), []);
-
-    const { formData, handleInputChange, handleValueChange, handleSubmit, isSubmitting } = useForm({
-        initialState,
-        onSubmit: async (data) => {
-            try {
-                await marcarDevolucionComoPagada(renuncia.id, data);
-                toast.success('Devolución registrada con éxito.');
-                onSave();
-                onClose();
-            } catch (error) {
-                toast.error('No se pudo registrar la devolución.');
-                console.error("Error al registrar devolución:", error);
-            }
-        },
-        options: { resetOnSuccess: false }
-    });
-
-    const handleUploadSuccess = (url) => {
-        handleValueChange('urlComprobanteDevolucion', url);
-    };
-
-    const handleRemoveFile = () => {
-        handleValueChange('urlComprobanteDevolucion', null);
-    };
+    const { formData, errors, isSubmitting, handlers } = useGestionarDevolucion(renuncia, onSave, onClose);
 
     if (!isOpen) return null;
 
@@ -50,28 +18,33 @@ const ModalGestionarDevolucion = ({ isOpen, onClose, onSave, renuncia }) => {
             icon={<CheckCircle size={28} className="text-green-600" />}
         >
             <p className="text-center text-gray-500 dark:text-gray-400 -mt-4 mb-6">
-                Estás a punto de marcar la renuncia de <strong className='text-gray-700 dark:text-gray-200'>{renuncia.clienteNombre}</strong> como pagada.
+                Estás a punto de marcar la renuncia de <strong className='text-gray-700 dark:text-gray-200'>{renuncia.clienteNombre}</strong> como cerrada.
             </p>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handlers.handleSubmit} className="space-y-6">
                 <div>
                     <label className="block font-medium mb-1 dark:text-gray-200" htmlFor="fechaDevolucion">Fecha de Devolución</label>
                     <input
                         type="date" id="fechaDevolucion" name="fechaDevolucion"
-                        value={formData.fechaDevolucion} onChange={handleInputChange} max={getTodayString()}
-                        className="w-full border p-2.5 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        value={formData.fechaDevolucion} onChange={handlers.handleInputChange}
+                        min={renuncia.fechaRenuncia}
+                        max={getTodayString()}
+                        className={`w-full border p-2.5 rounded-lg dark:bg-gray-700 dark:text-white ${errors.fechaDevolucion ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                     />
+                    {errors.fechaDevolucion && <p className="text-red-600 text-sm mt-1">{errors.fechaDevolucion}</p>}
                 </div>
                 <div>
                     <label className="block font-medium mb-1 dark:text-gray-200" htmlFor="observacionDevolucion">Observaciones (Opcional)</label>
                     <textarea
                         id="observacionDevolucion" name="observacionDevolucion" rows="3"
-                        value={formData.observacionDevolucion} onChange={handleInputChange}
+                        value={formData.observacionDevolucion} onChange={handlers.handleInputChange}
                         className="w-full border p-2.5 rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm"
                         placeholder="Ej: Se realizó transferencia a la cuenta de ahorros del cliente."
                     />
                 </div>
                 <div>
-                    <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200">Soporte de Devolución (Opcional)</label>
+                    <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200">
+                        Soporte de Devolución <span className="text-red-500">*</span>
+                    </label>
                     {formData.urlComprobanteDevolucion ? (
                         <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-4 flex items-center justify-between">
                             <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold'>
@@ -82,7 +55,7 @@ const ModalGestionarDevolucion = ({ isOpen, onClose, onSave, renuncia }) => {
                             </div>
                             <button
                                 type="button"
-                                onClick={handleRemoveFile}
+                                onClick={handlers.handleRemoveFile}
                                 className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
                                 title="Eliminar soporte"
                             >
@@ -93,11 +66,10 @@ const ModalGestionarDevolucion = ({ isOpen, onClose, onSave, renuncia }) => {
                         <FileUpload
                             label="Subir Soporte"
                             filePath={(fileName) => `documentos_renuncias/${renuncia.id}/${fileName}`}
-                            currentFileUrl={formData.urlComprobanteDevolucion}
-                            onUploadSuccess={handleUploadSuccess}
-                            onRemove={handleRemoveFile}
+                            onUploadSuccess={handlers.handleUploadSuccess}
                         />
                     )}
+                    {errors.urlComprobanteDevolucion && <p className="text-red-600 text-sm mt-1">{errors.urlComprobanteDevolucion}</p>}
                 </div>
                 <div className="flex justify-end gap-4 mt-8 pt-6 border-t dark:border-gray-700">
                     <button type="button" onClick={onClose} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>

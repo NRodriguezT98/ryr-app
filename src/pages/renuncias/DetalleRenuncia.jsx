@@ -2,9 +2,7 @@ import React, { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import AnimatedPage from '../../components/AnimatedPage';
-// --- INICIO DE LA CORRECCIÓN ---
 import { ArrowLeft, User, Home, Calendar, DollarSign, CheckCircle, Download, FileX, Briefcase, FileText, MinusCircle } from 'lucide-react';
-// --- FIN DE LA CORRECCIÓN ---
 import AbonoCard from '../abonos/AbonoCard';
 import { formatCurrency, formatDisplayDate } from '../../utils/textFormatters';
 
@@ -99,9 +97,9 @@ const DetalleRenuncia = () => {
                 <div className="mt-8 pt-6 border-t dark:border-gray-700">
                     <h3 className="font-bold text-xl mb-4 flex items-center gap-2 dark:text-gray-100"><DollarSign /> Desglose Financiero</h3>
                     <div className="bg-gray-50 dark:bg-gray-700/50 border dark:border-gray-700 p-4 rounded-lg space-y-2 mb-6">
-                        <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">Total Abonado Original:</span><span className="font-medium dark:text-gray-200">{formatCurrency(renuncia.totalAbonadoOriginal)}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-gray-600 dark:text-gray-400">Total Abonado Original:</span><span className="font-medium dark:text-gray-200">{formatCurrency(renuncia.totalAbonadoOriginal)}</span></div>
                         {conPenalidad && (
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-start text-sm">
                                 <span className="text-gray-600 dark:text-gray-400 flex items-center gap-2"><MinusCircle size={14} /> Penalidad:</span>
                                 <div className="text-right">
                                     <span className="font-medium text-red-500 dark:text-red-400">- {formatCurrency(renuncia.penalidadMonto)}</span>
@@ -109,9 +107,9 @@ const DetalleRenuncia = () => {
                                 </div>
                             </div>
                         )}
-                        <div className="flex justify-between font-bold text-lg pt-2 border-t dark:border-gray-600 mt-2">
-                            <span className='dark:text-gray-200'>{isCerrada ? 'Total Devuelto' : 'Total a Devolver'}:</span>
-                            <span className="text-green-600 dark:text-green-400">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span>
+                        <div className="flex justify-between font-bold pt-2 border-t dark:border-gray-600 mt-2">
+                            <span className='text-lg dark:text-gray-200'>{isCerrada ? 'Total Devuelto' : 'Total a Devolver'}:</span>
+                            <span className="text-3xl text-green-600 dark:text-green-400">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span>
                         </div>
                     </div>
 

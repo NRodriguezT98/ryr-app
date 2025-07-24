@@ -1,37 +1,46 @@
 import React, { Fragment, memo } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { Link } from 'react-router-dom';
-import { UserX, Calendar, Home, MoreVertical, CheckCircle, DollarSign, Eye, Pencil, RotateCcw } from 'lucide-react';
+import { UserX, Calendar, Home, MoreVertical, CheckCircle, DollarSign, Eye, Pencil, RotateCcw, FileText } from 'lucide-react';
 import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
 
 const RenunciaCard = ({ renuncia, onMarcarPagada, onEditar, onCancelar }) => {
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Ahora consideramos ambos valores como un proceso cerrado.
     const isCerrada = renuncia.estadoDevolucion === 'Cerrada' || renuncia.estadoDevolucion === 'Pagada';
-    // --- FIN DE LA CORRECCIÓN ---
 
     return (
-        <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-md border ${isCerrada ? 'border-gray-200 dark:border-gray-700' : 'border-orange-300 dark:border-orange-700'} p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
+        // --- INICIO DE LA MODIFICACIÓN ---
+        // Cambiamos de 'flex' a 'grid' para un control de columnas perfecto.
+        <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-md border ${isCerrada ? 'border-gray-200 dark:border-gray-700' : 'border-orange-300 dark:border-orange-700'} p-4 grid grid-cols-1 sm:grid-cols-[2fr,1.5fr,auto] sm:items-center gap-4`}>
+            {/* --- FIN DE LA MODIFICACIÓN --- */}
+
+            {/* Columna 1: Información del Cliente */}
             <div className="flex items-center gap-4">
                 <div className={`p-3 rounded-full ${isCerrada ? 'bg-green-100 dark:bg-green-900/50' : 'bg-orange-100 dark:bg-orange-900/50'}`}>
                     <UserX className={`w-6 h-6 ${isCerrada ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`} />
                 </div>
                 <div>
-                    <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{renuncia.clienteNombre}</p>
+                    <p className="font-bold text-lg text-gray-800 dark:text-gray-100 truncate">{renuncia.clienteNombre}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
                         <Home size={14} /> Vivienda: {renuncia.viviendaInfo}
                     </p>
                 </div>
             </div>
-            <div className="w-full sm:w-auto flex-grow pl-0 sm:pl-4">
-                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2 mb-1">
+
+            {/* Columna 2: Detalles de la Renuncia */}
+            <div className="w-full space-y-2 sm:pl-4">
+                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
                     <Calendar size={14} /> Fecha de Renuncia: {formatDisplayDate(renuncia.fechaRenuncia)}
                 </p>
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2 truncate">
+                    <FileText size={14} /> Motivo: <span className="font-semibold text-gray-800 dark:text-gray-200">{renuncia.motivo}</span>
+                </p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2 pt-2 border-t dark:border-gray-700">
                     <DollarSign size={14} /> Devolución: <span className='text-red-600 dark:text-red-400'>{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span>
                 </p>
             </div>
-            <div className="flex items-center gap-4">
+
+            {/* Columna 3: Estado y Acciones */}
+            <div className="flex items-center gap-4 justify-self-end">
                 <span className={`px-3 py-1 text-xs font-semibold rounded-full ${isCerrada ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
                     {isCerrada ? 'Cerrada' : renuncia.estadoDevolucion}
                 </span>
@@ -57,4 +66,4 @@ const RenunciaCard = ({ renuncia, onMarcarPagada, onEditar, onCancelar }) => {
     );
 };
 
-export default memo(RenunciaCard);
+export default memo(RenunciaCard); 

@@ -5,25 +5,56 @@ import toast from 'react-hot-toast';
 
 export const useListarRenuncias = () => {
     const { isLoading, renuncias, recargarDatos } = useData();
+
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Estados para los nuevos filtros
     const [statusFilter, setStatusFilter] = useState('Pendiente');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [fechaInicio, setFechaInicio] = useState('');
+    const [fechaFin, setFechaFin] = useState('');
+    const [motivoFiltro, setMotivoFiltro] = useState(null);
+    // --- FIN DE LA MODIFICACIÓN ---
 
     const [renunciaADevolver, setRenunciaADevolver] = useState(null);
     const [renunciaAEditar, setRenunciaAEditar] = useState(null);
     const [renunciaACancelar, setRenunciaACancelar] = useState(null);
 
     const renunciasFiltradas = useMemo(() => {
-        const sortedRenuncias = [...renuncias].sort((a, b) => new Date(b.fechaRenuncia) - new Date(a.fechaRenuncia));
-        if (statusFilter === 'Todas') {
-            return sortedRenuncias;
+        let itemsProcesados = [...renuncias].sort((a, b) => new Date(b.fechaRenuncia) - new Date(a.fechaRenuncia));
+
+        // 1. Filtrado por estado (Pendiente / Cerrada)
+        if (statusFilter !== 'Todas') {
+            if (statusFilter === 'Cerrada') {
+                itemsProcesados = itemsProcesados.filter(r => r.estadoDevolucion === 'Cerrada' || r.estadoDevolucion === 'Pagada');
+            } else {
+                itemsProcesados = itemsProcesados.filter(r => r.estadoDevolucion === statusFilter);
+            }
         }
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Si el filtro es 'Cerrada', incluimos también los registros antiguos 'Pagada'.
-        if (statusFilter === 'Cerrada') {
-            return sortedRenuncias.filter(r => r.estadoDevolucion === 'Cerrada' || r.estadoDevolucion === 'Pagada');
+
+        // 2. Filtrado por término de búsqueda
+        if (searchTerm.trim()) {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            itemsProcesados = itemsProcesados.filter(r =>
+                r.clienteNombre.toLowerCase().includes(lowerCaseSearchTerm) ||
+                r.viviendaInfo.toLowerCase().includes(lowerCaseSearchTerm)
+            );
         }
-        // --- FIN DE LA CORRECCIÓN ---
-        return sortedRenuncias.filter(r => r.estadoDevolucion === statusFilter);
-    }, [renuncias, statusFilter]);
+
+        // 3. Filtrado por rango de fechas
+        if (fechaInicio) {
+            itemsProcesados = itemsProcesados.filter(r => r.fechaRenuncia >= fechaInicio);
+        }
+        if (fechaFin) {
+            itemsProcesados = itemsProcesados.filter(r => r.fechaRenuncia <= fechaFin);
+        }
+
+        // 4. Filtrado por motivo
+        if (motivoFiltro) {
+            itemsProcesados = itemsProcesados.filter(r => r.motivo === motivoFiltro.value);
+        }
+
+        return itemsProcesados;
+    }, [renuncias, statusFilter, searchTerm, fechaInicio, fechaFin, motivoFiltro]);
 
     const handleSave = useCallback(() => {
         recargarDatos();
@@ -48,15 +79,17 @@ export const useListarRenuncias = () => {
     return {
         isLoading,
         renunciasFiltradas,
-        statusFilter,
-        setStatusFilter,
+        filters: {
+            statusFilter, setStatusFilter,
+            searchTerm, setSearchTerm,
+            fechaInicio, setFechaInicio,
+            fechaFin, setFechaFin,
+            motivoFiltro, setMotivoFiltro
+        },
         modals: {
-            renunciaADevolver,
-            setRenunciaADevolver,
-            renunciaAEditar,
-            setRenunciaAEditar,
-            renunciaACancelar,
-            setRenunciaACancelar
+            renunciaADevolver, setRenunciaADevolver,
+            renunciaAEditar, setRenunciaAEditar,
+            renunciaACancelar, setRenunciaACancelar
         },
         handlers: {
             handleSave,

@@ -3,10 +3,7 @@ import { NumericFormat } from 'react-number-format';
 import { useAbonoForm } from '../../hooks/abonos/useAbonoForm.jsx';
 import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle, Loader } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
-// --- INICIO DE LA CORRECCIÓN ---
-import { formatCurrency, getTodayString } from '../../utils/textFormatters.js'; // Se importa la función correcta
-// Ya no necesitamos una versión local de getTodayString
-// --- FIN DE LA CORRECCIÓN ---
+import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
 
 const ICONS = {
     cuotaInicial: <HandCoins className="w-8 h-8 text-yellow-600" />,
@@ -52,7 +49,12 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
         }
     }, [mostrandoFormulario, setFormData, titulo]);
 
-    const minDate = cliente?.datosCliente?.fechaIngreso ? cliente.datosCliente.fechaIngreso.split('T')[0] : null;
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Ahora, la fecha mínima para el calendario se basa en la fecha de inicio del proceso actual,
+    // que es la fecha de reactivación para clientes que han vuelto.
+    const fechaDeInicioDelProceso = cliente?.fechaInicioProceso || cliente?.datosCliente?.fechaIngreso;
+    const minDate = fechaDeInicioDelProceso ? fechaDeInicioDelProceso.split('T')[0] : null;
+    // --- FIN DE LA CORRECCIÓN ---
 
     return (
         <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
