@@ -1,7 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
-// --- INICIO DE LA MODIFICACIÓN ---
-import { useParams } from 'react-router-dom'; // 1. Importamos useParams
-// --- FIN DE LA MODIFICACIÓN ---
+import { useParams } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { deleteAbono } from '../../utils/storage';
 import toast from 'react-hot-toast';
@@ -9,10 +7,8 @@ import UndoToast from '../../components/UndoToast';
 
 export const useGestionarAbonos = () => {
     const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos } = useData();
-    // --- INICIO DE LA MODIFICACIÓN ---
-    const { clienteId: clienteIdDesdeUrl } = useParams(); // 2. Obtenemos el ID del cliente desde la URL
-    const [selectedClienteId, setSelectedClienteId] = useState(clienteIdDesdeUrl || null); // 3. Usamos ese ID para el estado inicial
-    // --- FIN DE LA MODIFICACIÓN ---
+    const { clienteId: clienteIdDesdeUrl } = useParams();
+    const [selectedClienteId, setSelectedClienteId] = useState(clienteIdDesdeUrl || null);
 
     const [abonoAEditar, setAbonoAEditar] = useState(null);
     const [abonoAEliminar, setAbonoAEliminar] = useState(null);
@@ -31,7 +27,7 @@ export const useGestionarAbonos = () => {
         if (!vivienda) return { data: { cliente, vivienda: null, historial: [], fuentes: [] } };
 
         const historial = abonos
-            .filter(a => a.clienteId === selectedClienteId)
+            .filter(a => a.clienteId === selectedClienteId && a.estadoProceso === 'activo')
             .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
 
         const fuentes = [];
@@ -56,9 +52,7 @@ export const useGestionarAbonos = () => {
         };
     }, [selectedClienteId, clientes, viviendas, abonos, isDataLoading]);
 
-    const isLoading = isDataLoading;
-
-    const clientesConVivienda = useMemo(() =>
+    const clientesParaLaLista = useMemo(() =>
         clientes.filter(c => c.vivienda && c.status === 'activo')
             .sort((a, b) => {
                 const manzanaComp = a.vivienda.manzana.localeCompare(b.vivienda.manzana);
@@ -103,8 +97,8 @@ export const useGestionarAbonos = () => {
     };
 
     return {
-        isLoading,
-        clientesParaLaLista: clientesConVivienda, // Renombramos para mayor claridad
+        isLoading: isDataLoading,
+        clientesParaLaLista,
         selectedClienteId, setSelectedClienteId,
         datosClienteSeleccionado,
         abonosOcultos,

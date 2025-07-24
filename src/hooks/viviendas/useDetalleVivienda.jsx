@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-// --- RUTA CORREGIDA AQUÍ (se añadió un "../") ---
 import { useData } from '../../context/DataContext';
 
 export const useDetalleVivienda = () => {
@@ -28,14 +27,17 @@ export const useDetalleVivienda = () => {
                 cliente = clientes.find(c => c.id === vivienda.clienteId);
 
                 if (cliente) {
+                    // --- INICIO DE LA MODIFICACIÓN ---
+                    // Se añade el filtro por 'estadoProceso'
                     historialAbonos = abonos
-                        .filter(a => a.viviendaId === viviendaId && a.clienteId === cliente.id)
+                        .filter(a => a.viviendaId === viviendaId && a.clienteId === cliente.id && a.estadoProceso === 'activo')
                         .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))
                         .map(abono => ({
                             ...abono,
                             clienteInfo: cliente.datosCliente ? `${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}` : 'N/A',
                             clienteStatus: cliente.status || 'activo'
                         }));
+                    // --- FIN DE LA MODIFICACIÓN ---
 
                     if (cliente.financiero) {
                         const { financiero } = cliente;
