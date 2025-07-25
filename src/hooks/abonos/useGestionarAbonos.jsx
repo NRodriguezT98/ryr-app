@@ -13,6 +13,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
     const [abonoAEliminar, setAbonoAEliminar] = useState(null);
     const [abonosOcultos, setAbonosOcultos] = useState([]);
     const deletionTimeouts = useRef({});
+    const [fuenteACondonar, setFuenteACondonar] = useState(null);
 
     useEffect(() => {
         setSelectedClienteId(clienteIdDesdeUrl || null);
@@ -29,7 +30,15 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
 
         const historial = abonos
             .filter(a => a.clienteId === selectedClienteId && a.estadoProceso === 'activo')
-            .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
+            .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))
+            .map(abono => ({
+                ...abono,
+                // --- INICIO DE LA MODIFICACIÓN ---
+                // Se unifica el formato para que coincida con el de la lista general de abonos.
+                clienteInfo: `${vivienda.manzana}${vivienda.numeroCasa} - ${abono.clienteNombre}`,
+                // --- FIN DE LA MODIFICACIÓN ---
+                clienteStatus: cliente.status
+            }));
 
         const fuentes = [];
         if (cliente.financiero) {
@@ -69,9 +78,10 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         [clientes]
     );
 
-    const handleGuardadoEdicion = useCallback(() => {
+    const handleGuardado = useCallback(() => {
         recargarDatos();
         setAbonoAEditar(null);
+        setFuenteACondonar(null);
     }, [recargarDatos]);
 
     const iniciarEliminacion = (abono) => setAbonoAEliminar(abono);
@@ -111,11 +121,12 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         abonosOcultos,
         modals: {
             abonoAEditar, setAbonoAEditar,
-            abonoAEliminar, setAbonoAEliminar
+            abonoAEliminar, setAbonoAEliminar,
+            fuenteACondonar, setFuenteACondonar
         },
         handlers: {
-            recargarDatos: recargarDatos,
-            handleGuardadoEdicion,
+            recargarDatos,
+            handleGuardado,
             iniciarEliminacion,
             confirmarEliminar
         }

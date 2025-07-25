@@ -34,7 +34,12 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title={modo === 'reactivar' ? "Reactivar Cliente e Iniciar Proceso" : "Editar Cliente"} icon={<UserCog size={32} className="text-[#1976d2]" />}>
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
+                title={modo === 'reactivar' ? "Iniciar Nuevo Proceso para Cliente" : "Editar Cliente"}
+                icon={<UserCog size={32} className="text-[#1976d2]" />}
+            >
                 {!formData.datosCliente.nombres ? (
                     <div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos...</div>
                 ) : (

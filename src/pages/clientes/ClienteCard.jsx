@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, User, Eye, Pencil, Trash, UserX, RefreshCw, Home } from 'lucide-react';
 import { getInitials, formatID, formatCurrency } from '../../utils/textFormatters';
+import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic';
 
 const ClienteCard = ({ cardData, onEdit, onDelete, onRenunciar, onReactivar }) => {
     const {
@@ -106,7 +107,12 @@ const ClienteCard = ({ cardData, onEdit, onDelete, onRenunciar, onReactivar }) =
                                 </div>
                             )}
                             {isRenunciado && !tieneRenunciaPendiente && (
-                                <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onReactivar(cardData)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><RefreshCw className="w-5 h-5 mr-2" /> Iniciar Nuevo Proceso</button>)}</Menu.Item></div>
+                                <div className="px-1 py-1"><Menu.Item>{({ active }) => (
+                                    <button onClick={() => onReactivar(cardData)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}>
+                                        <RefreshCw className="w-5 h-5 mr-2" />
+                                        Iniciar Nuevo Proceso
+                                    </button>
+                                )}</Menu.Item></div>
                             )}
                             <div className="px-1 py-1">
                                 <Menu.Item disabled={!!vivienda}>

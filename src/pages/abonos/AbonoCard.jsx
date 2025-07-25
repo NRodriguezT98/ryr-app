@@ -2,18 +2,8 @@ import React, { Fragment, memo } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Menu, Transition } from '@headlessui/react';
-import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertical, Pencil, Trash, AlertTriangle, Archive } from 'lucide-react';
-import { formatCurrency } from '../../utils/textFormatters';
-
-const formatDate = (dateString) => {
-    if (!dateString) return "Fecha inválida";
-    try {
-        const date = new Date(dateString + 'T00:00:00');
-        return format(date, "d 'de' MMMM 'de' yyyy", { locale: es });
-    } catch (error) {
-        return "Fecha inválida";
-    }
-};
+import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertical, Pencil, Trash, AlertTriangle, Archive, HandCoins } from 'lucide-react';
+import { formatCurrency, formatDisplayDate } from '../../utils/textFormatters';
 
 const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
 
@@ -27,6 +17,18 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
                 label: 'Venta Cancelada'
             };
         }
+        // --- INICIO DE LA MODIFICACIÓN ---
+        // Lógica para el estilo especial de Condonación
+        if (abono.metodoPago === 'Condonación de Saldo') {
+            return {
+                cardBorder: 'border-indigo-300 dark:border-indigo-600',
+                iconBg: 'bg-indigo-100 dark:bg-indigo-900/50',
+                iconColor: 'text-indigo-600 dark:text-indigo-400',
+                Icon: HandCoins,
+                label: null
+            };
+        }
+        // --- FIN DE LA MODIFICACIÓN ---
         if (abono.tieneRenunciaPendiente) {
             return {
                 cardBorder: 'border-orange-300 dark:border-orange-600',
@@ -59,7 +61,11 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
                     <div className="flex-grow">
                         <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{formatCurrency(abono.monto)}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                            <Wallet size={14} /> {abono.metodoPago || 'No especificado'}
+                            <Wallet size={14} />
+                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                            {/* Se muestra el texto especial para la condonación */}
+                            {abono.metodoPago === 'Condonación de Saldo' ? `Cuota Inicial (Condonación)` : abono.metodoPago || 'No especificado'}
+                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                         </p>
                         {abono.observacion && (
                             <p className="text-xs text-gray-600 dark:text-gray-300 italic flex items-start gap-2 mt-2">
@@ -81,11 +87,14 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
                     <div className="flex items-center gap-4 flex-shrink-0 mt-2 sm:mt-0">
                         <div className="text-right space-y-1">
                             <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center justify-end gap-2">
-                                <Calendar size={14} /> {formatDate(abono.fechaPago)}
+                                <Calendar size={14} /> {formatDisplayDate(abono.fechaPago)}
                             </div>
+                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                            {/* Se muestra el nombre del cliente y la vivienda */}
                             <div className="text-xs text-gray-500 dark:text-gray-400 font-semibold flex items-center justify-end gap-2">
                                 <Home size={14} /> {abono.clienteInfo}
                             </div>
+                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                             {label && (
                                 <div className="flex justify-end mt-1">
                                     <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${iconBg} ${iconColor} flex items-center gap-1`}>

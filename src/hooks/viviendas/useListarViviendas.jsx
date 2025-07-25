@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 
 export const useListarViviendas = () => {
     const location = useLocation();
-    const { isLoading, viviendas, clientes, renuncias, recargarDatos } = useData();
+    const { isLoading, viviendas, clientes, renuncias, abonos, recargarDatos } = useData();
 
     const initialStateFromLink = location.state?.statusFilter || 'todas';
     const [statusFilter, setStatusFilter] = useState(initialStateFromLink);
@@ -17,20 +17,36 @@ export const useListarViviendas = () => {
         let itemsProcesados = viviendas.map(vivienda => {
             const clienteAsignado = clientes.find(c => c.id === vivienda.clienteId);
             const procesoFinalizado = clienteAsignado?.proceso?.facturaVenta?.completado === true;
-            const tieneHistorial = !!vivienda.clienteId || renuncias.some(r => r.viviendaId === vivienda.id);
+            const viviendaPagada = vivienda.saldoPendiente <= 0;
+
+            // --- INICIO DE LA MODIFICACIÓN ---
+            // La validación ahora se centra en si existe un historial de pagos.
+            const tieneHistorialDeAbonos = abonos.some(a => a.viviendaId === vivienda.id);
+            // --- FIN DE LA MODIFICACIÓN ---
+
             return {
                 ...vivienda,
                 puedeEditar: !procesoFinalizado,
-                puedeEliminar: !tieneHistorial,
+                puedeEliminar: !vivienda.clienteId && !tieneHistorialDeAbonos,
+                puedeAplicarDescuento: !procesoFinalizado && !viviendaPagada,
                 camposFinancierosBloqueados: !!vivienda.clienteId
             };
         });
+
         switch (statusFilter) {
-            case 'disponibles': itemsProcesados = itemsProcesados.filter(v => !v.clienteId); break;
-            case 'asignadas': itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente > 0); break;
-            case 'pagadas': itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente <= 0); break;
-            default: break;
+            case 'disponibles':
+                itemsProcesados = itemsProcesados.filter(v => !v.clienteId);
+                break;
+            case 'asignadas':
+                itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente > 0);
+                break;
+            case 'pagadas':
+                itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente <= 0);
+                break;
+            default:
+                break;
         }
+
         if (searchTerm) {
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
             itemsProcesados = itemsProcesados.filter(v =>
@@ -40,8 +56,9 @@ export const useListarViviendas = () => {
                 (v.clienteNombre || '').toLowerCase().includes(lowerCaseSearchTerm)
             );
         }
+
         return itemsProcesados.sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa);
-    }, [viviendas, clientes, renuncias, statusFilter, searchTerm]);
+    }, [viviendas, clientes, renuncias, abonos, statusFilter, searchTerm]);
 
     const { hiddenItems: viviendasOcultas, initiateDelete } = useUndoableDelete(
         async (vivienda) => deleteVivienda(vivienda.id),
@@ -52,17 +69,17 @@ export const useListarViviendas = () => {
 
     const [viviendaAEditar, setViviendaAEditar] = useState(null);
     const [viviendaAEliminar, setViviendaAEliminar] = useState(null);
-    const [viviendaConDescuento, setViviendaConDescuento] = useState(null);
+    const [viviendaACondonar, setViviendaACondonar] = useState(null);
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
         setViviendaAEditar(null);
-        setViviendaConDescuento(null);
+        setViviendaACondonar(null);
     }, [recargarDatos]);
 
     const handleIniciarEliminacion = (vivienda) => {
         if (!vivienda.puedeEliminar) {
-            toast.error("No se puede eliminar: la vivienda tiene un historial de clientes.");
+            toast.error("No se puede eliminar: la vivienda ya tiene un historial de pagos registrado.");
             return;
         }
         setViviendaAEliminar(vivienda);
@@ -85,7 +102,7 @@ export const useListarViviendas = () => {
         modals: {
             viviendaAEditar, setViviendaAEditar,
             viviendaAEliminar, setViviendaAEliminar,
-            viviendaConDescuento, setViviendaConDescuento
+            viviendaACondonar, setViviendaACondonar
         },
         handlers: {
             handleGuardado,

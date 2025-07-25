@@ -315,16 +315,27 @@ export const reactivarCliente = async (clienteId) => {
 };
 
 export const updateRenuncia = async (renunciaId, datosParaActualizar) => {
-    await updateDoc(doc(db, "renuncias", renunciaId), datosParaActualizar);
+    const renunciaRef = doc(db, "renuncias", renunciaId);
+    await updateDoc(renunciaRef, datosParaActualizar);
 };
 
 export const cancelarRenuncia = async (renuncia) => {
     const clienteRef = doc(db, "clientes", renuncia.clienteId);
     const viviendaRef = doc(db, "viviendas", renuncia.viviendaId);
     const renunciaRef = doc(db, "renuncias", renuncia.id);
+
     await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);
         if (!viviendaDoc.exists()) throw new Error("La vivienda original ya no existe.");
+
+        // --- INICIO DE LA VALIDACIÓN CRÍTICA ---
+        // Verificamos si la vivienda ya fue reasignada a otro cliente.
+        if (viviendaDoc.data().clienteId) {
+            throw new Error("VIVIENDA_NO_DISPONIBLE"); // Lanzamos un error específico
+        }
+        // --- FIN DE LA VALIDACIÓN CRÍTICA ---
+
+        // Si la validación pasa, procedemos a restaurar todo
         transaction.update(viviendaRef, {
             clienteId: renuncia.clienteId,
             clienteNombre: renuncia.clienteNombre,
