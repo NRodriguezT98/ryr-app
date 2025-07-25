@@ -1,15 +1,12 @@
 import { useMemo } from 'react';
 import { useForm } from '../useForm.jsx';
 import toast from 'react-hot-toast';
-// --- INICIO DE LA CORRECCIÓN ---
-import { addAbono } from '../../utils/storage'; // Se cambia el nombre de la función importada
-// --- FIN DE LA CORRECCIÓN ---
+import { addAbonoAndUpdateProceso } from '../../utils/storage';
 import { validateAbono } from '../../utils/validation.js';
 import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
 import { FUENTE_PROCESO_MAP } from '../../utils/procesoConfig.js';
 
 export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente, onAbonoRegistrado }) => {
-
     const initialAbonoFormState = useMemo(() => ({
         monto: '',
         fechaPago: getTodayString(),
@@ -36,12 +33,8 @@ export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente
                 viviendaId: vivienda.id,
                 clienteId: vivienda.clienteId,
             };
-
             try {
-                // --- INICIO DE LA CORRECCIÓN ---
-                // Se llama a la función con el nombre correcto 'addAbono'
-                await addAbono(nuevoAbono, cliente);
-                // --- FIN DE LA CORRECCIÓN ---
+                await addAbonoAndUpdateProceso(nuevoAbono, cliente);
                 toast.success("Abono registrado y proceso actualizado con éxito.");
                 form.resetForm();
                 onAbonoRegistrado(true);

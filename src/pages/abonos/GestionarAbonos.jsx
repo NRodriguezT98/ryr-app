@@ -7,7 +7,6 @@ import AbonoCard from "./AbonoCard";
 import { WalletCards } from "lucide-react";
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
-import CondonarSaldoModal from '../viviendas/CondonarSaldoModal';
 import { formatCurrency, formatID } from "../../utils/textFormatters";
 import { User, Home, ArrowLeft } from 'lucide-react';
 
@@ -83,7 +82,7 @@ const GestionarAbonos = () => {
                                             vivienda={datosClienteSeleccionado.data.vivienda}
                                             cliente={datosClienteSeleccionado.data.cliente}
                                             onAbonoRegistrado={handlers.recargarDatos}
-                                            onCondonarSaldo={() => modals.setFuenteACondonar({ ...fuente, vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente })}
+                                            onCondonarSaldo={() => {/* Lógica futura si es necesaria */ }}
                                         />
                                     ))}
                                 </div>
@@ -114,14 +113,6 @@ const GestionarAbonos = () => {
             </div>
             {modals.abonoAEditar && (<EditarAbonoModal isOpen={!!modals.abonoAEditar} onClose={() => modals.setAbonoAEditar(null)} onSave={handlers.handleGuardado} abonoAEditar={modals.abonoAEditar} />)}
             {modals.abonoAEliminar && (<ModalConfirmacion isOpen={!!modals.abonoAEliminar} onClose={() => modals.setAbonoAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Abono?" mensaje="¿Estás seguro? Esta acción recalculará los saldos de la vivienda asociada." />)}
-            {modals.fuenteACondonar && (
-                <CondonarSaldoModal
-                    isOpen={!!modals.fuenteACondonar}
-                    onClose={() => modals.setFuenteACondonar(null)}
-                    onSave={handlers.handleGuardado}
-                    fuenteData={modals.fuenteACondonar}
-                />
-            )}
         </AnimatedPage>
     );
 };

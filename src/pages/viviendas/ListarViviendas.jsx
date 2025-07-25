@@ -5,7 +5,7 @@ import ResourcePageLayout from "../../layout/ResourcePageLayout";
 import ViviendaCard from './ViviendaCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarVivienda from "./EditarVivienda.jsx";
-import CondonarSaldoModal from './CondonarSaldoModal.jsx';
+import DescuentoModal from './DescuentoModal.jsx';
 import ViviendaCardSkeleton from "./ViviendaCardSkeleton.jsx";
 import { Home, PlusCircle } from 'lucide-react';
 
@@ -50,7 +50,7 @@ const ListarViviendas = () => {
                             vivienda={vivienda}
                             onEdit={modals.setViviendaAEditar}
                             onDelete={handlers.handleIniciarEliminacion}
-                            onCondonarSaldo={modals.setViviendaACondonar}
+                            onApplyDiscount={modals.setViviendaConDescuento}
                         />
                     ))}
                 </div>
@@ -72,14 +72,7 @@ const ListarViviendas = () => {
 
             {modals.viviendaAEliminar && (<ModalConfirmacion isOpen={!!modals.viviendaAEliminar} onClose={() => modals.setViviendaAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Vivienda?" mensaje="¿Estás seguro? Tendrás 5 segundos para deshacer la acción." />)}
             {modals.viviendaAEditar && (<EditarVivienda isOpen={!!modals.viviendaAEditar} onClose={() => modals.setViviendaAEditar(null)} onSave={handlers.handleGuardado} vivienda={modals.viviendaAEditar} todasLasViviendas={todasLasViviendas} />)}
-            {modals.viviendaACondonar && (
-                <CondonarSaldoModal
-                    isOpen={!!modals.viviendaACondonar}
-                    onClose={() => modals.setViviendaACondonar(null)}
-                    onSave={handlers.handleGuardado}
-                    vivienda={modals.viviendaACondonar}
-                />
-            )}
+            {modals.viviendaConDescuento && (<DescuentoModal isOpen={!!modals.viviendaConDescuento} onClose={() => modals.setViviendaConDescuento(null)} onSave={handlers.handleGuardado} vivienda={modals.viviendaConDescuento} />)}
         </ResourcePageLayout>
     );
 };

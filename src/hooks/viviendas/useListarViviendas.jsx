@@ -17,13 +17,11 @@ export const useListarViviendas = () => {
         let itemsProcesados = viviendas.map(vivienda => {
             const clienteAsignado = clientes.find(c => c.id === vivienda.clienteId);
             const procesoFinalizado = clienteAsignado?.proceso?.facturaVenta?.completado === true;
-            const viviendaPagada = vivienda.saldoPendiente <= 0;
             const tieneHistorial = !!vivienda.clienteId || renuncias.some(r => r.viviendaId === vivienda.id);
             return {
                 ...vivienda,
                 puedeEditar: !procesoFinalizado,
                 puedeEliminar: !tieneHistorial,
-                puedeCondonarSaldo: !procesoFinalizado && !viviendaPagada && vivienda.clienteId,
                 camposFinancierosBloqueados: !!vivienda.clienteId
             };
         });
@@ -54,12 +52,12 @@ export const useListarViviendas = () => {
 
     const [viviendaAEditar, setViviendaAEditar] = useState(null);
     const [viviendaAEliminar, setViviendaAEliminar] = useState(null);
-    const [viviendaACondonar, setViviendaACondonar] = useState(null);
+    const [viviendaConDescuento, setViviendaConDescuento] = useState(null);
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
         setViviendaAEditar(null);
-        setViviendaACondonar(null);
+        setViviendaConDescuento(null);
     }, [recargarDatos]);
 
     const handleIniciarEliminacion = (vivienda) => {
@@ -87,7 +85,7 @@ export const useListarViviendas = () => {
         modals: {
             viviendaAEditar, setViviendaAEditar,
             viviendaAEliminar, setViviendaAEliminar,
-            viviendaACondonar, setViviendaACondonar
+            viviendaConDescuento, setViviendaConDescuento
         },
         handlers: {
             handleGuardado,

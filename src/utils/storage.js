@@ -101,12 +101,17 @@ export const addClienteAndAssignVivienda = async (clienteData) => {
     }
 };
 
-export const addAbono = async (abonoData) => {
+export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
     const viviendaRef = doc(db, "viviendas", abonoData.viviendaId);
     const clienteRef = doc(db, "clientes", abonoData.clienteId);
     const abonoRef = doc(collection(db, "abonos"));
 
-    const abonoParaGuardar = { ...abonoData, id: abonoRef.id };
+    const abonoParaGuardar = {
+        ...abonoData,
+        id: abonoRef.id,
+        estadoProceso: 'activo',
+        clienteNombre: `${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`.trim()
+    };
 
     await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import { deleteAbono } from '../../utils/storage';
 import toast from 'react-hot-toast';
@@ -12,9 +13,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
     const [abonoAEliminar, setAbonoAEliminar] = useState(null);
     const [abonosOcultos, setAbonosOcultos] = useState([]);
     const deletionTimeouts = useRef({});
-    const [fuenteACondonar, setFuenteACondonar] = useState(null);
 
-    // Si la URL cambia, actualizamos el cliente seleccionado
     useEffect(() => {
         setSelectedClienteId(clienteIdDesdeUrl || null);
     }, [clienteIdDesdeUrl]);
@@ -70,10 +69,9 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         [clientes]
     );
 
-    const handleGuardado = useCallback(() => {
+    const handleGuardadoEdicion = useCallback(() => {
         recargarDatos();
         setAbonoAEditar(null);
-        setFuenteACondonar(null);
     }, [recargarDatos]);
 
     const iniciarEliminacion = (abono) => setAbonoAEliminar(abono);
@@ -113,12 +111,11 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         abonosOcultos,
         modals: {
             abonoAEditar, setAbonoAEditar,
-            abonoAEliminar, setAbonoAEliminar,
-            fuenteACondonar, setFuenteACondonar
+            abonoAEliminar, setAbonoAEliminar
         },
         handlers: {
-            recargarDatos,
-            handleGuardado,
+            recargarDatos: recargarDatos,
+            handleGuardadoEdicion,
             iniciarEliminacion,
             confirmarEliminar
         }
