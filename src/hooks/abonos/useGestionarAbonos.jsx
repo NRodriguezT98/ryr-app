@@ -1,24 +1,26 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { deleteAbono } from '../../utils/storage';
 import toast from 'react-hot-toast';
 import UndoToast from '../../components/UndoToast';
 
-export const useGestionarAbonos = () => {
+export const useGestionarAbonos = (clienteIdDesdeUrl) => {
     const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos } = useData();
-    const { clienteId: clienteIdDesdeUrl } = useParams();
     const [selectedClienteId, setSelectedClienteId] = useState(clienteIdDesdeUrl || null);
 
     const [abonoAEditar, setAbonoAEditar] = useState(null);
     const [abonoAEliminar, setAbonoAEliminar] = useState(null);
     const [abonosOcultos, setAbonosOcultos] = useState([]);
     const deletionTimeouts = useRef({});
+    const [fuenteACondonar, setFuenteACondonar] = useState(null);
+
+    // Si la URL cambia, actualizamos el cliente seleccionado
+    useEffect(() => {
+        setSelectedClienteId(clienteIdDesdeUrl || null);
+    }, [clienteIdDesdeUrl]);
 
     const datosClienteSeleccionado = useMemo(() => {
-        if (!selectedClienteId || isDataLoading) {
-            return null;
-        }
+        if (!selectedClienteId || isDataLoading) return null;
 
         const cliente = clientes.find(c => c.id === selectedClienteId);
         if (!cliente) return null;
@@ -42,28 +44,19 @@ export const useGestionarAbonos = () => {
             if (financiero.aplicaSubsidioCaja) fuentes.push(crearFuente(`Subsidio Caja (${financiero.subsidioCaja.caja || 'N/A'})`, "subsidioCaja", financiero.subsidioCaja.monto || 0));
         }
 
-        // --- INICIO DE LA MODIFICACIÓN ---
-        // Buscamos si existen abonos de tipo 'condonacion'
         const condonaciones = historial.filter(a => a.fuente === 'condonacion');
         if (condonaciones.length > 0) {
             const totalCondonado = condonaciones.reduce((sum, abono) => sum + abono.monto, 0);
             fuentes.push({
                 titulo: "Condonación de Saldo",
                 fuente: "condonacion",
-                montoPactado: totalCondonado, // El "pactado" es lo que se condonó
+                montoPactado: totalCondonado,
                 abonos: condonaciones
             });
         }
-        // --- FIN DE LA MODIFICACIÓN ---
 
         return {
-            data: {
-                cliente,
-                vivienda,
-                historial,
-                fuentes,
-                isPagada: vivienda.saldoPendiente <= 0
-            }
+            data: { cliente, vivienda, historial, fuentes, isPagada: vivienda.saldoPendiente <= 0 }
         };
     }, [selectedClienteId, clientes, viviendas, abonos, isDataLoading]);
 
@@ -77,9 +70,10 @@ export const useGestionarAbonos = () => {
         [clientes]
     );
 
-    const handleGuardadoEdicion = useCallback(() => {
+    const handleGuardado = useCallback(() => {
         recargarDatos();
         setAbonoAEditar(null);
+        setFuenteACondonar(null);
     }, [recargarDatos]);
 
     const iniciarEliminacion = (abono) => setAbonoAEliminar(abono);
@@ -119,11 +113,12 @@ export const useGestionarAbonos = () => {
         abonosOcultos,
         modals: {
             abonoAEditar, setAbonoAEditar,
-            abonoAEliminar, setAbonoAEliminar
+            abonoAEliminar, setAbonoAEliminar,
+            fuenteACondonar, setFuenteACondonar
         },
         handlers: {
             recargarDatos,
-            handleGuardadoEdicion,
+            handleGuardado,
             iniciarEliminacion,
             confirmarEliminar
         }

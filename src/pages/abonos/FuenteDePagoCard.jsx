@@ -14,10 +14,8 @@ const ICONS = {
     condonacion: <HandCoins className="w-8 h-8 text-indigo-600" />
 };
 
-const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, cliente, onAbonoRegistrado }) => {
-    // --- INICIO DE LA CORRECCIÓN ---
+const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, cliente, onAbonoRegistrado, onCondonarSaldo }) => {
     const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
-    // --- FIN DE LA CORRECCIÓN ---
 
     const totalAbonado = abonos.reduce((sum, abono) => sum + abono.monto, 0);
     const saldoPendiente = montoPactado - totalAbonado;
@@ -139,19 +137,25 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                 </form>
             )}
 
-            {saldoPendiente > 0 && !mostrandoFormulario && !isViviendaPagada && fuente !== 'condonacion' && (
-                <div className="mt-4 pt-4 border-t dark:border-gray-700 text-center">
-                    <button onClick={() => setMostrandoFormulario(true)} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline">
-                        + Registrar Abono a esta Fuente
-                    </button>
-                </div>
-            )}
-
-            {saldoPendiente <= 0 && (
-                <div className="mt-4 pt-4 border-t dark:border-gray-700 text-center">
+            <div className="mt-4 pt-4 border-t dark:border-gray-700 text-center">
+                {saldoPendiente <= 0 ? (
                     <p className="text-green-600 dark:text-green-400 font-bold text-sm">✅ Esta fuente de pago ha sido completada.</p>
-                </div>
-            )}
+                ) : !mostrandoFormulario && !isViviendaPagada ? (
+                    <div className="flex justify-center items-center gap-4">
+                        <button onClick={() => setMostrandoFormulario(true)} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline">
+                            + Registrar Abono
+                        </button>
+                        {fuente === 'cuotaInicial' && (
+                            <>
+                                <span className="text-gray-300 dark:text-gray-600">|</span>
+                                <button onClick={onCondonarSaldo} className="text-green-600 dark:text-green-400 font-semibold text-sm hover:underline">
+                                    Condonar Saldo
+                                </button>
+                            </>
+                        )}
+                    </div>
+                ) : null}
+            </div>
         </div>
     );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { useGestionarAbonos } from '../../hooks/abonos/useGestionarAbonos';
 import FuenteDePagoCard from "./FuenteDePagoCard";
@@ -7,10 +7,12 @@ import AbonoCard from "./AbonoCard";
 import { WalletCards } from "lucide-react";
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
+import CondonarSaldoModal from '../viviendas/CondonarSaldoModal';
 import { formatCurrency, formatID } from "../../utils/textFormatters";
 import { User, Home, ArrowLeft } from 'lucide-react';
 
 const GestionarAbonos = () => {
+    const { clienteId } = useParams();
     const {
         isLoading,
         clientesParaLaLista,
@@ -19,7 +21,7 @@ const GestionarAbonos = () => {
         abonosOcultos,
         modals,
         handlers
-    } = useGestionarAbonos();
+    } = useGestionarAbonos(clienteId);
 
     if (isLoading && !selectedClienteId) {
         return <div className="text-center p-10 animate-pulse">Cargando datos iniciales...</div>;
@@ -75,10 +77,16 @@ const GestionarAbonos = () => {
                                 <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Fuentes de Pago</h3>
                                 <div className="space-y-4">
                                     {datosClienteSeleccionado.data.fuentes.map(fuente => (
-                                        <FuenteDePagoCard key={fuente.fuente} {...fuente} vivienda={datosClienteSeleccionado.data.vivienda} cliente={datosClienteSeleccionado.data.cliente} onAbonoRegistrado={handlers.recargarDatos} />
+                                        <FuenteDePagoCard
+                                            key={fuente.fuente}
+                                            {...fuente}
+                                            vivienda={datosClienteSeleccionado.data.vivienda}
+                                            cliente={datosClienteSeleccionado.data.cliente}
+                                            onAbonoRegistrado={handlers.recargarDatos}
+                                            onCondonarSaldo={() => modals.setFuenteACondonar({ ...fuente, vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente })}
+                                        />
                                     ))}
                                 </div>
-
                                 <div className="mt-12 pt-6 border-t dark:border-gray-700">
                                     <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Historial de Abonos</h3>
                                     {historialVisible.length > 0 ? (
@@ -104,8 +112,16 @@ const GestionarAbonos = () => {
                     </div>
                 </div>
             </div>
-            {modals.abonoAEditar && (<EditarAbonoModal isOpen={!!modals.abonoAEditar} onClose={() => modals.setAbonoAEditar(null)} onSave={handlers.handleGuardadoEdicion} abonoAEditar={modals.abonoAEditar} />)}
+            {modals.abonoAEditar && (<EditarAbonoModal isOpen={!!modals.abonoAEditar} onClose={() => modals.setAbonoAEditar(null)} onSave={handlers.handleGuardado} abonoAEditar={modals.abonoAEditar} />)}
             {modals.abonoAEliminar && (<ModalConfirmacion isOpen={!!modals.abonoAEliminar} onClose={() => modals.setAbonoAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Abono?" mensaje="¿Estás seguro? Esta acción recalculará los saldos de la vivienda asociada." />)}
+            {modals.fuenteACondonar && (
+                <CondonarSaldoModal
+                    isOpen={!!modals.fuenteACondonar}
+                    onClose={() => modals.setFuenteACondonar(null)}
+                    onSave={handlers.handleGuardado}
+                    fuenteData={modals.fuenteACondonar}
+                />
+            )}
         </AnimatedPage>
     );
 };

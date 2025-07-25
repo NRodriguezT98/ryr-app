@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { useForm } from '../useForm.jsx';
-import { addAbono } from '../../utils/storage.js';
+import { useForm } from '../useForm';
+import { addAbono } from '../../utils/storage';
 import toast from 'react-hot-toast';
-import { getTodayString } from '../../utils/textFormatters.js';
+import { getTodayString } from '../../utils/textFormatters';
 
-export const useCondonarSaldo = (vivienda, onSave, onClose) => {
+export const useCondonarSaldo = (fuenteData, onSave, onClose) => {
     const initialState = useMemo(() => ({
         motivo: '',
         urlSoporte: null,
@@ -30,24 +30,22 @@ export const useCondonarSaldo = (vivienda, onSave, onClose) => {
             return newErrors;
         },
         onSubmit: async (data) => {
-            if (!vivienda || vivienda.saldoPendiente <= 0) {
-                toast.error("No hay saldo pendiente para condonar.");
+            if (!fuenteData || fuenteData.saldoPendiente <= 0) {
+                toast.error("No hay saldo pendiente en esta fuente para condonar.");
                 return;
             }
 
             const condonacionAbono = {
                 fechaPago: getTodayString(),
-                monto: vivienda.saldoPendiente,
+                monto: fuenteData.saldoPendiente,
                 metodoPago: 'Condonación de Saldo',
-                fuente: 'condonacion',
+                fuente: fuenteData.fuente, // Se usa la fuente correcta (ej: 'cuotaInicial')
                 observacion: data.motivo.trim(),
                 urlComprobante: data.urlSoporte,
-                viviendaId: vivienda.id,
-                clienteId: vivienda.clienteId,
-                clienteNombre: vivienda.clienteNombre,
-                // --- INICIO DE LA CORRECCIÓN ---
-                estadoProceso: 'activo' // Se añade el estado que faltaba
-                // --- FIN DE LA CORRECCIÓN ---
+                viviendaId: fuenteData.vivienda.id,
+                clienteId: fuenteData.cliente.id,
+                clienteNombre: `${fuenteData.cliente.datosCliente.nombres} ${fuenteData.cliente.datosCliente.apellidos}`.trim(),
+                estadoProceso: 'activo'
             };
 
             try {
