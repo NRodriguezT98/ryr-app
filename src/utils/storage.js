@@ -109,8 +109,7 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
     const abonoParaGuardar = {
         ...abonoData,
         id: abonoRef.id,
-        estadoProceso: 'activo',
-        clienteNombre: `${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`.trim()
+        estadoProceso: 'activo'
     };
 
     await runTransaction(db, async (transaction) => {
@@ -229,6 +228,12 @@ export const inactivarCliente = async (clienteId) => {
     });
 };
 
+export const restaurarCliente = async (clienteId) => {
+    await updateDoc(doc(db, "clientes", String(clienteId)), {
+        status: 'renunciado'
+    });
+};
+
 export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observacion = '', fechaRenuncia, penalidadMonto = 0, penalidadMotivo = '') => {
     const clienteRef = doc(db, "clientes", clienteId);
     const viviendaRef = doc(db, "viviendas", viviendaId);
@@ -310,32 +315,20 @@ export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) =>
     });
 };
 
-export const reactivarCliente = async (clienteId) => {
-    await updateDoc(doc(db, "clientes", clienteId), { status: 'activo' });
-};
-
 export const updateRenuncia = async (renunciaId, datosParaActualizar) => {
-    const renunciaRef = doc(db, "renuncias", renunciaId);
-    await updateDoc(renunciaRef, datosParaActualizar);
+    await updateDoc(doc(db, "renuncias", renunciaId), datosParaActualizar);
 };
 
 export const cancelarRenuncia = async (renuncia) => {
     const clienteRef = doc(db, "clientes", renuncia.clienteId);
     const viviendaRef = doc(db, "viviendas", renuncia.viviendaId);
     const renunciaRef = doc(db, "renuncias", renuncia.id);
-
     await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);
         if (!viviendaDoc.exists()) throw new Error("La vivienda original ya no existe.");
-
-        // --- INICIO DE LA VALIDACIÓN CRÍTICA ---
-        // Verificamos si la vivienda ya fue reasignada a otro cliente.
         if (viviendaDoc.data().clienteId) {
-            throw new Error("VIVIENDA_NO_DISPONIBLE"); // Lanzamos un error específico
+            throw new Error("VIVIENDA_NO_DISPONIBLE");
         }
-        // --- FIN DE LA VALIDACIÓN CRÍTICA ---
-
-        // Si la validación pasa, procedemos a restaurar todo
         transaction.update(viviendaRef, {
             clienteId: renuncia.clienteId,
             clienteNombre: renuncia.clienteNombre,

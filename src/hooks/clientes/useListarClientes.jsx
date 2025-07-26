@@ -1,28 +1,25 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useData } from '../../context/DataContext';
-import { deleteCliente, inactivarCliente, renunciarAVivienda, reactivarCliente, createNotification, cancelarRenuncia } from '../../utils/storage';
+import { deleteCliente, inactivarCliente, renunciarAVivienda, createNotification, restaurarCliente } from '../../utils/storage';
 import toast from 'react-hot-toast';
-import UndoToast from '../../components/UndoToast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 
 export const useListarClientes = () => {
     const { isLoading, clientes, renuncias, abonos, recargarDatos } = useData();
 
-    // Estados para modales
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [clienteARenunciar, setClienteARenunciar] = useState(null);
+    const [clienteARestaurar, setClienteARestaurar] = useState(null);
     const [datosRenuncia, setDatosRenuncia] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [clienteEnModal, setClienteEnModal] = useState({ cliente: null, modo: null });
 
-    // Estados para filtros
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('activo');
 
     const clientesFiltrados = useMemo(() => {
         let itemsProcesados = clientes.map(cliente => {
             const renunciaPendiente = renuncias.find(r => r.clienteId === cliente.id && r.estadoDevolucion === 'Pendiente');
-
             let puedeRenunciar = true;
             if (cliente.proceso) {
                 const hitoCompletado = PROCESO_CONFIG.some(pasoConfig =>
@@ -32,9 +29,7 @@ export const useListarClientes = () => {
                     puedeRenunciar = false;
                 }
             }
-
             const procesoFinalizado = cliente.proceso?.facturaVenta?.completado === true;
-
             return { ...cliente, tieneRenunciaPendiente: !!renunciaPendiente, puedeRenunciar, puedeEditar: !procesoFinalizado };
         });
 
@@ -72,17 +67,14 @@ export const useListarClientes = () => {
         setClienteARenunciar(cliente);
     };
 
-    const iniciarEdicion = (cliente) => {
-        setClienteEnModal({ cliente, modo: 'editar' });
-    };
+    const iniciarEdicion = (cliente) => setClienteEnModal({ cliente, modo: 'editar' });
+    const iniciarReactivacion = (cliente) => setClienteEnModal({ cliente, modo: 'reactivar' });
 
-    const iniciarReactivacion = (cliente) => {
-        setClienteEnModal({ cliente, modo: 'reactivar' });
-    };
-
+    // --- INICIO DE LA CORRECCIÓN ---
     const iniciarEliminacion = (cliente) => {
         const abonosDelCliente = abonos.filter(a => a.clienteId === cliente.id);
         const renunciasDelCliente = renuncias.filter(r => r.clienteId === cliente.id);
+        // La variable que faltaba se declara aquí
         const esCandidatoParaBorradoFisico = !cliente.viviendaId && abonosDelCliente.length === 0 && renunciasDelCliente.length === 0;
 
         setClienteAEliminar({
@@ -90,26 +82,20 @@ export const useListarClientes = () => {
             esBorradoFisico: esCandidatoParaBorradoFisico
         });
     };
+    // --- FIN DE LA CORRECCIÓN ---
 
     const confirmarEliminar = useCallback(() => {
         if (!clienteAEliminar) return;
-
         const { id, esBorradoFisico } = clienteAEliminar;
         const accion = esBorradoFisico ? deleteCliente(id) : inactivarCliente(id);
         const mensajeExito = esBorradoFisico ? "Cliente eliminado permanentemente." : "Cliente archivado con éxito.";
         const mensajeError = esBorradoFisico ? "No se pudo eliminar el cliente." : "No se pudo archivar el cliente.";
 
-        toast.promise(
-            accion,
-            {
-                loading: esBorradoFisico ? 'Eliminando...' : 'Archivando...',
-                success: () => {
-                    recargarDatos();
-                    return mensajeExito;
-                },
-                error: () => mensajeError
-            }
-        );
+        toast.promise(accion, {
+            loading: esBorradoFisico ? 'Eliminando...' : 'Archivando...',
+            success: () => { recargarDatos(); return mensajeExito; },
+            error: () => mensajeError
+        });
         setClienteAEliminar(null);
     }, [clienteAEliminar, recargarDatos]);
 
@@ -137,6 +123,25 @@ export const useListarClientes = () => {
         }
     }, [datosRenuncia, recargarDatos]);
 
+    const iniciarRestauracion = (cliente) => {
+        setClienteARestaurar(cliente);
+    };
+
+    const confirmarRestauracion = useCallback(async () => {
+        if (!clienteARestaurar) return;
+        setIsSubmitting(true);
+        try {
+            await restaurarCliente(clienteARestaurar.id);
+            toast.success("El cliente ha sido restaurado con éxito.");
+            recargarDatos();
+        } catch (error) {
+            toast.error("No se pudo restaurar el cliente.");
+        } finally {
+            setClienteARestaurar(null);
+            setIsSubmitting(false);
+        }
+    }, [clienteARestaurar, recargarDatos]);
+
     return {
         isLoading,
         clientesVisibles,
@@ -147,7 +152,8 @@ export const useListarClientes = () => {
             clienteARenunciar, setClienteARenunciar,
             datosRenuncia, setDatosRenuncia,
             isSubmitting,
-            clienteEnModal, setClienteEnModal
+            clienteEnModal, setClienteEnModal,
+            clienteARestaurar, setClienteARestaurar
         },
         handlers: {
             handleGuardado,
@@ -157,7 +163,9 @@ export const useListarClientes = () => {
             handleConfirmarMotivo,
             confirmarRenunciaFinal,
             iniciarEdicion,
-            iniciarReactivacion
+            iniciarReactivacion,
+            iniciarRestauracion,
+            confirmarRestauracion
         }
     };
 };

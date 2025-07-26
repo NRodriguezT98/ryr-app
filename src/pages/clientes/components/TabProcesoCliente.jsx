@@ -5,7 +5,7 @@ import PasoProcesoCard from './PasoProcesoCard';
 import { Tooltip } from 'react-tooltip';
 import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
-import { PartyPopper, UserX } from 'lucide-react';
+import { PartyPopper, UserX, Archive } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
 
@@ -24,8 +24,24 @@ const ResumenRenuncia = ({ renuncia }) => (
     </div>
 );
 
+const VistaArchivado = () => (
+    <div className="animate-fade-in text-center p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed dark:border-gray-700">
+        <Archive size={48} className="mx-auto text-gray-400" />
+        <h3 className="mt-4 text-xl font-bold text-gray-800 dark:text-gray-100">Cliente Archivado</h3>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Este cliente ha sido archivado. Su proceso y documentos se conservan pero no se pueden editar.
+        </p>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Para realizar cambios, primero debes "Restaurar Cliente" desde la lista de clientes.
+        </p>
+    </div>
+);
+
 const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange }) => {
 
+    if (cliente.status === 'inactivo') {
+        return <VistaArchivado />;
+    }
     if (cliente.status === 'renunciado' && renuncia) {
         return <ResumenRenuncia renuncia={renuncia} />;
     }
@@ -137,6 +153,8 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                 onConfirm={handlers.confirmarEdicionFecha}
                 pasoInfo={pasoAEditarFecha ? { ...pasoAEditarFecha, ...pasosRenderizables.find(p => p.key === pasoAEditarFecha.key) } : null}
             />
+
+            <Tooltip id="app-tooltip" />
         </div>
     );
 };

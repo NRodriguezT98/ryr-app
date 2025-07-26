@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDocumentacion } from '../../../hooks/clientes/useDocumentacion';
 import DocumentoRow from '../../../components/documentos/DocumentoRow';
-import { UserX } from 'lucide-react';
+import { UserX, Archive } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
 
@@ -20,9 +20,22 @@ const ResumenRenuncia = ({ renuncia }) => (
     </div>
 );
 
+const VistaArchivado = () => (
+    <div className="animate-fade-in text-center p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed dark:border-gray-700">
+        <Archive size={48} className="mx-auto text-gray-400" />
+        <h3 className="mt-4 text-xl font-bold text-gray-800 dark:text-gray-100">Documentación Archivada</h3>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Este cliente ha sido archivado. Su proceso y documentos se conservan pero no se pueden editar.
+        </p>
+    </div>
+);
+
 const TabDocumentacionCliente = ({ cliente, renuncia }) => {
     const { filtro, setFiltro, documentosFiltrados } = useDocumentacion(cliente);
 
+    if (cliente.status === 'inactivo') {
+        return <VistaArchivado />;
+    }
     if (cliente.status === 'renunciado' && renuncia) {
         return <ResumenRenuncia renuncia={renuncia} />;
     }
