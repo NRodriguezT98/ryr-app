@@ -7,7 +7,7 @@ export const useDetalleCliente = () => {
     const { clienteId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { clientes, abonos, renuncias, isLoading, recargarDatos } = useData(); // Obtenemos las renuncias
+    const { clientes, abonos, renuncias, isLoading, recargarDatos } = useData();
 
     const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'info');
 
@@ -17,16 +17,15 @@ export const useDetalleCliente = () => {
         }
 
         const cliente = clientes.find(c => c.id === clienteId);
-
-        if (!cliente) {
-            return { isLoading: false, data: null };
-        }
+        if (!cliente) return { isLoading: false, data: null };
 
         // --- INICIO DE LA MODIFICACIÓN ---
-        // Buscamos el registro de renuncia más reciente para este cliente
+        // Buscamos la renuncia más reciente y determinamos si está pendiente.
         const renunciaAsociada = renuncias
             .filter(r => r.clienteId === cliente.id)
-            .sort((a, b) => new Date(b.fechaRenuncia) - new Date(a.fechaRenuncia))[0] || null;
+            .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0))[0] || null;
+
+        const tieneRenunciaPendiente = renunciaAsociada?.estadoDevolucion === 'Pendiente';
         // --- FIN DE LA MODIFICACIÓN ---
 
         const historialAbonos = abonos
@@ -36,10 +35,11 @@ export const useDetalleCliente = () => {
         return {
             isLoading: false,
             data: {
-                cliente,
+                // Añadimos la bandera 'tieneRenunciaPendiente' al objeto del cliente para que sea fácil de usar
+                cliente: { ...cliente, tieneRenunciaPendiente },
                 vivienda: cliente.vivienda,
                 historialAbonos,
-                renuncia: renunciaAsociada // Devolvemos la renuncia encontrada
+                renuncia: renunciaAsociada
             }
         };
     }, [clienteId, clientes, abonos, renuncias, isLoading]);

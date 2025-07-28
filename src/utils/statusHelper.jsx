@@ -7,7 +7,7 @@ const PROCESS_STAGES_ORDER = [...PROCESO_CONFIG].map(p => p.key).reverse();
 const STATUS_CONFIG = {
     renunciado: { text: 'Renunció', color: 'bg-orange-100 text-orange-800', icon: <UserX size={14} /> },
     archivado: { text: 'Archivado', color: 'bg-gray-200 text-gray-700', icon: <Archive size={14} /> },
-    renunciaPendiente: { text: 'Renuncia Pendiente', color: 'bg-orange-100 text-orange-800', icon: <AlertTriangle size={14} /> },
+    enProcesoDeRenuncia: { text: 'En Renuncia', color: 'bg-orange-100 text-orange-800', icon: <AlertTriangle size={14} /> },
     desconocido: { text: 'Estado Desconocido', color: 'bg-gray-100 text-gray-800', icon: <UserPlus size={14} /> },
     documentacion: { text: 'Recopilando Documentación', color: 'bg-gray-100 text-gray-800', icon: <FileUp size={14} /> },
     promesaEnviada: { text: 'Promesa Enviada', color: 'bg-pink-100 text-pink-800', icon: <FileSignature size={14} /> },
@@ -37,8 +37,7 @@ export const determineClientStatus = (cliente) => {
 
     if (cliente.status === 'inactivo') return STATUS_CONFIG.archivado;
     if (cliente.status === 'renunciado') return STATUS_CONFIG.renunciado;
-
-    if (cliente.tieneRenunciaPendiente) return STATUS_CONFIG.renunciaPendiente;
+    if (cliente.status === 'enProcesoDeRenuncia') return STATUS_CONFIG.enProcesoDeRenuncia;
 
     const proceso = cliente.proceso || {};
 

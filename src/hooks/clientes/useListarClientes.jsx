@@ -19,7 +19,6 @@ export const useListarClientes = () => {
 
     const clientesFiltrados = useMemo(() => {
         let itemsProcesados = clientes.map(cliente => {
-            const renunciaPendiente = renuncias.find(r => r.clienteId === cliente.id && r.estadoDevolucion === 'Pendiente');
             let puedeRenunciar = true;
             if (cliente.proceso) {
                 const hitoCompletado = PROCESO_CONFIG.some(pasoConfig =>
@@ -30,7 +29,7 @@ export const useListarClientes = () => {
                 }
             }
             const procesoFinalizado = cliente.proceso?.facturaVenta?.completado === true;
-            return { ...cliente, tieneRenunciaPendiente: !!renunciaPendiente, puedeRenunciar, puedeEditar: !procesoFinalizado };
+            return { ...cliente, puedeRenunciar, puedeEditar: !procesoFinalizado };
         });
 
         if (statusFilter !== 'todos') {
@@ -50,7 +49,7 @@ export const useListarClientes = () => {
             const nameB = `${b.datosCliente?.nombres || ''} ${b.datosCliente?.apellidos || ''}`.toLowerCase();
             return nameA.localeCompare(nameB);
         });
-    }, [clientes, renuncias, searchTerm, statusFilter]);
+    }, [clientes, searchTerm, statusFilter]);
 
     const clientesVisibles = clientesFiltrados;
 
@@ -70,19 +69,12 @@ export const useListarClientes = () => {
     const iniciarEdicion = (cliente) => setClienteEnModal({ cliente, modo: 'editar' });
     const iniciarReactivacion = (cliente) => setClienteEnModal({ cliente, modo: 'reactivar' });
 
-    // --- INICIO DE LA CORRECCIÓN ---
     const iniciarEliminacion = (cliente) => {
         const abonosDelCliente = abonos.filter(a => a.clienteId === cliente.id);
         const renunciasDelCliente = renuncias.filter(r => r.clienteId === cliente.id);
-        // La variable que faltaba se declara aquí
         const esCandidatoParaBorradoFisico = !cliente.viviendaId && abonosDelCliente.length === 0 && renunciasDelCliente.length === 0;
-
-        setClienteAEliminar({
-            ...cliente,
-            esBorradoFisico: esCandidatoParaBorradoFisico
-        });
+        setClienteAEliminar({ ...cliente, esBorradoFisico });
     };
-    // --- FIN DE LA CORRECCIÓN ---
 
     const confirmarEliminar = useCallback(() => {
         if (!clienteAEliminar) return;
@@ -90,7 +82,6 @@ export const useListarClientes = () => {
         const accion = esBorradoFisico ? deleteCliente(id) : inactivarCliente(id);
         const mensajeExito = esBorradoFisico ? "Cliente eliminado permanentemente." : "Cliente archivado con éxito.";
         const mensajeError = esBorradoFisico ? "No se pudo eliminar el cliente." : "No se pudo archivar el cliente.";
-
         toast.promise(accion, {
             loading: esBorradoFisico ? 'Eliminando...' : 'Archivando...',
             success: () => { recargarDatos(); return mensajeExito; },
@@ -110,13 +101,14 @@ export const useListarClientes = () => {
         const { cliente, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo } = datosRenuncia;
         try {
             const { renunciaId, clienteNombre } = await renunciarAVivienda(
-                cliente.id, cliente.viviendaId, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo
+                cliente.id, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo
             );
             toast.success("La renuncia se ha procesado correctamente.");
             await createNotification('renuncia', `Se registró una renuncia del cliente ${clienteNombre}.`, `/renuncias/detalle/${renunciaId}`);
             recargarDatos();
         } catch (error) {
             toast.error("No se pudo procesar la renuncia.");
+            console.error("Error al procesar renuncia:", error);
         } finally {
             setDatosRenuncia(null);
             setIsSubmitting(false);

@@ -1,52 +1,15 @@
 import React from 'react';
 import { useDocumentacion } from '../../../hooks/clientes/useDocumentacion';
 import DocumentoRow from '../../../components/documentos/DocumentoRow';
-import { UserX, Archive } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
-
-const ResumenRenuncia = ({ renuncia }) => (
-    <div className="animate-fade-in text-center p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed dark:border-gray-700">
-        <UserX size={48} className="mx-auto text-orange-400" />
-        <h3 className="mt-4 text-xl font-bold text-gray-800 dark:text-gray-100">Documentación Archivada</h3>
-        <div className="mt-4 text-sm text-gray-600 dark:text-gray-400 space-y-2 text-left max-w-md mx-auto">
-            <p>Los documentos asociados al proceso de venta anterior de este cliente han sido archivados.</p>
-            <p><strong>Fecha de Renuncia:</strong> {formatDisplayDate(renuncia.fechaRenuncia)}</p>
-            <p><strong>Total Devuelto:</strong> <span className="font-semibold">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span></p>
-        </div>
-        <Link to={`/renuncias/detalle/${renuncia.id}`} className="mt-6 inline-flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-            Ver Abonos Archivados en el Detalle
-        </Link>
-    </div>
-);
-
-// --- INICIO DE LA MODIFICACIÓN ---
-const VistaArchivado = ({ renuncia }) => (
-    <div className="animate-fade-in text-center p-8 bg-white dark:bg-gray-800 rounded-xl border-2 border-dashed dark:border-gray-700">
-        <Archive size={48} className="mx-auto text-gray-400" />
-        <h3 className="mt-4 text-xl font-bold text-gray-800 dark:text-gray-100">Cliente Archivado</h3>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            El historial de este cliente, incluyendo sus documentos, se conserva en el registro de su última renuncia.
-        </p>
-        {renuncia ? (
-            <Link to={`/renuncias/detalle/${renuncia.id}`} className="mt-6 inline-flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-                Consultar Documentación en el Detalle de la Renuncia
-            </Link>
-        ) : (
-            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400 italic">No se encontró un registro de renuncia asociado.</p>
-        )}
-    </div>
-);
-// --- FIN DE LA MODIFICACIÓN ---
+import ClienteEstadoView from './ClienteEstadoView';
+import { AlertTriangle } from 'lucide-react';
 
 const TabDocumentacionCliente = ({ cliente, renuncia }) => {
     const { filtro, setFiltro, documentosFiltrados } = useDocumentacion(cliente);
 
-    if (cliente.status === 'inactivo') {
-        return <VistaArchivado renuncia={renuncia} />;
-    }
-    if (cliente.status === 'renunciado' && renuncia) {
-        return <ResumenRenuncia renuncia={renuncia} />;
+    const isClientInactive = cliente.status === 'renunciado' || cliente.status === 'inactivo';
+    if (isClientInactive) {
+        return <ClienteEstadoView cliente={cliente} renuncia={renuncia} contexto="documentacion" />;
     }
 
     return (
@@ -58,6 +21,16 @@ const TabDocumentacionCliente = ({ cliente, renuncia }) => {
                     <button onClick={() => setFiltro('todos')} className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${filtro === 'todos' ? 'bg-white dark:bg-gray-900 shadow text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>Todos</button>
                 </div>
             </div>
+
+            {cliente.tieneRenunciaPendiente && (
+                <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border-b dark:border-gray-700 flex items-center gap-3">
+                    <AlertTriangle size={20} className="text-orange-500" />
+                    <p className="text-sm text-orange-700 dark:text-orange-300 font-semibold">
+                        Modo de solo lectura: La gestión de documentos está pausada durante el proceso de renuncia.
+                    </p>
+                </div>
+            )}
+
             <div className="divide-y dark:divide-gray-700">
                 {documentosFiltrados.length > 0 ? (
                     documentosFiltrados.map(doc => (
@@ -67,6 +40,7 @@ const TabDocumentacionCliente = ({ cliente, renuncia }) => {
                             isRequired={true}
                             currentFileUrl={doc.url}
                             estado={doc.estado}
+                            isReadOnly={cliente.tieneRenunciaPendiente}
                         />
                     ))
                 ) : (
