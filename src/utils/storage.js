@@ -85,7 +85,8 @@ export const addClienteAndAssignVivienda = async (clienteData) => {
         ...clienteData,
         id: newClienteRef.id,
         status: 'activo',
-        fechaCreacion: clienteData.datosCliente.fechaIngreso || new Date().toISOString()
+        fechaCreacion: clienteData.datosCliente.fechaIngreso,
+        fechaInicioProceso: clienteData.datosCliente.fechaIngreso
     };
     if (clienteData.viviendaId) {
         const viviendaRef = doc(db, "viviendas", String(clienteData.viviendaId));
@@ -248,8 +249,9 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
         if (!clienteDoc.exists() || !viviendaDoc.exists()) throw new Error("El cliente o la vivienda ya no existen.");
         const clienteData = clienteDoc.data();
         clienteNombre = `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`.trim();
-        const totalAbonado = abonosDelCiclo.reduce((sum, abono) => sum + abono.monto, 0);
-        const totalADevolver = totalAbonado - penalidadMonto;
+        const abonosRealesDelCliente = abonosDelCiclo.filter(abono => abono.metodoPago !== 'Condonación de Saldo');
+        const totalAbonadoReal = abonosRealesDelCliente.reduce((sum, abono) => sum + abono.monto, 0);
+        const totalADevolver = totalAbonadoReal - penalidadMonto;
         const estadoInicial = totalADevolver > 0 ? 'Pendiente' : 'Cerrada';
         const documentosArchivados = [];
         if (clienteData.datosCliente?.urlCedula) {
@@ -279,7 +281,7 @@ export const renunciarAVivienda = async (clienteId, viviendaId, motivo, observac
         const registroRenuncia = {
             id: renunciaRef.id, clienteId, clienteNombre, viviendaId,
             viviendaInfo: `Mz. ${viviendaDoc.data().manzana} - Casa ${viviendaDoc.data().numeroCasa}`,
-            fechaRenuncia, totalAbonadoOriginal: totalAbonado, penalidadMonto, penalidadMotivo,
+            fechaRenuncia, totalAbonadoOriginal: totalAbonadoReal, penalidadMonto, penalidadMotivo,
             totalAbonadoParaDevolucion: totalADevolver, estadoDevolucion: estadoInicial,
             motivo, observacion, historialAbonos: abonosDelCiclo,
             documentosArchivados

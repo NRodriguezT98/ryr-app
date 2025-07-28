@@ -39,8 +39,6 @@ const motivosOptions = [
     }
 ];
 
-// --- INICIO DE LA CORRECCIÓN ---
-// Se añade la función 'getSelectStyles' que faltaba.
 const getSelectStyles = (hasError) => ({
     control: (base, state) => ({
         ...base,
@@ -56,12 +54,11 @@ const getSelectStyles = (hasError) => ({
     option: (base, state) => ({ ...base, backgroundColor: state.isFocused ? '#2563eb' : 'var(--color-bg-form)', color: state.isFocused ? 'white' : 'var(--color-text-form)' }),
     input: (base) => ({ ...base, color: 'var(--color-text-form)' }),
 });
-// --- FIN DE LA CORRECCIÓN ---
 
 const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente }) => {
     const { formData, errors, calculos, handlers } = useMotivoRenuncia(cliente, onConfirm);
     const { motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo, aplicaPenalidad } = formData;
-    const { totalAbonado, montoPenalidadNum, totalADevolver, minDate } = calculos;
+    const { totalAbonadoReal, totalCondonado, montoPenalidadNum, totalADevolver, minDate } = calculos;
     const { setMotivo, setObservacion, setFechaRenuncia, setPenalidadMonto, setPenalidadMotivo, setAplicaPenalidad, handleConfirmar } = handlers;
 
     return (
@@ -90,7 +87,7 @@ const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente }) => {
                             onChange={(e) => setFechaRenuncia(e.target.value)}
                             min={minDate}
                             max={getTodayString()}
-                            className={`w-full border p-2 rounded-lg dark:bg-gray-700 ${errors.fechaRenuncia ? 'border-red-500' : 'dark:border-gray-600'}`}
+                            className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 ${errors.fechaRenuncia ? 'border-red-500' : 'dark:border-gray-600'}`}
                         />
                         {errors.fechaRenuncia && <p className="text-red-600 text-sm mt-1">{errors.fechaRenuncia}</p>}
                     </div>
@@ -170,7 +167,10 @@ const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente }) => {
                 </div>
 
                 <div className="bg-blue-50 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-800 p-4 rounded-lg space-y-2">
-                    <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Total Abonado:</span><span className="font-medium dark:text-gray-100">{formatCurrency(totalAbonado)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Total Abonado (Real):</span><span className="font-medium dark:text-gray-100">{formatCurrency(totalAbonadoReal)}</span></div>
+                    {totalCondonado > 0 && (
+                        <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Saldos Condonados por Gerencia:</span><span className="font-medium dark:text-gray-100">{formatCurrency(totalCondonado)}</span></div>
+                    )}
                     {aplicaPenalidad && montoPenalidadNum > 0 && (
                         <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-300">Penalidad:</span><span className="font-medium text-red-600 dark:text-red-400">- {formatCurrency(montoPenalidadNum)}</span></div>
                     )}

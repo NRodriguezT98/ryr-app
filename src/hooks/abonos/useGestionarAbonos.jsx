@@ -33,10 +33,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
             .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))
             .map(abono => ({
                 ...abono,
-                // --- INICIO DE LA MODIFICACIÓN ---
-                // Se unifica el formato para que coincida con el de la lista general de abonos.
                 clienteInfo: `${vivienda.manzana}${vivienda.numeroCasa} - ${abono.clienteNombre}`,
-                // --- FIN DE LA MODIFICACIÓN ---
                 clienteStatus: cliente.status
             }));
 
