@@ -1,0 +1,179 @@
+Listado de rutas de carpetas
+El número de serie del volumen es E468-A5D6
+C:\USERS\N_ROD\DOCUMENTS\PYTHON\RYR-APP\SRC
+¦   App.css
+¦   index.css
+¦   main.jsx
+¦   
++---assets
+¦       1.png
+¦       2.png
+¦       Client.png
+¦       Home.png
+¦       logo1-dark.png
+¦       logo1.png
+¦       logo2-dark.png
+¦       logo2.png
+¦       logoRyR.png
+¦       pieDePagina.png
+¦       react.svg
+¦       
++---components
+¦   ¦   AnimatedPage.jsx
+¦   ¦   Button.jsx
+¦   ¦   ErrorBoundary.jsx
+¦   ¦   FileUpload.jsx
+¦   ¦   HelpTooltip.jsx
+¦   ¦   Modal.jsx
+¦   ¦   ModalConfirmacion.jsx
+¦   ¦   Navbar.jsx
+¦   ¦   ThemeSwitcher.jsx
+¦   ¦   UndoToast.jsx
+¦   ¦   
+¦   +---dashboard
+¦   ¦       ActivityItem.jsx
+¦   ¦       BarChartIngresos.jsx
+¦   ¦       DocumentosPendientes.jsx
+¦   ¦       GraficoOcupacion.jsx
+¦   ¦       RenunciasPendientes.jsx
+¦   ¦       StatCard.jsx
+¦   ¦       
+¦   +---documentos
+¦   ¦       DocumentoCard.jsx
+¦   ¦       DocumentoRow.jsx
+¦   ¦       
+¦   +---notifications
+¦           NotificationItem.jsx
+¦           
++---context
+¦       DataContext.jsx
+¦       NotificationContext.jsx
+¦       ThemeContext.jsx
+¦       
++---firebase
+¦       config.js
+¦       
++---hooks
+¦   ¦   useAbonosFilters.jsx
+¦   ¦   useDashboardStats.jsx
+¦   ¦   useForm.jsx
+¦   ¦   useListarRenuncias.jsx
+¦   ¦   useTheme.js
+¦   ¦   useUndoableDelete.jsx
+¦   ¦   
+¦   +---abonos
+¦   ¦       useAbonoForm.jsx
+¦   ¦       useGestionarAbonos.jsx
+¦   ¦       
+¦   +---clientes
+¦   ¦       useClienteCardLogic.jsx
+¦   ¦       useClienteFinanciero.jsx
+¦   ¦       useClienteForm.jsx
+¦   ¦       useDetalleCliente.jsx
+¦   ¦       useDocumentacion.jsx
+¦   ¦       useListarClientes.jsx
+¦   ¦       useMotivoRenuncia.jsx
+¦   ¦       useProcesoLogic.jsx
+¦   ¦       useSeguimientoLogic.jsx
+¦   ¦       
+¦   +---renuncias
+¦   ¦       useEditarRenuncia.jsx
+¦   ¦       useGestionarDevolucion.jsx
+¦   ¦       
+¦   +---viviendas
+¦           useCondonarSaldo.jsx
+¦           useCrearVivienda.jsx
+¦           useDescuentoModal.jsx
+¦           useDetalleVivienda.jsx
+¦           useEditarVivienda.jsx
+¦           useListarViviendas.jsx
+¦           
++---layout
+¦       Layout.jsx
+¦       ResourcePageLayout.jsx
+¦       
++---pages
+¦   ¦   DashboardPage.jsx
+¦   ¦   
+¦   +---abonos
+¦   ¦       AbonoCard.jsx
+¦   ¦       AbonoCardSkeleton.jsx
+¦   ¦       CrearAbono.jsx
+¦   ¦       EditarAbono.jsx
+¦   ¦       EditarAbonoModal.jsx
+¦   ¦       FormularioAbono.jsx
+¦   ¦       FuenteDePagoCard.jsx
+¦   ¦       GestionarAbonos.jsx
+¦   ¦       HistorialAbonos.jsx
+¦   ¦       ListarAbonos.jsx
+¦   ¦       
+¦   +---clientes
+¦   ¦   ¦   ClienteCard.jsx
+¦   ¦   ¦   ClienteCardSkeleton.jsx
+¦   ¦   ¦   CrearCliente.jsx
+¦   ¦   ¦   DetalleCliente.jsx
+¦   ¦   ¦   EditarCliente.jsx
+¦   ¦   ¦   FormularioCliente.jsx
+¦   ¦   ¦   ListarClientes.jsx
+¦   ¦   ¦   
+¦   ¦   +---components
+¦   ¦   ¦       ClienteDetailView.jsx
+¦   ¦   ¦       ClienteEstadoView.jsx
+¦   ¦   ¦       ClienteListItem.jsx
+¦   ¦   ¦       ModalEditarFechaProceso.jsx
+¦   ¦   ¦       ModalMotivoRenuncia.jsx
+¦   ¦   ¦       PasoProcesoCard.jsx
+¦   ¦   ¦       SeguimientoCliente.jsx
+¦   ¦   ¦       TabDocumentacionCliente.jsx
+¦   ¦   ¦       TabInfoGeneralCliente.jsx
+¦   ¦   ¦       TabProcesoCliente.jsx
+¦   ¦   ¦       
+¦   ¦   +---wizard
+¦   ¦           Step1_SelectVivienda.jsx
+¦   ¦           Step2_ClientInfo.jsx
+¦   ¦           Step3_Financial.jsx
+¦   ¦           
+¦   +---renuncias
+¦   ¦   ¦   DetalleRenuncia.jsx
+¦   ¦   ¦   ListarRenuncias.jsx
+¦   ¦   ¦   
+¦   ¦   +---components
+¦   ¦           ModalEditarRenuncia.jsx
+¦   ¦           ModalGestionarDevolucion.jsx
+¦   ¦           RenunciaCard.jsx
+¦   ¦           
+¦   +---viviendas
+¦       ¦   CondonarSaldoModal.jsx
+¦       ¦   CrearVivienda.jsx
+¦       ¦   DescuentoModal.jsx
+¦       ¦   DetalleVivienda.jsx
+¦       ¦   EditarVivienda.jsx
+¦       ¦   FormularioVivienda.jsx
+¦       ¦   ListarViviendas.jsx
+¦       ¦   ViviendaCard.jsx
+¦       ¦   ViviendaCardSkeleton.jsx
+¦       ¦   
+¦       +---components
+¦       ¦       FinancialBreakdownCard.jsx
+¦       ¦       TabFinanciero.jsx
+¦       ¦       TabInformacion.jsx
+¦       ¦       
+¦       +---wizard
+¦               Step1_Ubicacion.jsx
+¦               Step2_InfoLegal.jsx
+¦               Step3_Valor.jsx
+¦               
++---schemas
++---scripts
+¦       migrarViviendas.js
+¦       
++---utils
+        documentacionConfig.js
+        pdfGenerator.js
+        procesoConfig.js
+        seguimientoConfig.js
+        statusHelper.jsx
+        storage.js
+        textFormatters.js
+        validation.js
+        

@@ -69,7 +69,7 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                 onClose={onClose}
                 title="Editar Motivo de Renuncia"
                 icon={<Edit size={28} className="text-orange-500" />}
-                size="2xl"
+                size="2xl" // <-- Hacemos el modal más grande
             >
                 <form onSubmit={handlers.handleSubmit} className="space-y-4">
                     <p className="text-center text-gray-600 dark:text-gray-400 -mt-4 mb-4">
@@ -80,7 +80,7 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                         <Select
                             options={motivosOptions}
                             value={motivosOptions.flatMap(g => g.options).find(opt => opt.value === formData.motivo) || null}
-                            onChange={handlers.handleMotivoChange}
+                            onChange={handlers.handleMotivoChange} // <-- Usamos el nuevo manejador
                             placeholder="Selecciona un motivo..."
                             styles={getSelectStyles(isDarkMode)}
                         />
@@ -101,7 +101,7 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                     )}
 
                     <div className="flex justify-end gap-4 pt-6 border-t dark:border-gray-700">
-                        <button onClick={onClose} type="button" className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>
+                        <button onClick={onClose} type="button" className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>
                         <span
                             data-tooltip-id="app-tooltip"
                             data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}
@@ -109,7 +109,7 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                             <button
                                 type="submit"
                                 disabled={!hayCambios || isSubmitting}
-                                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg transition disabled:bg-gray-300 disabled:cursor-not-allowed"
                             >
                                 {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
                             </button>
