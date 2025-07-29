@@ -1,63 +1,64 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { DOCUMENTACION_CONFIG } from '../../utils/documentacionConfig';
-import { PROCESO_CONFIG } from '../../utils/procesoConfig';
-
-const pasoLabels = new Map(PROCESO_CONFIG.map(p => [p.key, p.label]));
+import { updateCliente } from '../../utils/storage';
+import toast from 'react-hot-toast';
 
 export const useDocumentacion = (cliente) => {
     const [filtro, setFiltro] = useState('importantes');
 
-    const documentosRequeridos = useMemo(() => {
-        if (!cliente) return [];
+    const documentosFiltrados = useMemo(() => {
+        const { datosCliente, financiero, proceso } = cliente;
+        if (!datosCliente || !financiero || !proceso) return [];
 
-        return DOCUMENTACION_CONFIG
-            .filter(docConfig => docConfig.aplicaA(cliente.financiero || {}))
-            .map(docConfig => {
-                let url = null;
-                let fechaSubida = null;
-                let estado = 'Pendiente';
-
-                if (docConfig.id === 'cedula') {
-                    url = cliente.datosCliente?.urlCedula;
-                    fechaSubida = cliente.datosCliente?.fechaIngreso;
-                } else if (docConfig.id === 'cartaAprobacionCredito') {
-                    url = cliente.financiero?.credito?.urlCartaAprobacion;
-                    fechaSubida = cliente.datosCliente?.fechaIngreso;
-                } else if (docConfig.id === 'actaAprobacionCaja') {
-                    url = cliente.financiero?.subsidioCaja?.urlCartaAprobacion;
-                    fechaSubida = cliente.datosCliente?.fechaIngreso;
-                } else if (docConfig.vinculadoA) {
-                    const evidencia = cliente.proceso?.[docConfig.vinculadoA]?.evidencias?.[docConfig.id];
-                    if (evidencia) {
-                        url = evidencia.url;
-                        fechaSubida = evidencia.fechaSubida;
-                    }
-                }
-
-                if (url) {
-                    estado = 'Subido';
-                }
-
+        const docs = DOCUMENTACION_CONFIG
+            .filter(doc => doc.aplicaA(financiero))
+            .map(doc => {
+                const docData = typeof doc.selector === 'function' ? doc.selector(cliente) : null;
                 return {
-                    ...docConfig,
-                    url,
-                    fechaSubida,
-                    estado,
-                    pasoLabel: pasoLabels.get(docConfig.vinculadoA) || 'Registro del Cliente',
+                    ...doc,
+                    url: docData?.url || (typeof docData === 'string' ? docData : null),
+                    estado: (docData?.url || typeof docData === 'string') ? 'Subido' : 'Pendiente'
                 };
             });
-    }, [cliente]);
 
-    const documentosFiltrados = useMemo(() => {
         if (filtro === 'importantes') {
-            return documentosRequeridos.filter(d => d.esImportante);
+            return docs.filter(doc => doc.esImportante);
         }
-        return documentosRequeridos;
-    }, [documentosRequeridos, filtro]);
+        return docs;
+    }, [cliente, filtro]);
+
+    const handleFileAction = useCallback(async (path, url) => {
+        const keys = path.split('.');
+        let tempCliente = JSON.parse(JSON.stringify(cliente));
+
+        let current = tempCliente;
+        for (let i = 0; i < keys.length - 1; i++) {
+            if (!current[keys[i]]) {
+                current[keys[i]] = {};
+            }
+            current = current[keys[i]];
+        }
+
+        const finalKey = keys[keys.length - 1];
+        if (typeof current[finalKey] === 'object' && current[finalKey] !== null) {
+            current[finalKey].url = url;
+        } else {
+            current[finalKey] = url;
+        }
+
+        const { vivienda, ...datosParaGuardar } = tempCliente;
+        try {
+            await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId);
+            toast.success(`Documento ${url ? 'subido' : 'eliminado'} correctamente.`);
+        } catch (error) {
+            toast.error("Error al actualizar el documento.");
+        }
+    }, [cliente]);
 
     return {
         filtro,
         setFiltro,
         documentosFiltrados,
+        handleFileAction
     };
 };

@@ -2,13 +2,13 @@ import React from 'react';
 import FileUpload from '../FileUpload';
 import { FileText, Eye, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
 
-const DocumentoRow = ({ label, isRequired, currentFileUrl, estado, isReadOnly = false, onFileUploaded, onFileDeleted }) => {
+const DocumentoRow = ({ label, isRequired, currentFileUrl, estado, isReadOnly = false, onFileUploaded, onFileDeleted, cliente }) => {
 
     if (!isRequired && !currentFileUrl) {
         return null;
     }
 
-    const isUploaded = estado === 'Subido';
+    const isUploaded = !!currentFileUrl;
 
     const statusInfo = isUploaded
         ? { icon: <CheckCircle className="text-green-500" /> }
@@ -35,22 +35,23 @@ const DocumentoRow = ({ label, isRequired, currentFileUrl, estado, isReadOnly = 
                         >
                             <Eye size={16} /> Ver
                         </a>
-                        {!isReadOnly && (
+                        {!isReadOnly && onFileDeleted && (
                             <button onClick={onFileDeleted} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full transition-colors">
                                 <Trash2 size={16} />
                             </button>
                         )}
                     </div>
-                ) : !isReadOnly ? (
+                ) : !isReadOnly && onFileUploaded ? (
                     <FileUpload
                         label="Subir"
-                        filePath={onFileUploaded.filePath}
+                        filePath={onFileUploaded.filePath(label)}
                         onUploadSuccess={onFileUploaded.onSuccess}
                         isCompact={true}
+                        disabled={!cliente?.datosCliente?.cedula}
                     />
                 ) : (
                     <span className="text-xs font-semibold text-gray-400 dark:text-gray-500">
-                        Pendiente
+                        {isReadOnly ? 'Bloqueado' : 'Pendiente'}
                     </span>
                 )}
             </div>

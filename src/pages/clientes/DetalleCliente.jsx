@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useBlocker } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, User, FileDown, Info, GitCommit, Briefcase } from 'lucide-react';
+import { ArrowLeft, User, FileDown, Info, GitCommit } from 'lucide-react';
 import { useDetalleCliente } from '../../hooks/clientes/useDetalleCliente.jsx';
 import { getInitials } from '../../utils/textFormatters';
 import { generateClientStatementPDF } from '../../utils/pdfGenerator';
 import toast from 'react-hot-toast';
 import TabInfoGeneralCliente from './components/TabInfoGeneralCliente';
 import TabProcesoCliente from './components/TabProcesoCliente';
-import TabDocumentacionCliente from './components/TabDocumentacionCliente';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 
 const TabButton = ({ activeTab, tabName, label, icon, onClick }) => (
@@ -67,9 +66,7 @@ const DetalleCliente = () => {
         return <div className="text-center p-10 animate-pulse">Cargando perfil del cliente...</div>;
     }
 
-    // --- INICIO DE LA MODIFICACIÓN ---
     const { cliente, vivienda, historialAbonos, renuncia } = datosDetalle;
-    // --- FIN DE LA MODIFICACIÓN ---
 
     const handleGeneratePdf = () => {
         if (cliente && vivienda) {
@@ -106,21 +103,19 @@ const DetalleCliente = () => {
                     <nav className="flex space-x-2">
                         <TabButton activeTab={activeTab} tabName="info" label="Información General" icon={<Info size={16} />} onClick={handleTabClick} />
                         <TabButton activeTab={activeTab} tabName="proceso" label="Proceso" icon={<GitCommit size={16} />} onClick={handleTabClick} />
-                        <TabButton activeTab={activeTab} tabName="documentos" label="Documentación" icon={<Briefcase size={16} />} onClick={handleTabClick} />
                     </nav>
                 </div>
 
                 <div>
-                    {activeTab === 'info' && <TabInfoGeneralCliente cliente={cliente} vivienda={vivienda} historialAbonos={historialAbonos} />}
+                    {activeTab === 'info' && <TabInfoGeneralCliente cliente={cliente} renuncia={renuncia} historialAbonos={historialAbonos} />}
                     {activeTab === 'proceso' && (
                         <TabProcesoCliente
                             cliente={cliente}
-                            renuncia={renuncia} // <-- Pasamos la renuncia como prop
+                            renuncia={renuncia}
                             onDatosRecargados={recargarDatos}
                             onHayCambiosChange={setProcesoTieneCambios}
                         />
                     )}
-                    {activeTab === 'documentos' && <TabDocumentacionCliente cliente={cliente} renuncia={renuncia} />}
                 </div>
             </div>
 
