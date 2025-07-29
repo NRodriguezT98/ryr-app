@@ -7,18 +7,8 @@ import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic';
 
 const ClienteCard = ({ cardData, onEdit, onDelete, onRenunciar, onReactivar, onRestaurar }) => {
     const {
-        id,
-        datosCliente,
-        vivienda,
-        clientStatus,
-        isRenunciado,
-        isArchivado,
-        isPagada,
-        totalAbonado,
-        porcentajePagado,
-        puedeEditar,
-        puedeRenunciar,
-        status
+        id, datosCliente, vivienda, clientStatus, isRenunciado, isArchivado, isPagada,
+        totalAbonado, porcentajePagado, puedeEditar, puedeRenunciar, status
     } = cardData;
 
     const enRenunciaPendiente = status === 'enProcesoDeRenuncia';
@@ -50,7 +40,6 @@ const ClienteCard = ({ cardData, onEdit, onDelete, onRenunciar, onReactivar, onR
                         )}
                     </p>
                 </div>
-
                 {enRenunciaPendiente ? (
                     <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-700 dark:text-orange-300 text-xs font-semibold">
                         <AlertTriangle size={16} />
@@ -88,38 +77,34 @@ const ClienteCard = ({ cardData, onEdit, onDelete, onRenunciar, onReactivar, onR
                             {isArchivado ? (
                                 <>
                                     <div className="px-1 py-1"><Menu.Item>{({ active }) => (<Link to={`/clientes/detalle/${id}`} className={`${active ? 'bg-indigo-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Eye className="w-5 h-5 mr-2" /> Ver Detalle</Link>)}</Menu.Item></div>
-                                    <div className="px-1 py-1">
-                                        <Menu.Item>
-                                            {({ active }) => (
-                                                <button onClick={() => onRestaurar(cardData)} className={`${active ? 'bg-yellow-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><ArchiveRestore className="w-5 h-5 mr-2" /> Restaurar Cliente</button>
-                                            )}
-                                        </Menu.Item>
-                                    </div>
+                                    <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onRestaurar(cardData)} className={`${active ? 'bg-yellow-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><ArchiveRestore className="w-5 h-5 mr-2" /> Restaurar Cliente</button>)}</Menu.Item></div>
                                 </>
                             ) : (
                                 <>
                                     <div className="px-1 py-1"><Menu.Item>{({ active }) => (<Link to={`/clientes/detalle/${id}`} className={`${active ? 'bg-indigo-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Eye className="w-5 h-5 mr-2" /> Ver Detalle</Link>)}</Menu.Item></div>
                                     {!isRenunciado && (
-                                        <div className="px-1 py-1">
-                                            <Menu.Item disabled={!puedeEditar || enRenunciaPendiente}>
-                                                {({ active, disabled }) => (
-                                                    <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? (enRenunciaPendiente ? "Acción no disponible durante una renuncia pendiente." : "No se puede editar un cliente con el proceso finalizado.") : ''}>
-                                                        <button onClick={() => onEdit(cardData)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeEditar || enRenunciaPendiente}><Pencil className="w-5 h-5 mr-2" /> Editar</button>
-                                                    </div>
-                                                )}
-                                            </Menu.Item>
-                                        </div>
-                                    )}
-                                    {vivienda && !isRenunciado && !isPagada && (
-                                        <div className="px-1 py-1">
-                                            <Menu.Item disabled={!puedeRenunciar || enRenunciaPendiente}>
-                                                {({ active, disabled }) => (
-                                                    <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? (enRenunciaPendiente ? "Acción no disponible durante una renuncia pendiente." : "No se puede renunciar: el cliente ha superado un hito clave.") : ''}>
-                                                        <button onClick={() => onRenunciar(cardData)} className={`${active ? 'bg-orange-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeRenunciar || enRenunciaPendiente}><UserX className="w-5 h-5 mr-2" /> Renunciar</button>
-                                                    </div>
-                                                )}
-                                            </Menu.Item>
-                                        </div>
+                                        <>
+                                            <div className="px-1 py-1">
+                                                <Menu.Item disabled={!puedeEditar || enRenunciaPendiente}>
+                                                    {({ active, disabled }) => (
+                                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? (enRenunciaPendiente ? "Acción no disponible durante una renuncia pendiente." : "No se puede editar un cliente con el proceso finalizado.") : ''}>
+                                                            <button onClick={() => onEdit(cardData)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeEditar || enRenunciaPendiente}><Pencil className="w-5 h-5 mr-2" /> Editar</button>
+                                                        </div>
+                                                    )}
+                                                </Menu.Item>
+                                            </div>
+                                            {vivienda && !isPagada && (
+                                                <div className="px-1 py-1">
+                                                    <Menu.Item disabled={!puedeRenunciar || enRenunciaPendiente}>
+                                                        {({ active, disabled }) => (
+                                                            <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? (enRenunciaPendiente ? "Acción no disponible durante una renuncia pendiente." : "No se puede renunciar: el cliente ha superado un hito clave.") : ''}>
+                                                                <button onClick={() => onRenunciar(cardData)} className={`${active ? 'bg-orange-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeRenunciar || enRenunciaPendiente}><UserX className="w-5 h-5 mr-2" /> Renunciar</button>
+                                                            </div>
+                                                        )}
+                                                    </Menu.Item>
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                     {isRenunciado && (
                                         <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onReactivar(cardData)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><RefreshCw className="w-5 h-5 mr-2" /> Iniciar Nuevo Proceso</button>)}</Menu.Item></div>

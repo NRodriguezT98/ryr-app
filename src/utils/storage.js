@@ -3,11 +3,18 @@ import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction,
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { toSentenceCase, formatCurrency } from './textFormatters';
 import { PROCESO_CONFIG, FUENTE_PROCESO_MAP } from './procesoConfig.js';
+import { DOCUMENTACION_CONFIG } from './documentacionConfig.js';
 
 export const createNotification = async (type, message, link = '#') => {
     const notificationsCol = collection(db, 'notifications');
     try {
-        await addDoc(notificationsCol, { type, message, link, read: false, timestamp: serverTimestamp() });
+        await addDoc(notificationsCol, {
+            type,
+            message,
+            link,
+            read: false,
+            timestamp: serverTimestamp()
+        });
     } catch (error) {
         console.error("Error al crear la notificación:", error);
     }
@@ -16,7 +23,8 @@ export const createNotification = async (type, message, link = '#') => {
 const getData = async (collectionName) => {
     const collectionRef = collection(db, collectionName);
     const querySnapshot = await getDocs(collectionRef);
-    return querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    const data = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    return data;
 };
 
 export const getViviendas = () => getData("viviendas");
@@ -30,21 +38,26 @@ export const uploadFile = (file, path, onProgress) => {
     return new Promise((resolve, reject) => {
         const storageRef = ref(storage, path);
         const uploadTask = uploadBytesResumable(storageRef, file);
-        uploadTask.on('state_changed', (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            if (onProgress) onProgress(progress);
-        }, (error) => {
-            console.error("Error al subir archivo:", error);
-            reject(error);
-        }, async () => {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(downloadURL);
-        });
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                if (onProgress) onProgress(progress);
+            },
+            (error) => {
+                console.error("Error al subir archivo:", error);
+                reject(error);
+            },
+            async () => {
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadURL);
+            }
+        );
     });
 };
 
 export const deleteFile = async (filePath) => {
-    await deleteObject(ref(storage, filePath));
+    const fileRef = ref(storage, filePath);
+    await deleteObject(fileRef);
 };
 
 export const addVivienda = async (viviendaData) => {
@@ -100,6 +113,7 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
         id: abonoRef.id,
         estadoProceso: 'activo'
     };
+
     await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);
         const clienteDoc = await transaction.get(clienteRef);
@@ -243,16 +257,26 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
         const abonosRealesDelCliente = abonosDelCiclo.filter(abono => abono.metodoPago !== 'Condonación de Saldo');
         const totalAbonadoReal = abonosRealesDelCliente.reduce((sum, abono) => sum + abono.monto, 0);
         const totalADevolver = totalAbonadoReal - penalidadMonto;
-        const estadoInicialRenuncia = totalADevolver > 0 ? 'Pendiente' : 'Cerrada';
+        const estadoInicial = totalADevolver > 0 ? 'Pendiente' : 'Cerrada';
+        const documentosArchivados = [];
+        DOCUMENTACION_CONFIG.forEach(docConfig => {
+            if (docConfig.selector) {
+                const docData = docConfig.selector(clienteData);
+                const url = docData?.url || (typeof docData === 'string' ? docData : null);
+                if (url) {
+                    documentosArchivados.push({ label: docConfig.label, url: url });
+                }
+            }
+        });
         const renunciaRef = doc(collection(db, "renuncias"));
         renunciaIdParaNotificacion = renunciaRef.id;
         const registroRenuncia = {
             id: renunciaRef.id, clienteId, clienteNombre, viviendaId,
             viviendaInfo: `Mz. ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`,
             fechaRenuncia, totalAbonadoOriginal: totalAbonadoReal, penalidadMonto, penalidadMotivo,
-            totalAbonadoParaDevolucion: totalADevolver, estadoDevolucion: estadoInicialRenuncia,
+            totalAbonadoParaDevolucion: totalADevolver, estadoDevolucion: estadoInicial,
             motivo, observacion, historialAbonos: abonosDelCiclo,
-            documentosArchivados: [],
+            documentosArchivados,
             financieroArchivado: clienteData.financiero || {},
             viviendaArchivada: {
                 id: viviendaId,
@@ -264,8 +288,7 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
             timestamp: serverTimestamp()
         };
         transaction.set(renunciaRef, registroRenuncia);
-        transaction.update(viviendaRef, { clienteId: null, clienteNombre: "", totalAbonado: 0, saldoPendiente: viviendaData.valorTotal });
-        if (estadoInicialRenuncia === 'Pendiente') {
+        if (estadoInicial === 'Pendiente') {
             transaction.update(clienteRef, { status: 'enProcesoDeRenuncia' });
         } else {
             transaction.update(clienteRef, { viviendaId: null, proceso: {}, financiero: {}, status: 'renunciado' });
@@ -301,9 +324,13 @@ export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) =>
     });
 };
 
+// --- INICIO DE LA CORRECCIÓN ---
+// Nos aseguramos de que la función 'updateRenuncia' esté presente y se exporte.
 export const updateRenuncia = async (renunciaId, datosParaActualizar) => {
-    await updateDoc(doc(db, "renuncias", renunciaId), datosParaActualizar);
+    const renunciaRef = doc(db, "renuncias", renunciaId);
+    await updateDoc(renunciaRef, datosParaActualizar);
 };
+// --- FIN DE LA CORRECCIÓN ---
 
 export const cancelarRenuncia = async (renuncia) => {
     const clienteRef = doc(db, "clientes", renuncia.clienteId);
@@ -325,7 +352,7 @@ export const cancelarRenuncia = async (renuncia) => {
             viviendaId: renuncia.viviendaId,
             status: 'activo',
             financiero: renuncia.financieroArchivado,
-            proceso: renuncia.procesoArchivado || {} // Aseguramos que proceso se restaure
+            proceso: renuncia.procesoArchivado || {}
         });
         renuncia.historialAbonos.forEach(abono => {
             transaction.update(doc(db, "abonos", abono.id), { estadoProceso: 'activo' });

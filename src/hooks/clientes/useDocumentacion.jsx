@@ -13,12 +13,19 @@ export const useDocumentacion = (cliente) => {
         const docs = DOCUMENTACION_CONFIG
             .filter(doc => doc.aplicaA(financiero))
             .map(doc => {
+                // --- INICIO DE LA CORRECCIÓN ---
                 const docData = typeof doc.selector === 'function' ? doc.selector(cliente) : null;
+
+                // Determinamos la URL final, ya sea que venga directamente o de una propiedad .url
+                const finalUrl = docData?.url || (typeof docData === 'string' ? docData : null);
+
                 return {
                     ...doc,
-                    url: docData?.url || (typeof docData === 'string' ? docData : null),
-                    estado: (docData?.url || typeof docData === 'string') ? 'Subido' : 'Pendiente'
+                    url: finalUrl,
+                    // El estado ahora depende EXCLUSIVAMENTE de si existe una URL final.
+                    estado: finalUrl ? 'Subido' : 'Pendiente'
                 };
+                // --- FIN DE LA CORRECCIÓN ---
             });
 
         if (filtro === 'importantes') {
@@ -40,6 +47,7 @@ export const useDocumentacion = (cliente) => {
         }
 
         const finalKey = keys[keys.length - 1];
+        // Comprobamos si el destino es un objeto de evidencia o una URL directa
         if (typeof current[finalKey] === 'object' && current[finalKey] !== null) {
             current[finalKey].url = url;
         } else {

@@ -97,9 +97,9 @@ const DetalleRenuncia = () => {
                 <div className="mt-8 pt-6 border-t dark:border-gray-700">
                     <h3 className="font-bold text-xl mb-4 flex items-center gap-2 dark:text-gray-100"><DollarSign /> Desglose Financiero</h3>
                     <div className="bg-gray-50 dark:bg-gray-700/50 border dark:border-gray-700 p-4 rounded-lg space-y-2 mb-6">
-                        <div className="flex justify-between text-sm"><span className="text-gray-600 dark:text-gray-400">Total Abonado Original:</span><span className="font-medium dark:text-gray-200">{formatCurrency(renuncia.totalAbonadoOriginal)}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600 dark:text-gray-400">Total Abonado Original:</span><span className="font-medium dark:text-gray-200">{formatCurrency(renuncia.totalAbonadoOriginal)}</span></div>
                         {conPenalidad && (
-                            <div className="flex justify-between items-start text-sm">
+                            <div className="flex justify-between items-start">
                                 <span className="text-gray-600 dark:text-gray-400 flex items-center gap-2"><MinusCircle size={14} /> Penalidad:</span>
                                 <div className="text-right">
                                     <span className="font-medium text-red-500 dark:text-red-400">- {formatCurrency(renuncia.penalidadMonto)}</span>
@@ -107,9 +107,9 @@ const DetalleRenuncia = () => {
                                 </div>
                             </div>
                         )}
-                        <div className="flex justify-between font-bold pt-2 border-t dark:border-gray-600 mt-2">
-                            <span className='text-lg dark:text-gray-200'>{isCerrada ? 'Total Devuelto' : 'Total a Devolver'}:</span>
-                            <span className="text-3xl text-green-600 dark:text-green-400">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span>
+                        <div className="flex justify-between font-bold text-lg pt-2 border-t dark:border-gray-600 mt-2">
+                            <span className='dark:text-gray-200'>{isCerrada ? 'Total Devuelto' : 'Total a Devolver'}:</span>
+                            <span className="text-green-600 dark:text-green-400">{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span>
                         </div>
                     </div>
 
@@ -123,10 +123,10 @@ const DetalleRenuncia = () => {
                     )}
                 </div>
 
-                {renuncia.documentosArchivados && renuncia.documentosArchivados.length > 0 && (
-                    <div className="mt-8 pt-6 border-t dark:border-gray-700">
-                        <h3 className="font-bold text-xl mb-4 flex items-center gap-2 dark:text-gray-100"><Briefcase /> Documentos Archivados del Proceso</h3>
-                        <div className="bg-gray-50 dark:bg-gray-700/50 p-5 rounded-xl border dark:border-gray-700">
+                <div className="mt-8 pt-6 border-t dark:border-gray-700">
+                    <h3 className="font-bold text-xl mb-4 flex items-center gap-2 dark:text-gray-100"><Briefcase /> Documentos Archivados del Proceso</h3>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 p-5 rounded-xl border dark:border-gray-700">
+                        {renuncia.documentosArchivados && renuncia.documentosArchivados.length > 0 ? (
                             <ul className="space-y-2">
                                 {renuncia.documentosArchivados.map((doc, index) => (
                                     <li key={index} className="flex items-center justify-between p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -138,9 +138,11 @@ const DetalleRenuncia = () => {
                                     </li>
                                 ))}
                             </ul>
-                        </div>
+                        ) : (
+                            <p className="text-center text-sm text-gray-500 dark:text-gray-400">No se archivaron documentos para este proceso de renuncia.</p>
+                        )}
                     </div>
-                )}
+                </div>
             </div>
         </AnimatedPage>
     );
