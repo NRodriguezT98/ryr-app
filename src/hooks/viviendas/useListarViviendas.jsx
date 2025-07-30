@@ -2,66 +2,48 @@ import { useState, useMemo, useCallback } from "react";
 import { useLocation } from 'react-router-dom';
 import { useData } from "../../context/DataContext";
 import { useUndoableDelete } from "../useUndoableDelete";
-import { deleteVivienda } from "../../utils/storage";
+import { deleteViviendaPermanently } from "../../utils/storage";
 import toast from 'react-hot-toast';
 
 export const useListarViviendas = () => {
     const location = useLocation();
-    const { isLoading, viviendas, clientes, renuncias, abonos, recargarDatos } = useData();
+    const { isLoading, viviendas, clientes, abonos, recargarDatos } = useData();
 
     const initialStateFromLink = location.state?.statusFilter || 'todas';
     const [statusFilter, setStatusFilter] = useState(initialStateFromLink);
     const [searchTerm, setSearchTerm] = useState('');
 
     const viviendasFiltradasYOrdenadas = useMemo(() => {
-        let itemsProcesados = viviendas.map(vivienda => {
+        return viviendas.map(vivienda => {
             const clienteAsignado = clientes.find(c => c.id === vivienda.clienteId);
             const procesoFinalizado = clienteAsignado?.proceso?.facturaVenta?.completado === true;
-            const viviendaPagada = vivienda.saldoPendiente <= 0;
-
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // La validación ahora se centra en si existe un historial de pagos.
             const tieneHistorialDeAbonos = abonos.some(a => a.viviendaId === vivienda.id);
-            // --- FIN DE LA MODIFICACIÓN ---
 
             return {
                 ...vivienda,
                 puedeEditar: !procesoFinalizado,
                 puedeEliminar: !vivienda.clienteId && !tieneHistorialDeAbonos,
-                puedeAplicarDescuento: !procesoFinalizado && !viviendaPagada,
                 camposFinancierosBloqueados: !!vivienda.clienteId
             };
-        });
-
-        switch (statusFilter) {
-            case 'disponibles':
-                itemsProcesados = itemsProcesados.filter(v => !v.clienteId);
-                break;
-            case 'asignadas':
-                itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente > 0);
-                break;
-            case 'pagadas':
-                itemsProcesados = itemsProcesados.filter(v => v.clienteId && v.saldoPendiente <= 0);
-                break;
-            default:
-                break;
-        }
-
-        if (searchTerm) {
+        }).filter(vivienda => {
+            if (statusFilter === 'disponibles') return !vivienda.clienteId;
+            if (statusFilter === 'asignadas') return vivienda.clienteId && vivienda.saldoPendiente > 0;
+            if (statusFilter === 'pagadas') return vivienda.clienteId && vivienda.saldoPendiente <= 0;
+            return true;
+        }).filter(vivienda => {
+            if (!searchTerm) return true;
             const lowerCaseSearchTerm = searchTerm.toLowerCase();
-            itemsProcesados = itemsProcesados.filter(v =>
-                v.manzana.toLowerCase().includes(lowerCaseSearchTerm) ||
-                v.numeroCasa.toString().includes(lowerCaseSearchTerm) ||
-                (v.matricula || '').toLowerCase().includes(lowerCaseSearchTerm) ||
-                (v.clienteNombre || '').toLowerCase().includes(lowerCaseSearchTerm)
+            return (
+                vivienda.manzana.toLowerCase().includes(lowerCaseSearchTerm) ||
+                vivienda.numeroCasa.toString().includes(lowerCaseSearchTerm) ||
+                (vivienda.matricula || '').toLowerCase().includes(lowerCaseSearchTerm) ||
+                (vivienda.clienteNombre || '').toLowerCase().includes(lowerCaseSearchTerm)
             );
-        }
-
-        return itemsProcesados.sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa);
-    }, [viviendas, clientes, renuncias, abonos, statusFilter, searchTerm]);
+        }).sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa);
+    }, [viviendas, clientes, abonos, statusFilter, searchTerm]);
 
     const { hiddenItems: viviendasOcultas, initiateDelete } = useUndoableDelete(
-        async (vivienda) => deleteVivienda(vivienda.id),
+        async (vivienda) => deleteViviendaPermanently(vivienda.id),
         recargarDatos,
         "Vivienda"
     );
@@ -69,12 +51,10 @@ export const useListarViviendas = () => {
 
     const [viviendaAEditar, setViviendaAEditar] = useState(null);
     const [viviendaAEliminar, setViviendaAEliminar] = useState(null);
-    const [viviendaACondonar, setViviendaACondonar] = useState(null);
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
         setViviendaAEditar(null);
-        setViviendaACondonar(null);
     }, [recargarDatos]);
 
     const handleIniciarEliminacion = (vivienda) => {
@@ -101,8 +81,7 @@ export const useListarViviendas = () => {
         },
         modals: {
             viviendaAEditar, setViviendaAEditar,
-            viviendaAEliminar, setViviendaAEliminar,
-            viviendaACondonar, setViviendaACondonar
+            viviendaAEliminar, setViviendaAEliminar
         },
         handlers: {
             handleGuardado,

@@ -1,14 +1,14 @@
 import React, { Fragment, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, HandCoins } from 'lucide-react';
+import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home } from 'lucide-react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 
-const ViviendaCard = ({ vivienda, onEdit, onDelete, onCondonarSaldo }) => {
+const ViviendaCard = ({ vivienda, onEdit, onDelete }) => {
     const {
         manzana, numeroCasa, matricula, nomenclatura, valorFinal, totalAbonado,
         saldoPendiente, clienteNombre, clienteId, descuentoMonto, recargoEsquinera, areaConstruida,
-        puedeEditar, puedeEliminar, puedeCondonarSaldo
+        puedeEditar, puedeEliminar
     } = vivienda;
 
     const porcentajePagado = valorFinal > 0 ? (totalAbonado / valorFinal) * 100 : 0;
@@ -19,7 +19,7 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onCondonarSaldo }) => {
     const esIrregular = String(areaConstruida) !== "41";
 
     return (
-        <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600 shadow-green-100 dark:shadow-green-900/50' : 'border-gray-200 dark:border-gray-700'} overflow-hidden`}>
+        <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600' : 'border-gray-200 dark:border-gray-700'} overflow-hidden`}>
             <div className={`flex items-center justify-between p-4 border-b dark:border-gray-700 rounded-t-2xl ${isDisponible ? 'bg-gray-50 dark:bg-gray-700/50' : (isPagada ? 'bg-green-50 dark:bg-green-900/50' : 'bg-blue-50 dark:bg-blue-900/50')}`}>
                 <div className="flex items-center gap-3 flex-grow min-w-0">
                     <Home className={`w-6 h-6 flex-shrink-0 ${isDisponible ? 'text-gray-500' : (isPagada ? 'text-green-700' : 'text-blue-700')}`} />
@@ -44,8 +44,8 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onCondonarSaldo }) => {
             <div className="p-5 space-y-4 flex-grow">
                 <div className='space-y-3'>
                     <div className="flex items-center gap-2 flex-wrap">
-                        {esEsquinera ? (<span className="flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full"><Star size={14} />Esquinera</span>) : (<span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded-full"><Building size={14} />Medianera</span>)}
-                        {esIrregular ? (<span className="flex items-center gap-1.5 text-xs font-semibold text-red-800 bg-red-100 px-2 py-1 rounded-full"><Ruler size={14} />Irregular</span>) : (<span className="flex items-center gap-1.5 text-xs font-semibold text-cyan-800 bg-cyan-100 px-2 py-1 rounded-full"><Ruler size={14} />Regular</span>)}
+                        {esEsquinera && (<span className="flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full"><Star size={14} />Esquinera</span>)}
+                        {esIrregular && (<span className="flex items-center gap-1.5 text-xs font-semibold text-red-800 bg-red-100 px-2 py-1 rounded-full"><Ruler size={14} />Irregular</span>)}
                         {tieneDescuento && (<span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-800 bg-indigo-100 px-2 py-1 rounded-full"><Tag size={14} />Con Descuento</span>)}
                     </div>
                     <div className='text-sm text-gray-600 dark:text-gray-400 pt-3 border-t dark:border-gray-700'>
@@ -104,20 +104,9 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, onCondonarSaldo }) => {
                                 </Menu.Item>
                             </div>
                             <div className="px-1 py-1">
-                                <Menu.Item disabled={!puedeCondonarSaldo}>
-                                    {({ active, disabled }) => (
-                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede condonar saldo a una vivienda pagada o sin cliente." : ''}>
-                                            <button onClick={() => onCondonarSaldo(vivienda)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeCondonarSaldo}>
-                                                <HandCoins className="w-5 h-5 mr-2" /> Condonar Saldo
-                                            </button>
-                                        </div>
-                                    )}
-                                </Menu.Item>
-                            </div>
-                            <div className="px-1 py-1">
                                 <Menu.Item disabled={!puedeEliminar}>
                                     {({ active, disabled }) => (
-                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede eliminar una vivienda con historial de pagos." : ''}>
+                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede eliminar una vivienda con historial." : ''}>
                                             <button onClick={() => onDelete(vivienda)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeEliminar}>
                                                 <Trash className="w-5 h-5 mr-2" /> Eliminar
                                             </button>

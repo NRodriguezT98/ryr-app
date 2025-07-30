@@ -33,7 +33,10 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
             .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))
             .map(abono => ({
                 ...abono,
-                clienteInfo: `${vivienda.manzana}${vivienda.numeroCasa} - ${abono.clienteNombre}`,
+                // --- INICIO DE LA CORRECCIÓN ---
+                // Se construye el nombre usando el objeto 'cliente' principal para asegurar consistencia.
+                clienteInfo: `${vivienda.manzana}${vivienda.numeroCasa} - ${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`.trim(),
+                // --- FIN DE LA CORRECCIÓN ---
                 clienteStatus: cliente.status
             }));
 

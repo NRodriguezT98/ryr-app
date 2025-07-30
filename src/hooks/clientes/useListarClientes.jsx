@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
-import { deleteCliente, inactivarCliente, renunciarAVivienda, createNotification, restaurarCliente } from '../../utils/storage';
+import { deleteClientePermanently, inactivarCliente, renunciarAVivienda, createNotification, restaurarCliente } from '../../utils/storage';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 
 export const useListarClientes = () => {
     const { isLoading, clientes, abonos, recargarDatos } = useData();
 
+    const [clienteAArchivar, setClienteAArchivar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [clienteARenunciar, setClienteARenunciar] = useState(null);
     const [clienteARestaurar, setClienteARestaurar] = useState(null);
@@ -19,17 +20,14 @@ export const useListarClientes = () => {
 
     const clientesFiltrados = useMemo(() => {
         let itemsProcesados = clientes.map(cliente => {
-            let puedeRenunciar = true;
-            if (cliente.proceso) {
-                const hitoCompletado = PROCESO_CONFIG.some(pasoConfig =>
-                    pasoConfig.esHito && cliente.proceso[pasoConfig.key]?.completado
-                );
-                if (hitoCompletado) {
-                    puedeRenunciar = false;
-                }
-            }
             const procesoFinalizado = cliente.proceso?.facturaVenta?.completado === true;
-            return { ...cliente, puedeRenunciar, puedeEditar: !procesoFinalizado };
+            const tieneAbonos = abonos.some(a => a.clienteId === cliente.id);
+            return {
+                ...cliente,
+                puedeRenunciar: !procesoFinalizado,
+                puedeEditar: !procesoFinalizado,
+                puedeSerEliminado: !tieneAbonos
+            };
         });
 
         if (statusFilter !== 'todos') {
@@ -49,7 +47,7 @@ export const useListarClientes = () => {
             const nameB = `${b.datosCliente?.nombres || ''} ${b.datosCliente?.apellidos || ''}`.toLowerCase();
             return nameA.localeCompare(nameB);
         });
-    }, [clientes, searchTerm, statusFilter]);
+    }, [clientes, abonos, searchTerm, statusFilter]);
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
@@ -58,7 +56,7 @@ export const useListarClientes = () => {
 
     const iniciarRenuncia = (cliente) => {
         if (!cliente.puedeRenunciar) {
-            toast.error("No se puede iniciar la renuncia: el cliente ya ha superado un hito clave en el proceso (ej: firma de escritura).");
+            toast.error("No se puede iniciar la renuncia: el cliente ya ha superado un hito clave en el proceso.");
             return;
         }
         setClienteARenunciar(cliente);
@@ -67,24 +65,38 @@ export const useListarClientes = () => {
     const iniciarEdicion = (cliente) => setClienteEnModal({ cliente, modo: 'editar' });
     const iniciarReactivacion = (cliente) => setClienteEnModal({ cliente, modo: 'reactivar' });
 
-    const iniciarEliminacion = (cliente) => {
-        const abonosDelCliente = abonos.filter(a => a.clienteId === cliente.id);
-        const esCandidatoParaBorradoFisico = !cliente.viviendaId && abonosDelCliente.length === 0;
-        setClienteAEliminar({ ...cliente, esBorradoFisico: esCandidatoParaBorradoFisico });
+    const iniciarArchivado = (cliente) => {
+        setClienteAArchivar(cliente);
     };
 
-    const confirmarEliminar = useCallback(() => {
+    const confirmarArchivado = useCallback(async () => {
+        if (!clienteAArchivar) return;
+        try {
+            await inactivarCliente(clienteAArchivar.id);
+            toast.success("Cliente archivado con éxito.");
+            recargarDatos();
+        } catch (error) {
+            toast.error("No se pudo archivar el cliente.");
+        } finally {
+            setClienteAArchivar(null);
+        }
+    }, [clienteAArchivar, recargarDatos]);
+
+    const iniciarEliminacionPermanente = (cliente) => {
+        setClienteAEliminar(cliente);
+    };
+
+    const confirmarEliminacionPermanente = useCallback(async () => {
         if (!clienteAEliminar) return;
-        const { id, esBorradoFisico } = clienteAEliminar;
-        const accion = esBorradoFisico ? deleteCliente(id) : inactivarCliente(id);
-        const mensajeExito = esBorradoFisico ? "Cliente eliminado permanentemente." : "Cliente archivado con éxito.";
-        const mensajeError = esBorradoFisico ? "No se pudo eliminar el cliente." : "No se pudo archivar el cliente.";
-        toast.promise(accion, {
-            loading: esBorradoFisico ? 'Eliminando...' : 'Archivando...',
-            success: () => { recargarDatos(); return mensajeExito; },
-            error: () => mensajeError
-        });
-        setClienteAEliminar(null);
+        try {
+            await deleteClientePermanently(clienteAEliminar.id);
+            toast.success("Cliente y su historial han sido eliminados permanentemente.");
+            recargarDatos();
+        } catch (error) {
+            toast.error("No se pudo eliminar el cliente.");
+        } finally {
+            setClienteAEliminar(null);
+        }
     }, [clienteAEliminar, recargarDatos]);
 
     const handleConfirmarMotivo = (motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo) => {
@@ -105,7 +117,6 @@ export const useListarClientes = () => {
             recargarDatos();
         } catch (error) {
             toast.error("No se pudo procesar la renuncia.");
-            console.error("Error al procesar renuncia:", error);
         } finally {
             setDatosRenuncia(null);
             setIsSubmitting(false);
@@ -137,6 +148,7 @@ export const useListarClientes = () => {
         statusFilter, setStatusFilter,
         searchTerm, setSearchTerm,
         modals: {
+            clienteAArchivar, setClienteAArchivar,
             clienteAEliminar, setClienteAEliminar,
             clienteARenunciar, setClienteARenunciar,
             datosRenuncia, setDatosRenuncia,
@@ -146,9 +158,11 @@ export const useListarClientes = () => {
         },
         handlers: {
             handleGuardado,
-            iniciarEliminacion,
+            iniciarArchivado,
+            confirmarArchivado,
+            iniciarEliminacionPermanente,
+            confirmarEliminacionPermanente,
             iniciarRenuncia,
-            confirmarEliminar,
             handleConfirmarMotivo,
             confirmarRenunciaFinal,
             iniciarEdicion,

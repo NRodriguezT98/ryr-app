@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
-import { updateCliente } from '../../utils/storage';
-import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency } from '../../utils/textFormatters';
+import { createNotification, updateCliente } from '../../utils/storage';
+import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 
 export const useProcesoLogic = (cliente, onSave) => {
     const [procesoState, setProcesoState] = useState(cliente.proceso || {});
@@ -56,7 +56,6 @@ export const useProcesoLogic = (cliente, onSave) => {
 
     const iniciarEdicionFecha = useCallback((pasoKey) => setPasoAEditarFecha({ key: pasoKey, fecha: procesoState[pasoKey].fecha, motivo: '' }), [procesoState]);
 
-    // --- INICIO DE LA MODIFICACIÓN ---
     const confirmarEdicionFecha = useCallback((pasoKey, nuevaFecha, motivo) => {
         if (!motivo.trim()) {
             toast.error("El motivo del cambio es obligatorio.");
@@ -68,68 +67,72 @@ export const useProcesoLogic = (cliente, onSave) => {
                 ...prev[pasoKey],
                 fecha: nuevaFecha,
                 motivoUltimoCambio: motivo,
-                fechaUltimaModificacion: getTodayString() // Guardamos la fecha de hoy como fecha de modificación
+                fechaUltimaModificacion: getTodayString()
             }
         }));
         setPasoAEditarFecha(null);
         toast.success("Fecha y motivo actualizados.");
     }, []);
-    // --- FIN DE LA MODIFICACIÓN ---
 
     const cancelarEdicionFecha = useCallback(() => setPasoAEditarFecha(null), []);
 
     const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura, procesoCompletado } = useMemo(() => {
         const errores = {};
         const fechaDeInicio = cliente.fechaInicioProceso || cliente.datosCliente.fechaIngreso;
-        let ultimaFechaValida = fechaDeInicio;
         const fechaInicioProceso = parseDateAsUTC(fechaDeInicio);
         const hoy = parseDateAsUTC(getTodayString());
 
         const pasosAplicables = PROCESO_CONFIG.filter(paso => paso.aplicaA(cliente.financiero || {}));
-        const isStepValidAndCompletedGlobal = (key) => procesoState[key]?.completado && procesoState[key]?.fecha && !errores[key];
 
-        const fechaBoletaRegistro = isStepValidAndCompletedGlobal('pagoBoletaRegistro') ? procesoState['pagoBoletaRegistro'].fecha : null;
-
-        let ultimoHitoIndex = -1;
-        for (let i = pasosAplicables.length - 1; i >= 0; i--) {
-            const paso = pasosAplicables[i];
-            if (paso.esHito && procesoState[paso.key]?.completado && procesoState[paso.key]?.fecha) {
-                ultimoHitoIndex = i;
-                break;
-            }
-        }
-
-        pasosAplicables.forEach(paso => {
-            const pasoActual = procesoState[paso.key];
-            if (pasoActual?.completado && pasoActual.fecha) {
-                const fechaSeleccionada = parseDateAsUTC(pasoActual.fecha);
-                let fechaMinima = parseDateAsUTC(ultimaFechaValida);
-                let etiquetaFechaMinima = `último paso válido (${formatDisplayDate(ultimaFechaValida)})`;
-
-                if (['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(paso.key) && fechaBoletaRegistro) {
-                    fechaMinima = parseDateAsUTC(fechaBoletaRegistro);
-                    etiquetaFechaMinima = `boleta de registro (${formatDisplayDate(fechaBoletaRegistro)})`;
+        pasosAplicables.forEach(pasoConfig => {
+            const pasoActual = procesoState[pasoConfig.key];
+            if (pasoActual?.completado) {
+                const todasEvidenciasPresentes = pasoConfig.evidenciasRequeridas.every(
+                    ev => pasoActual.evidencias?.[ev.id]?.url
+                );
+                if (!todasEvidenciasPresentes) {
+                    errores[pasoConfig.key] = "Faltan evidencias requeridas en este paso completado.";
                 }
 
-                if (fechaSeleccionada > hoy) {
-                    errores[paso.key] = "La fecha no puede ser futura.";
-                } else if (fechaSeleccionada < fechaInicioProceso) {
-                    errores[paso.key] = `La fecha no puede ser anterior al inicio del proceso (${formatDisplayDate(fechaDeInicio)}).`;
-                } else if (fechaSeleccionada < fechaMinima) {
-                    errores[paso.key] = `La fecha no puede ser anterior a la ${etiquetaFechaMinima}.`;
-                } else {
-                    ultimaFechaValida = pasoActual.fecha;
+                if (pasoActual.fecha) {
+                    const fechaSeleccionada = parseDateAsUTC(pasoActual.fecha);
+                    if (fechaSeleccionada > hoy && !errores[pasoConfig.key]) {
+                        errores[pasoConfig.key] = "La fecha no puede ser futura.";
+                    } else if (fechaSeleccionada < fechaInicioProceso && !errores[pasoConfig.key]) {
+                        errores[pasoConfig.key] = `La fecha no puede ser anterior al inicio del proceso (${formatDisplayDate(fechaDeInicio)}).`;
+                    }
+                } else if (!errores[pasoConfig.key]) {
+                    errores[pasoConfig.key] = "Se requiere una fecha para este paso completado.";
                 }
-            } else if (pasoActual?.completado && !pasoActual.fecha) {
-                errores[paso.key] = "Se requiere una fecha.";
             }
         });
 
+        let ultimaFechaValida = fechaDeInicio;
+        pasosAplicables.forEach(pasoConfig => {
+            const pasoActual = procesoState[pasoConfig.key];
+            if (pasoActual?.completado && pasoActual.fecha && !errores[pasoConfig.key]) {
+                if (parseDateAsUTC(pasoActual.fecha) > parseDateAsUTC(ultimaFechaValida)) {
+                    ultimaFechaValida = pasoActual.fecha;
+                }
+            }
+        });
+
+        // --- INICIO DE LA VALIDACIÓN CORREGIDA ---
+        const algunPasoEnReapertura = pasosAplicables.some(pasoConfig => {
+            const estadoInicial = initialProcesoState[pasoConfig.key];
+            const estadoActual = procesoState[pasoConfig.key];
+            // Un paso está "reabierto" si estaba completado al inicio y ahora no lo está.
+            return estadoInicial?.completado === true && estadoActual?.completado === false;
+        });
+        // --- FIN DE LA VALIDACIÓN CORREGIDA ---
+
         let previousStepCompleted = true;
         let primerPasoIncompletoEncontrado = false;
-        let algunPasoEnReapertura = false;
 
+        const isStepValidAndCompletedGlobal = (key) => procesoState[key]?.completado && !errores[key];
         const allPreviousStepsForInvoiceCompleted = pasosAplicables.filter(p => p.key !== 'facturaVenta').every(p => isStepValidAndCompletedGlobal(p.key));
+
+        const fechaBoletaRegistro = isStepValidAndCompletedGlobal('pagoBoletaRegistro') ? procesoState['pagoBoletaRegistro'].fecha : null;
 
         let maxDateBeforeInvoice = fechaDeInicio;
         pasosAplicables.forEach(paso => {
@@ -143,7 +146,7 @@ export const useProcesoLogic = (cliente, onSave) => {
 
         const resultado = pasosAplicables.map((pasoConfig, index) => {
             const pasoData = procesoState[pasoConfig.key] || { completado: false, fecha: null, evidencias: {} };
-            const isStepValidAndCompleted = (key) => procesoState[key]?.completado && procesoState[key]?.fecha && !errores[key];
+            const isStepValidAndCompleted = (key) => procesoState[key]?.completado && !errores[key];
 
             let previousStepDate = fechaDeInicio;
             if (index > 0) {
@@ -181,6 +184,14 @@ export const useProcesoLogic = (cliente, onSave) => {
                 previousStepCompleted = false;
             }
 
+            let ultimoHitoIndex = -1;
+            for (let i = pasosAplicables.length - 1; i >= 0; i--) {
+                const paso = pasosAplicables[i];
+                if (paso.esHito && procesoState[paso.key]?.completado && procesoState[paso.key]?.fecha) {
+                    ultimoHitoIndex = i;
+                    break;
+                }
+            }
             const isPermanentlyLocked = ultimoHitoIndex !== -1 && index <= ultimoHitoIndex;
 
             let esSiguientePaso = false;
@@ -191,11 +202,6 @@ export const useProcesoLogic = (cliente, onSave) => {
 
             const todasEvidenciasSubidas = pasoConfig.evidenciasRequeridas.every(ev => pasoData.evidencias?.[ev.id]?.url);
             const puedeCompletarse = todasEvidenciasSubidas && !pasoData.completado && !isLocked;
-
-            const initialPasoData = initialProcesoState[pasoConfig.key] || {};
-            if (puedeCompletarse && initialPasoData.completado === true) {
-                algunPasoEnReapertura = true;
-            }
 
             let minDateForStep = previousStepDate;
             if (['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(pasoConfig.key)) {
@@ -219,7 +225,7 @@ export const useProcesoLogic = (cliente, onSave) => {
             };
         });
 
-        const pasosCompletados = resultado.filter(p => p.data?.completado && p.data?.fecha && !p.error).length;
+        const pasosCompletados = resultado.filter(p => p.data?.completado && !p.error).length;
         const procesoEstaCompleto = pasosCompletados === resultado.length && resultado.length > 0;
 
         return {
@@ -244,25 +250,14 @@ export const useProcesoLogic = (cliente, onSave) => {
 
     const tooltipMessage = useMemo(() => {
         if (isSaveDisabled) {
-            if (Object.keys(validationErrors).length > 0) return 'Hay fechas incorrectas o faltantes.';
+            if (Object.keys(validationErrors).length > 0) return "Hay errores en el proceso. Revisa los pasos marcados en rojo.";
             if (hayPasoEnReapertura) {
-                const pasoPendiente = pasosRenderizables.find(p => p.puedeCompletarse);
-                const nombrePaso = pasoPendiente.label.substring(pasoPendiente.label.indexOf('.') + 1).trim();
-                return `Debes marcar el paso "${nombrePaso}" como completado o cancelar la reapertura.`;
+                return "Hay un paso reabierto que debe ser completado antes de guardar.";
             }
-
-            const pasoFactura = pasosRenderizables.find(p => p.key === 'facturaVenta');
-            if (pasoFactura?.isLocked && pasoFactura.esSiguientePaso) {
-                const saldo = cliente.vivienda?.saldoPendiente ?? 0;
-                if (saldo > 0) {
-                    return `La vivienda debe estar 100% pagada para generar la factura. Saldo pendiente: ${formatCurrency(saldo)}`;
-                }
-            }
-
             return 'No hay cambios para guardar.';
         }
         return 'Guardar los cambios realizados';
-    }, [isSaveDisabled, validationErrors, pasosRenderizables, hayPasoEnReapertura, cliente.vivienda]);
+    }, [isSaveDisabled, validationErrors, hayPasoEnReapertura]);
 
     const handleSaveChanges = async () => {
         if (isSaveDisabled) {
@@ -271,6 +266,16 @@ export const useProcesoLogic = (cliente, onSave) => {
         }
         try {
             await onSave(procesoState);
+
+            PROCESO_CONFIG.forEach(paso => {
+                const estadoAnterior = initialProcesoState[paso.key];
+                const estadoNuevo = procesoState[paso.key];
+                if (paso.esHito && !estadoAnterior?.completado && estadoNuevo?.completado) {
+                    const nombreCliente = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
+                    createNotification('hito', `¡Hito alcanzado! ${paso.label} para ${nombreCliente}.`, `/clientes/detalle/${cliente.id}`);
+                }
+            });
+
             toast.success("Proceso del cliente actualizado con éxito.");
             setInitialProcesoState(procesoState);
             setJustSaved(true);

@@ -11,11 +11,12 @@ import ClienteCard from "./ClienteCard.jsx";
 import ClienteCardSkeleton from "./ClienteCardSkeleton.jsx";
 import { useData } from "../../context/DataContext";
 
-const ClienteCardWrapper = ({ cliente, onEdit, onDelete, onRenunciar, onReactivar, onRestaurar }) => {
+const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar }) => {
     const cardData = useClienteCardLogic(cliente);
     return <ClienteCard
         cardData={cardData}
         onEdit={onEdit}
+        onArchive={onArchive}
         onDelete={onDelete}
         onRenunciar={onRenunciar}
         onReactivar={onReactivar}
@@ -71,7 +72,8 @@ const ListarClientes = () => {
                             key={cliente.id}
                             cliente={cliente}
                             onEdit={handlers.iniciarEdicion}
-                            onDelete={handlers.iniciarEliminacion}
+                            onArchive={handlers.iniciarArchivado}
+                            onDelete={handlers.iniciarEliminacionPermanente}
                             onRenunciar={handlers.iniciarRenuncia}
                             onReactivar={handlers.iniciarReactivacion}
                             onRestaurar={handlers.iniciarRestauracion}
@@ -88,7 +90,10 @@ const ListarClientes = () => {
             ) : (
                 <div className="text-center py-16"><p className="text-gray-500 dark:text-gray-400">No se encontraron clientes con los filtros actuales.</p></div>
             )}
-            {modals.clienteAEliminar && (<ModalConfirmacion isOpen={!!modals.clienteAEliminar} onClose={() => modals.setClienteAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Archivar o Eliminar Cliente?" mensaje={modals.clienteAEliminar.esBorradoFisico ? 'Este cliente no tiene historial, por lo que será eliminado permanentemente. ¿Estás seguro?' : 'Este cliente tiene historial, por lo que será archivado y ocultado de las listas. ¿Estás seguro?'} />)}
+
+            {modals.clienteAArchivar && (<ModalConfirmacion isOpen={!!modals.clienteAArchivar} onClose={() => modals.setClienteAArchivar(null)} onConfirm={handlers.confirmarArchivado} titulo="¿Archivar Cliente?" mensaje="Este cliente tiene historial, por lo que será archivado y ocultado de las listas. ¿Estás seguro?" />)}
+            {modals.clienteAEliminar && (<ModalConfirmacion isOpen={!!modals.clienteAEliminar} onClose={() => modals.setClienteAEliminar(null)} onConfirm={handlers.confirmarEliminacionPermanente} titulo="¿Eliminar Cliente Permanentemente?" mensaje="¡Atención! Esta acción es irreversible. Se eliminará al cliente y todo su historial de renuncias y documentos. ¿Estás seguro?" />)}
+
             {modals.clienteEnModal.cliente && (<EditarCliente isOpen={!!modals.clienteEnModal.cliente} onClose={() => modals.setClienteEnModal({ cliente: null, modo: null })} onGuardar={handlers.handleGuardado} clienteAEditar={modals.clienteEnModal.cliente} modo={modals.clienteEnModal.modo} />)}
             {modals.clienteARenunciar && (<ModalMotivoRenuncia isOpen={!!modals.clienteARenunciar} onClose={() => modals.setClienteARenunciar(null)} onConfirm={handlers.handleConfirmarMotivo} cliente={modals.clienteARenunciar} />)}
             {modals.datosRenuncia && (<ModalConfirmacion isOpen={!!modals.datosRenuncia} onClose={() => modals.setDatosRenuncia(null)} onConfirm={handlers.confirmarRenunciaFinal} titulo="¿Confirmar Renuncia?" mensaje={`¿Seguro de procesar la renuncia para ${modals.datosRenuncia.cliente.datosCliente.nombres} con motivo "${modals.datosRenuncia.motivo}"?`} isSubmitting={modals.isSubmitting} />)}

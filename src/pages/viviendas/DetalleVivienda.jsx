@@ -1,73 +1,96 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, Home, Info, BarChart2, Star, Tag } from 'lucide-react';
-import { useDetalleVivienda } from '../../hooks/viviendas/useDetalleVivienda.jsx';
+import { ArrowLeft, Home, Info, Wallet } from 'lucide-react';
+import { useDetalleVivienda } from '../../hooks/viviendas/useDetalleVivienda';
+import { formatCurrency, formatID, toTitleCase } from '../../utils/textFormatters';
 import TabInformacion from './components/TabInformacion';
 import TabFinanciero from './components/TabFinanciero';
-import Button from '../../components/Button';
-
-const TabButton = ({ tabName, label, icon, activeTab, onClick }) => (
-    <button
-        onClick={() => onClick(tabName)}
-        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-colors ${activeTab === tabName ? 'bg-red-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-    >
-        {icon}
-        {label}
-    </button>
-);
+import CondonarSaldoModal from './CondonarSaldoModal';
 
 const DetalleVivienda = () => {
-    const { isLoading, datosDetalle, activeTab, setActiveTab, recargarDatos, navigate } = useDetalleVivienda();
+    const {
+        isLoading,
+        datosDetalle,
+        activeTab,
+        setActiveTab,
+        recargarDatos,
+        navigate,
+        fuenteACondonar,
+        setFuenteACondonar,
+        handleGuardado
+    } = useDetalleVivienda();
 
-    if (isLoading || !datosDetalle) {
+    if (isLoading) {
         return <div className="text-center p-10 animate-pulse">Cargando detalles de la vivienda...</div>;
     }
 
-    const { vivienda, cliente } = datosDetalle;
+    const { vivienda, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado } = datosDetalle;
 
     return (
         <AnimatedPage>
-            <div className="space-y-6">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border dark:border-gray-700 flex items-center justify-between">
+            <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
                     <div className="flex items-center gap-4">
-                        <Home size={40} className="text-red-500" />
+                        <div className="w-16 h-16 rounded-lg bg-red-500 text-white flex items-center justify-center flex-shrink-0">
+                            <Home size={32} />
+                        </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}</h1>
-                            <div className="flex items-center gap-2 mt-1">
-                                {vivienda.recargoEsquinera > 0 ? (
-                                    <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full"><Star size={14} />Casa Esquinera</span>
-                                ) : (
-                                    <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-1 rounded-full"><Home size={14} />Casa Medianera</span>
-                                )}
-                                <span className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-semibold rounded-full ${cliente ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                    <Tag size={14} />
-                                    {cliente ? 'Asignada' : 'Disponible'}
-                                </span>
-                            </div>
+                            <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{`Vivienda ${vivienda.manzana}${vivienda.numeroCasa}`}</h2>
+                            <p className="text-gray-500 dark:text-gray-400">{vivienda.nomenclatura}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="secondary" onClick={() => navigate('/viviendas/listar')} icon={<ArrowLeft size={16} />}>
-                            Volver a la Lista
-                        </Button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <button onClick={() => navigate('/viviendas/listar')} className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                            <ArrowLeft size={16} /> Volver
+                        </button>
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800 p-2 rounded-xl shadow-sm border dark:border-gray-700">
+                {cliente && (
+                    <div className="mb-6 bg-white dark:bg-gray-900/50 p-4 rounded-xl border dark:border-gray-700">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">Actualmente asignada a:</p>
+                        <Link to={`/clientes/detalle/${cliente.id}`} className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:underline">
+                            {toTitleCase(cliente.datosCliente.nombres)} {toTitleCase(cliente.datosCliente.apellidos)}
+                        </Link>
+                        <p className="text-xs text-gray-500">C.C. {formatID(cliente.datosCliente.cedula)}</p>
+                    </div>
+                )}
+
+                <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                     <nav className="flex space-x-2">
-                        <TabButton tabName="info" label="Información General" icon={<Info size={16} />} activeTab={activeTab} onClick={setActiveTab} />
-                        {cliente && (
-                            <TabButton tabName="financiero" label="Resumen Financiero" icon={<BarChart2 size={16} />} activeTab={activeTab} onClick={setActiveTab} />
-                        )}
+                        <button onClick={() => setActiveTab('info')} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'info' ? 'bg-red-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
+                            <Info size={16} /> Información General
+                        </button>
+                        <button onClick={() => setActiveTab('financiero')} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'financiero' ? 'bg-red-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`} disabled={!cliente}>
+                            <Wallet size={16} /> Resumen Financiero
+                        </button>
                     </nav>
                 </div>
 
-                <div className="mt-4">
-                    {activeTab === 'info' && <TabInformacion vivienda={vivienda} cliente={cliente} />}
-                    {activeTab === 'financiero' && cliente && <TabFinanciero datosDetalle={datosDetalle} recargarDatos={recargarDatos} />}
+                <div>
+                    {activeTab === 'info' && <TabInformacion vivienda={vivienda} desglose={desgloseValorVivienda} />}
+                    {activeTab === 'financiero' && (
+                        <TabFinanciero
+                            vivienda={vivienda}
+                            cliente={cliente}
+                            fuentes={fuentes}
+                            historialAbonos={historialAbonos}
+                            onAbonoRegistrado={recargarDatos}
+                            onCondonarSaldo={setFuenteACondonar}
+                        />
+                    )}
                 </div>
             </div>
+
+            {fuenteACondonar && (
+                <CondonarSaldoModal
+                    isOpen={!!fuenteACondonar}
+                    onClose={() => setFuenteACondonar(null)}
+                    onSave={handleGuardado}
+                    fuenteData={fuenteACondonar}
+                />
+            )}
         </AnimatedPage>
     );
 };

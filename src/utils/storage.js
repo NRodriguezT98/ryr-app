@@ -175,8 +175,24 @@ export const updateVivienda = async (id, datosActualizados) => {
     await updateDoc(viviendaRef, datosFinales);
 };
 
-export const deleteVivienda = async (viviendaId) => {
-    await deleteDoc(doc(db, "viviendas", String(viviendaId)));
+export const deleteViviendaPermanently = async (viviendaId) => {
+    const batch = writeBatch(db);
+    const viviendaRef = doc(db, "viviendas", viviendaId);
+
+    // 1. Buscamos todas las renuncias asociadas a esta vivienda.
+    const renunciasQuery = query(collection(db, "renuncias"), where("viviendaId", "==", viviendaId));
+    const renunciasSnapshot = await getDocs(renunciasQuery);
+
+    // 2. Añadimos la eliminación de cada renuncia encontrada al batch.
+    renunciasSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    // 3. Añadimos la eliminación de la propia vivienda al batch.
+    batch.delete(viviendaRef);
+
+    // 4. Ejecutamos todas las eliminaciones en una sola operación atómica.
+    await batch.commit();
 };
 
 export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId) => {
@@ -234,6 +250,40 @@ export const restaurarCliente = async (clienteId) => {
     await updateDoc(doc(db, "clientes", String(clienteId)), {
         status: 'renunciado'
     });
+};
+
+export const deleteClientePermanently = async (clienteId) => {
+    const renunciasQuery = query(collection(db, "renuncias"), where("clienteId", "==", clienteId));
+    const renunciasSnapshot = await getDocs(renunciasQuery);
+    const renunciasCliente = renunciasSnapshot.docs.map(doc => doc.data());
+    const batch = writeBatch(db);
+
+    // 1. Eliminar archivos de Storage
+    for (const renuncia of renunciasCliente) {
+        if (renuncia.documentosArchivados && renuncia.documentosArchivados.length > 0) {
+            for (const docInfo of renuncia.documentosArchivados) {
+                if (docInfo.url) {
+                    try {
+                        const fileRef = ref(storage, docInfo.url);
+                        await deleteObject(fileRef);
+                    } catch (error) {
+                        if (error.code !== 'storage/object-not-found') {
+                            console.error("Error al eliminar archivo de Storage:", error);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Eliminar documentos de Firestore
+    renunciasSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    batch.delete(doc(db, "clientes", clienteId));
+
+    // 3. Ejecutar el batch
+    await batch.commit();
 };
 
 export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fechaRenuncia, penalidadMonto = 0, penalidadMotivo = '') => {
