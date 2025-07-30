@@ -4,16 +4,11 @@ import { Link } from 'react-router-dom';
 import { UserX, Calendar, Home, MoreVertical, CheckCircle, DollarSign, Eye, Pencil, RotateCcw, FileText } from 'lucide-react';
 import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
 
-const RenunciaCard = ({ renuncia, onMarcarPagada, onEditar, onCancelar }) => {
+const RenunciaCard = ({ renuncia, onMarcarPagada, onCancelar }) => {
     const isCerrada = renuncia.estadoDevolucion === 'Cerrada' || renuncia.estadoDevolucion === 'Pagada';
 
     return (
-        // --- INICIO DE LA MODIFICACIÓN ---
-        // Cambiamos de 'flex' a 'grid' para un control de columnas perfecto.
         <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-md border ${isCerrada ? 'border-gray-200 dark:border-gray-700' : 'border-orange-300 dark:border-orange-700'} p-4 grid grid-cols-1 sm:grid-cols-[2fr,1.5fr,auto] sm:items-center gap-4`}>
-            {/* --- FIN DE LA MODIFICACIÓN --- */}
-
-            {/* Columna 1: Información del Cliente */}
             <div className="flex items-center gap-4">
                 <div className={`p-3 rounded-full ${isCerrada ? 'bg-green-100 dark:bg-green-900/50' : 'bg-orange-100 dark:bg-orange-900/50'}`}>
                     <UserX className={`w-6 h-6 ${isCerrada ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`} />
@@ -25,8 +20,6 @@ const RenunciaCard = ({ renuncia, onMarcarPagada, onEditar, onCancelar }) => {
                     </p>
                 </div>
             </div>
-
-            {/* Columna 2: Detalles de la Renuncia */}
             <div className="w-full space-y-2 sm:pl-4">
                 <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
                     <Calendar size={14} /> Fecha de Renuncia: {formatDisplayDate(renuncia.fechaRenuncia)}
@@ -38,8 +31,6 @@ const RenunciaCard = ({ renuncia, onMarcarPagada, onEditar, onCancelar }) => {
                     <DollarSign size={14} /> Devolución: <span className='text-red-600 dark:text-red-400'>{formatCurrency(renuncia.totalAbonadoParaDevolucion)}</span>
                 </p>
             </div>
-
-            {/* Columna 3: Estado y Acciones */}
             <div className="flex items-center gap-4 justify-self-end">
                 <span className={`px-3 py-1 text-xs font-semibold rounded-full ${isCerrada ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
                     {isCerrada ? 'Cerrada' : renuncia.estadoDevolucion}
@@ -53,7 +44,6 @@ const RenunciaCard = ({ renuncia, onMarcarPagada, onEditar, onCancelar }) => {
                             <div className="px-1 py-1"><Menu.Item>{({ active }) => (<Link to={`/renuncias/detalle/${renuncia.id}`} className={`${active ? 'bg-indigo-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Eye className="w-5 h-5 mr-2" /> Ver Detalle</Link>)}</Menu.Item></div>
                             {!isCerrada && (
                                 <>
-                                    <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onEditar(renuncia)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Pencil className="w-5 h-5 mr-2" /> Editar Motivo</button>)}</Menu.Item></div>
                                     <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onMarcarPagada(renuncia)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><CheckCircle className="w-5 h-5 mr-2" /> Marcar Devolución</button>)}</Menu.Item></div>
                                     <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onCancelar(renuncia)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><RotateCcw className="w-5 h-5 mr-2" /> Cancelar Renuncia</button>)}</Menu.Item></div>
                                 </>
@@ -66,4 +56,4 @@ const RenunciaCard = ({ renuncia, onMarcarPagada, onEditar, onCancelar }) => {
     );
 };
 
-export default memo(RenunciaCard); 
+export default memo(RenunciaCard);

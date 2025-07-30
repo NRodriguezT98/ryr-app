@@ -43,14 +43,10 @@ export const useEditarRenuncia = (renuncia, isOpen, onSave, onClose) => {
         return JSON.stringify(formData) !== JSON.stringify(initialData);
     }, [formData, initialData]);
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Creamos un manejador específico para el componente Select que actualiza el estado directamente.
     const handleMotivoChange = useCallback((selectedOption) => {
         const newValue = selectedOption ? selectedOption.value : '';
-        // Usamos setFormData para asegurar que el cambio se registre correctamente
         setFormData(prev => ({ ...prev, motivo: newValue }));
     }, [setFormData]);
-    // --- FIN DE LA CORRECCIÓN ---
 
     return {
         formData,
@@ -59,7 +55,7 @@ export const useEditarRenuncia = (renuncia, isOpen, onSave, onClose) => {
         handlers: {
             handleInputChange,
             handleSubmit,
-            handleMotivoChange // Exportamos el nuevo manejador
+            handleMotivoChange
         }
     };
 };

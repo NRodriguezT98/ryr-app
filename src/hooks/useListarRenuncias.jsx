@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 export const useListarRenuncias = () => {
     const { isLoading, renuncias, recargarDatos } = useData();
+
     const [statusFilter, setStatusFilter] = useState('Pendiente');
     const [searchTerm, setSearchTerm] = useState('');
     const [fechaInicio, setFechaInicio] = useState('');
@@ -12,24 +13,44 @@ export const useListarRenuncias = () => {
     const [motivoFiltro, setMotivoFiltro] = useState(null);
 
     const [renunciaADevolver, setRenunciaADevolver] = useState(null);
-    const [renunciaAEditar, setRenunciaAEditar] = useState(null);
     const [renunciaACancelar, setRenunciaACancelar] = useState(null);
 
     const renunciasFiltradas = useMemo(() => {
-        let itemsProcesados = [...renuncias].sort((a, b) => new Date(b.fechaRenuncia) - new Date(a.fechaRenuncia));
-        if (statusFilter === 'Todas') {
-            return itemsProcesados;
+        let itemsProcesados = [...renuncias].sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+
+        if (statusFilter !== 'Todas') {
+            if (statusFilter === 'Cerrada') {
+                itemsProcesados = itemsProcesados.filter(r => r.estadoDevolucion === 'Cerrada' || r.estadoDevolucion === 'Pagada');
+            } else {
+                itemsProcesados = itemsProcesados.filter(r => r.estadoDevolucion === statusFilter);
+            }
         }
-        if (statusFilter === 'Cerrada') {
-            return itemsProcesados.filter(r => r.estadoDevolucion === 'Cerrada' || r.estadoDevolucion === 'Pagada');
+
+        if (searchTerm.trim()) {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase();
+            itemsProcesados = itemsProcesados.filter(r =>
+                r.clienteNombre.toLowerCase().includes(lowerCaseSearchTerm) ||
+                r.viviendaInfo.toLowerCase().replace(/\s/g, '').includes(lowerCaseSearchTerm.replace(/\s/g, ''))
+            );
         }
-        return itemsProcesados.filter(r => r.estadoDevolucion === statusFilter);
-    }, [renuncias, statusFilter]);
+
+        if (fechaInicio) {
+            itemsProcesados = itemsProcesados.filter(r => r.fechaRenuncia >= fechaInicio);
+        }
+        if (fechaFin) {
+            itemsProcesados = itemsProcesados.filter(r => r.fechaRenuncia <= fechaFin);
+        }
+
+        if (motivoFiltro) {
+            itemsProcesados = itemsProcesados.filter(r => r.motivo === motivoFiltro.value);
+        }
+
+        return itemsProcesados;
+    }, [renuncias, statusFilter, searchTerm, fechaInicio, fechaFin, motivoFiltro]);
 
     const handleSave = useCallback(() => {
         recargarDatos();
         setRenunciaADevolver(null);
-        setRenunciaAEditar(null);
     }, [recargarDatos]);
 
     const confirmarCancelacion = useCallback(async () => {
@@ -40,14 +61,10 @@ export const useListarRenuncias = () => {
             recargarDatos();
         } catch (error) {
             if (error.message === 'VIVIENDA_NO_DISPONIBLE') {
-                toast.error("No se puede cancelar la renuncia: la vivienda ya ha sido asignada a otro cliente, por lo que no puede ser reasignada, debe terminar el proceso de renuncia.");
+                toast.error("No se puede cancelar la renuncia: la vivienda ya ha sido asignada a otro cliente.");
             } else {
                 toast.error("No se pudo cancelar la renuncia.");
             }
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // Simplemente eliminamos el console.error para no mostrar el error técnico.
-            // console.error("Error al cancelar renuncia:", error);
-            // --- FIN DE LA MODIFICACIÓN ---
         } finally {
             setRenunciaACancelar(null);
         }
@@ -65,7 +82,6 @@ export const useListarRenuncias = () => {
         },
         modals: {
             renunciaADevolver, setRenunciaADevolver,
-            renunciaAEditar, setRenunciaAEditar,
             renunciaACancelar, setRenunciaACancelar
         },
         handlers: {

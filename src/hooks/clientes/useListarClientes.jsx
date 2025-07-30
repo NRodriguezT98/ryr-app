@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
 import { deleteCliente, inactivarCliente, renunciarAVivienda, createNotification, restaurarCliente } from '../../utils/storage';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 
 export const useListarClientes = () => {
-    const { isLoading, clientes, renuncias, abonos, recargarDatos } = useData();
+    const { isLoading, clientes, abonos, recargarDatos } = useData();
 
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
     const [clienteARenunciar, setClienteARenunciar] = useState(null);
@@ -51,8 +51,6 @@ export const useListarClientes = () => {
         });
     }, [clientes, searchTerm, statusFilter]);
 
-    const clientesVisibles = clientesFiltrados;
-
     const handleGuardado = useCallback(() => {
         recargarDatos();
         setClienteEnModal({ cliente: null, modo: null });
@@ -71,9 +69,8 @@ export const useListarClientes = () => {
 
     const iniciarEliminacion = (cliente) => {
         const abonosDelCliente = abonos.filter(a => a.clienteId === cliente.id);
-        const renunciasDelCliente = renuncias.filter(r => r.clienteId === cliente.id);
-        const esCandidatoParaBorradoFisico = !cliente.viviendaId && abonosDelCliente.length === 0 && renunciasDelCliente.length === 0;
-        setClienteAEliminar({ ...cliente, esBorradoFisico });
+        const esCandidatoParaBorradoFisico = !cliente.viviendaId && abonosDelCliente.length === 0;
+        setClienteAEliminar({ ...cliente, esBorradoFisico: esCandidatoParaBorradoFisico });
     };
 
     const confirmarEliminar = useCallback(() => {
@@ -136,7 +133,7 @@ export const useListarClientes = () => {
 
     return {
         isLoading,
-        clientesVisibles,
+        clientesVisibles: clientesFiltrados,
         statusFilter, setStatusFilter,
         searchTerm, setSearchTerm,
         modals: {

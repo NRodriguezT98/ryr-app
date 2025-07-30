@@ -5,6 +5,7 @@ import { Edit } from 'lucide-react';
 import { Tooltip } from 'react-tooltip';
 import { useEditarRenuncia } from '../../../hooks/renuncias/useEditarRenuncia';
 
+// Una lista de motivos de renuncia más completa y categorizada.
 const motivosOptions = [
     {
         label: "Motivos Financieros",
@@ -37,6 +38,7 @@ const motivosOptions = [
     }
 ];
 
+// Estilos mejorados para el componente Select que funcionan bien en ambos modos.
 const getSelectStyles = (isDarkMode) => ({
     control: (base, state) => ({
         ...base,
@@ -69,7 +71,7 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                 onClose={onClose}
                 title="Editar Motivo de Renuncia"
                 icon={<Edit size={28} className="text-orange-500" />}
-                size="2xl" // <-- Hacemos el modal más grande
+                size="2xl" // Hacemos el modal más ancho para mejorar la visualización.
             >
                 <form onSubmit={handlers.handleSubmit} className="space-y-4">
                     <p className="text-center text-gray-600 dark:text-gray-400 -mt-4 mb-4">
@@ -80,7 +82,7 @@ const ModalEditarRenuncia = ({ isOpen, onClose, onSave, renuncia }) => {
                         <Select
                             options={motivosOptions}
                             value={motivosOptions.flatMap(g => g.options).find(opt => opt.value === formData.motivo) || null}
-                            onChange={handlers.handleMotivoChange} // <-- Usamos el nuevo manejador
+                            onChange={handlers.handleMotivoChange} // Usamos el nuevo manejador del hook.
                             placeholder="Selecciona un motivo..."
                             styles={getSelectStyles(isDarkMode)}
                         />

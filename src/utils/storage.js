@@ -240,24 +240,35 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
     const clienteRef = doc(db, "clientes", clienteId);
     let clienteNombre = '';
     let renunciaIdParaNotificacion = '';
+
     await runTransaction(db, async (transaction) => {
         const clienteDoc = await transaction.get(clienteRef);
         if (!clienteDoc.exists()) throw new Error("El cliente ya no existe.");
+
         const clienteData = clienteDoc.data();
         const viviendaId = clienteData.viviendaId;
         if (!viviendaId) throw new Error("El cliente no tiene una vivienda asignada para renunciar.");
+
         const viviendaRef = doc(db, "viviendas", viviendaId);
         const viviendaDoc = await transaction.get(viviendaRef);
         if (!viviendaDoc.exists()) throw new Error("La vivienda ya no existe.");
+
         const viviendaData = viviendaDoc.data();
         clienteNombre = `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`.trim();
+
         const abonosActivosQuery = query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("viviendaId", "==", viviendaId), where("estadoProceso", "==", "activo"));
         const abonosSnapshot = await getDocs(abonosActivosQuery);
         const abonosDelCiclo = abonosSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         const abonosRealesDelCliente = abonosDelCiclo.filter(abono => abono.metodoPago !== 'Condonación de Saldo');
         const totalAbonadoReal = abonosRealesDelCliente.reduce((sum, abono) => sum + abono.monto, 0);
         const totalADevolver = totalAbonadoReal - penalidadMonto;
-        const estadoInicial = totalADevolver > 0 ? 'Pendiente' : 'Cerrada';
+        const estadoInicialRenuncia = totalADevolver > 0 ? 'Pendiente' : 'Cerrada';
+
+        const renunciaRef = doc(collection(db, "renuncias"));
+        renunciaIdParaNotificacion = renunciaRef.id;
+
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Se restaura la lógica para recolectar todos los documentos del cliente.
         const documentosArchivados = [];
         DOCUMENTACION_CONFIG.forEach(docConfig => {
             if (docConfig.selector) {
@@ -268,13 +279,13 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
                 }
             }
         });
-        const renunciaRef = doc(collection(db, "renuncias"));
-        renunciaIdParaNotificacion = renunciaRef.id;
+        // --- FIN DE LA CORRECCIÓN ---
+
         const registroRenuncia = {
             id: renunciaRef.id, clienteId, clienteNombre, viviendaId,
             viviendaInfo: `Mz. ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`,
             fechaRenuncia, totalAbonadoOriginal: totalAbonadoReal, penalidadMonto, penalidadMotivo,
-            totalAbonadoParaDevolucion: totalADevolver, estadoDevolucion: estadoInicial,
+            totalAbonadoParaDevolucion: totalADevolver, estadoDevolucion: estadoInicialRenuncia,
             motivo, observacion, historialAbonos: abonosDelCiclo,
             documentosArchivados,
             financieroArchivado: clienteData.financiero || {},
@@ -287,8 +298,11 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
             },
             timestamp: serverTimestamp()
         };
+
         transaction.set(renunciaRef, registroRenuncia);
-        if (estadoInicial === 'Pendiente') {
+        transaction.update(viviendaRef, { clienteId: null, clienteNombre: "", totalAbonado: 0, saldoPendiente: viviendaData.valorTotal });
+
+        if (estadoInicialRenuncia === 'Pendiente') {
             transaction.update(clienteRef, { status: 'enProcesoDeRenuncia' });
         } else {
             transaction.update(clienteRef, { viviendaId: null, proceso: {}, financiero: {}, status: 'renunciado' });
@@ -324,13 +338,11 @@ export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) =>
     });
 };
 
-// --- INICIO DE LA CORRECCIÓN ---
-// Nos aseguramos de que la función 'updateRenuncia' esté presente y se exporte.
+
 export const updateRenuncia = async (renunciaId, datosParaActualizar) => {
     const renunciaRef = doc(db, "renuncias", renunciaId);
     await updateDoc(renunciaRef, datosParaActualizar);
 };
-// --- FIN DE LA CORRECCIÓN ---
 
 export const cancelarRenuncia = async (renuncia) => {
     const clienteRef = doc(db, "clientes", renuncia.clienteId);
