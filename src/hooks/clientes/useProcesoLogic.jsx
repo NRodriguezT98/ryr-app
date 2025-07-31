@@ -121,7 +121,6 @@ export const useProcesoLogic = (cliente, onSave) => {
         const algunPasoEnReapertura = pasosAplicables.some(pasoConfig => {
             const estadoInicial = initialProcesoState[pasoConfig.key];
             const estadoActual = procesoState[pasoConfig.key];
-            // Un paso está "reabierto" si estaba completado al inicio y ahora no lo está.
             return estadoInicial?.completado === true && estadoActual?.completado === false;
         });
         // --- FIN DE LA VALIDACIÓN CORREGIDA ---
@@ -241,23 +240,40 @@ export const useProcesoLogic = (cliente, onSave) => {
         return JSON.stringify(procesoState) !== JSON.stringify(initialProcesoState);
     }, [procesoState, initialProcesoState]);
 
+    // 🔽 NUEVO: bloquear Guardar si hay cambios en pasos aún no completados
+    const hayCambiosPendientesPorCompletar = useMemo(() => {
+        const pasosAplicables = PROCESO_CONFIG.filter(p => p.aplicaA(cliente.financiero || {}));
+        return pasosAplicables.some(paso => {
+            const prev = initialProcesoState[paso.key] || {};
+            const curr = procesoState[paso.key] || {};
+            const changed = JSON.stringify(curr) !== JSON.stringify(prev);
+            return changed && !curr.completado; // cambios pero el paso no está completado aún
+        });
+    }, [procesoState, initialProcesoState, cliente.financiero]);
+
     const isSaveDisabled = useMemo(() => {
         if (Object.keys(validationErrors).length > 0) return true;
+        if (hayPasoEnReapertura) return true; // bloqueo existente
+        if (hayCambiosPendientesPorCompletar) return true; // 🔽 NUEVA REGLA
         if (!hayCambiosSinGuardar) return true;
-        if (hayPasoEnReapertura) return true;
         return false;
-    }, [validationErrors, hayCambiosSinGuardar, hayPasoEnReapertura]);
+    }, [validationErrors, hayPasoEnReapertura, hayCambiosPendientesPorCompletar, hayCambiosSinGuardar]);
 
     const tooltipMessage = useMemo(() => {
         if (isSaveDisabled) {
-            if (Object.keys(validationErrors).length > 0) return "Hay errores en el proceso. Revisa los pasos marcados en rojo.";
+            if (Object.keys(validationErrors).length > 0) {
+                return "Hay errores en el proceso. Revisa los pasos marcados en rojo.";
+            }
             if (hayPasoEnReapertura) {
                 return "Hay un paso reabierto que debe ser completado antes de guardar.";
+            }
+            if (hayCambiosPendientesPorCompletar) {
+                return "Hay cambios en pasos aún no completados. Marca el paso como 'Completado' antes de guardar.";
             }
             return 'No hay cambios para guardar.';
         }
         return 'Guardar los cambios realizados';
-    }, [isSaveDisabled, validationErrors, hayPasoEnReapertura]);
+    }, [isSaveDisabled, validationErrors, hayPasoEnReapertura, hayCambiosPendientesPorCompletar]);
 
     const handleSaveChanges = async () => {
         if (isSaveDisabled) {
