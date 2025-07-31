@@ -1,16 +1,25 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useData } from '../../context/DataContext';
 
-export const useAbonosFilters = (abonos, clientes, viviendas, renuncias) => {
+const ITEMS_PER_PAGE = 10; // Definimos cuántos abonos mostrar por página
+
+export const useAbonosFilters = () => {
+    const { isLoading, abonos, clientes, viviendas, renuncias } = useData();
+
+    // Estados para los filtros (se mantienen)
     const [clienteFiltro, setClienteFiltro] = useState(null);
     const [fechaInicioFiltro, setFechaInicioFiltro] = useState('');
     const [fechaFinFiltro, setFechaFinFiltro] = useState('');
     const [fuenteFiltro, setFuenteFiltro] = useState(null);
     const [statusFiltro, setStatusFiltro] = useState('activo');
 
-    const abonosFiltrados = useMemo(() => {
-        if (!abonos || !clientes || !viviendas || !renuncias) return [];
+    // --- INICIO DE LA MODIFICACIÓN: Nuevo estado para paginación ---
+    const [currentPage, setCurrentPage] = useState(1);
+    // --- FIN DE LA MODIFICACIÓN ---
 
-        // 1. Enriquecemos cada abono con la información que necesitamos para mostrarlo
+    const abonosFiltrados = useMemo(() => {
+        if (isLoading) return [];
+
         let abonosProcesados = abonos.map(abono => {
             const cliente = clientes.find(c => c.id === abono.clienteId);
             const vivienda = viviendas.find(v => v.id === abono.viviendaId);
@@ -26,18 +35,14 @@ export const useAbonosFilters = (abonos, clientes, viviendas, renuncias) => {
             };
         });
 
-        // 2. --- LÓGICA DE FILTRADO CORREGIDA Y DEFINITIVA ---
-        // Ahora filtramos usando el estado propio del abono ('estadoProceso')
         if (statusFiltro !== 'todos') {
             if (statusFiltro === 'activo') {
-                // Un abono activo es aquel que NO está archivado.
                 abonosProcesados = abonosProcesados.filter(a => a.estadoProceso !== 'archivado');
             } else { // 'renunciado' (que en realidad son los archivados)
                 abonosProcesados = abonosProcesados.filter(a => a.estadoProceso === 'archivado');
             }
         }
 
-        // 3. Aplicamos el resto de los filtros (cliente, fecha, fuente)
         if (clienteFiltro && clienteFiltro.value) {
             abonosProcesados = abonosProcesados.filter(a => a.clienteId === clienteFiltro.value);
         }
@@ -52,14 +57,38 @@ export const useAbonosFilters = (abonos, clientes, viviendas, renuncias) => {
         }
 
         return abonosProcesados.sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
-    }, [abonos, clientes, viviendas, renuncias, clienteFiltro, fechaInicioFiltro, fechaFinFiltro, fuenteFiltro, statusFiltro]);
+    }, [abonos, clientes, viviendas, renuncias, clienteFiltro, fechaInicioFiltro, fechaFinFiltro, fuenteFiltro, statusFiltro, isLoading]);
+
+    // --- INICIO DE LA MODIFICACIÓN: Lógica de paginación ---
+    const totalPages = useMemo(() => Math.ceil(abonosFiltrados.length / ITEMS_PER_PAGE), [abonosFiltrados]);
+
+    const abonosPaginados = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return abonosFiltrados.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [currentPage, abonosFiltrados]);
+
+    useEffect(() => {
+        setCurrentPage(1); // Resetea a la página 1 cada vez que cambian los filtros
+    }, [clienteFiltro, fechaInicioFiltro, fechaFinFiltro, fuenteFiltro, statusFiltro]);
+    // --- FIN DE LA MODIFICACIÓN ---
 
     return {
-        abonosFiltrados,
+        isLoading,
+        abonosFiltrados: abonosPaginados, // Devolvemos la lista paginada para la vista
+        todosLosAbonosFiltrados: abonosFiltrados, // Devolvemos la lista completa para contadores
+
+        // Filtros
         clienteFiltro, setClienteFiltro,
         fechaInicioFiltro, setFechaInicioFiltro,
         fechaFinFiltro, setFechaFinFiltro,
         fuenteFiltro, setFuenteFiltro,
         statusFiltro, setStatusFiltro,
+
+        // Paginación
+        pagination: {
+            currentPage,
+            totalPages,
+            onPageChange: setCurrentPage
+        }
     };
 };

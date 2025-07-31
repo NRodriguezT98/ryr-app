@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { useData } from '../../context/DataContext';
-import { useAbonosFilters } from '../../hooks/useAbonosFilters';
+import { useAbonosFilters } from '../../hooks/abonos/useAbonosFilters';
 import AbonoCard from './AbonoCard';
 import { deleteAbono } from '../../utils/storage';
 import EditarAbonoModal from './EditarAbonoModal';
@@ -12,6 +12,7 @@ import Select, { components } from 'react-select';
 import { Filter } from 'lucide-react';
 import UndoToast from '../../components/UndoToast';
 import AbonoCardSkeleton from './AbonoCardSkeleton';
+import Pagination from '../../components/Pagination';
 
 const CustomOption = (props) => {
     const { innerProps, label, data } = props;
@@ -46,7 +47,8 @@ const ListarAbonos = () => {
         fechaInicioFiltro, setFechaInicioFiltro,
         fechaFinFiltro, setFechaFinFiltro,
         fuenteFiltro, setFuenteFiltro,
-        statusFiltro, setStatusFiltro
+        statusFiltro, setStatusFiltro,
+        pagination
     } = useAbonosFilters(abonos, clientes, viviendas, renuncias);
 
     const [abonoAEditar, setAbonoAEditar] = useState(null);
@@ -167,23 +169,33 @@ const ListarAbonos = () => {
                         {[...Array(5)].map((_, i) => <AbonoCardSkeleton key={i} />)}
                     </div>
                 ) : abonosVisibles.length > 0 ? (
-                    <div className="space-y-4">
-                        {abonosVisibles.map(abono => (
-                            <AbonoCard
-                                key={abono.id}
-                                abono={abono}
-                                onEdit={() => setAbonoAEditar(abono)}
-                                onDelete={iniciarEliminacion}
-                            />
-                        ))}
-                    </div>
+                    <>
+                        <div className="space-y-4">
+                            {abonosVisibles.map(abono => (
+                                <AbonoCard
+                                    key={abono.id}
+                                    abono={abono}
+                                    onEdit={() => setAbonoAEditar(abono)}
+                                    onDelete={iniciarEliminacion}
+                                />
+                            ))}
+                        </div>
+                        {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                        {/* 3. Renderizamos el componente de paginación */}
+                        <Pagination
+                            currentPage={pagination.currentPage}
+                            totalPages={pagination.totalPages}
+                            onPageChange={pagination.onPageChange}
+                        />
+                        {/* --- FIN DE LA MODIFICACIÓN --- */}
+                    </>
                 ) : (
                     <p className="text-center text-gray-500 dark:text-gray-400 py-10">No se encontraron abonos con los filtros seleccionados.</p>
                 )}
             </div>
             {abonoAEditar && (<EditarAbonoModal isOpen={!!abonoAEditar} onClose={() => setAbonoAEditar(null)} onSave={handleGuardado} abonoAEditar={abonoAEditar} viviendaDelAbono={viviendas.find(v => v.id === abonoAEditar.viviendaId)} />)}
             {abonoAEliminar && (<ModalConfirmacion isOpen={!!abonoAEliminar} onClose={() => setAbonoAEliminar(null)} onConfirm={confirmarEliminar} titulo="¿Eliminar Abono?" mensaje="¿Estás seguro? Esta acción recalculará los saldos de la vivienda asociada y no se puede deshacer." />)}
-        </AnimatedPage>
+        </AnimatedPage >
     );
 };
 
