@@ -339,6 +339,7 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
             motivo, observacion, historialAbonos: abonosDelCiclo,
             documentosArchivados,
             financieroArchivado: clienteData.financiero || {},
+            procesoArchivado: clienteData.proceso || {},
             viviendaArchivada: {
                 id: viviendaId,
                 manzana: viviendaData.manzana,

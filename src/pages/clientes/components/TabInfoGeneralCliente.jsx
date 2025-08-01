@@ -50,13 +50,10 @@ const FuenteFinancieraCard = ({ titulo, montoPactado, abonos, fuente }) => {
 // --- Componente Principal ---
 
 const TabInfoGeneralCliente = ({ cliente, renuncia, historialAbonos }) => {
-    const { status, tieneRenunciaPendiente } = cliente;
+    const { status } = cliente;
     const { filtro, setFiltro, documentosFiltrados, handleFileAction } = useDocumentacion(cliente);
 
-    const isArchivado = status === 'inactivo';
-    const isRenunciado = status === 'renunciado';
-
-    if (isArchivado || isRenunciado) {
+    if (status === 'renunciado' || status === 'inactivo') {
         return <ClienteEstadoView cliente={cliente} renuncia={renuncia} contexto="infoGeneral" />;
     }
 
@@ -64,7 +61,7 @@ const TabInfoGeneralCliente = ({ cliente, renuncia, historialAbonos }) => {
 
     return (
         <div className="animate-fade-in space-y-6">
-            {tieneRenunciaPendiente && renuncia && (
+            {status === 'enProcesoDeRenuncia' && renuncia && (
                 <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 dark:border-orange-500 rounded-r-lg flex items-center gap-4">
                     <AlertTriangle size={32} className="text-orange-500 dark:text-orange-400 flex-shrink-0" />
                     <div>
@@ -90,28 +87,41 @@ const TabInfoGeneralCliente = ({ cliente, renuncia, historialAbonos }) => {
                         </div>
                     </InfoCard>
 
-                    <InfoCard title={tieneRenunciaPendiente ? "Vivienda a la cual Renunció" : "Vivienda Asignada"} icon={<Home size={20} />}>
-                        {vivienda ? (
+                    {vivienda ? (
+                        <InfoCard title={status === 'enProcesoDeRenuncia' ? "Vivienda a la cual Renunció" : "Vivienda Asignada"} icon={<Home size={20} />}>
                             <div className="space-y-4">
                                 <Link to={`/viviendas/detalle/${vivienda.id}`} className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:underline">
                                     {`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
                                 </Link>
-                                {tieneRenunciaPendiente && (
-                                    <div className="mt-4 pt-4 border-t dark:border-gray-600 space-y-3 text-gray-600 dark:text-gray-300">
-                                        <HelpCircle size={32} className="mx-auto text-blue-500" />
-                                        <p className="text-center">Si esta renuncia fue un error, puedes cancelarla desde el módulo de "Renuncias".</p>
-                                        <p className="text-xs text-center text-gray-400">Si la vivienda sigue disponible, será reasignada.</p>
-                                    </div>
+                                {status !== 'enProcesoDeRenuncia' && (
+                                    <>
+                                        <div>
+                                            <div className="flex justify-between text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                                <span>Progreso</span>
+                                                <span>{`${Math.round((vivienda.totalAbonado / vivienda.valorFinal) * 100)}%`}</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+                                                <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(vivienda.totalAbonado / vivienda.valorFinal) * 100}%` }}></div>
+                                            </div>
+                                        </div>
+                                        <div className="text-sm space-y-2 pt-2 border-t dark:border-gray-600">
+                                            <InfoRow label="Valor Total" value={formatCurrency(vivienda.valorFinal)} />
+                                            <InfoRow label="Total Abonado" value={<span className="text-green-600 font-semibold">{formatCurrency(vivienda.totalAbonado)}</span>} />
+                                            <InfoRow label="Saldo Pendiente" value={<span className="text-red-600 font-semibold">{formatCurrency(vivienda.saldoPendiente)}</span>} />
+                                        </div>
+                                    </>
                                 )}
                             </div>
-                        ) : (
+                        </InfoCard>
+                    ) : (
+                        <InfoCard title="Vivienda Asignada" icon={<Home size={20} />}>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Este cliente no tiene una vivienda asignada actualmente.</p>
-                        )}
-                    </InfoCard>
+                        </InfoCard>
+                    )}
                 </div>
 
                 <div className="lg:col-span-2 flex flex-col gap-6">
-                    <InfoCard title={tieneRenunciaPendiente ? "Cierre Financiero (Congelado)" : "Resumen de Cierre Financiero"} icon={<Wallet size={20} />}>
+                    <InfoCard title={status === 'enProcesoDeRenuncia' ? "Este FUE su Cierre Financiero" : "Resumen de Cierre Financiero"} icon={<Wallet size={20} />}>
                         {Object.keys(financiero || {}).length > 0 ? (
                             <div className="space-y-3">
                                 {financiero.aplicaCuotaInicial && <FuenteFinancieraCard titulo="Cuota Inicial" montoPactado={financiero.cuotaInicial.monto} abonos={historialAbonos} fuente="cuotaInicial" />}

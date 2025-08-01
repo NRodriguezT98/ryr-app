@@ -7,10 +7,11 @@ import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
 import { PartyPopper } from 'lucide-react';
 import ClienteEstadoView from './ClienteEstadoView';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange }) => {
 
-    const isClientInactiveOrPending = cliente.status === 'renunciado' || cliente.status === 'inactivo' || cliente.tieneRenunciaPendiente;
+    const isClientInactiveOrPending = cliente.status === 'renunciado' || cliente.status === 'inactivo' || cliente.status === 'enProcesoDeRenuncia';
 
     if (isClientInactiveOrPending) {
         return <ClienteEstadoView cliente={cliente} renuncia={renuncia} contexto="proceso" />;
@@ -89,24 +90,33 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
             )}
 
             <div className="space-y-4">
-                {pasosRenderizables.map((paso, index) => (
-                    <PasoProcesoCard
-                        key={paso.key}
-                        paso={{
-                            ...paso,
-                            label: `${index + 1}. ${paso.label}`,
-                            stepNumber: index + 1,
-                            hayPasoEnReapertura
-                        }}
-                        justSaved={justSaved}
-                        onUpdateEvidencia={handlers.handleUpdateEvidencia}
-                        onCompletarPaso={handlers.handleCompletarPaso}
-                        onIniciarReapertura={handlers.iniciarReapertura}
-                        onDeshacerReapertura={handlers.deshacerReapertura}
-                        onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
-                        clienteId={cliente.id}
-                    />
-                ))}
+                <AnimatePresence>
+                    {pasosRenderizables.map((paso, index) => (
+                        <motion.div
+                            key={paso.key}
+                            layout
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                        >
+                            <PasoProcesoCard
+                                paso={{
+                                    ...paso,
+                                    label: `${index + 1}. ${paso.label}`,
+                                    stepNumber: index + 1,
+                                    hayPasoEnReapertura
+                                }}
+                                justSaved={justSaved}
+                                onUpdateEvidencia={handlers.handleUpdateEvidencia}
+                                onCompletarPaso={handlers.handleCompletarPaso}
+                                onIniciarReapertura={handlers.iniciarReapertura}
+                                onDeshacerReapertura={handlers.deshacerReapertura}
+                                onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
+                                clienteId={cliente.id}
+                            />
+                        </motion.div>
+                    ))}
+                </AnimatePresence>
             </div>
 
             <ModalConfirmacion

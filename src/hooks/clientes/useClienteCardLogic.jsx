@@ -1,39 +1,35 @@
 import { useMemo } from 'react';
+import { useData } from '../../context/DataContext';
 import { determineClientStatus } from '../../utils/statusHelper';
 
 export const useClienteCardLogic = (cliente) => {
-    const { status, vivienda } = cliente;
+    const { viviendas } = useData();
 
-    const clientStatus = useMemo(() => determineClientStatus(cliente), [cliente]);
+    return useMemo(() => {
+        const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
+        const totalAbonado = vivienda?.totalAbonado || 0;
+        const valorFinal = vivienda?.valorFinal || 0;
+        const porcentajePagado = valorFinal > 0 ? (totalAbonado / valorFinal) * 100 : 0;
 
-    const isRenunciado = useMemo(() => status === 'renunciado', [status]);
+        const clientStatus = determineClientStatus(cliente);
+        const isRenunciado = cliente.status === 'renunciado';
+        const isArchivado = cliente.status === 'inactivo';
+        const isEnRenuncia = cliente.status === 'enProcesoDeRenuncia';
+        const isPagada = vivienda?.saldoPendiente <= 0 && !!vivienda;
 
-    // --- INICIO DE LA MODIFICACIÓN ---
-    // Añadimos una variable específica para saber si el cliente está archivado.
-    const isArchivado = useMemo(() => status === 'inactivo', [status]);
-    // --- FIN DE LA MODIFICACIÓN ---
+        // La acción de archivar solo está disponible si el cliente NO está en medio de una renuncia.
+        const puedeArchivar = !isEnRenuncia;
 
-    const isPagada = useMemo(() => vivienda && vivienda.saldoPendiente <= 0, [vivienda]);
-
-    const { totalAbonado, porcentajePagado, valorFinal } = useMemo(() => {
-        const vf = vivienda?.valorFinal || 0;
-        const ta = vivienda?.totalAbonado || 0;
-        const pp = vf > 0 ? (ta / vf) * 100 : (vivienda ? 100 : 0);
         return {
-            totalAbonado: ta,
-            porcentajePagado: pp,
-            valorFinal: vf
+            ...cliente,
+            vivienda,
+            totalAbonado,
+            porcentajePagado,
+            clientStatus,
+            isRenunciado,
+            isArchivado,
+            isPagada,
+            puedeArchivar
         };
-    }, [vivienda]);
-
-    return {
-        ...cliente,
-        clientStatus,
-        isRenunciado,
-        isArchivado, // <-- Exportamos la nueva variable
-        isPagada,
-        totalAbonado,
-        porcentajePagado,
-        valorFinal
-    };
+    }, [cliente, viviendas]);
 };

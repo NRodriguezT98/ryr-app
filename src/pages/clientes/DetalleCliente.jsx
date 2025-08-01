@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { Buffer } from "buffer";
+window.Buffer = Buffer;
+import React, { useState, useEffect, useMemo } from 'react';
 import { useBlocker } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ArrowLeft, FileDown, Info, GitCommit } from 'lucide-react';
@@ -69,6 +71,36 @@ const DetalleCliente = () => {
     }
 
     const { cliente, vivienda, historialAbonos, renuncia } = datosDetalle;
+    const mostrarBotonPDF = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
+
+    // --- INICIO DE LA OPTIMIZACIÓN ---
+    // "Memorizamos" el componente del PDF para que solo se regenere si los datos cambian.
+    const memoizedPDFLink = useMemo(() => {
+        if (mostrarBotonPDF && cliente && vivienda && historialAbonos) {
+            return (
+                <PDFDownloadLink
+                    document={
+                        <ClientPDF
+                            cliente={cliente}
+                            vivienda={vivienda}
+                            historialAbonos={historialAbonos}
+                        />
+                    }
+                    fileName={`Estado_Cuenta_${cliente.datosCliente.nombres.replace(/ /g, '_')}.pdf`}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                >
+                    {({ loading }) => (
+                        <>
+                            <FileDown size={16} />
+                            {loading ? 'Generando...' : 'PDF'}
+                        </>
+                    )}
+                </PDFDownloadLink>
+            );
+        }
+        return null;
+    }, [cliente, vivienda, historialAbonos, mostrarBotonPDF]);
+    // --- FIN DE LA OPTIMIZACIÓN ---
 
     return (
         <AnimatedPage>
@@ -93,27 +125,7 @@ const DetalleCliente = () => {
                         >
                             <ArrowLeft size={16} /> Volver
                         </button>
-
-                        {cliente && vivienda && historialAbonos && (
-                            <PDFDownloadLink
-                                document={
-                                    <ClientPDF
-                                        cliente={cliente}
-                                        vivienda={vivienda}
-                                        historialAbonos={historialAbonos}
-                                    />
-                                }
-                                fileName={`Estado_Cuenta_${cliente.datosCliente.nombres.replace(/ /g, '_')}.pdf`}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
-                            >
-                                {({ loading }) => (
-                                    <>
-                                        <FileDown size={16} />
-                                        {loading ? 'Generando...' : 'PDF'}
-                                    </>
-                                )}
-                            </PDFDownloadLink>
-                        )}
+                        {memoizedPDFLink}
                     </div>
                 </div>
 
