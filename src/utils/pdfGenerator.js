@@ -5,7 +5,6 @@ import { formatCurrency, toTitleCase, formatID } from './textFormatters';
 import logoRyR from '../assets/logoRyR.png';
 import pieDePagina from '../assets/pieDePagina.png';
 
-// Función para obtener dimensiones de una imagen (sin cambios)
 const getImageDimensions = (imageSrc) => {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -21,11 +20,11 @@ export const generateClientStatementPDF = async (cliente, vivienda, historialAbo
         const pageHeight = doc.internal.pageSize.getHeight();
         const pageWidth = doc.internal.pageSize.getWidth();
 
-        // --- 1. Cargar y dibujar Logo y Pie de Página ---
         const [originalLogo, footerImage] = await Promise.all([
             getImageDimensions(logoRyR),
             getImageDimensions(pieDePagina)
         ]);
+
         const logoWidthInPdf = 50;
         const logoHeightInPdf = (originalLogo.height * logoWidthInPdf) / originalLogo.width;
         doc.addImage(logoRyR, 'PNG', 14, 15, logoWidthInPdf, logoHeightInPdf);
@@ -33,7 +32,6 @@ export const generateClientStatementPDF = async (cliente, vivienda, historialAbo
         const footerWidthInPdf = pageWidth;
         const footerHeightInPdf = (footerImage.height * footerWidthInPdf) / footerImage.width;
 
-        // --- 2. Contenido del Encabezado ---
         doc.setFontSize(18);
         doc.setFont(undefined, 'bold');
         doc.text("Estado de Cuenta", pageWidth / 2, 30, { align: 'center' });
@@ -46,7 +44,6 @@ export const generateClientStatementPDF = async (cliente, vivienda, historialAbo
         doc.line(14, currentY, pageWidth - 14, currentY);
         currentY += 15;
 
-        // --- 3. Información del Cliente y Vivienda ---
         doc.setFontSize(10);
         doc.setFont(undefined, 'bold');
         doc.text("Información del Cliente", 14, currentY);
@@ -63,65 +60,121 @@ export const generateClientStatementPDF = async (cliente, vivienda, historialAbo
         currentY += 7;
         doc.text(`Correo: ${cliente.datosCliente.correo}`, 14, currentY);
 
-        // --- 4. Historial de Abonos ---
         currentY += 20;
         doc.setFontSize(12);
         doc.setFont(undefined, 'bold');
         doc.text("Historial de Abonos", 14, currentY);
 
         const tableColumn = ["Fecha", "Fuente de Pago", "Monto", "Observación"];
-        const tableRows = [...historialAbonos].sort((a, b) => new Date(a.fechaPago) - new Date(b.fechaPago)).map(abono => [new Date(abono.fechaPago + 'T00:00:00').toLocaleDateString('es-CO'), abono.metodoPago || 'N/A', formatCurrency(abono.monto), abono.observacion || '']);
+        const tableRows = [...historialAbonos]
+            .sort((a, b) => new Date(a.fechaPago) - new Date(b.fechaPago))
+            .map(abono => [
+                new Date(abono.fechaPago + 'T00:00:00').toLocaleDateString('es-CO'),
+                abono.metodoPago || 'N/A',
+                formatCurrency(abono.monto),
+                abono.observacion || ''
+            ]);
+
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
             startY: currentY + 7,
-            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+            theme: 'grid',
+            headStyles: {
+                fillColor: [30, 64, 175],
+                textColor: 255,
+                fontStyle: 'bold',
+                fontSize: 10,
+                halign: 'center',
+                valign: 'middle',
+                cellPadding: 4,
+            },
+            styles: {
+                fontSize: 9.5,
+                cellPadding: 3,
+                valign: 'middle',
+                halign: (data) => data.column.index === 2 ? 'right' : 'left'
+            },
             alternateRowStyles: { fillColor: [245, 245, 245] },
-            styles: { fontSize: 9, cellPadding: 2.5 },
         });
 
-        // --- 5. TABLA DE RESUMEN FINAL UNIFICADA ---
-        const summaryBody = [];
+        // --- 5. TABLA DE DESGLOSE DEL VALOR ---
+        const breakdownBody = [];
 
-        // Sección de Desglose del Valor
-        summaryBody.push([{ content: 'Desglose del Valor', colSpan: 2, styles: { fontStyle: 'bold', fillColor: '#374151', textColor: '#FFFFFF' } }]);
-        summaryBody.push(['Valor Base:', formatCurrency(vivienda.valorBase || 0)]);
-        if (vivienda.recargoEsquinera > 0) {
-            summaryBody.push(['Recargo Esquinera:', formatCurrency(vivienda.recargoEsquinera)]);
-        }
-        if (vivienda.gastosNotariales > 0) {
-            summaryBody.push(['G. Notariales:', formatCurrency(vivienda.gastosNotariales)]);
-        }
+        breakdownBody.push([
+            {
+                content: 'Desglose del Valor',
+                colSpan: 2,
+                styles: {
+                    fontStyle: 'bold',
+                    fillColor: '#374151',
+                    textColor: '#FFFFFF',
+                    halign: 'center'
+                }
+            }
+        ]);
 
-        // Espaciador Limpio
-        summaryBody.push([{ content: '', colSpan: 2, styles: { fillColor: '#FFFFFF', minCellHeight: 0 } }]);
-
-        // Sección de Totales
-        summaryBody.push(['Valor Total Vivienda:', { content: formatCurrency(vivienda.valorFinal), styles: { fontStyle: 'bold' } }]);
-        summaryBody.push(['Total Abonado:', { content: formatCurrency(vivienda.totalAbonado), styles: { fontStyle: 'bold', textColor: '#16a34a' } }]);
-        summaryBody.push(['Saldo Pendiente:', { content: formatCurrency(vivienda.saldoPendiente), styles: { fontStyle: 'bold', textColor: '#dc2626' } }]);
+        breakdownBody.push(['Valor Base:', formatCurrency(vivienda.valorBase || 0)]);
+        breakdownBody.push(['Gastos Notariales:', formatCurrency(vivienda.gastosNotariales || 0)]);
+        breakdownBody.push(['Valor Total Vivienda:', { content: formatCurrency(vivienda.valorFinal), styles: { fontStyle: 'bold' } }]);
 
         autoTable(doc, {
-            body: summaryBody,
-            startY: doc.lastAutoTable.finalY + 10,
+            body: breakdownBody,
+            startY: doc.lastAutoTable.finalY + 12,
             theme: 'grid',
-            styles: { fontSize: 10, cellPadding: 2 },
+            styles: {
+                fontSize: 10,
+                cellPadding: 3,
+            },
             columnStyles: {
                 0: { fontStyle: 'bold', halign: 'right' },
                 1: { halign: 'right' }
             },
-            tableWidth: 'wrap',
-            margin: { left: 105 } // Se alinea a la derecha
+            margin: { left: 105 },
+            tableWidth: 'wrap'
         });
 
-        // --- 6. Pie de Página ---
+        // --- 6. TABLA DE RESUMEN FINANCIERO ---
+        const financeBody = [];
+
+        financeBody.push([
+            {
+                content: 'Resumen Financiero',
+                colSpan: 2,
+                styles: {
+                    fontStyle: 'bold',
+                    fillColor: '#1e40af',
+                    textColor: '#FFFFFF',
+                    halign: 'center'
+                }
+            }
+        ]);
+
+        financeBody.push(['Total Abonado:', { content: formatCurrency(vivienda.totalAbonado), styles: { fontStyle: 'bold', textColor: '#16a34a' } }]);
+        financeBody.push(['Saldo Pendiente:', { content: formatCurrency(vivienda.saldoPendiente), styles: { fontStyle: 'bold', textColor: '#dc2626' } }]);
+
+        autoTable(doc, {
+            body: financeBody,
+            startY: doc.lastAutoTable.finalY + 12,
+            theme: 'grid',
+            styles: {
+                fontSize: 10,
+                cellPadding: 3,
+            },
+            columnStyles: {
+                0: { fontStyle: 'bold', halign: 'right' },
+                1: { halign: 'right' }
+            },
+            margin: { left: 105 },
+            tableWidth: 'wrap'
+        });
+
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
             doc.addImage(pieDePagina, 'PNG', 0, pageHeight - footerHeightInPdf, footerWidthInPdf, footerHeightInPdf);
         }
 
-        // --- 7. Guardar el PDF ---
         doc.save(`Estado_Cuenta_${cliente.datosCliente.nombres.replace(/ /g, '_')}.pdf`);
         toast.success("Reporte PDF generado exitosamente.");
 
