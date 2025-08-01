@@ -1,11 +1,13 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { deleteClientePermanently, inactivarCliente, renunciarAVivienda, createNotification, restaurarCliente } from '../../utils/storage';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 
+const ITEMS_PER_PAGE = 9;
+
 export const useListarClientes = () => {
-    const { isLoading, clientes, abonos, recargarDatos } = useData();
+    const { isLoading, clientes, abonos, viviendas, recargarDatos } = useData();
 
     const [clienteAArchivar, setClienteAArchivar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
@@ -17,13 +19,17 @@ export const useListarClientes = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('activo');
+    const [sortOrder, setSortOrder] = useState('ubicacion');
+    const [currentPage, setCurrentPage] = useState(1);
 
     const clientesFiltrados = useMemo(() => {
         let itemsProcesados = clientes.map(cliente => {
+            const viviendaAsignada = viviendas.find(v => v.id === cliente.viviendaId);
             const procesoFinalizado = cliente.proceso?.facturaVenta?.completado === true;
             const tieneAbonos = abonos.some(a => a.clienteId === cliente.id);
             return {
                 ...cliente,
+                vivienda: viviendaAsignada,
                 puedeRenunciar: !procesoFinalizado,
                 puedeEditar: !procesoFinalizado,
                 puedeSerEliminado: !tieneAbonos
@@ -35,19 +41,64 @@ export const useListarClientes = () => {
         }
 
         if (searchTerm) {
-            const lowerCaseSearchTerm = searchTerm.toLowerCase();
-            itemsProcesados = itemsProcesados.filter(c =>
-                `${c.datosCliente?.nombres || ''} ${c.datosCliente?.apellidos || ''}`.toLowerCase().includes(lowerCaseSearchTerm) ||
-                (c.datosCliente?.cedula || '').includes(searchTerm)
-            );
+            const lowerCaseSearchTerm = searchTerm.toLowerCase().replace(/\s/g, '');
+            itemsProcesados = itemsProcesados.filter(c => {
+                const nombreCompleto = `${c.datosCliente?.nombres || ''} ${c.datosCliente?.apellidos || ''}`.toLowerCase();
+                const cedula = (c.datosCliente?.cedula || '');
+                const ubicacion = c.vivienda ? `${c.vivienda.manzana}${c.vivienda.numeroCasa}`.toLowerCase().replace(/\s/g, '') : '';
+                return nombreCompleto.includes(searchTerm.toLowerCase()) || cedula.includes(lowerCaseSearchTerm) || (ubicacion && ubicacion.includes(lowerCaseSearchTerm));
+            });
         }
 
-        return itemsProcesados.sort((a, b) => {
-            const nameA = `${a.datosCliente?.nombres || ''} ${a.datosCliente?.apellidos || ''}`.toLowerCase();
-            const nameB = `${b.datosCliente?.nombres || ''} ${b.datosCliente?.apellidos || ''}`.toLowerCase();
-            return nameA.localeCompare(nameB);
-        });
-    }, [clientes, abonos, searchTerm, statusFilter]);
+        switch (sortOrder) {
+            case 'fecha_reciente':
+                itemsProcesados.sort((a, b) => new Date(b.datosCliente.fechaIngreso) - new Date(a.datosCliente.fechaIngreso));
+                break;
+            case 'saldo_desc':
+                itemsProcesados.sort((a, b) => (b.vivienda?.saldoPendiente ?? -Infinity) - (a.vivienda?.saldoPendiente ?? -Infinity));
+                break;
+            case 'saldo_asc':
+                itemsProcesados.sort((a, b) => (a.vivienda?.saldoPendiente ?? Infinity) - (b.vivienda?.saldoPendiente ?? Infinity));
+                break;
+            case 'valor_desc':
+                itemsProcesados.sort((a, b) => (b.vivienda?.valorFinal || 0) - (a.vivienda?.valorFinal || 0));
+                break;
+            case 'valor_asc':
+                itemsProcesados.sort((a, b) => (a.vivienda?.valorFinal || 0) - (b.vivienda?.valorFinal || 0));
+                break;
+            case 'nombre_asc':
+                itemsProcesados.sort((a, b) => {
+                    const nameA = `${a.datosCliente?.nombres || ''} ${a.datosCliente?.apellidos || ''}`.toLowerCase();
+                    const nameB = `${b.datosCliente?.nombres || ''} ${b.datosCliente?.apellidos || ''}`.toLowerCase();
+                    return nameA.localeCompare(nameB);
+                });
+                break;
+            case 'ubicacion':
+            default:
+                itemsProcesados.sort((a, b) => {
+                    const viviendaA = a.vivienda;
+                    const viviendaB = b.vivienda;
+                    if (!viviendaA && !viviendaB) return 0;
+                    if (!viviendaA) return 1;
+                    if (!viviendaB) return -1;
+                    return viviendaA.manzana.localeCompare(viviendaB.manzana) || viviendaA.numeroCasa - viviendaB.numeroCasa;
+                });
+                break;
+        }
+
+        return itemsProcesados;
+    }, [clientes, abonos, viviendas, searchTerm, statusFilter, sortOrder]);
+
+    const totalPages = useMemo(() => Math.ceil(clientesFiltrados.length / ITEMS_PER_PAGE), [clientesFiltrados]);
+
+    const clientesPaginados = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        return clientesFiltrados.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    }, [currentPage, clientesFiltrados]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [statusFilter, searchTerm, sortOrder]);
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
@@ -144,9 +195,16 @@ export const useListarClientes = () => {
 
     return {
         isLoading,
-        clientesVisibles: clientesFiltrados,
+        clientesVisibles: clientesPaginados,
+        todosLosClientesFiltrados: clientesFiltrados,
         statusFilter, setStatusFilter,
         searchTerm, setSearchTerm,
+        sortOrder, setSortOrder,
+        pagination: {
+            currentPage,
+            totalPages,
+            onPageChange: setCurrentPage
+        },
         modals: {
             clienteAArchivar, setClienteAArchivar,
             clienteAEliminar, setClienteAEliminar,
