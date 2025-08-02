@@ -122,6 +122,10 @@ const PDFBody = ({ cliente, vivienda, historialAbonos }) => {
                     <Text style={styles.label}>Valor Total Vivienda:</Text>
                     <Text style={[styles.value, styles.bold]}>{formatCurrency(vivienda.valorFinal)}</Text>
                 </View>
+                <View style={styles.row}>
+                    <Text style={styles.label}>Valor Registrado en Escritura:</Text>
+                    <Text style={styles.value}>{`${formatCurrency(cliente.financiero.valorEscritura)} (Informativo)`}</Text>
+                </View>
             </View>
 
             {/* Historial de abonos */}

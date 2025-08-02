@@ -19,6 +19,8 @@ const blankInitialState = {
         aplicaCredito: false, credito: { banco: '', monto: 0, caso: '', urlCartaAprobacion: null },
         aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
         aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0, urlCartaAprobacion: null },
+        usaValorEscrituraDiferente: false,
+        valorEscritura: '',
     },
     documentos: {
         promesaEnviadaUrl: null,

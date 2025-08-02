@@ -6,7 +6,7 @@ import HelpTooltip from '../../../components/HelpTooltip';
 import { formatCurrency } from '../../../utils/textFormatters';
 import { useClienteFinanciero } from '../../../hooks/clientes/useClienteFinanciero';
 import FileUpload from '../../../components/FileUpload';
-import { FileText, XCircle, Lock } from 'lucide-react';
+import { FileText, XCircle, Lock, Info } from 'lucide-react';
 
 const creditoOptions = [
     { value: 'Bancolombia', label: 'Bancolombia' },
@@ -90,10 +90,8 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                     <div className="text-center flex flex-col">
                         <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Valor Vivienda</p>
                         <div className="flex-grow text-xs mt-2 space-y-1 px-2 border-b dark:border-gray-600 pb-2 mb-2">
-                            {/* --- INICIO DE LA CORRECCIÓN --- */}
                             <BreakdownRow label="Valor Base:" value={viviendaSeleccionada?.valorBase || 0} />
                             {viviendaSeleccionada?.recargoEsquinera > 0 && <BreakdownRow label="R. Esquinera:" value={viviendaSeleccionada.recargoEsquinera} />}
-                            {/* --- FIN DE LA CORRECCIÓN --- */}
                             <BreakdownRow label="G. Notariales:" value={GASTOS_NOTARIALES_FIJOS} />
                         </div>
                         <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(resumenFinanciero.totalAPagar)}</p>
@@ -308,6 +306,48 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    <div className="mt-8 pt-6 border-t dark:border-gray-600 lg:col-span-2">
+                        <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Valor para Escritura (Opcional)</h3>
+                        <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
+                            <div className="flex items-center justify-between">
+                                <label htmlFor="usaValorEscrituraDiferente" className="font-medium text-gray-800 dark:text-gray-200 cursor-pointer">
+                                    ¿El valor para la escritura es diferente al valor comercial?
+                                </label>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        id="usaValorEscrituraDiferente"
+                                        name="usaValorEscrituraDiferente"
+                                        checked={financiero.usaValorEscrituraDiferente || false}
+                                        onChange={handleCheckboxChange}
+                                        className="sr-only peer"
+                                        disabled={isLocked}
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                            {financiero.usaValorEscrituraDiferente && (
+                                <div className="mt-4 animate-fade-in">
+                                    <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+                                        Valor para Escritura (Informativo)
+                                    </label>
+                                    <NumericFormat
+                                        value={financiero.valorEscritura || ''}
+                                        onValueChange={(values) => handleFinancialFieldChange('financiero', 'valorEscritura', values.floatValue)}
+                                        className="w-full border p-2 rounded-lg dark:bg-gray-800 dark:border-gray-600"
+                                        thousandSeparator="."
+                                        decimalSeparator=","
+                                        prefix="$ "
+                                        disabled={isLocked}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                        <Info size={14} /> Este valor es solo para fines informativos y no afecta el saldo de la deuda.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

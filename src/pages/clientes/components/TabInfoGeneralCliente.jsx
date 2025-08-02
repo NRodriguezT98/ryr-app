@@ -128,6 +128,15 @@ const TabInfoGeneralCliente = ({ cliente, renuncia, historialAbonos }) => {
                                 {financiero.aplicaCredito && <FuenteFinancieraCard titulo="Crédito Hipotecario" montoPactado={financiero.credito.monto} abonos={historialAbonos} fuente="credito" />}
                                 {financiero.aplicaSubsidioVivienda && <FuenteFinancieraCard titulo="Subsidio Mi Casa Ya" montoPactado={financiero.subsidioVivienda.monto} abonos={historialAbonos} fuente="subsidioVivienda" />}
                                 {financiero.aplicaSubsidioCaja && <FuenteFinancieraCard titulo="Subsidio Caja de Compensación" montoPactado={financiero.subsidioCaja.monto} abonos={historialAbonos} fuente="subsidioCaja" />}
+                                {financiero.usaValorEscrituraDiferente && financiero.valorEscritura > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-dashed dark:border-gray-600">
+                                        <InfoRow
+                                            icon={<Info size={14} className="text-blue-500" />}
+                                            label="Valor en Escritura"
+                                            value={<span className="font-bold text-blue-600 dark:text-blue-400">{`${formatCurrency(financiero.valorEscritura)} (Informativo)`}</span>}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <p className="text-sm text-gray-500 dark:text-gray-400">No se ha definido una estructura financiera para este cliente.</p>
