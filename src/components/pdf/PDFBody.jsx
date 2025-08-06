@@ -122,10 +122,15 @@ const PDFBody = ({ cliente, vivienda, historialAbonos }) => {
                     <Text style={styles.label}>Valor Total Vivienda:</Text>
                     <Text style={[styles.value, styles.bold]}>{formatCurrency(vivienda.valorFinal)}</Text>
                 </View>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Valor Registrado en Escritura:</Text>
-                    <Text style={styles.value}>{`${formatCurrency(cliente.financiero.valorEscritura)} (Informativo)`}</Text>
-                </View>
+
+                {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                {cliente.financiero?.usaValorEscrituraDiferente && cliente.financiero?.valorEscritura > 0 && (
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Valor Registrado en Escritura:</Text>
+                        <Text style={styles.value}>{`${formatCurrency(cliente.financiero.valorEscritura)} (Informativo)`}</Text>
+                    </View>
+                )}
+                {/* --- FIN DE LA MODIFICACIÓN --- */}
             </View>
 
             {/* Historial de abonos */}

@@ -1,6 +1,7 @@
 import { formatCurrency, formatDisplayDate } from './textFormatters';
 
 // --- VALIDACIONES DE VIVIENDA ---
+// --- VALIDACIONES DE VIVIENDA ---
 export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = null) => {
     const errors = {};
     const { manzana, numero, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente, areaLote, areaConstruida } = formData;
@@ -108,7 +109,7 @@ export const validateEditarCliente = (formData, todosLosClientes, clienteIdActua
     return baseErrors;
 };
 
-export const validateFinancialStep = (financiero, valorVivienda, documentos) => {
+export const validateFinancialStep = (financiero, valorVivienda, documentos, isEditing = false) => {
     const errors = {};
     const { aplicaCuotaInicial, cuotaInicial, aplicaCredito, credito, aplicaSubsidioVivienda, subsidioVivienda, aplicaSubsidioCaja, subsidioCaja } = financiero;
 
@@ -141,11 +142,13 @@ export const validateFinancialStep = (financiero, valorVivienda, documentos) => 
         totalRecursos += subsidioCaja.monto || 0;
     }
 
-    if (!documentos.promesaEnviadaUrl) {
-        errors.promesaEnviadaUrl = "Es obligatorio adjuntar la promesa.";
-    }
-    if (!documentos.promesaEnviadaCorreoUrl) {
-        errors.promesaEnviadaCorreoUrl = "Es obligatorio adjuntar la evidencia de envío.";
+    if (!isEditing) {
+        if (!documentos.promesaEnviadaUrl) {
+            errors.promesaEnviadaUrl = 'Debe adjuntar la promesa de compraventa.';
+        }
+        if (!documentos.promesaEnviadaCorreoUrl) {
+            errors.promesaEnviadaCorreoUrl = 'Debe adjuntar la evidencia de envío.';
+        }
     }
 
     const totalAPagar = valorVivienda || 0;

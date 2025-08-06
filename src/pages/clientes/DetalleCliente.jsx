@@ -30,6 +30,40 @@ const DetalleCliente = () => {
     const [procesoTieneCambios, setProcesoTieneCambios] = useState(false);
     const [navegacionBloqueada, setNavegacionBloqueada] = useState(null);
 
+    // --- INICIO DE LA CORRECCIÓN ---
+    // El hook useMemo se mueve a la parte superior, ANTES de cualquier return condicional.
+    const memoizedPDFLink = useMemo(() => {
+        if (isLoading || !datosDetalle) return null;
+
+        const { cliente, vivienda, historialAbonos } = datosDetalle;
+        const mostrarBotonPDF = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
+
+        if (mostrarBotonPDF && cliente && vivienda && historialAbonos) {
+            return (
+                <PDFDownloadLink
+                    document={
+                        <ClientPDF
+                            cliente={cliente}
+                            vivienda={vivienda}
+                            historialAbonos={historialAbonos}
+                        />
+                    }
+                    fileName={`Estado_Cuenta_${cliente.datosCliente.nombres.replace(/ /g, '_')}.pdf`}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                >
+                    {({ loading }) => (
+                        <>
+                            <FileDown size={16} />
+                            {loading ? 'Generando...' : 'PDF'}
+                        </>
+                    )}
+                </PDFDownloadLink>
+            );
+        }
+        return null;
+    }, [isLoading, datosDetalle]);
+    // --- FIN DE LA CORRECCIÓN ---
+
     const blocker = useBlocker(
         ({ currentLocation, nextLocation }) =>
             procesoTieneCambios && currentLocation.pathname !== nextLocation.pathname
@@ -70,37 +104,7 @@ const DetalleCliente = () => {
         return <div className="text-center p-10 animate-pulse">Cargando perfil del cliente...</div>;
     }
 
-    const { cliente, vivienda, historialAbonos, renuncia } = datosDetalle;
-    const mostrarBotonPDF = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
-
-    // --- INICIO DE LA OPTIMIZACIÓN ---
-    // "Memorizamos" el componente del PDF para que solo se regenere si los datos cambian.
-    const memoizedPDFLink = useMemo(() => {
-        if (mostrarBotonPDF && cliente && vivienda && historialAbonos) {
-            return (
-                <PDFDownloadLink
-                    document={
-                        <ClientPDF
-                            cliente={cliente}
-                            vivienda={vivienda}
-                            historialAbonos={historialAbonos}
-                        />
-                    }
-                    fileName={`Estado_Cuenta_${cliente.datosCliente.nombres.replace(/ /g, '_')}.pdf`}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
-                >
-                    {({ loading }) => (
-                        <>
-                            <FileDown size={16} />
-                            {loading ? 'Generando...' : 'PDF'}
-                        </>
-                    )}
-                </PDFDownloadLink>
-            );
-        }
-        return null;
-    }, [cliente, vivienda, historialAbonos, mostrarBotonPDF]);
-    // --- FIN DE LA OPTIMIZACIÓN ---
+    const { cliente, renuncia, historialAbonos } = datosDetalle;
 
     return (
         <AnimatedPage>

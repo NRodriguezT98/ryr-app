@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { User, Phone, Mail, MapPin, Home, Wallet, CheckCircle, Briefcase, HelpCircle, AlertTriangle } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Home, Wallet, CheckCircle, Briefcase, HelpCircle, AlertTriangle, Info } from 'lucide-react';
 import { formatCurrency, formatID } from '../../../utils/textFormatters';
 import ClienteEstadoView from './ClienteEstadoView';
 import { useDocumentacion } from '../../../hooks/clientes/useDocumentacion';
@@ -121,22 +121,32 @@ const TabInfoGeneralCliente = ({ cliente, renuncia, historialAbonos }) => {
                 </div>
 
                 <div className="lg:col-span-2 flex flex-col gap-6">
-                    <InfoCard title={status === 'enProcesoDeRenuncia' ? "Este FUE su Cierre Financiero" : "Resumen de Cierre Financiero"} icon={<Wallet size={20} />}>
+                    <InfoCard title={status === 'enProcesoDeRenuncia' ? "Este fue su Cierre Financiero" : "Resumen de Cierre Financiero"} icon={<Wallet size={20} />}>
                         {Object.keys(financiero || {}).length > 0 ? (
                             <div className="space-y-3">
                                 {financiero.aplicaCuotaInicial && <FuenteFinancieraCard titulo="Cuota Inicial" montoPactado={financiero.cuotaInicial.monto} abonos={historialAbonos} fuente="cuotaInicial" />}
                                 {financiero.aplicaCredito && <FuenteFinancieraCard titulo="Crédito Hipotecario" montoPactado={financiero.credito.monto} abonos={historialAbonos} fuente="credito" />}
                                 {financiero.aplicaSubsidioVivienda && <FuenteFinancieraCard titulo="Subsidio Mi Casa Ya" montoPactado={financiero.subsidioVivienda.monto} abonos={historialAbonos} fuente="subsidioVivienda" />}
                                 {financiero.aplicaSubsidioCaja && <FuenteFinancieraCard titulo="Subsidio Caja de Compensación" montoPactado={financiero.subsidioCaja.monto} abonos={historialAbonos} fuente="subsidioCaja" />}
+
+                                {/* --- INICIO DE LA MODIFICACIÓN --- */}
                                 {financiero.usaValorEscrituraDiferente && financiero.valorEscritura > 0 && (
                                     <div className="mt-4 pt-4 border-t border-dashed dark:border-gray-600">
-                                        <InfoRow
-                                            icon={<Info size={14} className="text-blue-500" />}
-                                            label="Valor en Escritura"
-                                            value={<span className="font-bold text-blue-600 dark:text-blue-400">{`${formatCurrency(financiero.valorEscritura)} (Informativo)`}</span>}
-                                        />
+                                        <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-l-4 border-blue-400 space-y-2">
+                                            <h4 className="font-bold text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                                                <Info size={16} /> Alerta de Valor en Escritura
+                                            </h4>
+                                            <p className="text-xs text-blue-700 dark:text-blue-300">
+                                                Esta vivienda tiene un valor en escritura distinto a su valor comercial real.
+                                            </p>
+                                            <div className="text-sm space-y-1 pt-2 border-t border-blue-200 dark:border-blue-700">
+                                                <InfoRow label="Valor en Escritura" value={<span className="font-bold">{`${formatCurrency(financiero.valorEscritura)} (Informativo)`}</span>} />
+                                                <InfoRow label="Valor Comercial Real" value={<span className="font-bold">{formatCurrency(vivienda.valorFinal)}</span>} />
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
+                                {/* --- FIN DE LA MODIFICACIÓN --- */}
                             </div>
                         ) : (
                             <p className="text-sm text-gray-500 dark:text-gray-400">No se ha definido una estructura financiera para este cliente.</p>

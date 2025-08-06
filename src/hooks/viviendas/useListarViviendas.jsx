@@ -5,7 +5,7 @@ import { useUndoableDelete } from "../useUndoableDelete";
 import { deleteViviendaPermanently } from "../../utils/storage";
 import toast from 'react-hot-toast';
 
-const ITEMS_PER_PAGE = 9;
+const ITEMS_PER_PAGE = 1;
 
 export const useListarViviendas = () => {
     const location = useLocation();

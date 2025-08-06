@@ -19,6 +19,7 @@ export const useClienteCardLogic = (cliente) => {
 
         // La acción de archivar solo está disponible si el cliente NO está en medio de una renuncia.
         const puedeArchivar = !isEnRenuncia;
+        const tieneValorEscrituraDiferente = cliente.financiero?.usaValorEscrituraDiferente === true && cliente.financiero?.valorEscritura > 0;
 
         return {
             ...cliente,
@@ -29,7 +30,8 @@ export const useClienteCardLogic = (cliente) => {
             isRenunciado,
             isArchivado,
             isPagada,
-            puedeArchivar
+            puedeArchivar,
+            tieneValorEscrituraDiferente
         };
     }, [cliente, viviendas]);
 };

@@ -20,7 +20,7 @@ const blankInitialState = {
         aplicaSubsidioVivienda: false, subsidioVivienda: { monto: 0 },
         aplicaSubsidioCaja: false, subsidioCaja: { caja: '', monto: 0, urlCartaAprobacion: null },
         usaValorEscrituraDiferente: false,
-        valorEscritura: '',
+        valorEscritura: 0,
     },
     documentos: {
         promesaEnviadaUrl: null,
@@ -43,10 +43,17 @@ function formReducer(state, action) {
         }
         case 'UPDATE_FINANCIAL_FIELD': {
             const { section, field, value } = action.payload;
-            const newFinancials = {
-                ...state.financiero,
-                [section]: { ...state.financiero[section], [field]: value }
-            };
+            const newFinancials = { ...state.financiero };
+
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Si la sección es 'financiero', es una propiedad directa. Si no, es un sub-objeto.
+            if (section === 'financiero') {
+                newFinancials[field] = value;
+            } else {
+                newFinancials[section] = { ...state.financiero[section], [field]: value };
+            }
+            // --- FIN DE LA CORRECCIÓN ---
+
             const newErrors = { ...state.errors };
             delete newErrors[`${section}_${field}`];
             if (field === 'urlCartaAprobacion') {
@@ -202,7 +209,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     viviendaId: formData.viviendaSeleccionada.id,
                     status: 'activo',
                     fechaInicioProceso: getTodayString(),
-                    fechaCreacion: clienteAEditar.fechaCreacion // Se preserva la fecha de creación original
+                    fechaCreacion: clienteAEditar.fechaCreacion
                 };
                 await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
                 toast.success("¡Cliente reactivado con un nuevo proceso!");
@@ -278,7 +285,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         const clientErrors = isEditing
             ? validateEditarCliente(formData.datosCliente, todosLosClientes, clienteAEditar?.id, abonosDelCliente)
             : validateCliente(formData.datosCliente, todosLosClientes);
-        const financialErrors = validateFinancialStep(formData.financiero, valorTotalVivienda, formData.documentos);
+        const financialErrors = validateFinancialStep(formData.financiero, valorTotalVivienda, formData.documentos, isEditing);
         const totalErrors = { ...clientErrors, ...financialErrors };
         if (Object.keys(totalErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: totalErrors });
@@ -330,6 +337,10 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             compareAndPush('Aplica Sub. Caja Comp.', initial.financiero.aplicaSubsidioCaja, current.financiero.aplicaSubsidioCaja, 'boolean');
             compareAndPush('Monto Sub. Caja Comp.', initial.financiero.subsidioCaja.monto, current.financiero.subsidioCaja.monto, 'currency');
             compareAndPush('Caja de Compensación', initial.financiero.subsidioCaja.caja, current.financiero.subsidioCaja.caja);
+
+            compareAndPush('Usa Valor Escritura Diferente', initial.financiero.usaValorEscrituraDiferente, current.financiero.usaValorEscrituraDiferente, 'boolean');
+            compareAndPush('Valor Escritura', initial.financiero.valorEscritura, current.financiero.valorEscritura, 'currency');
+
             setCambios(cambiosDetectados);
             setIsConfirming(true);
         } else {

@@ -4,7 +4,7 @@ import { deleteClientePermanently, inactivarCliente, renunciarAVivienda, createN
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 
-const ITEMS_PER_PAGE = 9;
+const ITEMS_PER_PAGE = 1;
 
 export const useListarClientes = () => {
     const { isLoading, clientes, abonos, viviendas, recargarDatos } = useData();

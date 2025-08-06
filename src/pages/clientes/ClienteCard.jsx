@@ -1,9 +1,10 @@
 import React, { Fragment, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, User, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle } from 'lucide-react';
+import { MoreVertical, User, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign } from 'lucide-react';
 import { getInitials, formatID, formatCurrency } from '../../utils/textFormatters';
 import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic';
+import { Tooltip } from 'react-tooltip';
 
 const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar }) => {
     const {
@@ -17,11 +18,26 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
         puedeEditar,
         puedeRenunciar,
         status,
-        puedeSerEliminado
+        puedeSerEliminado,
+        puedeArchivar,
+        tieneValorEscrituraDiferente
     } = cardData;
 
+    const enRenunciaPendiente = status === 'enProcesoDeRenuncia';
+
     return (
-        <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600' : 'dark:border-gray-700'}`}>
+        <div className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600' : 'dark:border-gray-700'}`}>
+
+            {tieneValorEscrituraDiferente && (
+                <div
+                    className="absolute top-3 right-3 bg-purple-100 dark:bg-purple-900/50 p-1.5 rounded-full"
+                    data-tooltip-id="app-tooltip"
+                    data-tooltip-content="Este cliente tiene un valor de vivienda diferente en escritura al valor comercial."
+                >
+                    <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                </div>
+            )}
+
             <div className={`flex items-center p-5 border-b dark:border-gray-700 rounded-t-2xl ${isPagada ? 'bg-green-50 dark:bg-green-900/50' : ''}`}>
                 <div className={`w-14 h-14 rounded-full text-white flex items-center justify-center font-bold text-2xl mr-4 flex-shrink-0 bg-blue-500`}>
                     {getInitials(datosCliente?.nombres, datosCliente?.apellidos)}
@@ -85,7 +101,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                             <div className="px-1 py-1">
                                 <Menu.Item>
                                     {({ active }) => (
-                                        <Link to={`/clientes/detalle/${id}`} className={`${active ? 'bg-indigo-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}>
+                                        <Link to={`/clientes/detalle/${id}`} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
                                             <Eye className="w-5 h-5 mr-2" /> Ver Detalle
                                         </Link>
                                     )}
@@ -98,7 +114,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                         <Menu.Item disabled={!puedeEditar}>
                                             {({ active, disabled }) => (
                                                 <div data-tooltip-id="app-tooltip" data-tooltip-content={!puedeEditar ? "No se puede editar un cliente con el proceso finalizado." : ''}>
-                                                    <button onClick={() => onEdit(cardData)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeEditar}>
+                                                    <button onClick={() => onEdit(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeEditar}>
                                                         <Pencil className="w-5 h-5 mr-2" /> Editar
                                                     </button>
                                                 </div>
@@ -110,7 +126,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                             <Menu.Item disabled={!puedeRenunciar}>
                                                 {({ active, disabled }) => (
                                                     <div data-tooltip-id="app-tooltip" data-tooltip-content={!puedeRenunciar ? "No se puede renunciar: el cliente ha superado un hito clave." : ''}>
-                                                        <button onClick={() => onRenunciar(cardData)} className={`${active ? 'bg-orange-500 text-white' : 'text-gray-900 dark:text-gray-200'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm`} disabled={!puedeRenunciar}>
+                                                        <button onClick={() => onRenunciar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeRenunciar}>
                                                             <UserX className="w-5 h-5 mr-2" /> Renunciar
                                                         </button>
                                                     </div>
@@ -126,7 +142,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                     <div className="px-1 py-1">
                                         <Menu.Item>
                                             {({ active }) => (
-                                                <button onClick={() => onReactivar(cardData)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}>
+                                                <button onClick={() => onReactivar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
                                                     <RefreshCw className="w-5 h-5 mr-2" /> Iniciar Nuevo Proceso
                                                 </button>
                                             )}
@@ -135,7 +151,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                     <div className="px-1 py-1">
                                         <Menu.Item>
                                             {({ active }) => (
-                                                <button onClick={() => onArchive(cardData)} className={`${active ? 'bg-gray-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}>
+                                                <button onClick={() => onArchive(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
                                                     <Archive className="w-5 h-5 mr-2" /> Archivar
                                                 </button>
                                             )}
@@ -149,7 +165,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                     <div className="px-1 py-1">
                                         <Menu.Item>
                                             {({ active }) => (
-                                                <button onClick={() => onRestaurar(cardData)} className={`${active ? 'bg-yellow-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}>
+                                                <button onClick={() => onRestaurar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
                                                     <ArchiveRestore className="w-5 h-5 mr-2" /> Restaurar Cliente
                                                 </button>
                                             )}
@@ -159,7 +175,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                         <div className="px-1 py-1">
                                             <Menu.Item>
                                                 {({ active }) => (
-                                                    <button onClick={() => onDelete(cardData)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}>
+                                                    <button onClick={() => onDelete(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
                                                         <Trash className="w-5 h-5 mr-2" /> Eliminar Permanentemente
                                                     </button>
                                                 )}
