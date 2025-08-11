@@ -11,6 +11,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
 
     const [abonoAEditar, setAbonoAEditar] = useState(null);
     const [abonoAEliminar, setAbonoAEliminar] = useState(null);
+    const [desembolsoARegistrar, setDesembolsoARegistrar] = useState(null);
     const [abonosOcultos, setAbonosOcultos] = useState([]);
     const deletionTimeouts = useRef({});
     const [fuenteACondonar, setFuenteACondonar] = useState(null);
@@ -82,6 +83,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         recargarDatos();
         setAbonoAEditar(null);
         setFuenteACondonar(null);
+        setDesembolsoARegistrar(null);
     }, [recargarDatos]);
 
     const iniciarEliminacion = (abono) => setAbonoAEliminar(abono);
@@ -122,7 +124,8 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         modals: {
             abonoAEditar, setAbonoAEditar,
             abonoAEliminar, setAbonoAEliminar,
-            fuenteACondonar, setFuenteACondonar
+            fuenteACondonar, setFuenteACondonar,
+            desembolsoARegistrar, setDesembolsoARegistrar
         },
         handlers: {
             recargarDatos,

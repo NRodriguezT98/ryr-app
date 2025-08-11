@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NumericFormat } from 'react-number-format';
 import { useAbonoForm } from '../../hooks/abonos/useAbonoForm.jsx';
-import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle, Loader } from 'lucide-react';
+import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle, Loader, PlusCircle } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
 import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
 
@@ -14,46 +14,35 @@ const ICONS = {
     condonacion: <HandCoins className="w-8 h-8 text-indigo-600" />
 };
 
-const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, cliente, onAbonoRegistrado, onCondonarSaldo }) => {
+const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, cliente, onAbonoRegistrado, onCondonarSaldo, onRegistrarDesembolso }) => {
     const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
 
     const totalAbonado = abonos.reduce((sum, abono) => sum + abono.monto, 0);
     const saldoPendiente = montoPactado - totalAbonado;
     const porcentajePagado = montoPactado > 0 ? (totalAbonado / montoPactado) * 100 : 100;
-
     const isViviendaPagada = vivienda.saldoPendiente <= 0;
 
-    const {
-        formData, errors, handleInputChange, handleValueChange,
-        handleSubmit, isSubmitting, resetForm, setFormData
-    } = useAbonoForm({
-        fuente,
-        titulo,
-        saldoPendiente,
-        vivienda,
-        cliente,
+    const { formData, errors, handleInputChange, handleValueChange, handleSubmit, isSubmitting, setFormData } = useAbonoForm({
+        fuente, titulo, saldoPendiente, vivienda, cliente,
         onAbonoRegistrado: (cerrarFormulario) => {
             onAbonoRegistrado();
-            if (cerrarFormulario) {
-                setMostrandoFormulario(false);
-            }
+            if (cerrarFormulario) setMostrandoFormulario(false);
         }
     });
 
     useEffect(() => {
         if (mostrandoFormulario) {
             setFormData({
-                monto: '',
-                fechaPago: getTodayString(),
-                observacion: '',
-                urlComprobante: null,
-                metodoPago: titulo
+                monto: '', fechaPago: getTodayString(), observacion: '', urlComprobante: null, metodoPago: titulo
             });
         }
     }, [mostrandoFormulario, setFormData, titulo]);
 
     const fechaDeInicioDelProceso = cliente?.fechaInicioProceso || cliente?.datosCliente?.fechaIngreso;
     const minDate = fechaDeInicioDelProceso ? fechaDeInicioDelProceso.split('T')[0] : null;
+
+    const isCredito = fuente === 'credito';
+    const creditoYaDesembolsado = isCredito && saldoPendiente <= 0;
 
     return (
         <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -64,7 +53,6 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                     <p className="text-sm text-gray-500 dark:text-gray-400">Pactado: {formatCurrency(montoPactado)}</p>
                 </div>
             </div>
-
             <div className="mt-4 space-y-2">
                 <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
                     <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${porcentajePagado}%` }}></div>
@@ -138,14 +126,22 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
             )}
 
             <div className="mt-4 pt-4 border-t dark:border-gray-700 text-center">
-                {saldoPendiente <= 0 ? (
+                {saldoPendiente <= 0 && fuente !== 'condonacion' ? (
                     <p className="text-green-600 dark:text-green-400 font-bold text-sm">✅ Esta fuente de pago ha sido completada.</p>
-                ) : !mostrandoFormulario && !isViviendaPagada ? (
+                ) : !mostrandoFormulario && !isViviendaPagada && fuente !== 'condonacion' ? (
                     <div className="flex justify-center items-center gap-4">
-                        <button onClick={() => setMostrandoFormulario(true)} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline">
-                            + Registrar Abono
-                        </button>
-                        {fuente === 'cuotaInicial' && (
+                        {isCredito ? (
+                            <button onClick={onRegistrarDesembolso} disabled={creditoYaDesembolsado} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline disabled:text-gray-400 disabled:no-underline flex items-center gap-2">
+                                <Banknote size={16} />
+                                {creditoYaDesembolsado ? 'Desembolso Registrado' : 'Registrar Desembolso de Crédito'}
+                            </button>
+                        ) : (
+                            <button onClick={() => setMostrandoFormulario(true)} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline flex items-center gap-2">
+                                <PlusCircle size={16} />
+                                Registrar Abono
+                            </button>
+                        )}
+                        {fuente === 'cuotaInicial' && !isCredito && (
                             <>
                                 <span className="text-gray-300 dark:text-gray-600">|</span>
                                 <button onClick={onCondonarSaldo} className="text-green-600 dark:text-green-400 font-semibold text-sm hover:underline">

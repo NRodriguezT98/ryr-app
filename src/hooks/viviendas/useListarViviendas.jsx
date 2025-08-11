@@ -5,7 +5,7 @@ import { useUndoableDelete } from "../useUndoableDelete";
 import { deleteViviendaPermanently } from "../../utils/storage";
 import toast from 'react-hot-toast';
 
-const ITEMS_PER_PAGE = 1;
+const ITEMS_PER_PAGE = 9;
 
 export const useListarViviendas = () => {
     const location = useLocation();
@@ -22,11 +22,14 @@ export const useListarViviendas = () => {
             const clienteAsignado = clientes.find(c => c.id === vivienda.clienteId);
             const procesoFinalizado = clienteAsignado?.proceso?.facturaVenta?.completado === true;
             const tieneHistorialDeAbonos = abonos.some(a => a.viviendaId === vivienda.id);
+            const tieneValorEscrituraDiferente = clienteAsignado?.financiero?.usaValorEscrituraDiferente === true && clienteAsignado?.financiero?.valorEscritura > 0;
+
             return {
                 ...vivienda,
                 puedeEditar: !procesoFinalizado,
                 puedeEliminar: !vivienda.clienteId && !tieneHistorialDeAbonos,
-                camposFinancierosBloqueados: !!vivienda.clienteId
+                camposFinancierosBloqueados: !!vivienda.clienteId,
+                tieneValorEscrituraDiferente
             };
         });
 

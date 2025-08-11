@@ -1,7 +1,7 @@
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch, setDoc, query, where, serverTimestamp } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { toSentenceCase, formatCurrency } from './textFormatters';
+import { toSentenceCase, formatCurrency, toTitleCase } from './textFormatters';
 import { PROCESO_CONFIG, FUENTE_PROCESO_MAP } from './procesoConfig.js';
 import { DOCUMENTACION_CONFIG } from './documentacionConfig.js';
 
@@ -441,20 +441,111 @@ export const updateAbono = async (abonoId, datosNuevos, abonoOriginal) => {
 };
 
 export const deleteAbono = async (abonoAEliminar) => {
-    if (!abonoAEliminar || !abonoAEliminar.id || !abonoAEliminar.viviendaId) throw new Error("Datos del abono a eliminar incompletos.");
+    if (!abonoAEliminar || !abonoAEliminar.id || !abonoAEliminar.viviendaId) {
+        throw new Error("Datos del abono a eliminar incompletos.");
+    }
+
     const abonoRef = doc(db, "abonos", String(abonoAEliminar.id));
     const viviendaRef = doc(db, "viviendas", String(abonoAEliminar.viviendaId));
+    const clienteRef = doc(db, "clientes", String(abonoAEliminar.clienteId));
+
     await runTransaction(db, async (transaction) => {
+        // --- INICIO DE LA CORRECCIÓN ---
+        // 1. LEER todos los documentos necesarios PRIMERO.
         const viviendaDoc = await transaction.get(viviendaRef);
-        if (!viviendaDoc.exists()) {
-            transaction.delete(abonoRef);
-            return;
+        const clienteDoc = await transaction.get(clienteRef);
+
+        // 2. Realizar todas las operaciones de ESCRITURA y BORRADO después.
+        if (viviendaDoc.exists()) {
+            const viviendaData = viviendaDoc.data();
+            const montoAEliminar = abonoAEliminar.monto || 0;
+            const nuevoTotalAbonado = (viviendaData.totalAbonado || 0) - montoAEliminar;
+            const nuevoSaldo = viviendaData.valorFinal - nuevoTotalAbonado;
+            transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         }
+
+        const pasoConfig = FUENTE_PROCESO_MAP[abonoAEliminar.fuente];
+        if (pasoConfig && pasoConfig.desembolsoKey && clienteDoc.exists()) {
+            const clienteData = clienteDoc.data();
+            const nuevoProceso = { ...clienteData.proceso };
+            const pasoKey = pasoConfig.desembolsoKey;
+
+            if (nuevoProceso[pasoKey]) {
+                nuevoProceso[pasoKey] = {
+                    ...nuevoProceso[pasoKey],
+                    completado: false,
+                    fecha: null
+                };
+                transaction.update(clienteRef, { proceso: nuevoProceso });
+            }
+        }
+
+        transaction.delete(abonoRef);
+        // --- FIN DE LA CORRECCIÓN ---
+    });
+};
+
+export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData) => {
+    const viviendaRef = doc(db, "viviendas", viviendaId);
+    const clienteRef = doc(db, "clientes", clienteId);
+    const abonoRef = doc(collection(db, "abonos"));
+    let clienteNombre = ''; // Variable para el nombre del cliente
+
+    await runTransaction(db, async (transaction) => {
+        const clienteDoc = await transaction.get(clienteRef);
+        const viviendaDoc = await transaction.get(viviendaRef);
+        if (!clienteDoc.exists() || !viviendaDoc.exists()) {
+            throw new Error("El cliente o la vivienda no existen.");
+        }
+        const clienteData = clienteDoc.data();
         const viviendaData = viviendaDoc.data();
-        const montoAEliminar = abonoAEliminar.monto || 0;
-        const nuevoTotalAbonado = (viviendaData.totalAbonado || 0) - montoAEliminar;
+
+        clienteNombre = toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`);
+
+        const montoCreditoPactado = clienteData.financiero?.credito?.monto || 0;
+
+        const abonosPreviosSnapshot = await getDocs(query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("fuente", "==", "credito")));
+        const totalAbonadoCredito = abonosPreviosSnapshot.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
+
+        const montoADesembolsar = montoCreditoPactado - totalAbonadoCredito;
+
+        if (montoADesembolsar <= 0) {
+            throw new Error("El crédito para este cliente ya ha sido completamente desembolsado.");
+        }
+
+        const abonoParaGuardar = {
+            ...desembolsoData,
+            monto: montoADesembolsar,
+            fuente: 'credito',
+            metodoPago: 'Desembolso Bancario',
+            clienteId,
+            viviendaId,
+            id: abonoRef.id,
+            estadoProceso: 'activo'
+        };
+
+        const nuevoTotalAbonado = viviendaData.totalAbonado + montoADesembolsar;
         const nuevoSaldo = viviendaData.valorFinal - nuevoTotalAbonado;
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
-        transaction.delete(abonoRef);
+        transaction.set(abonoRef, abonoParaGuardar);
+
+        const pasoConfig = FUENTE_PROCESO_MAP['credito'];
+        if (pasoConfig) {
+            const desembolsoKey = pasoConfig.desembolsoKey;
+            const nuevoProceso = { ...clienteData.proceso };
+            nuevoProceso[desembolsoKey] = {
+                ...nuevoProceso[desembolsoKey],
+                completado: true,
+                fecha: desembolsoData.fechaPago,
+                evidencias: {
+                    ...nuevoProceso[desembolsoKey]?.evidencias,
+                    [pasoConfig.evidenciaId]: { url: desembolsoData.urlComprobante, estado: 'subido' }
+                }
+            };
+            transaction.update(clienteRef, { proceso: nuevoProceso });
+        }
     });
+
+    const message = `Se registró el desembolso del crédito hipotecario para ${clienteNombre}`;
+    await createNotification('abono', message, `/clientes/detalle/${clienteId}`);
 };

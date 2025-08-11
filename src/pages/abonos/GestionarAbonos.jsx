@@ -10,6 +10,7 @@ import ModalConfirmacion from '../../components/ModalConfirmacion';
 import CondonarSaldoModal from '../viviendas/CondonarSaldoModal';
 import { formatCurrency, formatID } from "../../utils/textFormatters";
 import { User, Home, ArrowLeft } from 'lucide-react';
+import ModalRegistrarDesembolso from './components/ModalRegistrarDesembolso';
 
 const GestionarAbonos = () => {
     const { clienteId } = useParams();
@@ -84,6 +85,7 @@ const GestionarAbonos = () => {
                                             cliente={datosClienteSeleccionado.data.cliente}
                                             onAbonoRegistrado={handlers.recargarDatos}
                                             onCondonarSaldo={() => modals.setFuenteACondonar({ ...fuente, saldoPendiente: fuente.montoPactado - fuente.abonos.reduce((sum, a) => sum + a.monto, 0), vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente })}
+                                            onRegistrarDesembolso={() => modals.setDesembolsoARegistrar({ ...fuente, vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente })}
                                         />
                                     ))}
                                 </div>
@@ -120,6 +122,14 @@ const GestionarAbonos = () => {
                     onClose={() => modals.setFuenteACondonar(null)}
                     onSave={handlers.handleGuardado}
                     fuenteData={modals.fuenteACondonar}
+                />
+            )}
+            {modals.desembolsoARegistrar && (
+                <ModalRegistrarDesembolso
+                    isOpen={!!modals.desembolsoARegistrar}
+                    onClose={() => modals.setDesembolsoARegistrar(null)}
+                    onSave={handlers.handleGuardado}
+                    fuenteData={modals.desembolsoARegistrar}
                 />
             )}
         </AnimatedPage>

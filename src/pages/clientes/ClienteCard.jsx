@@ -30,11 +30,11 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
 
             {tieneValorEscrituraDiferente && (
                 <div
-                    className="absolute top-3 right-3 bg-purple-100 dark:bg-purple-900/50 p-1.5 rounded-full"
+                    className="absolute top-3 right-3 bg-purple-100 dark:bg-green-900/50 p-1.5 rounded-full"
                     data-tooltip-id="app-tooltip"
                     data-tooltip-content="Este cliente tiene un valor de vivienda diferente en escritura al valor comercial."
                 >
-                    <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                    <DollarSign className="w-6 h-6 text-purple-600 dark:text-green-400" />
                 </div>
             )}
 
