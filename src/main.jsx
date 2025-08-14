@@ -6,9 +6,12 @@ import { Toaster } from 'react-hot-toast';
 import { DataProvider } from './context/DataContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
 
 // Importación de todos tus componentes de página
 import Layout from './layout/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginPage from './pages/auth/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import CrearVivienda from './pages/viviendas/CrearVivienda';
 import ListarViviendas from './pages/viviendas/ListarViviendas';
@@ -22,12 +25,21 @@ import CrearAbono from './pages/abonos/CrearAbono';
 import GestionarAbonos from './pages/abonos/GestionarAbonos';
 import ListarRenuncias from './pages/renuncias/ListarRenuncias';
 import DetalleRenuncia from './pages/renuncias/DetalleRenuncia';
+import ReportesPage from './pages/reportes/ReportesPage'
 
 // Definimos las rutas como un array de objetos
 const router = createBrowserRouter([
   {
+    path: "/login", // <-- 3. Ruta pública para el login
+    element: <LoginPage />,
+  },
+  {
     path: "/",
-    element: <Layout />, // El Layout principal envuelve a todas las rutas hijas
+    element: ( // <-- 4. Protegemos el Layout principal
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true, // Esta es la página de inicio (Dashboard)
@@ -85,6 +97,10 @@ const router = createBrowserRouter([
         path: "/renuncias/detalle/:renunciaId",
         element: <DetalleRenuncia />,
       },
+      {
+        path: "/reportes",
+        element: <ReportesPage />,
+      },
     ],
   },
 ]);
@@ -108,7 +124,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       />
       <DataProvider>
         <NotificationProvider>
-          <RouterProvider router={router} />
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
         </NotificationProvider>
       </DataProvider>
     </ThemeProvider>

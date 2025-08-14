@@ -20,12 +20,16 @@ const styles = StyleSheet.create({
     }
 });
 
-const PDFHeader = () => {
+// --- INICIO DE LA MODIFICACIÓN ---
+// El componente ahora acepta un 'title' como prop.
+const PDFHeader = ({ title = "Estado de Cuenta" }) => {
+    // --- FIN DE LA MODIFICACIÓN ---
     const fechaActual = new Date().toLocaleDateString("es-CO");
     return (
         <>
             <Image src={logo} style={styles.logo} fixed />
-            <Text style={styles.title} fixed>Estado de Cuenta</Text>
+            {/* Se usa el 'title' recibido */}
+            <Text style={styles.title} fixed>{title}</Text>
             <Text style={styles.dateText} fixed>Fecha de emisión: {fechaActual}</Text>
         </>
     );

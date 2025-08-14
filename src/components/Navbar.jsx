@@ -1,17 +1,17 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, Fragment } from "react";
 import { Menu, Popover, Transition } from '@headlessui/react';
-// --- INICIO DE LA MODIFICACIÓN ---
 import logo1Light from "../assets/logo1.png";
 import logo2Light from "../assets/logo2.png";
-import logo1Dark from "../assets/logo1-dark.png"; // Asumiendo este nombre
-import logo2Dark from "../assets/logo2-dark.png"; // Asumiendo este nombre
-import { useTheme } from "../hooks/useTheme"; // Importamos nuestro hook de tema
-// --- FIN DE LA MODIFICACIÓN ---
-import { Bell, Home, Users, Wallet, UserX, ChevronDown, PlusCircle, List, UserPlus, Landmark, History, Trash2 } from "lucide-react";
+import logo1Dark from "../assets/logo1-dark.png";
+import logo2Dark from "../assets/logo2-dark.png";
+import { useTheme } from "../hooks/useTheme";
+import { useAuth } from "../context/AuthContext";
+import { Bell, Home, Users, Wallet, UserX, ChevronDown, PlusCircle, List, UserPlus, Landmark, History, Trash2, BarChart2, LogOut, UserCircle } from "lucide-react";
 import { useNotifications } from "../context/NotificationContext";
 import NotificationItem from "./notifications/NotificationItem";
 import ThemeSwitcher from "./ThemeSwitcher";
+import { getInitials } from "../utils/textFormatters";
 
 const DropdownLink = ({ to, icon, children, onClick }) => {
     const location = useLocation();
@@ -31,8 +31,10 @@ const DropdownLink = ({ to, icon, children, onClick }) => {
 
 const Navbar = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { notifications, unreadCount, markAllAsRead, clearAllNotifications, groupedNotifications } = useNotifications();
-    const { theme } = useTheme(); // Obtenemos el tema actual
+    const { theme } = useTheme();
+    const { currentUser, logout } = useAuth();
 
     const [isRinging, setIsRinging] = useState(false);
     const prevUnreadCount = useRef(unreadCount);
@@ -48,22 +50,29 @@ const Navbar = () => {
 
     const isActiveLink = (path) => location.pathname.startsWith(path);
 
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/login');
+        } catch (error) {
+            console.error("Error al cerrar sesión:", error);
+        }
+    };
+
     return (
         <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-40">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-20">
-
                     <div className="flex-shrink-0">
                         <Link to="/" className="flex items-center space-x-3">
-                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
                             <img src={theme === 'dark' ? logo1Dark : logo1Light} alt="Logo 1" className="h-9" />
                             <img src={theme === 'dark' ? logo2Dark : logo2Light} alt="Logo 2" className="h-9" />
-                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                         </Link>
                     </div>
 
                     <div className="hidden md:flex items-center justify-center">
                         <nav className="flex items-center space-x-2 bg-white dark:bg-gray-800 p-2 rounded-full">
+                            {/* Menú Viviendas */}
                             <Menu as="div" className="relative">
                                 <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/viviendas') ? 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                                     <Home size={16} />
@@ -78,6 +87,7 @@ const Navbar = () => {
                                 </Transition>
                             </Menu>
 
+                            {/* Menú Clientes */}
                             <Menu as="div" className="relative">
                                 <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/clientes') ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                                     <Users size={16} />
@@ -92,6 +102,7 @@ const Navbar = () => {
                                 </Transition>
                             </Menu>
 
+                            {/* Menú Abonos */}
                             <Menu as="div" className="relative">
                                 <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/abonos') ? 'bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                                     <Wallet size={16} />
@@ -106,15 +117,23 @@ const Navbar = () => {
                                 </Transition>
                             </Menu>
 
+                            {/* Enlace Renuncias */}
                             <Link to="/renuncias" className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/renuncias') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                                 <UserX size={16} />
                                 <span>Renuncias</span>
+                            </Link>
+
+                            {/* Enlace Reportes */}
+                            <Link to="/reportes" className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/reportes') ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                <BarChart2 size={16} />
+                                <span>Reportes</span>
                             </Link>
                         </nav>
                     </div>
 
                     <div className="flex items-center justify-end gap-2">
                         <ThemeSwitcher />
+
                         <Popover as="div" className="relative">
                             {({ open, close: closePopover }) => (
                                 <>
@@ -170,8 +189,40 @@ const Navbar = () => {
                                 </>
                             )}
                         </Popover>
-                    </div>
 
+                        {currentUser && (
+                            <Menu as="div" className="relative">
+                                <Menu.Button className="flex items-center justify-center w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full font-bold text-gray-600 dark:text-gray-300 hover:ring-2 hover:ring-blue-500 transition-all">
+                                    {getInitials(currentUser.email)}
+                                </Menu.Button>
+                                <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                                    <Menu.Items className="absolute right-0 mt-2 w-64 origin-top-right bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-50">
+                                        <div className="px-3 py-2 border-b dark:border-gray-700">
+                                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate" title={currentUser.email}>
+                                                {currentUser.email}
+                                            </p>
+                                        </div>
+                                        <div className="py-1">
+                                            <Menu.Item>{({ close }) => (<DropdownLink to="/perfil" icon={<UserCircle size={18} />} onClick={close}>Mi Perfil</DropdownLink>)}</Menu.Item>
+                                        </div>
+                                        <div className="py-1 border-t dark:border-gray-700">
+                                            <Menu.Item>
+                                                {({ active }) => (
+                                                    <button
+                                                        onClick={handleLogout}
+                                                        className={`${active ? 'bg-red-50 dark:bg-red-900/50 text-red-700 dark:text-red-300' : 'text-gray-700 dark:text-gray-200'} group flex items-center w-full p-3 text-sm rounded-lg transition-colors duration-200`}
+                                                    >
+                                                        <LogOut size={18} className="mr-3" />
+                                                        Cerrar Sesión
+                                                    </button>
+                                                )}
+                                            </Menu.Item>
+                                        </div>
+                                    </Menu.Items>
+                                </Transition>
+                            </Menu>
+                        )}
+                    </div>
                 </div>
             </div>
         </header>
