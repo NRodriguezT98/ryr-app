@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLogin } from '../../hooks/auth/useLogin'; // <-- 1. Se importa el nuevo hook
+import { useLogin } from '../../hooks/auth/useLogin';
 import { LogIn, Loader2, Mail } from 'lucide-react';
 import logo1Light from '../../assets/logo1.png';
 import logo2Light from '../../assets/logo2.png';
@@ -7,9 +7,10 @@ import logo1Dark from '../../assets/logo1-dark.png';
 import logo2Dark from '../../assets/logo2-dark.png';
 import { useTheme } from '../../hooks/useTheme';
 import { AnimatePresence, motion } from 'framer-motion';
+// 1. Importamos la imagen de fondo
+import corporateBackground from '../../assets/backgrounds/imagen-corporativa.png';
 
 const LoginPage = () => {
-    // 2. Se consume el hook para obtener toda la lógica y el estado
     const {
         email, setEmail,
         password, setPassword,
@@ -21,8 +22,18 @@ const LoginPage = () => {
     const { theme } = useTheme();
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4 bg-gradient-to-br from-blue-100 via-white to-red-100 dark:from-blue-900/50 dark:via-gray-900 dark:to-red-900/50">
-            <div className="w-full max-w-md p-8 space-y-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl border dark:border-gray-700">
+        <div className="relative flex items-center justify-center min-h-screen p-4">
+            {/* 2. Contenedor para la imagen de fondo y el oscurecimiento */}
+            <div
+                className="absolute inset-0 bg-cover bg-center"
+                style={{ backgroundImage: `url(${corporateBackground})` }}
+            >
+                {/* 3. Capa de oscurecimiento (overlay) */}
+                <div className="absolute inset-0 bg-black opacity-50"></div>
+            </div>
+
+            {/* 4. Contenedor del Formulario (se mantiene por encima con z-10) */}
+            <div className="relative w-full max-w-lg p-8 space-y-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-2xl border dark:border-gray-700 z-10">
                 <div className="text-center">
                     <div className="flex justify-center items-center gap-4 mb-4">
                         <img src={theme === 'dark' ? logo1Dark : logo1Light} alt="Logo 1" className="h-10" />

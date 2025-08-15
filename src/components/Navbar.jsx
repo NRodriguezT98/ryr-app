@@ -7,7 +7,7 @@ import logo1Dark from "../assets/logo1-dark.png";
 import logo2Dark from "../assets/logo2-dark.png";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../context/AuthContext";
-import { Bell, Home, Users, Wallet, UserX, ChevronDown, PlusCircle, List, UserPlus, Landmark, History, Trash2, BarChart2, LogOut, UserCircle } from "lucide-react";
+import { Bell, Home, Users, Wallet, UserX, ChevronDown, PlusCircle, List, UserPlus, Landmark, History, Trash2, BarChart2, LogOut, UserCircle, ShieldCheck } from "lucide-react";
 import { useNotifications } from "../context/NotificationContext";
 import NotificationItem from "./notifications/NotificationItem";
 import ThemeSwitcher from "./ThemeSwitcher";
@@ -34,7 +34,7 @@ const Navbar = () => {
     const navigate = useNavigate();
     const { notifications, unreadCount, markAllAsRead, clearAllNotifications, groupedNotifications } = useNotifications();
     const { theme } = useTheme();
-    const { currentUser, logout } = useAuth();
+    const { currentUser, userData, logout } = useAuth();
 
     const [isRinging, setIsRinging] = useState(false);
     const prevUnreadCount = useRef(unreadCount);
@@ -128,6 +128,22 @@ const Navbar = () => {
                                 <BarChart2 size={16} />
                                 <span>Reportes</span>
                             </Link>
+                            {/* El menú de Administración solo se renderiza si el rol del usuario es 'admin' */}
+                            {userData?.role === 'admin' && (
+                                <Menu as="div" className="relative">
+                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/admin') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                        <ShieldCheck size={16} />
+                                        <span>Admin</span>
+                                        <ChevronDown size={16} />
+                                    </Menu.Button>
+                                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
+                                            <Menu.Item>{({ close }) => (<DropdownLink to="/admin" icon={<Users size={18} />} onClick={close}>Gestionar Usuarios</DropdownLink>)}</Menu.Item>
+                                            {/* Aquí podríamos añadir más enlaces de admin en el futuro */}
+                                        </Menu.Items>
+                                    </Transition>
+                                </Menu>
+                            )}
                         </nav>
                     </div>
 

@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getAuth } from "firebase/auth";
 
 // La configuración ahora lee las variables de entorno de Vite
 const firebaseConfig = {
@@ -16,6 +17,12 @@ const firebaseConfig = {
 // Inicializa Firebase
 const app = initializeApp(firebaseConfig);
 
-// Exporta los servicios que vamos a usar en nuestra aplicación
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// 2. Se crea la instancia de autenticación
+const auth = getAuth(app);
+
+// Se crea la instancia de la base de datos
+const db = getFirestore(app);
+
+const storage = getStorage(app);
+
+export { db, storage, auth, firebaseConfig };

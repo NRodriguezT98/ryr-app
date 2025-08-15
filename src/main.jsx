@@ -25,7 +25,9 @@ import CrearAbono from './pages/abonos/CrearAbono';
 import GestionarAbonos from './pages/abonos/GestionarAbonos';
 import ListarRenuncias from './pages/renuncias/ListarRenuncias';
 import DetalleRenuncia from './pages/renuncias/DetalleRenuncia';
-import ReportesPage from './pages/reportes/ReportesPage'
+import ReportesPage from './pages/reportes/ReportesPage';
+import AdminPage from './pages/admin/AdminPage';
+import CrearUsuarioPage from './pages/admin/CrearUsuarioPage';
 
 // Definimos las rutas como un array de objetos
 const router = createBrowserRouter([
@@ -100,6 +102,14 @@ const router = createBrowserRouter([
       {
         path: "/reportes",
         element: <ReportesPage />,
+      },
+      {
+        path: "/admin",
+        element: <AdminPage />,
+      },
+      {
+        path: "/admin/crear-usuario",
+        element: <CrearUsuarioPage />,
       },
     ],
   },
