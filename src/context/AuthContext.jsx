@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth"; // Se añade sendPasswordResetEmail
 
 // 1. Creamos el contexto
 const AuthContext = createContext();
@@ -30,6 +30,11 @@ export const AuthProvider = ({ children }) => {
         return signOut(auth);
     }
 
+    // Función para restablecer la contraseña
+    function resetPassword(email) {
+        return sendPasswordResetEmail(auth, email);
+    }
+
     // Este es el "oyente" de Firebase. Se ejecuta una vez al cargar la app
     // y cada vez que el estado de autenticación cambia.
     useEffect(() => {
@@ -46,7 +51,8 @@ export const AuthProvider = ({ children }) => {
         currentUser,
         login,
         signup,
-        logout
+        logout,
+        resetPassword // Se exporta la nueva función
     };
 
     return (
