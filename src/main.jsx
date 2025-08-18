@@ -11,7 +11,9 @@ import { AuthProvider } from './context/AuthContext';
 // Importación de todos tus componentes de página
 import Layout from './layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import PermissionProtectedRoute from './components/PermissionProtectedRoute';
 import LoginPage from './pages/auth/LoginPage';
+import UnauthorizedPage from './pages/auth/UnauthorizedPage';
 import DashboardPage from './pages/DashboardPage';
 import CrearVivienda from './pages/viviendas/CrearVivienda';
 import ListarViviendas from './pages/viviendas/ListarViviendas';
@@ -43,74 +45,36 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      {
-        index: true, // Esta es la página de inicio (Dashboard)
-        element: <DashboardPage />,
-      },
-      {
-        path: "/viviendas/crear",
-        element: <CrearVivienda />,
-      },
-      {
-        path: "/viviendas/listar",
-        element: <ListarViviendas />,
-      },
-      {
-        path: "/viviendas/detalle/:viviendaId",
-        element: <DetalleVivienda />,
-      },
-      {
-        path: "/viviendas/editar/:viviendaId",
-        element: <EditarVivienda />,
-      },
-      {
-        path: "/clientes",
-        element: <ListarClientes />,
-      },
-      {
-        path: "/clientes/crear",
-        element: <CrearCliente />,
-      },
-      {
-        path: "/clientes/listar",
-        element: <ListarClientes />,
-      },
-      {
-        path: "/clientes/detalle/:clienteId",
-        element: <DetalleCliente />,
-      },
-      {
-        path: "/abonos",
-        element: <CrearAbono />,
-      },
-      {
-        path: "/abonos/listar",
-        element: <ListarAbonos />,
-      },
-      {
-        path: "/abonos/gestionar/:clienteId",
-        element: <GestionarAbonos />,
-      },
-      {
-        path: "/renuncias",
-        element: <ListarRenuncias />,
-      },
-      {
-        path: "/renuncias/detalle/:renunciaId",
-        element: <DetalleRenuncia />,
-      },
-      {
-        path: "/reportes",
-        element: <ReportesPage />,
-      },
-      {
-        path: "/admin",
-        element: <AdminPage />,
-      },
-      {
-        path: "/admin/crear-usuario",
-        element: <CrearUsuarioPage />,
-      },
+      { index: true, element: <DashboardPage /> },
+      { path: "/unauthorized", element: <UnauthorizedPage /> },
+
+      // Rutas de Viviendas
+      { path: "/viviendas/listar", element: <PermissionProtectedRoute module="viviendas" action="ver"><ListarViviendas /></PermissionProtectedRoute> },
+      { path: "/viviendas/detalle/:viviendaId", element: <PermissionProtectedRoute module="viviendas" action="ver"><DetalleVivienda /></PermissionProtectedRoute> },
+      { path: "/viviendas/crear", element: <PermissionProtectedRoute module="viviendas" action="crear"><CrearVivienda /></PermissionProtectedRoute> },
+      { path: "/viviendas/editar/:viviendaId", element: <PermissionProtectedRoute module="viviendas" action="editar"><EditarVivienda /> </PermissionProtectedRoute>, },
+
+      // Rutas de Clientes
+      { path: "/clientes/listar", element: <PermissionProtectedRoute module="clientes" action="ver"><ListarClientes /></PermissionProtectedRoute> },
+      { path: "/clientes/detalle/:clienteId", element: <PermissionProtectedRoute module="clientes" action="ver"><DetalleCliente /></PermissionProtectedRoute> },
+      { path: "/clientes/crear", element: <PermissionProtectedRoute module="clientes" action="crear"><CrearCliente /></PermissionProtectedRoute> },
+      { path: "/clientes", element: <PermissionProtectedRoute module="clientes" action="ver"><ListarClientes /></PermissionProtectedRoute> },
+
+      // Rutas de Abonos
+      { path: "/abonos/listar", element: <PermissionProtectedRoute module="abonos" action="ver"><ListarAbonos /></PermissionProtectedRoute> },
+      { path: "/abonos/gestionar/:clienteId", element: <PermissionProtectedRoute module="abonos" action="crear"><GestionarAbonos /></PermissionProtectedRoute> }, // Gestionar implica poder crear abonos
+      { path: "/abonos", element: <PermissionProtectedRoute module="abonos" action="crear"><CrearAbono /></PermissionProtectedRoute> },
+
+      // Rutas de Renuncias
+      { path: "/renuncias", element: <PermissionProtectedRoute module="renuncias" action="ver"><ListarRenuncias /></PermissionProtectedRoute> },
+      { path: "/renuncias/detalle/:renunciaId", element: <PermissionProtectedRoute module="renuncias" action="ver"><DetalleRenuncia /></PermissionProtectedRoute> },
+
+      // Ruta de Reportes
+      { path: "/reportes", element: <PermissionProtectedRoute module="reportes" action="generar"><ReportesPage /></PermissionProtectedRoute> },
+
+      // Rutas de Administración
+      { path: "/admin", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AdminPage /></PermissionProtectedRoute> },
+      { path: "/admin/crear-usuario", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><CrearUsuarioPage /></PermissionProtectedRoute> },
     ],
   },
 ]);

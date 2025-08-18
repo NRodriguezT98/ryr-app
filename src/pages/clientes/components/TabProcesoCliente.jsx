@@ -1,15 +1,18 @@
 import React, { useEffect } from 'react';
 import { useProcesoLogic } from '../../../hooks/clientes/useProcesoLogic';
+import { useAuth } from '../../../context/AuthContext';
 import { updateCliente } from '../../../utils/storage';
 import PasoProcesoCard from './PasoProcesoCard';
 import { Tooltip } from 'react-tooltip';
 import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
-import { PartyPopper } from 'lucide-react';
+import { PartyPopper, Unlock } from 'lucide-react';
 import ClienteEstadoView from './ClienteEstadoView';
 import { AnimatePresence, motion } from 'framer-motion';
 
 const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange }) => {
+
+    const { userData } = useAuth();
 
     const isClientInactiveOrPending = cliente.status === 'renunciado' || cliente.status === 'inactivo' || cliente.status === 'enProcesoDeRenuncia';
 
@@ -33,13 +36,14 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
         hayPasoEnReapertura,
         pasoAReabrir,
         pasoAEditarFecha,
+        cierreAAnular,
         justSaved,
         isSaveDisabled,
         tooltipMessage,
         hayCambiosSinGuardar,
         procesoCompletado,
         handlers,
-    } = useProcesoLogic(cliente, handleSave);
+    } = useProcesoLogic(cliente, handleSave, onDatosRecargados);
 
     useEffect(() => {
         onHayCambiosChange(hayCambiosSinGuardar);
@@ -54,7 +58,7 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
         <div className="animate-fade-in space-y-4">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm flex justify-between items-center sticky top-20 z-10">
                 <h3 className="font-bold text-lg dark:text-gray-200">Línea de Tiempo del Proceso</h3>
-                {!procesoCompletado && (
+                {hayCambiosSinGuardar && (
                     <span data-tooltip-id="app-tooltip" data-tooltip-content={tooltipMessage}>
                         <button
                             onClick={handlers.handleSaveChanges}
@@ -67,13 +71,29 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                 )}
             </div>
 
-            {procesoCompletado ? (
-                <div className="p-4 bg-green-100 dark:bg-green-900/50 border-2 border-green-300 dark:border-green-700 rounded-xl shadow-md flex items-center gap-4">
-                    <PartyPopper size={32} className="text-green-600 dark:text-green-400" />
-                    <div>
-                        <h4 className="font-bold text-green-800 dark:text-green-300">¡Proceso Completado!</h4>
-                        <p className="text-sm text-green-700 dark:text-green-400">Todos los pasos de este cliente se han completado exitosamente.</p>
+            {procesoCompletado && !hayCambiosSinGuardar ? (
+                <div className="p-4 bg-green-100 dark:bg-green-900/50 border-2 border-green-300 dark:border-green-700 rounded-xl shadow-md">
+                    <div className="flex items-center gap-4">
+                        <PartyPopper size={32} className="text-green-600 dark:text-green-400" />
+                        <div>
+                            <h4 className="font-bold text-green-800 dark:text-green-300">¡Proceso Completado!</h4>
+                            <p className="text-sm text-green-700 dark:text-green-400">Todos los pasos de este cliente se han completado exitosamente.</p>
+                        </div>
                     </div>
+                    {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                    {/* 4. Botón condicional para el admin */}
+                    {userData?.role === 'admin' && (
+                        <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
+                            <button
+                                onClick={handlers.iniciarAnulacionCierre}
+                                className="w-full md:w-auto bg-yellow-500 hover:bg-yellow-600 text-white font-semibold text-xs py-2 px-4 rounded-lg flex items-center justify-center gap-2"
+                            >
+                                <Unlock size={14} />
+                                Anular Cierre de Proceso (Admin)
+                            </button>
+                        </div>
+                    )}
+                    {/* --- FIN DE LA MODIFICACIÓN --- */}
                 </div>
             ) : (
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm">
@@ -125,6 +145,14 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                 onConfirm={handlers.confirmarReapertura}
                 titulo="¿Reabrir este paso?"
                 mensaje={`Estás a punto de reabrir el paso ${nombrePasoAReabrir}. Perderás la fecha de completado y deberás volver a validarlo. ¿Estás seguro?`}
+            />
+
+            <ModalConfirmacion
+                isOpen={cierreAAnular}
+                onClose={handlers.cancelarAnulacionCierre}
+                onConfirm={handlers.confirmarAnulacionCierre}
+                titulo="¿Anular Cierre de Proceso?"
+                mensaje="Esta acción reabrirá únicamente el último paso ('Factura de Venta') para permitir correcciones. Debe usarse solo en casos de error. ¿Estás seguro?"
             />
 
             <ModalEditarFechaProceso

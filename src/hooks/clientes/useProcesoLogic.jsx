@@ -1,15 +1,17 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
-import { createNotification, updateCliente } from '../../utils/storage';
+import { updateCliente, createNotification, anularCierreProceso } from '../../utils/storage';
 import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 
-export const useProcesoLogic = (cliente, onSave) => {
+
+export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
     const [procesoState, setProcesoState] = useState(cliente.proceso || {});
     const [initialProcesoState, setInitialProcesoState] = useState(cliente.proceso || {});
 
     const [pasoAReabrir, setPasoAReabrir] = useState(null);
     const [pasoAEditarFecha, setPasoAEditarFecha] = useState(null);
+    const [cierreAAnular, setCierreAAnular] = useState(false);
     const [justSaved, setJustSaved] = useState(false);
 
     useEffect(() => {
@@ -76,6 +78,27 @@ export const useProcesoLogic = (cliente, onSave) => {
 
     const cancelarEdicionFecha = useCallback(() => setPasoAEditarFecha(null), []);
 
+    const iniciarAnulacionCierre = useCallback(() => {
+        setCierreAAnular(true);
+    }, []);
+
+    const cancelarAnulacionCierre = useCallback(() => {
+        setCierreAAnular(false);
+    }, []);
+
+    const confirmarAnulacionCierre = useCallback(async () => {
+        try {
+            await anularCierreProceso(cliente.id);
+            toast.success("¡Cierre anulado! El último paso ha sido reabierto.");
+            onDatosRecargados();
+        } catch (error) {
+            console.error("Error al anular el cierre:", error);
+            toast.error("No se pudo anular el cierre del proceso.");
+        } finally {
+            setCierreAAnular(false);
+        }
+    }, [cliente.id, onDatosRecargados]);
+
     const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura, procesoCompletado } = useMemo(() => {
         const errores = {};
         const fechaDeInicio = cliente.fechaInicioProceso || cliente.datosCliente.fechaIngreso;
@@ -117,13 +140,12 @@ export const useProcesoLogic = (cliente, onSave) => {
             }
         });
 
-        // --- INICIO DE LA VALIDACIÓN CORREGIDA ---
+
         const algunPasoEnReapertura = pasosAplicables.some(pasoConfig => {
             const estadoInicial = initialProcesoState[pasoConfig.key];
             const estadoActual = procesoState[pasoConfig.key];
             return estadoInicial?.completado === true && estadoActual?.completado === false;
         });
-        // --- FIN DE LA VALIDACIÓN CORREGIDA ---
 
         let previousStepCompleted = true;
         let primerPasoIncompletoEncontrado = false;
@@ -308,6 +330,7 @@ export const useProcesoLogic = (cliente, onSave) => {
         hayPasoEnReapertura,
         pasoAReabrir,
         pasoAEditarFecha,
+        cierreAAnular,
         justSaved,
         isSaveDisabled,
         tooltipMessage,
@@ -323,6 +346,9 @@ export const useProcesoLogic = (cliente, onSave) => {
             iniciarEdicionFecha,
             confirmarEdicionFecha,
             cancelarEdicionFecha,
+            iniciarAnulacionCierre,
+            cancelarAnulacionCierre,
+            confirmarAnulacionCierre,
             handleSaveChanges,
         }
     };

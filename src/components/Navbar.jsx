@@ -7,6 +7,7 @@ import logo1Dark from "../assets/logo1-dark.png";
 import logo2Dark from "../assets/logo2-dark.png";
 import { useTheme } from "../hooks/useTheme";
 import { useAuth } from "../context/AuthContext";
+import { usePermissions } from "../hooks/auth/usePermissions";
 import { Bell, Home, Users, Wallet, UserX, ChevronDown, PlusCircle, List, UserPlus, Landmark, History, Trash2, BarChart2, LogOut, UserCircle, ShieldCheck } from "lucide-react";
 import { useNotifications } from "../context/NotificationContext";
 import NotificationItem from "./notifications/NotificationItem";
@@ -35,6 +36,7 @@ const Navbar = () => {
     const { notifications, unreadCount, markAllAsRead, clearAllNotifications, groupedNotifications } = useNotifications();
     const { theme } = useTheme();
     const { currentUser, userData, logout } = useAuth();
+    const { can } = usePermissions();
 
     const [isRinging, setIsRinging] = useState(false);
     const prevUnreadCount = useRef(unreadCount);
@@ -72,64 +74,77 @@ const Navbar = () => {
 
                     <div className="hidden md:flex items-center justify-center">
                         <nav className="flex items-center space-x-2 bg-white dark:bg-gray-800 p-2 rounded-full">
-                            {/* Menú Viviendas */}
-                            <Menu as="div" className="relative">
-                                <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/viviendas') ? 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                    <Home size={16} />
-                                    <span>Viviendas</span>
-                                    <ChevronDown size={16} />
-                                </Menu.Button>
-                                <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                    <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
-                                        <Menu.Item>{({ close }) => (<DropdownLink to="/viviendas/crear" icon={<PlusCircle size={18} />} onClick={close}>Registrar Vivienda</DropdownLink>)}</Menu.Item>
-                                        <Menu.Item>{({ close }) => (<DropdownLink to="/viviendas/listar" icon={<List size={18} />} onClick={close}>Ver Viviendas</DropdownLink>)}</Menu.Item>
-                                    </Menu.Items>
-                                </Transition>
-                            </Menu>
+                            {/* Menú Viviendas (Visible si puede ver o crear) */}
+                            {(can('viviendas', 'ver') || can('viviendas', 'crear')) && (
+                                <Menu as="div" className="relative">
+                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/viviendas') ? 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                        <Home size={16} />
+                                        <span>Viviendas</span>
+                                        <ChevronDown size={16} />
+                                    </Menu.Button>
+                                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
+                                            {can('viviendas', 'crear') && <Menu.Item>{({ close }) => (<DropdownLink to="/viviendas/crear" icon={<PlusCircle size={18} />} onClick={close}>Registrar Vivienda</DropdownLink>)}</Menu.Item>}
+                                            {can('viviendas', 'ver') && <Menu.Item>{({ close }) => (<DropdownLink to="/viviendas/listar" icon={<List size={18} />} onClick={close}>Ver Viviendas</DropdownLink>)}</Menu.Item>}
+                                        </Menu.Items>
+                                    </Transition>
+                                </Menu>
+                            )}
 
-                            {/* Menú Clientes */}
-                            <Menu as="div" className="relative">
-                                <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/clientes') ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                    <Users size={16} />
-                                    <span>Clientes</span>
-                                    <ChevronDown size={16} />
-                                </Menu.Button>
-                                <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                    <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
-                                        <Menu.Item>{({ close }) => (<DropdownLink to="/clientes/crear" icon={<UserPlus size={18} />} onClick={close}>Registrar Cliente</DropdownLink>)}</Menu.Item>
-                                        <Menu.Item>{({ close }) => (<DropdownLink to="/clientes/listar" icon={<Users size={18} />} onClick={close}>Ver Clientes</DropdownLink>)}</Menu.Item>
-                                    </Menu.Items>
-                                </Transition>
-                            </Menu>
+                            {/* Menú Clientes (Visible si puede ver o crear) */}
+                            {(can('clientes', 'ver') || can('clientes', 'crear')) && (
+                                <Menu as="div" className="relative">
+                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/clientes') ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                        <Users size={16} />
+                                        <span>Clientes</span>
+                                        <ChevronDown size={16} />
+                                    </Menu.Button>
+                                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
+                                            {can('clientes', 'crear') && <Menu.Item>{({ close }) => (<DropdownLink to="/clientes/crear" icon={<UserPlus size={18} />} onClick={close}>Registrar Cliente</DropdownLink>)}</Menu.Item>}
+                                            {can('clientes', 'ver') && <Menu.Item>{({ close }) => (<DropdownLink to="/clientes/listar" icon={<Users size={18} />} onClick={close}>Ver Clientes</DropdownLink>)}</Menu.Item>}
+                                        </Menu.Items>
+                                    </Transition>
+                                </Menu>
+                            )}
 
-                            {/* Menú Abonos */}
-                            <Menu as="div" className="relative">
-                                <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/abonos') ? 'bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                    <Wallet size={16} />
-                                    <span>Abonos</span>
-                                    <ChevronDown size={16} />
-                                </Menu.Button>
-                                <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                    <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
-                                        <Menu.Item>{({ close }) => (<DropdownLink to="/abonos" icon={<Landmark size={18} />} onClick={close}>Gestionar Pagos</DropdownLink>)}</Menu.Item>
-                                        <Menu.Item>{({ close }) => (<DropdownLink to="/abonos/listar" icon={<History size={18} />} onClick={close}>Historial de Abonos</DropdownLink>)}</Menu.Item>
-                                    </Menu.Items>
-                                </Transition>
-                            </Menu>
+                            {/* Menú Abonos (Visible si puede ver o crear) */}
+                            {(can('abonos', 'ver') || can('abonos', 'crear')) && (
+                                <Menu as="div" className="relative">
+                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/abonos') ? 'bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                        <Wallet size={16} />
+                                        <span>Abonos</span>
+                                        <ChevronDown size={16} />
+                                    </Menu.Button>
+                                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
+                                            {can('abonos', 'crear') && <Menu.Item>{({ close }) => (<DropdownLink to="/abonos" icon={<Landmark size={18} />} onClick={close}>Gestionar Pagos</DropdownLink>)}</Menu.Item>}
+                                            {can('abonos', 'ver') && <Menu.Item>{({ close }) => (<DropdownLink to="/abonos/listar" icon={<History size={18} />} onClick={close}>Historial de Abonos</DropdownLink>)}</Menu.Item>}
+                                        </Menu.Items>
+                                    </Transition>
+                                </Menu>
+                            )}
 
-                            {/* Enlace Renuncias */}
-                            <Link to="/renuncias" className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/renuncias') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                <UserX size={16} />
-                                <span>Renuncias</span>
-                            </Link>
+                            {/* Enlace Renuncias (Visible si puede ver) */}
+                            {can('renuncias', 'ver') && (
+                                <Link to="/renuncias" className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/renuncias') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                    <UserX size={16} />
+                                    <span>Renuncias</span>
+                                </Link>
+                            )}
 
-                            {/* Enlace Reportes */}
-                            <Link to="/reportes" className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/reportes') ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                                <BarChart2 size={16} />
-                                <span>Reportes</span>
-                            </Link>
+                            {/* Enlace Reportes (Visible si puede generar) */}
+                            {can('reportes', 'generar') && (
+                                <Link to="/reportes" className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/reportes') ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                    <BarChart2 size={16} />
+                                    <span>Reportes</span>
+                                </Link>
+                            )}
+
+
                             {/* El menú de Administración solo se renderiza si el rol del usuario es 'admin' */}
-                            {userData?.role === 'admin' && (
+                            {/* El menú de Administración ahora se renderiza usando el hook de permisos */}
+                            {can('admin', 'gestionarUsuarios') && (
                                 <Menu as="div" className="relative">
                                     <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/admin') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                                         <ShieldCheck size={16} />
@@ -139,11 +154,11 @@ const Navbar = () => {
                                     <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                                         <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
                                             <Menu.Item>{({ close }) => (<DropdownLink to="/admin" icon={<Users size={18} />} onClick={close}>Gestionar Usuarios</DropdownLink>)}</Menu.Item>
-                                            {/* Aquí podríamos añadir más enlaces de admin en el futuro */}
                                         </Menu.Items>
                                     </Transition>
                                 </Menu>
                             )}
+                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                         </nav>
                     </div>
 

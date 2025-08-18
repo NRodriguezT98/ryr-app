@@ -1,40 +1,31 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore"; // 1. Se importan funciones de Firestore
-import { db } from '../firebase/config'; // Se importa la configuración de la base de datos
+import { doc, getDoc } from "firebase/firestore";
+import { db } from '../firebase/config';
 
-// 1. Creamos el contexto
 const AuthContext = createContext();
 
-// 2. Creamos un hook personalizado para usar el contexto fácilmente
 export const useAuth = () => {
     return useContext(AuthContext);
 };
 
-// 3. Creamos el proveedor que envolverá nuestra aplicación
 export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [userData, setUserData] = useState(null);
+    const [userPermissions, setUserPermissions] = useState(null); // Nuevo estado para los permisos
     const [loading, setLoading] = useState(true);
     const auth = getAuth();
 
-    // Función para registrar un nuevo usuario (la usaremos en el panel de admin)
-    function signup(email, password) {
-        return createUserWithEmailAndPassword(auth, email, password);
-    }
-
-    // Función para iniciar sesión
     function login(email, password) {
         return signInWithEmailAndPassword(auth, email, password);
     }
 
-    // Función para cerrar sesión
     function logout() {
         setUserData(null);
+        setUserPermissions(null); // Limpiar permisos al salir
         return signOut(auth);
     }
 
-    // Función para restablecer la contraseña
     function resetPassword(email) {
         return sendPasswordResetEmail(auth, email);
     }
@@ -43,16 +34,33 @@ export const AuthProvider = ({ children }) => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
             if (user) {
-                // 3. Si hay un usuario, buscamos su perfil en Firestore
+                // 1. Buscamos el perfil del usuario en Firestore
                 const userDocRef = doc(db, "users", user.uid);
                 const userDocSnap = await getDoc(userDocRef);
+
                 if (userDocSnap.exists()) {
-                    setUserData(userDocSnap.data()); // Guardamos el perfil completo
+                    const fetchedUserData = userDocSnap.data();
+                    setUserData(fetchedUserData);
+
+                    // 2. Si el usuario tiene un rol, buscamos sus permisos
+                    if (fetchedUserData.role) {
+                        const roleDocRef = doc(db, "roles", fetchedUserData.role);
+                        const roleDocSnap = await getDoc(roleDocRef);
+                        if (roleDocSnap.exists()) {
+                            setUserPermissions(roleDocSnap.data().permissions);
+                        } else {
+                            setUserPermissions(null); // El rol no existe en la DB
+                        }
+                    } else {
+                        setUserPermissions(null); // El usuario no tiene rol asignado
+                    }
                 } else {
-                    setUserData(null); // El usuario existe en Auth pero no en Firestore
+                    setUserData(null);
+                    setUserPermissions(null);
                 }
             } else {
-                setUserData(null); // No hay usuario, limpiamos el perfil
+                setUserData(null);
+                setUserPermissions(null);
             }
             setLoading(false);
         });
@@ -60,14 +68,13 @@ export const AuthProvider = ({ children }) => {
         return unsubscribe;
     }, [auth]);
 
-    // 4. Pasamos el usuario actual y las funciones de autenticación al resto de la app
     const value = {
         currentUser,
         userData,
+        userPermissions, // 3. Exportamos los permisos al resto de la app
         login,
-        signup,
         logout,
-        resetPassword // Se exporta la nueva función
+        resetPassword
     };
 
     return (

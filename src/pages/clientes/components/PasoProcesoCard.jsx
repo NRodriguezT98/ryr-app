@@ -4,6 +4,7 @@ import { CheckCircle, Lock, FileText, Calendar, AlertCircle, RotateCcw, Eye, Tra
 import FileUpload from '../../../components/FileUpload';
 import toast from 'react-hot-toast';
 import { getTodayString, formatDisplayDate, formatCurrency, parseDateAsUTC } from '../../../utils/textFormatters';
+import { uploadFile } from '../../../utils/storage'; // 1. Se importa la función de subida correcta
 
 const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPermanentlyLocked, esHito }) => {
     const evidenciaData = evidencia.data || {};
@@ -14,8 +15,8 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
     };
 
     const handleRemove = () => {
-        if (esHito) {
-            toast.error("Las evidencias de un hito no se pueden eliminar, solo reemplazar.");
+        if (esHito && isPermanentlyLocked) {
+            toast.error("Las evidencias de un hito cerrado permanentemente no se pueden eliminar.");
             return;
         }
         onUpdateEvidencia(pasoKey, evidencia.id, null);
@@ -26,13 +27,17 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
         if (!file) return;
         toast.loading('Reemplazando archivo...');
         try {
-            const downloadURL = await FileUpload.uploadFile(file, `documentos_proceso/${clienteId}/${pasoKey}-${evidencia.id}-${file.name}`);
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Se llama a la función 'uploadFile' importada desde storage.js
+            const downloadURL = await uploadFile(file, `documentos_proceso/${clienteId}/${pasoKey}-${evidencia.id}-${file.name}`);
+            // --- FIN DE LA CORRECCIÓN ---
             onUpdateEvidencia(pasoKey, evidencia.id, downloadURL);
             toast.dismiss();
             toast.success('¡Archivo reemplazado con éxito!');
         } catch (error) {
             toast.dismiss();
             toast.error("Error al reemplazar el archivo.");
+            console.error("Error en handleFileChangeForReplace:", error); // Añadido para más detalles en consola
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
@@ -53,12 +58,12 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
                                 <button onClick={() => fileInputRef.current?.click()} className="text-yellow-600 dark:text-yellow-400 hover:underline text-sm font-semibold flex items-center gap-1"><Replace size={14} /> Reemplazar</button>
                                 <div
                                     data-tooltip-id="app-tooltip"
-                                    data-tooltip-content={esHito ? "No se puede eliminar la evidencia de un hito." : "Eliminar evidencia"}
+                                    data-tooltip-content={esHito && isPermanentlyLocked ? "No se puede eliminar la evidencia de un hito cerrado." : "Eliminar evidencia"}
                                 >
                                     <button
                                         onClick={handleRemove}
                                         className="text-red-500 hover:underline text-sm font-semibold flex items-center gap-1 disabled:text-gray-400 disabled:cursor-not-allowed"
-                                        disabled={esHito}
+                                        disabled={esHito && isPermanentlyLocked}
                                     >
                                         <Trash2 size={14} /> Eliminar
                                     </button>
@@ -83,7 +88,7 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
 
 const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, onIniciarReapertura, onDeshacerReapertura, onIniciarEdicionFecha, clienteId }) => {
     const { key, label, data, isLocked, puedeCompletarse, evidenciasRequeridas, error, esSiguientePaso, isPermanentlyLocked, hayPasoEnReapertura, esHito, esAutomatico, facturaBloqueadaPorSaldo } = paso;
-    const [fechaCompletado, setFechaCompletado] = useState(getTodayString());
+    const [fechaCompletado, setFechaCompletado] = useState(data?.fecha || getTodayString());
     const [fechaErrorLocal, setFechaErrorLocal] = useState(null);
 
     const evidenciasSubidas = useMemo(() => {
@@ -120,11 +125,11 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
         }
     };
 
-    const cardClasses = `p-5 rounded-xl border-2 transition-all ${justSaved && data?.completado ? 'border-green-500 animate-pulse-once' :
-            error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
-                data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
-                    (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
-                        esSiguientePaso ? 'border-blue-500 bg-white dark:bg-gray-700 shadow-lg dark:border-blue-500' : 'border-blue-200 bg-white dark:bg-gray-700 dark:border-gray-600'
+    const cardClasses = `relative p-5 rounded-xl border-2 transition-all ${justSaved && data?.completado ? 'border-green-500 animate-pulse-once' :
+        error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+            data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
+                (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
+                    esSiguientePaso ? 'border-blue-500 bg-white dark:bg-gray-700 shadow-lg dark:border-blue-500' : 'border-blue-200 bg-white dark:bg-gray-700 dark:border-gray-600'
         }`;
 
     return (
@@ -140,32 +145,21 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
                             <Calendar size={16} className="text-gray-500 dark:text-gray-400" />
                             <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{formatDisplayDate(data.fecha)}</p>
                             {data.motivoUltimoCambio && (
-                                <div
-                                    data-tooltip-id="app-tooltip"
-                                    data-tooltip-content={`Motivo: ${data.motivoUltimoCambio} (Modificado el ${formatDisplayDate(data.fechaUltimaModificacion)})`}
-                                >
+                                <div data-tooltip-id="app-tooltip" data-tooltip-content={`Motivo: ${data.motivoUltimoCambio} (Modificado el ${formatDisplayDate(data.fechaUltimaModificacion)})`}>
                                     <Info size={16} className="text-blue-500 dark:text-blue-400 cursor-help" />
                                 </div>
                             )}
                         </div>
-                        {!isPermanentlyLocked && (
+                        {isPermanentlyLocked ? (
+                            <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                                <Lock size={12} /> Cerrado
+                            </span>
+                        ) : (
                             <>
-                                <button
-                                    onClick={() => onIniciarEdicionFecha(key)}
-                                    disabled={hayPasoEnReapertura}
-                                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed"
-                                    data-tooltip-id="app-tooltip"
-                                    data-tooltip-content="Editar fecha y motivo"
-                                >
+                                <button onClick={() => onIniciarEdicionFecha(key)} disabled={hayPasoEnReapertura} className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed" data-tooltip-id="app-tooltip" data-tooltip-content="Editar fecha y motivo">
                                     <Pencil size={16} />
                                 </button>
-                                <button
-                                    onClick={() => onIniciarReapertura(key)}
-                                    disabled={isLocked || hayPasoEnReapertura}
-                                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed"
-                                    data-tooltip-id="app-tooltip"
-                                    data-tooltip-content="Reabrir este paso"
-                                >
+                                <button onClick={() => onIniciarReapertura(key)} disabled={isLocked || hayPasoEnReapertura} className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed" data-tooltip-id="app-tooltip" data-tooltip-content="Reabrir este paso">
                                     <RotateCcw size={16} />
                                 </button>
                             </>
@@ -179,16 +173,13 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
                     {facturaBloqueadaPorSaldo ? (
                         <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-800 dark:text-orange-300">
                             <AlertCircle size={24} className="flex-shrink-0" />
-                            <p className="text-sm font-semibold">
-                                Este paso está bloqueado hasta que la vivienda esté 100% pagada.
-                            </p>
+                            <p className="text-sm font-semibold">Este paso está bloqueado hasta que la vivienda esté 100% pagada.</p>
                         </div>
                     ) : esAutomatico ? (
                         <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/50 rounded-lg text-blue-800 dark:text-blue-300">
                             <Info size={24} className="flex-shrink-0" />
                             <p className="text-sm font-semibold">
-                                Este paso se completa automáticamente al registrar el desembolso en el módulo de {' '}
-                                <Link to="/abonos" className="font-bold underline hover:text-blue-600">Abonos</Link>.
+                                Este paso se completa automáticamente al registrar el desembolso en el módulo de <Link to="/abonos" className="font-bold underline hover:text-blue-600">Abonos</Link>.
                             </p>
                         </div>
                     ) : !isLocked ? (

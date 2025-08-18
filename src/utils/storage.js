@@ -1,7 +1,7 @@
 import { db } from '../firebase/config';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch, setDoc, query, where, serverTimestamp } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { toSentenceCase, formatCurrency, toTitleCase } from './textFormatters';
+import { toSentenceCase, formatCurrency, toTitleCase, getTodayString } from './textFormatters';
 import { PROCESO_CONFIG, FUENTE_PROCESO_MAP } from './procesoConfig.js';
 import { DOCUMENTACION_CONFIG } from './documentacionConfig.js';
 
@@ -548,4 +548,36 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
 
     const message = `Se registró el desembolso del crédito hipotecario para ${clienteNombre}`;
     await createNotification('abono', message, `/clientes/detalle/${clienteId}`);
+};
+
+export const anularCierreProceso = async (clienteId) => {
+    const clienteRef = doc(db, "clientes", clienteId);
+
+    await runTransaction(db, async (transaction) => {
+        const clienteDoc = await transaction.get(clienteRef);
+        if (!clienteDoc.exists()) {
+            throw new Error("El cliente no existe.");
+        }
+
+        const clienteData = clienteDoc.data();
+        const procesoActual = clienteData.proceso || {};
+
+        // Verificamos si el paso 'facturaVenta' existe y está completado
+        if (procesoActual.facturaVenta && procesoActual.facturaVenta.completado) {
+            const nuevoProceso = {
+                ...procesoActual,
+                facturaVenta: {
+                    ...procesoActual.facturaVenta,
+                    completado: false,
+                    fecha: null,
+                    motivoUltimoCambio: 'Cierre anulado por administrador',
+                    fechaUltimaModificacion: getTodayString()
+                }
+            };
+            transaction.update(clienteRef, { proceso: nuevoProceso });
+        } else {
+            // Esto es una salvaguarda por si se intenta anular un proceso que no está cerrado.
+            throw new Error("El proceso no se puede anular porque no está completado.");
+        }
+    });
 };
