@@ -4,8 +4,12 @@ import { es } from 'date-fns/locale';
 import { Menu, Transition } from '@headlessui/react';
 import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertical, Pencil, Trash, AlertTriangle, Archive, HandCoins } from 'lucide-react';
 import { formatCurrency, formatDisplayDate } from '../../utils/textFormatters';
+import { usePermissions } from '../../hooks/auth/usePermissions';
 
 const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
+
+    const { can } = usePermissions();
+    const tieneAccionesDisponibles = can('abonos', 'editar') || can('abonos', 'eliminar');
 
     const getStatusInfo = () => {
         if (abono.estadoProceso === 'archivado') {
@@ -104,15 +108,19 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
                                 </div>
                             )}
                         </div>
-                        {!isReadOnly && (
+                        {!isReadOnly && tieneAccionesDisponibles && (
                             <Menu as="div" className="relative">
                                 <Menu.Button className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" disabled={!canEditOrDelete}>
                                     <MoreVertical size={20} />
                                 </Menu.Button>
                                 <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                                     <Menu.Items className="absolute bottom-full right-0 mb-2 w-40 origin-bottom-right bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
-                                        <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onEdit(abono)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Pencil className="w-5 h-5 mr-2" /> Editar</button>)}</Menu.Item></div>
-                                        <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onDelete(abono)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Trash className="w-5 h-5 mr-2" /> Eliminar</button>)}</Menu.Item></div>
+                                        {can('abonos', 'editar') && (
+                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onEdit(abono)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Pencil className="w-5 h-5 mr-2" /> Editar</button>)}</Menu.Item></div>
+                                        )}
+                                        {can('abonos', 'eliminar') && (
+                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onDelete(abono)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Trash className="w-5 h-5 mr-2" /> Eliminar</button>)}</Menu.Item></div>
+                                        )}
                                     </Menu.Items>
                                 </Transition>
                             </Menu>
