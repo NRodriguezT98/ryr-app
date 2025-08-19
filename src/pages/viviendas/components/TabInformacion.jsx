@@ -49,17 +49,6 @@ const TabInformacion = ({ vivienda, cliente }) => {
 
             <div className="lg:col-span-1 space-y-6">
                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border dark:border-gray-700">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-700 dark:text-gray-200"><User /> Cliente Asignado</h3>
-                    {cliente ? (
-                        <Link to={`/clientes/detalle/${cliente.id}`} className="block p-4 rounded-lg bg-blue-50 dark:bg-blue-900/50 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">
-                            <p className="font-bold text-blue-800 dark:text-blue-300">{toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`)}</p>
-                            <p className="text-sm text-blue-600 dark:text-blue-400">C.C. {formatID(cliente.datosCliente.cedula)}</p>
-                        </Link>
-                    ) : (
-                        <p className="text-gray-500 dark:text-gray-400 text-sm">Esta vivienda no tiene un cliente asignado.</p>
-                    )}
-                </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border dark:border-gray-700">
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-700 dark:text-gray-200"><FileText /> Documentación</h3>
                     {vivienda.urlCertificadoTradicion ? (
                         <a href={vivienda.urlCertificadoTradicion} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-semibold text-blue-600 dark:text-blue-400 hover:underline">

@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign } from 'lucide-react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
-import { Tooltip } from 'react-tooltip';
+import { usePermissions } from '../../hooks/auth/usePermissions';
 
 const ViviendaCard = ({ vivienda, onEdit, onDelete }) => {
+    const { can } = usePermissions();
     const {
         manzana, numeroCasa, matricula, nomenclatura, valorFinal, totalAbonado,
         saldoPendiente, clienteNombre, clienteId, descuentoMonto, recargoEsquinera, areaConstruida,
@@ -103,28 +104,35 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete }) => {
                     <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                         <Menu.Items className="absolute bottom-full right-0 mb-2 w-56 origin-bottom-right bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
                             <div className="px-1 py-1"><Menu.Item>{({ active }) => (<Link to={`/viviendas/detalle/${vivienda.id}`} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}><Eye className="w-5 h-5 mr-2" /> Ver Detalle</Link>)}</Menu.Item></div>
-                            <div className="px-1 py-1">
-                                <Menu.Item disabled={!puedeEditar}>
-                                    {({ active, disabled }) => (
-                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede editar una vivienda con proceso de cliente finalizado." : ''}>
-                                            <button onClick={() => onEdit(vivienda)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeEditar}>
-                                                <Pencil className="w-5 h-5 mr-2" /> Editar Datos
-                                            </button>
-                                        </div>
-                                    )}
-                                </Menu.Item>
-                            </div>
-                            <div className="px-1 py-1">
-                                <Menu.Item disabled={!puedeEliminar}>
-                                    {({ active, disabled }) => (
-                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede eliminar una vivienda con historial." : ''}>
-                                            <button onClick={() => onDelete(vivienda)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeEliminar}>
-                                                <Trash className="w-5 h-5 mr-2" /> Eliminar
-                                            </button>
-                                        </div>
-                                    )}
-                                </Menu.Item>
-                            </div>
+
+                            {/* --- INICIO DE LA CORRECCIÓN --- */}
+                            {can('viviendas', 'editar') && (
+                                <div className="px-1 py-1">
+                                    <Menu.Item disabled={!puedeEditar}>
+                                        {({ active, disabled }) => (
+                                            <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede editar una vivienda con proceso de cliente finalizado." : ''}>
+                                                <button onClick={() => onEdit(vivienda)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeEditar}>
+                                                    <Pencil className="w-5 h-5 mr-2" /> Editar Datos
+                                                </button>
+                                            </div>
+                                        )}
+                                    </Menu.Item>
+                                </div>
+                            )}
+                            {can('viviendas', 'eliminar') && (
+                                <div className="px-1 py-1">
+                                    <Menu.Item disabled={!puedeEliminar}>
+                                        {({ active, disabled }) => (
+                                            <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede eliminar una vivienda con historial." : ''}>
+                                                <button onClick={() => onDelete(vivienda)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeEliminar}>
+                                                    <Trash className="w-5 h-5 mr-2" /> Eliminar
+                                                </button>
+                                            </div>
+                                        )}
+                                    </Menu.Item>
+                                </div>
+                            )}
+                            {/* --- FIN DE LA CORRECCIÓN --- */}
                         </Menu.Items>
                     </Transition>
                 </Menu>

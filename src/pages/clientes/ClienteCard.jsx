@@ -5,8 +5,11 @@ import { MoreVertical, User, Eye, Pencil, Trash, UserX, RefreshCw, Home, Archive
 import { getInitials, formatID, formatCurrency } from '../../utils/textFormatters';
 import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic';
 import { Tooltip } from 'react-tooltip';
+import { usePermissions } from '../../hooks/auth/usePermissions';
 
 const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar }) => {
+    const { can } = usePermissions();
+
     const {
         id,
         datosCliente,
