@@ -1,4 +1,4 @@
-import React, { Fragment, memo } from 'react';
+import React, { Fragment, memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, User, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign } from 'lucide-react';
@@ -22,16 +22,29 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
         puedeRenunciar,
         status,
         puedeSerEliminado,
-        puedeArchivar,
         tieneValorEscrituraDiferente
     } = cardData;
 
     const enRenunciaPendiente = status === 'enProcesoDeRenuncia';
-    const tieneAccionesDisponibles =
-        can('clientes', 'archivar') || can('clientes', 'crear') ||
-        can('clientes', 'editar') || can('clientes', 'eliminar') ||
-        can('clientes', 'nuevoProceso') || can('clientes', 'renunciar') ||
-        can('clientes', 'restaurarCliente');
+
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // La lógica ahora es consciente del estado (status) del cliente.
+    const tieneAccionesDisponibles = useMemo(() => {
+        if (status === 'activo') {
+            // Muestra el menú si se puede editar O si se puede renunciar (y las condiciones lo permiten)
+            return can('clientes', 'editar') || (vivienda && !isPagada && can('clientes', 'renunciar')) || can('clientes', 'verDetalle');
+        }
+        if (status === 'renunciado') {
+            // Muestra el menú si se puede iniciar un nuevo proceso O archivar.
+            return can('clientes', 'nuevoProceso') || can('clientes', 'archivar');
+        }
+        if (status === 'inactivo') {
+            // Muestra el menú si se puede restaurar O eliminar (y las condiciones lo permiten)
+            return can('clientes', 'restaurarCliente') || (puedeSerEliminado && can('clientes', 'eliminar'));
+        }
+        return false; // Para 'enProcesoDeRenuncia' u otros estados, no hay menú.
+    }, [status, can, vivienda, isPagada, puedeSerEliminado]);
+    // --- FIN DE LA MODIFICACIÓN ---
 
     return (
         <div className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600' : 'dark:border-gray-700'}`}>
@@ -72,7 +85,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                     </p>
                 </div>
 
-                {status === 'enProcesoDeRenuncia' ? (
+                {enRenunciaPendiente ? (
                     <div className="flex items-center gap-2 p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-700 dark:text-orange-300 text-xs font-semibold">
                         <AlertTriangle size={16} />
                         Proceso de renuncia activo.
@@ -100,6 +113,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                         <span>{clientStatus.text}</span>
                     </div>
                 </Link>
+
                 {tieneAccionesDisponibles && (
                     <Menu as="div" className="relative">
                         <Menu.Button className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full">
@@ -107,15 +121,18 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                         </Menu.Button>
                         <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                             <Menu.Items className="absolute bottom-full right-0 mb-2 w-56 origin-bottom-right bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
-                                <div className="px-1 py-1">
-                                    <Menu.Item>
-                                        {({ active }) => (
-                                            <Link to={`/clientes/detalle/${id}`} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
-                                                <Eye className="w-5 h-5 mr-2" /> Ver Detalle
-                                            </Link>
-                                        )}
-                                    </Menu.Item>
-                                </div>
+
+                                {can('clientes', 'verDetalle') && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <Link to={`/clientes/detalle/${id}`} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
+                                                    <Eye className="w-5 h-5 mr-2" /> Ver Detalle
+                                                </Link>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
+                                )}
 
                                 {status === 'activo' && (
                                     <>
@@ -138,11 +155,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                                 <Menu.Item disabled={!puedeRenunciar}>
                                                     {({ active, disabled }) => (
                                                         <div data-tooltip-id="app-tooltip" data-tooltip-content={!puedeRenunciar ? "No se puede renunciar: el cliente ha superado un hito clave." : ''}>
-                                                            <button
-                                                                onClick={() => onRenunciar(cardData)}
-                                                                className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}
-                                                                disabled={!puedeRenunciar}
-                                                            >
+                                                            <button onClick={() => onRenunciar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeRenunciar}>
                                                                 <UserX className="w-5 h-5 mr-2" /> Renunciar
                                                             </button>
                                                         </div>
@@ -150,7 +163,6 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                                 </Menu.Item>
                                             </div>
                                         )}
-
                                     </>
                                 )}
 
