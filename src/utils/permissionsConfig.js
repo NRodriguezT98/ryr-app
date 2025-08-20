@@ -1,0 +1,75 @@
+// Este archivo define todos los módulos y las acciones posibles en la aplicación.
+// Será nuestra guía para construir el formulario de roles.
+
+export const PERMISSIONS_CONFIG = [
+    {
+        module: 'viviendas',
+        displayName: 'Viviendas',
+        actions: [
+            { key: 'ver', displayName: 'Ver' },
+            { key: 'crear', displayName: 'Crear' },
+            { key: 'editar', displayName: 'Editar' },
+            { key: 'eliminar', displayName: 'Eliminar' },
+            { key: 'verDetalle', displayName: 'Ver Detalle' },
+        ]
+    },
+    {
+        module: 'clientes',
+        displayName: 'Clientes',
+        actions: [
+            { key: 'ver', displayName: 'Ver' },
+            { key: 'crear', displayName: 'Crear' },
+            { key: 'editar', displayName: 'Editar' },
+            { key: 'eliminar', displayName: 'Eliminar' },
+            { key: 'renunciar', displayName: 'Gestionar Renuncias' },
+            { key: 'archivar', displayName: 'Archivar' },
+            { key: 'restaurarCliente', displayName: 'Restaurar Cliente' },
+            { key: 'nuevoProceso', displayName: 'Iniciar Nuevo Proceso' },
+            { key: 'verDetalle', displayName: 'Ver Detalle' },
+        ]
+    },
+    {
+        module: 'abonos',
+        displayName: 'Abonos',
+        actions: [
+            { key: 'ver', displayName: 'Ver' },
+            { key: 'crear', displayName: 'Crear' },
+            { key: 'editar', displayName: 'Editar' },
+            { key: 'eliminar', displayName: 'Eliminar' },
+        ]
+    },
+    {
+        module: 'proceso',
+        displayName: 'Proceso del Cliente',
+        actions: [
+            { key: 'ver', displayName: 'Ver' },
+            { key: 'actualizarPasos', displayName: 'Actualizar Pasos' },
+            { key: 'anularCierre', displayName: 'Anular Cierre (Admin)' },
+        ]
+    },
+    {
+        module: 'renuncias',
+        displayName: 'Renuncias',
+        actions: [
+            { key: 'ver', displayName: 'Ver' },
+            { key: 'cancelarRenuncia', displayName: 'Cancelar Renuncias' },
+            { key: 'marcarDevolucion', displayName: 'Marcar Devolución' },
+            { key: 'verDetalle', displayName: 'Ver Detalle' },
+        ]
+    },
+    {
+        module: 'reportes',
+        displayName: 'Reportes',
+        actions: [
+            { key: 'generar', displayName: 'Generar Reportes' },
+        ]
+    },
+    {
+        module: 'admin',
+        displayName: 'Administración',
+        actions: [
+            { key: 'gestionarUsuarios', displayName: 'Gestionar Usuarios' },
+            { key: 'gestionarRoles', displayName: 'Gestionar Roles' },
+        ]
+    }
+];

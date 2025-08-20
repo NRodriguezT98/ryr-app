@@ -12,7 +12,7 @@ const creditoOptions = [
     { value: 'Bancolombia', label: 'Bancolombia' },
     { value: 'Davivienda', label: 'Davivienda' },
     { value: 'Banco de Bogotá', label: 'Banco de Bogotá' },
-    { value: 'BBVA', label: 'BBVA' },
+    { value: 'FondoNacionalDelAhorro', label: 'Fondo Nacional Del Ahorro' },
     { value: 'Banco Agrario', label: 'Banco Agrario' },
     { value: 'Otro', label: 'Otro' }
 ];

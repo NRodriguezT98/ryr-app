@@ -1,11 +1,23 @@
-import React, { Fragment, memo } from 'react';
+import React, { Fragment, memo, useMemo } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { Link } from 'react-router-dom';
-import { UserX, Calendar, Home, MoreVertical, CheckCircle, DollarSign, Eye, Pencil, RotateCcw, FileText } from 'lucide-react';
+import { UserX, Calendar, Home, MoreVertical, CheckCircle, DollarSign, Eye, RotateCcw, FileText } from 'lucide-react';
 import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
+import { usePermissions } from '../../../hooks/auth/usePermissions';
 
 const RenunciaCard = ({ renuncia, onMarcarPagada, onCancelar }) => {
+    const { can } = usePermissions();
     const isCerrada = renuncia.estadoDevolucion === 'Cerrada' || renuncia.estadoDevolucion === 'Pagada';
+
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Se determina si el usuario tiene permiso para alguna de las acciones del menú.
+    const tieneAccionesDisponibles = useMemo(() => {
+        // La acción 'verDetalle' está siempre disponible si se tiene el permiso.
+        // Las otras acciones solo están disponibles si la renuncia no está cerrada.
+        const puedeGestionar = !isCerrada && (can('renuncias', 'marcarDevolucion') || can('renuncias', 'cancelarRenuncia'));
+        return can('renuncias', 'verDetalle') || puedeGestionar;
+    }, [can, isCerrada]);
+    // --- FIN DE LA MODIFICACIÓN ---
 
     return (
         <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-md border ${isCerrada ? 'border-gray-200 dark:border-gray-700' : 'border-orange-300 dark:border-orange-700'} p-4 grid grid-cols-1 sm:grid-cols-[2fr,1.5fr,auto] sm:items-center gap-4`}>
@@ -35,22 +47,36 @@ const RenunciaCard = ({ renuncia, onMarcarPagada, onCancelar }) => {
                 <span className={`px-3 py-1 text-xs font-semibold rounded-full ${isCerrada ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
                     {isCerrada ? 'Cerrada' : renuncia.estadoDevolucion}
                 </span>
-                <Menu as="div" className="relative">
-                    <Menu.Button className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full">
-                        <MoreVertical size={20} />
-                    </Menu.Button>
-                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                        <Menu.Items className="absolute bottom-full right-0 mb-2 w-56 origin-bottom-right bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
-                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<Link to={`/renuncias/detalle/${renuncia.id}`} className={`${active ? 'bg-indigo-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Eye className="w-5 h-5 mr-2" /> Ver Detalle</Link>)}</Menu.Item></div>
-                            {!isCerrada && (
-                                <>
-                                    <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onMarcarPagada(renuncia)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><CheckCircle className="w-5 h-5 mr-2" /> Marcar Devolución</button>)}</Menu.Item></div>
-                                    <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onCancelar(renuncia)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><RotateCcw className="w-5 h-5 mr-2" /> Cancelar Renuncia</button>)}</Menu.Item></div>
-                                </>
-                            )}
-                        </Menu.Items>
-                    </Transition>
-                </Menu>
+
+                {/* El menú solo se renderiza si hay acciones disponibles */}
+                {tieneAccionesDisponibles && (
+                    <Menu as="div" className="relative">
+                        <Menu.Button className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full">
+                            <MoreVertical size={20} />
+                        </Menu.Button>
+                        <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
+                            <Menu.Items className="absolute bottom-full right-0 mb-2 w-56 origin-bottom-right bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
+
+                                {can('renuncias', 'verDetalle') && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item>{({ active }) => (<Link to={`/renuncias/detalle/${renuncia.id}`} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}><Eye className="w-5 h-5 mr-2" /> Ver Detalle</Link>)}</Menu.Item>
+                                    </div>
+                                )}
+
+                                {!isCerrada && (
+                                    <>
+                                        {can('renuncias', 'marcarDevolucion') && (
+                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onMarcarPagada(renuncia)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}><CheckCircle className="w-5 h-5 mr-2" /> Marcar Devolución</button>)}</Menu.Item></div>
+                                        )}
+                                        {can('renuncias', 'cancelarRenuncia') && (
+                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onCancelar(renuncia)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}><RotateCcw className="w-5 h-5 mr-2" /> Cancelar Renuncia</button>)}</Menu.Item></div>
+                                        )}
+                                    </>
+                                )}
+                            </Menu.Items>
+                        </Transition>
+                    </Menu>
+                )}
             </div>
         </div>
     );

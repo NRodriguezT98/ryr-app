@@ -141,9 +141,6 @@ const Navbar = () => {
                                 </Link>
                             )}
 
-
-                            {/* El menú de Administración solo se renderiza si el rol del usuario es 'admin' */}
-                            {/* El menú de Administración ahora se renderiza usando el hook de permisos */}
                             {can('admin', 'gestionarUsuarios') && (
                                 <Menu as="div" className="relative">
                                     <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/admin') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
@@ -153,12 +150,15 @@ const Navbar = () => {
                                     </Menu.Button>
                                     <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                                         <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
-                                            <Menu.Item>{({ close }) => (<DropdownLink to="/admin" icon={<Users size={18} />} onClick={close}>Gestionar Usuarios</DropdownLink>)}</Menu.Item>
+                                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
+                                            {can('admin', 'gestionarUsuarios') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin" icon={<Users size={18} />} onClick={close}>Gestionar Usuarios</DropdownLink>)}</Menu.Item>}
+                                            {can('admin', 'gestionarRoles') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin/roles" icon={<ShieldCheck size={18} />} onClick={close}>Gestionar Roles</DropdownLink>)}</Menu.Item>}
+                                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                                         </Menu.Items>
                                     </Transition>
                                 </Menu>
                             )}
-                            {/* --- FIN DE LA MODIFICACIÓN --- */}
+
                         </nav>
                     </div>
 

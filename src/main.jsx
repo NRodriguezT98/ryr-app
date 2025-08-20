@@ -30,6 +30,7 @@ import DetalleRenuncia from './pages/renuncias/DetalleRenuncia';
 import ReportesPage from './pages/reportes/ReportesPage';
 import AdminPage from './pages/admin/AdminPage';
 import CrearUsuarioPage from './pages/admin/CrearUsuarioPage';
+import GestionRolesPage from './pages/admin/GestionRolesPage';
 
 // Definimos las rutas como un array de objetos
 const router = createBrowserRouter([
@@ -75,6 +76,7 @@ const router = createBrowserRouter([
       // Rutas de Administración
       { path: "/admin", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AdminPage /></PermissionProtectedRoute> },
       { path: "/admin/crear-usuario", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><CrearUsuarioPage /></PermissionProtectedRoute> },
+      { path: "/admin/roles", element: <PermissionProtectedRoute module="admin" action="gestionarRoles"><GestionRolesPage /></PermissionProtectedRoute> },
     ],
   },
 ]);
