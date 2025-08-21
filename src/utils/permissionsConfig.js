@@ -26,6 +26,9 @@ export const PERMISSIONS_CONFIG = [
             { key: 'restaurarCliente', displayName: 'Restaurar Cliente' },
             { key: 'nuevoProceso', displayName: 'Iniciar Nuevo Proceso' },
             { key: 'verDetalle', displayName: 'Ver Detalle' },
+            { key: 'verProceso', displayName: 'Ver Proceso' },
+            { key: 'actualizarPasos', displayName: 'Actualizar Pasos del Proceso' },
+            { key: 'anularCierre', displayName: 'Anular Cierre del Proceso (Admin)' },
         ]
     },
     {
@@ -36,15 +39,6 @@ export const PERMISSIONS_CONFIG = [
             { key: 'crear', displayName: 'Crear' },
             { key: 'editar', displayName: 'Editar' },
             { key: 'eliminar', displayName: 'Eliminar' },
-        ]
-    },
-    {
-        module: 'proceso',
-        displayName: 'Proceso del Cliente',
-        actions: [
-            { key: 'ver', displayName: 'Ver' },
-            { key: 'actualizarPasos', displayName: 'Actualizar Pasos' },
-            { key: 'anularCierre', displayName: 'Anular Cierre (Admin)' },
         ]
     },
     {

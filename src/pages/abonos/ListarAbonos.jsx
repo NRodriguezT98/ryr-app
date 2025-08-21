@@ -13,6 +13,7 @@ import { Filter } from 'lucide-react';
 import UndoToast from '../../components/UndoToast';
 import AbonoCardSkeleton from './AbonoCardSkeleton';
 import Pagination from '../../components/Pagination';
+import { usePermissions } from '../../hooks/auth/usePermissions';
 
 const CustomOption = (props) => {
     const { innerProps, label, data } = props;
@@ -40,6 +41,7 @@ const getSelectStyles = () => ({
 });
 
 const ListarAbonos = () => {
+    const { can } = usePermissions();
     const { isLoading, abonos, clientes, viviendas, renuncias, recargarDatos } = useData();
     const {
         abonosFiltrados,
@@ -127,11 +129,13 @@ const ListarAbonos = () => {
                         <h2 className="text-4xl font-extrabold text-green-600 uppercase font-poppins">Historial de Abonos</h2>
                         <p className="text-gray-500 dark:text-gray-400 mt-1">Consulta y filtra todos los pagos registrados en el sistema.</p>
                     </div>
-                    <Link to="/abonos" className="mt-4 md:mt-0">
-                        <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all">
-                            + Gestionar Pagos
-                        </button>
-                    </Link>
+                    {can('abonos', 'crear') && (
+                        <Link to="/abonos" className="mt-4 md:mt-0">
+                            <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-all">
+                                + Gestionar Pagos
+                            </button>
+                        </Link>
+                    )}
                 </div>
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border dark:border-gray-700 mb-8">
                     <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2"><Filter size={18} /> Opciones de Filtro</h3>

@@ -9,10 +9,13 @@ import ModalEditarFechaProceso from './ModalEditarFechaProceso';
 import { PartyPopper, Unlock } from 'lucide-react';
 import ClienteEstadoView from './ClienteEstadoView';
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePermissions } from '../../../hooks/auth/usePermissions';
 
 const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange }) => {
 
     const { userData } = useAuth();
+    const { can } = usePermissions();
+    const isReadOnly = !can('clientes', 'actualizarPasos');
 
     const isClientInactiveOrPending = cliente.status === 'renunciado' || cliente.status === 'inactivo' || cliente.status === 'enProcesoDeRenuncia';
 
@@ -133,6 +136,7 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                                 onDeshacerReapertura={handlers.deshacerReapertura}
                                 onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
                                 clienteId={cliente.id}
+                                isReadOnly={isReadOnly}
                             />
                         </motion.div>
                     ))}

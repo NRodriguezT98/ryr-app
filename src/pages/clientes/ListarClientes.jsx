@@ -12,6 +12,7 @@ import ClienteCardSkeleton from "./ClienteCardSkeleton.jsx";
 import { useData } from "../../context/DataContext";
 import Select from 'react-select';
 import Pagination from '../../components/Pagination.jsx';
+import { usePermissions } from '../../hooks/auth/usePermissions';
 
 const sortOptions = [
     { value: 'ubicacion', label: 'Ubicación (Mz/Casa)' },
@@ -53,6 +54,7 @@ const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar,
 };
 
 const ListarClientes = () => {
+    const { can } = usePermissions();
     const {
         isLoading,
         clientesVisibles,
@@ -138,7 +140,9 @@ const ListarClientes = () => {
                     <User size={48} className="mx-auto text-gray-300 dark:text-gray-600" />
                     <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">Aún no hay clientes</h3>
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Registra a tu primer cliente para empezar a gestionar sus pagos y procesos.</p>
-                    <Link to="/clientes/crear" className="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors"><UserPlus size={18} />Registrar primer cliente</Link>
+                    {can('clientes', 'crear') && (
+                        <Link to="/clientes/crear" className="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors"><UserPlus size={18} />Registrar primer cliente</Link>
+                    )}
                 </div>
             ) : (
                 <div className="text-center py-16"><p className="text-gray-500 dark:text-gray-400">No se encontraron clientes con los filtros actuales.</p></div>

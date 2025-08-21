@@ -11,6 +11,7 @@ import TabInfoGeneralCliente from './components/TabInfoGeneralCliente';
 import TabProcesoCliente from './components/TabProcesoCliente';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import ClientPDF from '../../components/pdf/ClientPDF';
+import { usePermissions } from '../../hooks/auth/usePermissions';
 
 const TabButton = ({ activeTab, tabName, label, icon, onClick }) => (
     <button
@@ -26,6 +27,7 @@ const TabButton = ({ activeTab, tabName, label, icon, onClick }) => (
 );
 
 const DetalleCliente = () => {
+    const { can } = usePermissions();
     const { isLoading, data: datosDetalle, activeTab, setActiveTab, recargarDatos, navigate } = useDetalleCliente();
     const [procesoTieneCambios, setProcesoTieneCambios] = useState(false);
     const [navegacionBloqueada, setNavegacionBloqueada] = useState(null);
@@ -142,13 +144,15 @@ const DetalleCliente = () => {
                             icon={<Info size={16} />}
                             onClick={handleTabClick}
                         />
-                        <TabButton
-                            activeTab={activeTab}
-                            tabName="proceso"
-                            label="Proceso"
-                            icon={<GitCommit size={16} />}
-                            onClick={handleTabClick}
-                        />
+                        {can('clientes', 'verProceso') && (
+                            <TabButton
+                                activeTab={activeTab}
+                                tabName="proceso"
+                                label="Proceso"
+                                icon={<GitCommit size={16} />}
+                                onClick={handleTabClick}
+                            />
+                        )}
                     </nav>
                 </div>
 

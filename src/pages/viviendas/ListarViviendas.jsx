@@ -9,6 +9,7 @@ import ViviendaCardSkeleton from "./ViviendaCardSkeleton.jsx";
 import { Home, PlusCircle, Search } from 'lucide-react';
 import Select from 'react-select';
 import Pagination from '../../components/Pagination.jsx';
+import { usePermissions } from '../../hooks/auth/usePermissions';
 
 const sortOptions = [
     { value: 'ubicacion', label: 'Ubicación (Mz/Casa)' },
@@ -42,6 +43,7 @@ const getSelectStyles = (isDarkMode) => ({
 });
 
 const ListarViviendas = () => {
+    const { can } = usePermissions();
     const {
         isLoading,
         viviendasVisibles,
@@ -120,10 +122,12 @@ const ListarViviendas = () => {
                     <Home size={48} className="mx-auto text-gray-300 dark:text-gray-600" />
                     <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">No hay viviendas registradas</h3>
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Parece que aún no has añadido ninguna vivienda al sistema.</p>
-                    <Link to="/viviendas/crear" className="mt-6 inline-flex items-center gap-2 bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-red-700 transition-colors">
-                        <PlusCircle size={18} />
-                        Crear la primera vivienda
-                    </Link>
+                    {can('viviendas', 'crear') && (
+                        <Link to="/viviendas/crear" className="mt-6 inline-flex items-center gap-2 bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-red-700 transition-colors">
+                            <PlusCircle size={18} />
+                            Crear la primera vivienda
+                        </Link>
+                    )}
                 </div>
             ) : (
                 <div className="text-center py-16">

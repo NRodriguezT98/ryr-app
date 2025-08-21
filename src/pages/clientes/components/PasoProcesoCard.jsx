@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { CheckCircle, Lock, FileText, Calendar, AlertCircle, RotateCcw, Eye, Trash2, Replace, X, Pencil, Info } from 'lucide-react';
 import FileUpload from '../../../components/FileUpload';
 import toast from 'react-hot-toast';
-import { getTodayString, formatDisplayDate, formatCurrency, parseDateAsUTC } from '../../../utils/textFormatters';
-import { uploadFile } from '../../../utils/storage'; // 1. Se importa la función de subida correcta
+import { getTodayString, formatDisplayDate, parseDateAsUTC } from '../../../utils/textFormatters';
+import { uploadFile } from '../../../utils/storage';
 
-const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPermanentlyLocked, esHito }) => {
+const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPermanentlyLocked, esHito, isReadOnly }) => {
     const evidenciaData = evidencia.data || {};
     const fileInputRef = useRef(null);
 
@@ -27,17 +27,14 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
         if (!file) return;
         toast.loading('Reemplazando archivo...');
         try {
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Se llama a la función 'uploadFile' importada desde storage.js
             const downloadURL = await uploadFile(file, `documentos_proceso/${clienteId}/${pasoKey}-${evidencia.id}-${file.name}`);
-            // --- FIN DE LA CORRECCIÓN ---
             onUpdateEvidencia(pasoKey, evidencia.id, downloadURL);
             toast.dismiss();
             toast.success('¡Archivo reemplazado con éxito!');
         } catch (error) {
             toast.dismiss();
             toast.error("Error al reemplazar el archivo.");
-            console.error("Error en handleFileChangeForReplace:", error); // Añadido para más detalles en consola
+            console.error("Error en handleFileChangeForReplace:", error);
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = "";
         }
@@ -53,7 +50,7 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
                 {evidenciaData.url ? (
                     <div className="flex items-center gap-3">
                         <a href={evidenciaData.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-sm font-semibold flex items-center gap-1"><Eye size={14} /> Ver</a>
-                        {!isPermanentlyLocked && (
+                        {!isPermanentlyLocked && !isReadOnly && (
                             <>
                                 <button onClick={() => fileInputRef.current?.click()} className="text-yellow-600 dark:text-yellow-400 hover:underline text-sm font-semibold flex items-center gap-1"><Replace size={14} /> Reemplazar</button>
                                 <div
@@ -78,6 +75,7 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
                         filePath={(fileName) => `documentos_proceso/${clienteId}/${pasoKey}-${evidencia.id}-${fileName}`}
                         onUploadSuccess={handleUploadSuccess}
                         isCompact={true}
+                        disabled={isReadOnly}
                     />
                 )}
             </div>
@@ -86,7 +84,7 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
 };
 
 
-const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, onIniciarReapertura, onDeshacerReapertura, onIniciarEdicionFecha, clienteId }) => {
+const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarReapertura, onDeshacerReapertura, onIniciarEdicionFecha, clienteId, isReadOnly }) => {
     const { key, label, data, isLocked, puedeCompletarse, evidenciasRequeridas, error, esSiguientePaso, isPermanentlyLocked, hayPasoEnReapertura, esHito, esAutomatico, facturaBloqueadaPorSaldo } = paso;
     const [fechaCompletado, setFechaCompletado] = useState(data?.fecha || getTodayString());
     const [fechaErrorLocal, setFechaErrorLocal] = useState(null);
@@ -125,11 +123,10 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
         }
     };
 
-    const cardClasses = `relative p-5 rounded-xl border-2 transition-all ${justSaved && data?.completado ? 'border-green-500 animate-pulse-once' :
-        error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
-            data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
-                (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
-                    esSiguientePaso ? 'border-blue-500 bg-white dark:bg-gray-700 shadow-lg dark:border-blue-500' : 'border-blue-200 bg-white dark:bg-gray-700 dark:border-gray-600'
+    const cardClasses = `relative p-5 rounded-xl border-2 transition-all ${error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+        data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
+            (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
+                esSiguientePaso ? 'border-blue-500 bg-white dark:bg-gray-700 shadow-lg dark:border-blue-500' : 'border-blue-200 bg-white dark:bg-gray-700 dark:border-gray-600'
         }`;
 
     return (
@@ -154,7 +151,7 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
                             <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
                                 <Lock size={12} /> Cerrado
                             </span>
-                        ) : (
+                        ) : !isReadOnly && (
                             <>
                                 <button onClick={() => onIniciarEdicionFecha(key)} disabled={hayPasoEnReapertura} className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed" data-tooltip-id="app-tooltip" data-tooltip-content="Editar fecha y motivo">
                                     <Pencil size={16} />
@@ -168,55 +165,40 @@ const PasoProcesoCard = ({ paso, justSaved, onUpdateEvidencia, onCompletarPaso, 
                 )}
             </div>
 
-            {!data?.completado && (
+            {!data?.completado && !isLocked && !facturaBloqueadaPorSaldo && !esAutomatico && !isReadOnly && (
                 <div className="mt-4 pl-9 space-y-3">
-                    {facturaBloqueadaPorSaldo ? (
-                        <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-orange-800 dark:text-orange-300">
-                            <AlertCircle size={24} className="flex-shrink-0" />
-                            <p className="text-sm font-semibold">Este paso está bloqueado hasta que la vivienda esté 100% pagada.</p>
-                        </div>
-                    ) : esAutomatico ? (
-                        <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/50 rounded-lg text-blue-800 dark:text-blue-300">
-                            <Info size={24} className="flex-shrink-0" />
-                            <p className="text-sm font-semibold">
-                                Este paso se completa automáticamente al registrar el desembolso en el módulo de <Link to="/abonos" className="font-bold underline hover:text-blue-600">Abonos</Link>.
-                            </p>
-                        </div>
-                    ) : !isLocked ? (
-                        <>
-                            <div className="flex justify-between items-center"><p className="text-sm font-semibold text-gray-600 dark:text-gray-300">Evidencias Requeridas:</p><span className={`text-xs font-bold px-2 py-1 rounded-full ${evidenciasSubidas === totalEvidencias ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300'}`}>{`${evidenciasSubidas} de ${totalEvidencias} subidas`}</span></div>
-                            {evidenciasRequeridas.map(ev => (
-                                <EvidenciaItem
-                                    key={ev.id}
-                                    evidencia={{ ...ev, data: data?.evidencias?.[ev.id] }}
-                                    pasoKey={key}
-                                    onUpdateEvidencia={onUpdateEvidencia}
-                                    clienteId={clienteId}
-                                    isPermanentlyLocked={isPermanentlyLocked}
-                                    esHito={esHito}
-                                />
-                            ))}
-                            {puedeCompletarse && (
-                                <div className="pt-3 border-t dark:border-gray-600">
-                                    <div className="flex items-center justify-end gap-3">
-                                        <button onClick={() => onDeshacerReapertura(key)} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center gap-2">
-                                            <X size={16} /> Cancelar
-                                        </button>
-                                        <input type="date" value={fechaCompletado} onChange={handleFechaChange} min={paso.minDate} max={paso.maxDate} className={`text-sm border p-1.5 rounded-md dark:bg-gray-700 ${fechaErrorLocal || error ? 'border-red-500' : 'dark:border-gray-600'}`} />
-                                        <button onClick={handleConfirmar} className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Marcar como Completado</button>
-                                    </div>
-                                    {fechaErrorLocal && (
-                                        <div className="mt-2 text-right">
-                                            <p className="inline-flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold">
-                                                <AlertCircle size={16} />
-                                                {fechaErrorLocal}
-                                            </p>
-                                        </div>
-                                    )}
+                    <div className="flex justify-between items-center"><p className="text-sm font-semibold text-gray-600 dark:text-gray-300">Evidencias Requeridas:</p><span className={`text-xs font-bold px-2 py-1 rounded-full ${evidenciasSubidas === totalEvidencias ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300'}`}>{`${evidenciasSubidas} de ${totalEvidencias} subidas`}</span></div>
+                    {evidenciasRequeridas.map(ev => (
+                        <EvidenciaItem
+                            key={ev.id}
+                            evidencia={{ ...ev, data: data?.evidencias?.[ev.id] }}
+                            pasoKey={key}
+                            onUpdateEvidencia={onUpdateEvidencia}
+                            clienteId={clienteId}
+                            isPermanentlyLocked={isPermanentlyLocked}
+                            esHito={esHito}
+                            isReadOnly={isReadOnly}
+                        />
+                    ))}
+                    {puedeCompletarse && !isReadOnly && (
+                        <div className="pt-3 border-t dark:border-gray-600">
+                            <div className="flex items-center justify-end gap-3">
+                                <button onClick={() => onDeshacerReapertura(key)} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center gap-2">
+                                    <X size={16} /> Cancelar
+                                </button>
+                                <input type="date" value={fechaCompletado} onChange={handleFechaChange} min={paso.minDate} max={paso.maxDate} className={`text-sm border p-1.5 rounded-md dark:bg-gray-700 ${fechaErrorLocal || error ? 'border-red-500' : 'dark:border-gray-600'}`} />
+                                <button onClick={handleConfirmar} className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Marcar como Completado</button>
+                            </div>
+                            {fechaErrorLocal && (
+                                <div className="mt-2 text-right">
+                                    <p className="inline-flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold">
+                                        <AlertCircle size={16} />
+                                        {fechaErrorLocal}
+                                    </p>
                                 </div>
                             )}
-                        </>
-                    ) : null}
+                        </div>
+                    )}
                 </div>
             )}
             {error && !fechaErrorLocal && <div className="mt-2 pl-9 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold"><AlertCircle size={14} /><p>{error}</p></div>}
