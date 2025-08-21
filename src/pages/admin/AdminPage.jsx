@@ -1,12 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ShieldCheck, UserPlus, Users, Loader2 } from 'lucide-react';
+import { ShieldCheck, UserPlus, Users, Loader2, Pencil } from 'lucide-react';
 import { useGestionUsuarios } from '../../hooks/admin/useGestionUsuarios';
-import { toTitleCase } from '../../utils/textFormatters'; // Se importa la utilidad de formato
+import { toTitleCase } from '../../utils/textFormatters';
+import ModalEditarUsuario from './components/ModalEditarUsuario';
 
 const AdminPage = () => {
-    const { users, isLoading } = useGestionUsuarios();
+    const { users,
+        isLoading,
+        isSubmitting,
+        userToEdit,
+        setUserToEdit,
+        updateUser
+    } = useGestionUsuarios();
 
     return (
         <AnimatedPage>
@@ -37,6 +44,7 @@ const AdminPage = () => {
                                     <th scope="col" className="px-6 py-3">Cédula</th>
                                     <th scope="col" className="px-6 py-3">Correo Electrónico</th>
                                     <th scope="col" className="px-6 py-3">Rol</th>
+                                    <th scope="col" className="px-6 py-3">Editar</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -49,6 +57,11 @@ const AdminPage = () => {
                                             <td className="px-6 py-4">{user.cedula}</td>
                                             <td className="px-6 py-4">{user.email}</td>
                                             <td className="px-6 py-4"><span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">{user.role}</span></td>
+                                            <td className="px-6 py-4">
+                                                <button onClick={() => setUserToEdit(user)} className="p-2 text-gray-500 hover:text-blue-600 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                    <Pencil size={16} />
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))
                                 )}
@@ -57,6 +70,17 @@ const AdminPage = () => {
                     </div>
                 </div>
             </div>
+
+            {userToEdit && (
+                <ModalEditarUsuario
+                    isOpen={!!userToEdit}
+                    onClose={() => setUserToEdit(null)}
+                    onSave={updateUser}
+                    userToEdit={userToEdit}
+                    isSubmitting={isSubmitting}
+                />
+            )}
+
         </AnimatedPage>
     );
 };

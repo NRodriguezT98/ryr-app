@@ -59,6 +59,7 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         const validationErrors = validate(formData);
         if (Object.keys(validationErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: validationErrors });
+            toast.error("Por favor, corrige los errores en el formulario.");
             return;
         }
 
