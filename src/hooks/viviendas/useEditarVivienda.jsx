@@ -22,6 +22,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
     const [step, setStep] = useState(1);
     const [isConfirming, setIsConfirming] = useState(false);
     const [cambios, setCambios] = useState([]);
+    const [camposFinancierosBloqueados, setCamposFinancierosBloqueados] = useState(false);
 
     const initialState = useMemo(() => ({
         manzana: vivienda?.manzana || "",
@@ -77,8 +78,9 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
             setFormData(initialState);
             setErrors({});
             setStep(1);
+            setCamposFinancierosBloqueados(!!vivienda?.clienteId);
         }
-    }, [isOpen, initialState, setFormData, setErrors]);
+    }, [isOpen, initialState, setFormData, setErrors, vivienda]);
 
     const hayCambios = useMemo(() => {
         if (!formData) return false;
@@ -155,7 +157,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
 
     return {
         step, formData, errors, isSubmitting, valorTotalCalculado, gastosNotarialesFijos: GASTOS_NOTARIALES_FIJOS,
-        isConfirming, setIsConfirming, cambios, hayCambios,
+        isConfirming, setIsConfirming, cambios, hayCambios, camposFinancierosBloqueados,
         handlers: {
             handleNextStep, handlePrevStep, handleCheckboxChange, handlePreSave, handleSubmit,
             handleInputChange, handleValueChange

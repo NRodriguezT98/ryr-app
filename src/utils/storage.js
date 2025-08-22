@@ -1,4 +1,4 @@
-import { db } from '../firebase/config';
+import { db, auth } from '../firebase/config';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch, setDoc, query, where, serverTimestamp } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { toSentenceCase, formatCurrency, toTitleCase, getTodayString } from './textFormatters';
@@ -78,6 +78,19 @@ export const addVivienda = async (viviendaData) => {
         valorFinal: valorTotalFinal,
     };
     await addDoc(collection(db, "viviendas"), nuevaVivienda);
+
+    // --- INICIO DE LA MODIFICACIÓN (AUDITORÍA) ---
+    await createAuditLog(
+        `Creó la vivienda Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`,
+        {
+            action: 'CREATE_VIVIENDA',
+            viviendaInfo: {
+                manzana: viviendaData.manzana,
+                numeroCasa: viviendaData.numeroCasa,
+                valorTotal: viviendaData.valorTotal
+            }
+        }
+    );
 };
 
 export const addClienteAndAssignVivienda = async (clienteData) => {
@@ -98,6 +111,16 @@ export const addClienteAndAssignVivienda = async (clienteData) => {
             clienteNombre: `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`.trim()
         });
         await batch.commit();
+
+        // AUDITORÍA: Se registra la creación del cliente
+        const clienteNombreCompleto = toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`);
+        await createAuditLog(
+            `Creó al cliente ${clienteNombreCompleto} (C.C. ${clienteData.datosCliente.cedula})`,
+            {
+                clienteId: clienteData.datosCliente.cedula,
+                clienteNombre: clienteNombreCompleto
+            })
+
     } else {
         await setDoc(newClienteRef, clienteParaGuardar);
     }
@@ -158,7 +181,24 @@ export const updateVivienda = async (id, datosActualizados) => {
     const viviendaRef = doc(db, "viviendas", String(id));
     const viviendaSnap = await getDoc(viviendaRef);
     if (!viviendaSnap.exists()) throw new Error("La vivienda no existe.");
+
     const viviendaOriginal = viviendaSnap.data();
+    // --- INICIO DE LA MODIFICACIÓN (AUDITORÍA) ---
+    // 1. Detectar cambios para la auditoría
+    const cambios = [];
+    const formatValue = (value) => value ?? 'No definido';
+
+    Object.keys(datosActualizados).forEach(key => {
+        if (viviendaOriginal[key] !== datosActualizados[key]) {
+            cambios.push({
+                campo: key,
+                anterior: formatValue(viviendaOriginal[key]),
+                actual: formatValue(datosActualizados[key])
+            });
+        }
+    });
+    // --- FIN DE LA MODIFICACIÓN ---
+
     const datosFinales = { ...datosActualizados };
     if (datosFinales.areaLote !== undefined) {
         datosFinales.areaLote = parseFloat(String(datosFinales.areaLote).replace(',', '.')) || 0;
@@ -173,6 +213,21 @@ export const updateVivienda = async (id, datosActualizados) => {
         datosFinales.saldoPendiente = datosFinales.valorFinal - (viviendaOriginal.totalAbonado || 0);
     }
     await updateDoc(viviendaRef, datosFinales);
+
+    // --- INICIO DE LA MODIFICACIÓN (AUDITORÍA) ---
+    // 2. Registrar el log si hubo cambios
+    if (cambios.length > 0) {
+        const nombreVivienda = `Mz ${viviendaOriginal.manzana} - Casa ${viviendaOriginal.numeroCasa}`;
+        await createAuditLog(
+            `Actualizó la vivienda ${nombreVivienda}`,
+            {
+                action: 'UPDATE_VIVIENDA',
+                viviendaId: id,
+                viviendaNombre: nombreVivienda,
+                cambios: cambios
+            }
+        );
+    }
 };
 
 export const deleteViviendaPermanently = async (viviendaId) => {
@@ -195,7 +250,7 @@ export const deleteViviendaPermanently = async (viviendaId) => {
     await batch.commit();
 };
 
-export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId) => {
+export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId, cambios = []) => {
     const clienteRef = doc(db, "clientes", String(clienteId));
     const procesoSincronizado = { ...(clienteActualizado.proceso || {}) };
     PROCESO_CONFIG.forEach(pasoConfig => {
@@ -233,6 +288,13 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
         batch.update(doc(db, "viviendas", String(nuevaViviendaId)), { clienteNombre: nombreCompleto });
     }
     await batch.commit();
+
+    // AUDITORÍA: Se registra la actualización del cliente
+    const clienteNombreCompleto = toTitleCase(`${clienteActualizado.datosCliente.nombres} ${clienteActualizado.datosCliente.apellidos}`);
+    await createAuditLog(
+        `Actualizó los datos del cliente ${clienteNombreCompleto} (C.C. ${clienteId})`,
+        { cambios }
+    );
 };
 
 export const deleteCliente = async (clienteId) => {
@@ -580,4 +642,40 @@ export const anularCierreProceso = async (clienteId) => {
             throw new Error("El proceso no se puede anular porque no está completado.");
         }
     });
+};
+
+// --- INICIO DE LA MODIFICACIÓN ---
+
+/**
+ * Crea un registro en el log de auditoría.
+ * @param {string} message - El mensaje descriptivo de la acción (ej: "Creó al cliente Pedro Suarez").
+ * @param {object} details - Un objeto con detalles relevantes sobre el evento (ej: { cambios: [...] }).
+ */
+export const createAuditLog = async (message, details = {}) => {
+    try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            console.warn("Intento de registro de auditoría sin usuario autenticado.");
+            return;
+        }
+
+        const userDocRef = doc(db, "users", currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        const userName = userDocSnap.exists()
+            ? toTitleCase(`${userDocSnap.data().nombres} ${userDocSnap.data().apellidos}`)
+            : currentUser.email;
+
+        const auditCollectionRef = collection(db, "audits");
+
+        await addDoc(auditCollectionRef, {
+            timestamp: serverTimestamp(),
+            userId: currentUser.uid,
+            userName: userName,
+            message: message,
+            details: details // Se añade el nuevo campo de detalles
+        });
+
+    } catch (error) {
+        console.error("Error al crear el registro de auditoría:", error);
+    }
 };

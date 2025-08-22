@@ -10,7 +10,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
 
     const {
         step, formData, errors, isSubmitting, valorTotalCalculado, gastosNotarialesFijos,
-        isConfirming, setIsConfirming, cambios, hayCambios,
+        isConfirming, setIsConfirming, cambios, hayCambios, camposFinancierosBloqueados,
         handlers
     } = useEditarVivienda(vivienda, todasLasViviendas, isOpen, onSave, onClose);
 
@@ -67,7 +67,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                         handleCheckboxChange={handlers.handleCheckboxChange}
                         valorTotalCalculado={valorTotalCalculado}
                         gastosNotarialesFijos={gastosNotarialesFijos}
-                        isFinancialLocked={vivienda.camposFinancierosBloqueados} // <-- Pasamos la nueva prop
+                        isFinancialLocked={camposFinancierosBloqueados}
                     />
                 )}
 
