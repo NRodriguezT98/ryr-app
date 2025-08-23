@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
+import { XCircle, CheckCircle, Home, TrendingUp, User, Landmark, Building, PiggyBank, Award, FileSignature } from 'lucide-react';
 
 // Diccionario para traducir los nombres de los campos
 const fieldLabels = {
@@ -76,8 +77,129 @@ const formatValue = (value, field) => {
     return String(value);
 };
 
+// Componente auxiliar para mostrar la información
+const DetailRow = ({ label, value }) => (
+    <div>
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="text-gray-800 dark:text-gray-200">{value || 'No especificado'}</p>
+    </div>
+);
 
 const AuditLogDetails = ({ details }) => {
+
+    // Añadimos un caso especial para iniciar nuevo proceso de cliente.
+    if (details?.action === 'RESTART_CLIENT_PROCESS' && details.snapshotCompleto) {
+        const { datosCliente, financiero } = details.snapshotCompleto;
+        return (
+            <div className="text-sm space-y-4">
+                {/* Sección Datos del Cliente */}
+                <h4 className="font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-2 mb-2"><User size={16} /> Datos del Cliente</h4>
+                <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                    <div className="space-y-3 pl-8">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pl-8">
+                            <DetailRow label="Nombres" value={datosCliente.nombres} />
+                            <DetailRow label="Apellidos" value={datosCliente.apellidos} />
+                            <DetailRow label="Cédula" value={datosCliente.cedula} />
+                            <DetailRow label="Teléfono" value={datosCliente.telefono} />
+                            <DetailRow label="Correo" value={datosCliente.correo} />
+                            <DetailRow label="Dirección" value={datosCliente.direccion} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sección Vivienda */}
+                <div className="pt-3 border-t dark:border-gray-700">
+                    <div className="space-y-3 pl-8">
+                        <p className="font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-2 mb-2"><Home size={16} /> Vivienda Asignada</p>
+                        <div className="p-2 bg-gray-20 dark:bg-gray-700/50 rounded-md">
+                            <p className="text-gray-800 dark:text-gray-200 pl-8 align-left">{details.nombreNuevaVivienda}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sección Financiera */}
+                <div className="pt-3 border-t dark:border-gray-700">
+                    <h4 className="font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-2 mb-2"><TrendingUp size={16} /> Cierre Financiero</h4>
+                    <div className="space-y-3 pl-8">
+                        {/* --- INICIO DE LA MODIFICACIÓN (Íconos y nuevos campos) --- */}
+                        {financiero.aplicaCuotaInicial && (
+                            <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                                <p className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1"><FileSignature size={14} /> Cuota Inicial:</p>
+                                <div className="grid grid-cols-2 gap-x-4 mt-1 pl-4">
+                                    <DetailRow label="Monto" value={formatCurrency(financiero.cuotaInicial.monto)} />
+                                </div>
+                            </div>
+                        )}
+
+                        {financiero.aplicaCredito && (
+                            <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                                <p className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1"><Landmark size={14} /> Crédito Hipotecario</p>
+                                <div className="grid grid-cols-2 gap-x-4 mt-1 pl-4">
+                                    <DetailRow label="Monto" value={formatCurrency(financiero.credito.monto)} />
+                                    <DetailRow label="Banco" value={financiero.credito.banco} />
+                                </div>
+                            </div>
+                        )}
+
+                        {financiero.aplicaSubsidioVivienda && (
+                            <div className="flex items-center gap-2"><Award size={14} className="text-gray-500" /> <DetailRow label="Subsidio Mi Casa Ya" value={formatCurrency(financiero.subsidioVivienda.monto)} /></div>
+                        )}
+
+                        {financiero.aplicaSubsidioCaja && (
+                            <div className="p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md">
+                                <p className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1"><Building size={14} /> Subsidio Caja de Comp.</p>
+                                <div className="grid grid-cols-2 gap-x-4 mt-1 pl-4">
+                                    <DetailRow label="Monto" value={formatCurrency(financiero.subsidioCaja.monto)} />
+                                    <DetailRow label="Caja" value={financiero.subsidioCaja.caja} />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Añadimos la sección para el valor de escritura */}
+                        {financiero.usaValorEscrituraDiferente && (
+                            <div className="p-2 bg-blue-50 dark:bg-blue-900/50 rounded-md">
+                                <p className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1"><FileSignature size={14} /> Valor para Escritura Diferente:</p>
+                                <div className="grid grid-cols-2 gap-x-4 mt-1 pl-4">
+                                    <DetailRow label="Monto Escritura" value={formatCurrency(financiero.valorEscritura)} />
+                                </div>
+                            </div>
+                        )}
+                        {/* --- FIN DE LA MODIFICACIÓN --- */}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Añadimos un caso especial para mostrar los detalles de una renuncia.
+    if (details?.action === 'CLIENT_RENOUNCE') {
+        return (
+            <div className="text-sm space-y-3">
+                <div>
+                    <p className="font-semibold text-gray-500 dark:text-gray-400">Motivo de la Renuncia</p>
+                    <p className="text-gray-800 dark:text-gray-200">{details.motivoRenuncia || 'No especificado'}</p>
+                </div>
+                {details.observaciones && (
+                    <div>
+                        <p className="font-semibold text-gray-500 dark:text-gray-400">Observaciones Adicionales</p>
+                        <p className="text-gray-800 dark:text-gray-200">{details.observaciones}</p>
+                    </div>
+                )}
+                <div className="pt-2 border-t dark:border-gray-700">
+                    <p className="font-semibold text-gray-500 dark:text-gray-400 mb-1">Penalidad</p>
+                    {details.penalidadAplicada ? (
+                        <div className="space-y-1 text-green-700 dark:text-green-300">
+                            <p className="flex items-center gap-2"><CheckCircle size={16} /> Sí se aplicó penalidad.</p>
+                            <p><strong>Monto:</strong> {formatCurrency(details.montoPenalidad)}</p>
+                            <p><strong>Motivo:</strong> {details.motivoPenalidad || 'No especificado'}</p>
+                        </div>
+                    ) : (
+                        <p className="flex items-center gap-2 text-red-700 dark:text-red-400"><XCircle size={16} /> No se aplicó penalidad.</p>
+                    )}
+                </div>
+            </div>
+        );
+    }
     if (details?.cambios && Array.isArray(details.cambios) && details.cambios.length > 0) {
 
         // --- INICIO DE LA MODIFICACIÓN ---

@@ -370,6 +370,7 @@ export const deleteClientePermanently = async (clienteId) => {
 export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fechaRenuncia, penalidadMonto = 0, penalidadMotivo = '') => {
     const clienteRef = doc(db, "clientes", clienteId);
     let clienteNombre = '';
+    let viviendaInfoParaLog = '';
     let renunciaIdParaNotificacion = '';
 
     await runTransaction(db, async (transaction) => {
@@ -386,6 +387,7 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
 
         const viviendaData = viviendaDoc.data();
         clienteNombre = `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`.trim();
+        viviendaInfoParaLog = `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`; // Guardamos info para el log
 
         const abonosActivosQuery = query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("viviendaId", "==", viviendaId), where("estadoProceso", "==", "activo"));
         const abonosSnapshot = await getDocs(abonosActivosQuery);
@@ -445,6 +447,21 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
             });
         }
     });
+
+    await createAuditLog(
+        `Registró la renuncia del cliente ${toTitleCase(clienteNombre)} a la vivienda ${viviendaInfoParaLog}`,
+        {
+            action: 'CLIENT_RENOUNCE',
+            clienteId: clienteId,
+            clienteNombre: toTitleCase(clienteNombre),
+            motivoRenuncia: motivo,
+            observaciones: observacion,
+            penalidadAplicada: penalidadMonto > 0,
+            montoPenalidad: penalidadMonto,
+            motivoPenalidad: penalidadMotivo
+        }
+    );
+
     return { renunciaId: renunciaIdParaNotificacion, clienteNombre };
 };
 

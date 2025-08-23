@@ -11,7 +11,7 @@ import Pagination from '../../components/Pagination';
 // El componente AuditLogRow ahora recibe un manejador para el botón
 const AuditLogRow = ({ log, onVerDetalles }) => {
     const formattedDate = log.timestamp?.toDate()
-        ? format(log.timestamp.toDate(), "dd MMMM yyyy, hh:mm a", { locale: es })
+        ? format(log.timestamp.toDate(), "dd MMMM yyyy, hh:mm:ss a", { locale: es })
         : 'Fecha no disponible';
 
     return (

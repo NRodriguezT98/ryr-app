@@ -67,14 +67,16 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                 <Link to={`/viviendas/detalle/${vivienda.id}`} className="font-bold text-blue-600 dark:text-blue-400 hover:underline ml-1">
                                     {`Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
                                 </Link>
+
+                                {/* --- INICIO DE LA CORRECCIÓN --- */}
                                 {tieneValorEscrituraDiferente && (
-                                    <div
+                                    <span
                                         className="ml-2 bg-purple-100 dark:bg-green-900/50 p-1 rounded-full"
                                         data-tooltip-id="app-tooltip"
                                         data-tooltip-content="Este cliente tiene un valor de vivienda diferente en escritura al valor comercial."
                                     >
-                                        <DollarSign className="w-5 h-5 text-purple-600 dark:text-green-400" />
-                                    </div>
+                                        <DollarSign className="w-4 h-4 text-purple-600 dark:text-green-400" />
+                                    </span>
                                 )}
                             </span>
                         ) : (

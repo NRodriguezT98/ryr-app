@@ -2,7 +2,7 @@ import { useReducer, useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
 import { validateCliente, validateFinancialStep, validateEditarCliente } from '../../utils/validation.js';
-import { addClienteAndAssignVivienda, updateCliente, getAbonos, createNotification } from '../../utils/storage.js';
+import { addClienteAndAssignVivienda, updateCliente, getAbonos, createNotification, createAuditLog } from '../../utils/storage.js';
 import { useData } from '../../context/DataContext.jsx';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig.js';
 import { formatCurrency, toTitleCase, formatDisplayDate, getTodayString } from '../../utils/textFormatters.js';
@@ -212,6 +212,22 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     fechaCreacion: clienteAEditar.fechaCreacion
                 };
                 await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
+                // --- INICIO DE LA MODIFICACIÓN (AUDITORÍA COMPLETA) ---
+                const clienteNombre = toTitleCase(`${clienteParaActualizar.datosCliente.nombres} ${clienteParaActualizar.datosCliente.apellidos}`);
+                const nuevaVivienda = viviendas.find(v => v.id === clienteParaActualizar.viviendaId);
+                const nombreNuevaVivienda = nuevaVivienda ? `Mz ${nuevaVivienda.manzana} - Casa ${nuevaVivienda.numeroCasa}` : 'ID no encontrado';
+
+                await createAuditLog(
+                    `Inició un nuevo proceso para el cliente ${clienteNombre}`,
+                    {
+                        action: 'RESTART_CLIENT_PROCESS',
+                        clienteId: clienteAEditar.id,
+                        clienteNombre: clienteNombre,
+                        nombreNuevaVivienda: nombreNuevaVivienda,
+                        snapshotCompleto: clienteParaActualizar
+                    }
+                );
+                // --- FIN AUDITORIA ---
                 toast.success("¡Cliente reactivado con un nuevo proceso!");
                 await createNotification('cliente', `El cliente ${toTitleCase(clienteAEditar.datosCliente.nombres)} fue reactivado.`, `/clientes/detalle/${clienteAEditar.id}`);
             } else if (isEditing) {
