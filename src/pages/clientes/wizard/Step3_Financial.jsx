@@ -337,12 +337,13 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                 <NumericFormat
                                     value={financiero.valorEscritura || ''}
                                     onValueChange={(values) => handleFinancialFieldChange('financiero', 'valorEscritura', values.floatValue)}
-                                    className="w-full border p-2 rounded-lg dark:bg-gray-800 dark:border-gray-600"
+                                    className={`w-full border p-2 rounded-lg dark:bg-gray-800 dark:border-gray-600 ${errors.valorEscritura ? "border-red-500" : "border-gray-300"}`}
                                     thousandSeparator="."
                                     decimalSeparator=","
                                     prefix="$ "
                                     disabled={isLocked}
                                 />
+                                {errors.valorEscritura && <p className="text-red-600 text-sm mt-1">{errors.valorEscritura}</p>}
                                 <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                                     <Info size={14} /> Este valor es solo para fines informativos y no afecta el saldo de la deuda.
                                 </p>

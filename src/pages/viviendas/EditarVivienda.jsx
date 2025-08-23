@@ -30,8 +30,9 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                 title="Editar Vivienda"
                 icon={<Edit size={28} className="text-[#c62828]" />}
             >
-                {/* --- INICIO DE LA MODIFICACIÓN --- */}
-                {vivienda.camposFinancierosBloqueados && (
+                {/* --- INICIO DE LA CORRECCIÓN --- */}
+                {/* Se usa 'camposFinancierosBloqueados' del hook, no 'vivienda.camposFinancierosBloqueados' */}
+                {camposFinancierosBloqueados && (
                     <div className="p-4 mb-6 bg-yellow-50 dark:bg-yellow-900/50 border-l-4 border-yellow-400 text-yellow-700 dark:text-yellow-300">
                         <div className="flex items-center gap-3">
                             <Lock />
@@ -39,7 +40,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                         </div>
                     </div>
                 )}
-                {/* --- FIN DE LA MODIFICACIÓN --- */}
+                {/* --- FIN DE LA CORRECCIÓN --- */}
 
                 <div className="flex items-center justify-center my-6">
                     {STEPS_CONFIG.map((s, index) => (

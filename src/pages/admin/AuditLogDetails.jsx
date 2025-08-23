@@ -32,7 +32,7 @@ const fieldLabels = {
     aplicaCuotaInicial: 'Aplica Cuota Inicial',
     'cuotaInicial.monto': 'Monto Cuota Inicial',
     aplicaCredito: 'Aplica Crédito',
-    'credito.banco': 'Banco (Crédito)',
+    'Banco (Crédito)': 'Banco (Crédito Hipotecario)',
     'credito.monto': 'Monto Crédito',
     'credito.caso': 'Número de Caso (Crédito)',
     aplicaSubsidioVivienda: 'Aplica Sub. Mi Casa Ya',
@@ -44,13 +44,31 @@ const fieldLabels = {
     valorEscritura: 'Valor de Escritura'
 };
 
-// --- INICIO DE LA MODIFICACIÓN ---
-// 1. Lista de campos que no queremos mostrar en la auditoría
+// Diccionario 2: Traduce VALORES específicos de ciertos campos
+const valueLabels = {
+    'Banco (Crédito)': {
+        'FondoNacionalDelAhorro': 'Fondo Nacional Del Ahorro',
+        'Bancolombia': 'Bancolombia',
+        'Davivienda': 'Davivienda',
+        'Banco de Bogotá': 'Banco de Bogotá',
+        'Banco Agrario': 'Banco Agrario',
+        'Otro': 'Otro'
+    },
+    'Esquinera': {
+        'true': 'Sí',
+        'false': 'No'
+    }
+};
+
+// Lista de campos que no queremos mostrar en la auditoría
 const camposAIgnorar = ['errors', 'numero'];
-// --- FIN DE LA MODIFICACIÓN ---
+
 
 const formatValue = (value, field) => {
     if (value === null || value === undefined || value === '') return 'Vacío';
+    if (valueLabels[field] && valueLabels[field][value]) {
+        return valueLabels[field][value];
+    }
     if (typeof value === 'boolean') return value ? 'Sí' : 'No';
     if (field.toLowerCase().includes('monto') || field.toLowerCase().includes('valor')) {
         return formatCurrency(value);

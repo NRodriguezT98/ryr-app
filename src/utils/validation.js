@@ -111,7 +111,11 @@ export const validateEditarCliente = (formData, todosLosClientes, clienteIdActua
 
 export const validateFinancialStep = (financiero, valorVivienda, documentos, isEditing = false) => {
     const errors = {};
-    const { aplicaCuotaInicial, cuotaInicial, aplicaCredito, credito, aplicaSubsidioVivienda, subsidioVivienda, aplicaSubsidioCaja, subsidioCaja } = financiero;
+    const { aplicaCuotaInicial, cuotaInicial, aplicaCredito, credito, aplicaSubsidioVivienda, subsidioVivienda, aplicaSubsidioCaja, subsidioCaja, usaValorEscrituraDiferente, valorEscritura } = financiero;
+
+    if (usaValorEscrituraDiferente && (!valorEscritura || valorEscritura <= 0)) {
+        errors.valorEscritura = "Si se usa un valor de escritura diferente, debe ser mayor a 0.";
+    }
 
     let totalRecursos = 0;
     if (aplicaCuotaInicial) {

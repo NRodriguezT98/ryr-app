@@ -222,7 +222,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     viviendaId: formData.viviendaSeleccionada?.id || null,
                     status: formData.status
                 };
-                await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
+                await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId, cambios);
                 toast.success("¡Cliente actualizado con éxito!");
                 createNotification('cliente', `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`, `/clientes/detalle/${clienteAEditar.id}`);
             } else {
@@ -273,7 +273,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             setIsSubmitting(false);
             setIsConfirming(false);
         }
-    }, [formData, navigate, todosLosClientes, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId, modo]);
+    }, [formData, navigate, todosLosClientes, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId, modo, cambios]);
 
     const hayCambios = useMemo(() => {
         if (!initialData || !formData) return false;

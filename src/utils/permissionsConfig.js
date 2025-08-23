@@ -62,6 +62,8 @@ export const PERMISSIONS_CONFIG = [
         module: 'admin',
         displayName: 'Administración',
         actions: [
+            { key: 'ver', displayName: 'Ver' },
+            { key: 'verAuditoria', displayName: 'Ver Auditoria' },
             { key: 'gestionarUsuarios', displayName: 'Gestionar Usuarios' },
             { key: 'gestionarRoles', displayName: 'Gestionar Roles' },
         ]

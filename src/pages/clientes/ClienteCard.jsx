@@ -48,17 +48,6 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
 
     return (
         <div className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600' : 'dark:border-gray-700'}`}>
-
-            {tieneValorEscrituraDiferente && (
-                <div
-                    className="absolute top-3 right-3 bg-purple-100 dark:bg-green-900/50 p-1.5 rounded-full"
-                    data-tooltip-id="app-tooltip"
-                    data-tooltip-content="Este cliente tiene un valor de vivienda diferente en escritura al valor comercial."
-                >
-                    <DollarSign className="w-6 h-6 text-purple-600 dark:text-green-400" />
-                </div>
-            )}
-
             <div className={`flex items-center p-5 border-b dark:border-gray-700 rounded-t-2xl ${isPagada ? 'bg-green-50 dark:bg-green-900/50' : ''}`}>
                 <div className={`w-14 h-14 rounded-full text-white flex items-center justify-center font-bold text-2xl mr-4 flex-shrink-0 bg-blue-500`}>
                     {getInitials(datosCliente?.nombres, datosCliente?.apellidos)}
@@ -73,11 +62,20 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                     <p className="flex items-center gap-3 font-semibold">
                         <Home size={16} className={vivienda ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400'} />
                         {vivienda ? (
-                            <span className="text-gray-600 dark:text-gray-300">
+                            <span className="flex items-center text-gray-600 dark:text-gray-300">
                                 {status === 'enProcesoDeRenuncia' ? 'Renunció a la vivienda:' : 'Vivienda:'}
                                 <Link to={`/viviendas/detalle/${vivienda.id}`} className="font-bold text-blue-600 dark:text-blue-400 hover:underline ml-1">
                                     {`Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
                                 </Link>
+                                {tieneValorEscrituraDiferente && (
+                                    <div
+                                        className="ml-2 bg-purple-100 dark:bg-green-900/50 p-1 rounded-full"
+                                        data-tooltip-id="app-tooltip"
+                                        data-tooltip-content="Este cliente tiene un valor de vivienda diferente en escritura al valor comercial."
+                                    >
+                                        <DollarSign className="w-5 h-5 text-purple-600 dark:text-green-400" />
+                                    </div>
+                                )}
                             </span>
                         ) : (
                             <span className="text-gray-500 dark:text-gray-400">Sin vivienda asignada</span>

@@ -6,6 +6,7 @@ import { useAuditLog } from '../../hooks/admin/useAuditLog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import ModalAuditDetails from '../../components/admin/ModalAuditDetails'; // 3. Importar el nuevo Modal
+import Pagination from '../../components/Pagination';
 
 // El componente AuditLogRow ahora recibe un manejador para el botón
 const AuditLogRow = ({ log, onVerDetalles }) => {
@@ -32,8 +33,15 @@ const AuditLogRow = ({ log, onVerDetalles }) => {
 };
 
 const AuditLogPage = () => {
-    const { logs, isLoading, hasMore, fetchMoreLogs } = useAuditLog();
-    const [logSeleccionado, setLogSeleccionado] = useState(null); // 4. Estado para el log seleccionado
+    const {
+        isLoading,
+        currentLogs,
+        currentPage,
+        totalPages,
+        handlePageChange
+    } = useAuditLog();
+
+    const [logSeleccionado, setLogSeleccionado] = useState(null);
 
     return (
         <AnimatedPage>
@@ -61,29 +69,26 @@ const AuditLogPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {logs.map(log => (
-                                    <AuditLogRow
-                                        key={log.id}
-                                        log={log}
-                                        onVerDetalles={setLogSeleccionado} // 5. Pasar la función para abrir el modal
-                                    />
-                                ))}
+                                {isLoading ? (
+                                    <tr><td colSpan="4" className="text-center p-8"><Loader2 className="animate-spin inline-block text-blue-500" size={40} /></td></tr>
+                                ) : (
+                                    // 2. Renderizamos directamente los logs de la página actual que nos da el hook.
+                                    currentLogs.map(log => (
+                                        <AuditLogRow key={log.id} log={log} onVerDetalles={setLogSeleccionado} />
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
 
-                    {isLoading && (
-                        <div className="text-center p-4"><Loader2 className="animate-spin inline-block" /></div>
-                    )}
-
-                    {!isLoading && hasMore && (
-                        <div className="mt-6 text-center">
-                            <button
-                                onClick={fetchMoreLogs}
-                                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-5 rounded-lg transition"
-                            >
-                                Cargar más registros
-                            </button>
+                    {/* 3. El componente de paginación funciona exactamente igual, recibiendo las props del hook. */}
+                    {!isLoading && totalPages > 1 && (
+                        <div className="mt-6">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={handlePageChange}
+                            />
                         </div>
                     )}
                 </div>
@@ -91,10 +96,7 @@ const AuditLogPage = () => {
 
             {/* 6. Renderizar el modal si hay un log seleccionado */}
             {logSeleccionado && (
-                <ModalAuditDetails
-                    log={logSeleccionado}
-                    onClose={() => setLogSeleccionado(null)}
-                />
+                <ModalAuditDetails log={logSeleccionado} onClose={() => setLogSeleccionado(null)} />
             )}
         </AnimatedPage>
     );

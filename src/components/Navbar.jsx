@@ -141,7 +141,7 @@ const Navbar = () => {
                                 </Link>
                             )}
 
-                            {can('admin', 'gestionarUsuarios') && (
+                            {can('admin', 'ver') && (
                                 <Menu as="div" className="relative">
                                     <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/admin') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                                         <ShieldCheck size={16} />
@@ -153,6 +153,7 @@ const Navbar = () => {
                                             {/* --- INICIO DE LA MODIFICACIÓN --- */}
                                             {can('admin', 'gestionarUsuarios') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin" icon={<Users size={18} />} onClick={close}>Gestionar Usuarios</DropdownLink>)}</Menu.Item>}
                                             {can('admin', 'gestionarRoles') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin/roles" icon={<ShieldCheck size={18} />} onClick={close}>Gestionar Roles</DropdownLink>)}</Menu.Item>}
+                                            {can('admin', 'verAuditoria') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin/auditoria" icon={<History size={18} />} onClick={close}>Registro de Auditoría</DropdownLink>)}</Menu.Item>}
                                             {/* --- FIN DE LA MODIFICACIÓN --- */}
                                         </Menu.Items>
                                     </Transition>

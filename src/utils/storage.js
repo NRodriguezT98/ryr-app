@@ -180,9 +180,23 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
 export const updateVivienda = async (id, datosActualizados) => {
     const viviendaRef = doc(db, "viviendas", String(id));
     const viviendaSnap = await getDoc(viviendaRef);
-    if (!viviendaSnap.exists()) throw new Error("La vivienda no existe.");
+
+    if (!viviendaSnap.exists()) {
+        throw new Error("La vivienda no existe.");
+    }
 
     const viviendaOriginal = viviendaSnap.data();
+
+    let datosParaGuardar = { ...datosActualizados };
+
+    if (viviendaOriginal.clienteId) {
+        datosParaGuardar.valorBase = viviendaOriginal.valorBase;
+        datosParaGuardar.recargoEsquinera = viviendaOriginal.recargoEsquinera;
+        datosParaGuardar.valorTotal = viviendaOriginal.valorTotal;
+    }
+
+    await updateDoc(viviendaRef, datosParaGuardar);
+
     // --- INICIO DE LA MODIFICACIÓN (AUDITORÍA) ---
     // 1. Detectar cambios para la auditoría
     const cambios = [];
@@ -293,7 +307,12 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
     const clienteNombreCompleto = toTitleCase(`${clienteActualizado.datosCliente.nombres} ${clienteActualizado.datosCliente.apellidos}`);
     await createAuditLog(
         `Actualizó los datos del cliente ${clienteNombreCompleto} (C.C. ${clienteId})`,
-        { cambios }
+        {
+            action: 'UPDATE_CLIENT',
+            clienteId: clienteId,
+            clienteNombre: clienteNombreCompleto,
+            cambios: cambios
+        }
     );
 };
 
