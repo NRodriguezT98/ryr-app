@@ -4,7 +4,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 // --- INICIO DE LA CORRECCIÓN ---
 // La ruta ahora sube dos niveles (hasta 'src') y luego entra a 'pages/admin'
-import AuditLogDetails from '../../pages/admin/AuditLogDetails';
+import AuditLogDetails from './AuditLogDetails';
 // --- FIN DE LA CORRECCIÓN ---
 
 const ModalAuditDetails = ({ log, onClose }) => {
@@ -35,7 +35,7 @@ const ModalAuditDetails = ({ log, onClose }) => {
                     <hr className="dark:border-gray-600" />
                     <div>
                         <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">Cambios Específicos</p>
-                        <AuditLogDetails details={log.details} />
+                        <AuditLogDetails log={log} />
                     </div>
                 </div>
 

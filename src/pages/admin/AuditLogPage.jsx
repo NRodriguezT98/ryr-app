@@ -5,7 +5,7 @@ import { History, ArrowLeft, Loader2, Eye } from 'lucide-react'; // 2. Importar 
 import { useAuditLog } from '../../hooks/admin/useAuditLog';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import ModalAuditDetails from '../../components/admin/ModalAuditDetails'; // 3. Importar el nuevo Modal
+import ModalAuditDetails from './ModalAuditDetails'; // 3. Importar el nuevo Modal
 import Pagination from '../../components/Pagination';
 
 // El componente AuditLogRow ahora recibe un manejador para el botón

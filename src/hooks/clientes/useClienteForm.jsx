@@ -211,25 +211,19 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     fechaInicioProceso: getTodayString(),
                     fechaCreacion: clienteAEditar.fechaCreacion
                 };
-                await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId);
-                // --- INICIO DE LA MODIFICACIÓN (AUDITORÍA COMPLETA) ---
-                const clienteNombre = toTitleCase(`${clienteParaActualizar.datosCliente.nombres} ${clienteParaActualizar.datosCliente.apellidos}`);
                 const nuevaVivienda = viviendas.find(v => v.id === clienteParaActualizar.viviendaId);
-                const nombreNuevaVivienda = nuevaVivienda ? `Mz ${nuevaVivienda.manzana} - Casa ${nuevaVivienda.numeroCasa}` : 'ID no encontrado';
+                const nombreNuevaVivienda = nuevaVivienda ? `Mz ${nuevaVivienda.manzana} - Casa ${nuevaVivienda.numeroCasa}` : 'Vivienda no encontrada';
 
-                await createAuditLog(
-                    `Inició un nuevo proceso para el cliente ${clienteNombre}`,
-                    {
-                        action: 'RESTART_CLIENT_PROCESS',
-                        clienteId: clienteAEditar.id,
-                        clienteNombre: clienteNombre,
-                        nombreNuevaVivienda: nombreNuevaVivienda,
-                        snapshotCompleto: clienteParaActualizar
-                    }
-                );
-                // --- FIN AUDITORIA ---
+                await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId, {
+                    action: 'RESTART_CLIENT_PROCESS',
+                    snapshotCompleto: clienteParaActualizar, // Pasamos la "fotografía" completa
+                    nombreNuevaVivienda: nombreNuevaVivienda
+                });
+
                 toast.success("¡Cliente reactivado con un nuevo proceso!");
-                await createNotification('cliente', `El cliente ${toTitleCase(clienteAEditar.datosCliente.nombres)} fue reactivado.`, `/clientes/detalle/${clienteAEditar.id}`);
+                const clienteNombre = toTitleCase(`${clienteParaActualizar.datosCliente.nombres} ${clienteParaActualizar.datosCliente.apellidos}`);
+                await createNotification('cliente', `El cliente ${clienteNombre} fue reactivado.`, `/clientes/detalle/${clienteAEditar.id}`);
+
             } else if (isEditing) {
                 const clienteParaActualizar = {
                     datosCliente: formData.datosCliente,
@@ -238,7 +232,10 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     viviendaId: formData.viviendaSeleccionada?.id || null,
                     status: formData.status
                 };
-                await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId, cambios);
+                await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId, {
+                    action: 'UPDATE_CLIENT',
+                    cambios
+                });
                 toast.success("¡Cliente actualizado con éxito!");
                 createNotification('cliente', `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`, `/clientes/detalle/${clienteAEditar.id}`);
             } else {

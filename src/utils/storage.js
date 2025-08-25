@@ -177,6 +177,8 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
     await createNotification('abono', message, `/viviendas/detalle/${abonoData.viviendaId}`);
 };
 
+// src/utils/storage.js
+
 export const updateVivienda = async (id, datosActualizados) => {
     const viviendaRef = doc(db, "viviendas", String(id));
     const viviendaSnap = await getDoc(viviendaRef);
@@ -187,33 +189,18 @@ export const updateVivienda = async (id, datosActualizados) => {
 
     const viviendaOriginal = viviendaSnap.data();
 
-    let datosParaGuardar = { ...datosActualizados };
+    // --- INICIO DE LA REFRACTORIZACIÓN ---
+    // 1. Preparamos un único objeto 'datosFinales' con todas las transformaciones.
+    let datosFinales = { ...datosActualizados };
 
+    // Regla de negocio: Protección de campos financieros si ya tiene un cliente.
     if (viviendaOriginal.clienteId) {
-        datosParaGuardar.valorBase = viviendaOriginal.valorBase;
-        datosParaGuardar.recargoEsquinera = viviendaOriginal.recargoEsquinera;
-        datosParaGuardar.valorTotal = viviendaOriginal.valorTotal;
+        datosFinales.valorBase = viviendaOriginal.valorBase;
+        datosFinales.recargoEsquinera = viviendaOriginal.recargoEsquinera;
+        datosFinales.valorTotal = viviendaOriginal.valorTotal;
     }
 
-    await updateDoc(viviendaRef, datosParaGuardar);
-
-    // --- INICIO DE LA MODIFICACIÓN (AUDITORÍA) ---
-    // 1. Detectar cambios para la auditoría
-    const cambios = [];
-    const formatValue = (value) => value ?? 'No definido';
-
-    Object.keys(datosActualizados).forEach(key => {
-        if (viviendaOriginal[key] !== datosActualizados[key]) {
-            cambios.push({
-                campo: key,
-                anterior: formatValue(viviendaOriginal[key]),
-                actual: formatValue(datosActualizados[key])
-            });
-        }
-    });
-    // --- FIN DE LA MODIFICACIÓN ---
-
-    const datosFinales = { ...datosActualizados };
+    // Conversión de tipos y cálculos necesarios.
     if (datosFinales.areaLote !== undefined) {
         datosFinales.areaLote = parseFloat(String(datosFinales.areaLote).replace(',', '.')) || 0;
     }
@@ -226,10 +213,26 @@ export const updateVivienda = async (id, datosActualizados) => {
         datosFinales.valorFinal = nuevoValorTotal - nuevoDescuento;
         datosFinales.saldoPendiente = datosFinales.valorFinal - (viviendaOriginal.totalAbonado || 0);
     }
+
+    // 2. Detectamos los cambios comparando el estado original con el estado final.
+    const cambios = [];
+    const formatValue = (value) => value ?? 'No definido';
+
+    Object.keys(datosFinales).forEach(key => {
+        // Se compara el dato original con el dato final ya procesado
+        if (viviendaOriginal[key] !== datosFinales[key]) {
+            cambios.push({
+                campo: key,
+                anterior: formatValue(viviendaOriginal[key]),
+                actual: formatValue(datosFinales[key])
+            });
+        }
+    });
+
+    // 3. Realizamos UNA SOLA escritura en la base de datos con los datos finales.
     await updateDoc(viviendaRef, datosFinales);
 
-    // --- INICIO DE LA MODIFICACIÓN (AUDITORÍA) ---
-    // 2. Registrar el log si hubo cambios
+    // 4. Registramos la auditoría solo si hubo cambios.
     if (cambios.length > 0) {
         const nombreVivienda = `Mz ${viviendaOriginal.manzana} - Casa ${viviendaOriginal.numeroCasa}`;
         await createAuditLog(
@@ -242,6 +245,7 @@ export const updateVivienda = async (id, datosActualizados) => {
             }
         );
     }
+    // --- FIN DE LA REFRACTORIZACIÓN ---
 };
 
 export const deleteViviendaPermanently = async (viviendaId) => {
@@ -264,8 +268,10 @@ export const deleteViviendaPermanently = async (viviendaId) => {
     await batch.commit();
 };
 
-export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId, cambios = []) => {
+export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId, auditDetails = {}) => {
     const clienteRef = doc(db, "clientes", String(clienteId));
+
+    // 1. Lógica para sincronizar el proceso del cliente (sin cambios)
     const procesoSincronizado = { ...(clienteActualizado.proceso || {}) };
     PROCESO_CONFIG.forEach(pasoConfig => {
         const aplicaAhora = pasoConfig.aplicaA(clienteActualizado.financiero || {});
@@ -286,7 +292,10 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
             procesoSincronizado[pasoConfig.key].archivado = false;
         }
     });
+
     const datosFinales = { ...clienteActualizado, proceso: procesoSincronizado };
+
+    // 2. Lógica para actualizar las viviendas (sin cambios)
     const batch = writeBatch(db);
     batch.update(clienteRef, datosFinales);
     const nuevaViviendaId = datosFinales.viviendaId;
@@ -301,45 +310,102 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
     } else if (nuevaViviendaId) {
         batch.update(doc(db, "viviendas", String(nuevaViviendaId)), { clienteNombre: nombreCompleto });
     }
+
+    // 3. Se ejecuta la escritura en la base de datos
     await batch.commit();
 
-    // AUDITORÍA: Se registra la actualización del cliente
+    // --- INICIO DE LA LÓGICA DE AUDITORÍA CENTRALIZADA ---
+    // 4. Se decide qué tipo de registro de auditoría crear
+    const { action, cambios, snapshotCompleto, nombreNuevaVivienda } = auditDetails;
     const clienteNombreCompleto = toTitleCase(`${clienteActualizado.datosCliente.nombres} ${clienteActualizado.datosCliente.apellidos}`);
-    await createAuditLog(
-        `Actualizó los datos del cliente ${clienteNombreCompleto} (C.C. ${clienteId})`,
-        {
-            action: 'UPDATE_CLIENT',
-            clienteId: clienteId,
-            clienteNombre: clienteNombreCompleto,
-            cambios: cambios
-        }
-    );
+
+    if (action === 'RESTART_CLIENT_PROCESS') {
+        // Crea el log para "Iniciar Nuevo Proceso"
+        await createAuditLog(
+            `Inició un nuevo proceso para el cliente ${clienteNombreCompleto}`,
+            {
+                action: 'RESTART_CLIENT_PROCESS',
+                clienteId: clienteId,
+                clienteNombre: clienteNombreCompleto,
+                nombreNuevaVivienda: nombreNuevaVivienda || 'No especificado',
+                snapshotCompleto: snapshotCompleto // Usa el snapshot completo
+            }
+        );
+    } else {
+        // Crea el log estándar para "Actualizar Datos"
+        await createAuditLog(
+            `Actualizó los datos del cliente ${clienteNombreCompleto} (C.C. ${clienteId})`,
+            {
+                action: 'UPDATE_CLIENT',
+                clienteId: clienteId,
+                clienteNombre: clienteNombreCompleto,
+                cambios: cambios || [] // Usa los cambios o un array vacío para evitar errores
+            }
+        );
+    }
+    // --- FIN DE LA LÓGICA DE AUDITORÍA CENTRALIZADA ---
 };
 
 export const deleteCliente = async (clienteId) => {
     await deleteDoc(doc(db, "clientes", String(clienteId)));
 };
 
-export const inactivarCliente = async (clienteId) => {
+export const inactivarCliente = async (clienteId, clienteNombre) => {
     await updateDoc(doc(db, "clientes", String(clienteId)), {
         status: 'inactivo',
         fechaInactivacion: new Date().toISOString()
     });
+
+    await createAuditLog(
+        `Archivó al cliente ${toTitleCase(clienteNombre)} (C.C. ${clienteId})`,
+        {
+            action: 'ARCHIVE_CLIENT',
+            clienteId: clienteId,
+            clienteNombre: toTitleCase(clienteNombre)
+        }
+    );
 };
 
 export const restaurarCliente = async (clienteId) => {
+    // Obtenemos los datos del cliente ANTES de restaurarlo para la auditoría.
+    const clienteRef = doc(db, "clientes", String(clienteId));
+    const clienteSnap = await getDoc(clienteRef);
+    if (!clienteSnap.exists()) {
+        throw new Error("El cliente no existe.");
+    }
+    const clienteData = clienteSnap.data();
+    const nombreCompleto = `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`;
+
+
     await updateDoc(doc(db, "clientes", String(clienteId)), {
         status: 'renunciado'
     });
+
+    // Creamos el registro de auditoría
+    await createAuditLog(
+        `Restauró al cliente ${toTitleCase(nombreCompleto)} (C.C. ${clienteId})`,
+        {
+            action: 'RESTORE_CLIENT', // Nuevo tipo de acción
+            clienteId: clienteId,
+            clienteNombre: nombreCompleto,
+        }
+    );
+
 };
 
 export const deleteClientePermanently = async (clienteId) => {
+    // Obtenemos los datos del cliente ANTES de que sea eliminado.
+    const clienteRef = doc(db, "clientes", clienteId);
+    const clienteSnap = await getDoc(clienteRef);
+    const clienteData = clienteSnap.exists() ? clienteSnap.data() : null;
+    const clienteNombre = clienteData ? toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`) : `C.C. ${clienteId}`;
+
     const renunciasQuery = query(collection(db, "renuncias"), where("clienteId", "==", clienteId));
     const renunciasSnapshot = await getDocs(renunciasQuery);
     const renunciasCliente = renunciasSnapshot.docs.map(doc => doc.data());
     const batch = writeBatch(db);
 
-    // 1. Eliminar archivos de Storage
+    // Eliminar archivos de Storage
     for (const renuncia of renunciasCliente) {
         if (renuncia.documentosArchivados && renuncia.documentosArchivados.length > 0) {
             for (const docInfo of renuncia.documentosArchivados) {
@@ -363,8 +429,20 @@ export const deleteClientePermanently = async (clienteId) => {
     });
     batch.delete(doc(db, "clientes", clienteId));
 
-    // 3. Ejecutar el batch
+
     await batch.commit();
+
+    // Creamos el registro de auditoría después de confirmar la eliminación.
+    await createAuditLog(
+        `Eliminó permanentemente al cliente ${clienteNombre}`,
+        {
+            action: 'DELETE_CLIENT_PERMANENTLY',
+            clienteId: clienteId,
+            clienteNombre: clienteNombre,
+            // Guardamos una copia completa de los datos por si se necesita para una futura revisión.
+            clienteDataBackup: clienteData
+        }
+    );
 };
 
 export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fechaRenuncia, penalidadMonto = 0, penalidadMotivo = '') => {
@@ -454,6 +532,7 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
             action: 'CLIENT_RENOUNCE',
             clienteId: clienteId,
             clienteNombre: toTitleCase(clienteNombre),
+            viviendaInfo: viviendaInfoParaLog,
             motivoRenuncia: motivo,
             observaciones: observacion,
             penalidadAplicada: penalidadMonto > 0,

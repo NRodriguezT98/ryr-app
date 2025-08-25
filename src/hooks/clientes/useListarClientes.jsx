@@ -123,10 +123,18 @@ export const useListarClientes = () => {
     const confirmarArchivado = useCallback(async () => {
         if (!clienteAArchivar) return;
         try {
-            await inactivarCliente(clienteAArchivar.id);
+            // --- INICIO DE LA CORRECCIÓN ---
+            // 1. Construimos el nombre completo a partir del objeto del cliente.
+            const nombreCompleto = `${clienteAArchivar.datosCliente.nombres} ${clienteAArchivar.datosCliente.apellidos}`;
+
+            // 2. Pasamos el ID y el nombre completo a la función.
+            await inactivarCliente(clienteAArchivar.id, nombreCompleto);
+            // --- FIN DE LA CORRECCIÓN ---
+
             toast.success("Cliente archivado con éxito.");
             recargarDatos();
         } catch (error) {
+            console.error("Error al archivar cliente:", error); // Es bueno loguear el error real.
             toast.error("No se pudo archivar el cliente.");
         } finally {
             setClienteAArchivar(null);
