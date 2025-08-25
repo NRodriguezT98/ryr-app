@@ -2,10 +2,31 @@ import React from 'react';
 import AnimatedPage from '../../../components/AnimatedPage';
 import HelpTooltip from '../../../components/HelpTooltip';
 
-const Step1_Ubicacion = ({ formData, errors, handleInputChange }) => {
+const Step1_Ubicacion = ({ formData, errors, handleInputChange, proyectos }) => {
     return (
         <AnimatedPage>
             <div className="space-y-6">
+                <div className="col-span-1 md:col-span-2">
+                    <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="proyectoId">
+                        Proyecto <span className="text-red-600">*</span>
+                        <HelpTooltip id="proyecto" content="Seleccione el proyecto al que pertenece esta vivienda." />
+                    </label>
+                    <select
+                        id="proyectoId"
+                        name="proyectoId"
+                        value={formData.proyectoId}
+                        onChange={handleInputChange}
+                        className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.proyectoId ? "border-red-500" : "border-gray-300"}`}
+                    >
+                        <option value="">Selecciona un Proyecto</option>
+                        {proyectos.map((proyecto) => (
+                            <option key={proyecto.id} value={proyecto.id}>
+                                {proyecto.nombre}
+                            </option>
+                        ))}
+                    </select>
+                    {errors.proyectoId && <p className="text-red-600 text-sm mt-1">{errors.proyectoId}</p>}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="manzana">

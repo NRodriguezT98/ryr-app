@@ -4,8 +4,12 @@ import { formatCurrency, formatDisplayDate } from './textFormatters';
 // --- VALIDACIONES DE VIVIENDA ---
 export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = null) => {
     const errors = {};
-    const { manzana, numero, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente, areaLote, areaConstruida } = formData;
+    const { proyectoId, manzana, numero, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente, areaLote, areaConstruida } = formData;
     const linderoRegex = /^[a-zA-ZáéíóúÁÉÍÓÚ0-9\s.,\(\)-]*$/;
+
+    if (!proyectoId) {
+        errors.proyectoId = 'Seleccionar un proyecto es obligatorio.';
+    }
 
     if (!manzana) errors.manzana = "La manzana es obligatoria.";
     if (!numero) errors.numero = "El número de casa es obligatorio.";
@@ -22,7 +26,21 @@ export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = 
     if (!linderoOccidente?.trim()) errors.linderoOccidente = "El lindero Occidente es obligatorio.";
     else if (!linderoRegex.test(linderoOccidente)) errors.linderoOccidente = "Contiene caracteres no permitidos.";
 
-    if (!matricula?.trim()) errors.matricula = "La matrícula es obligatoria.";
+    if (!matricula?.trim()) {
+        errors.matricula = "La matrícula es obligatoria.";
+    } else if (todasLasViviendas && matricula) {
+        const isMatriculaDuplicate = todasLasViviendas.some(vivienda => {
+            // Ignoramos la vivienda que estamos editando
+            if (viviendaAEditar?.id && vivienda.id === viviendaAEditar.id) return false;
+            // Verificamos si la matrícula ya existe
+            return vivienda.matricula?.trim().toLowerCase() === matricula.trim().toLowerCase();
+        });
+
+        if (isMatriculaDuplicate) {
+            errors.matricula = "Esta matrícula ya está registrada en otra vivienda.";
+        }
+    }
+
     if (!nomenclatura?.trim()) errors.nomenclatura = "La nomenclatura es obligatoria.";
     if (!valorBase) errors.valorBase = "El valor base de la casa es obligatorio.";
 
@@ -39,12 +57,20 @@ export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = 
         errors.areaConstruida = "No puede ser mayor al área del lote.";
     }
 
-    if (todasLasViviendas && manzana && numero) {
-        const isDuplicate = todasLasViviendas.some(vivienda => {
+    if (todasLasViviendas && proyectoId && manzana && numero) {
+        // Filtramos las viviendas que pertenecen al proyecto seleccionado
+        const viviendasDelProyecto = todasLasViviendas.filter(v => v.proyectoId === proyectoId);
+
+        const isDuplicate = viviendasDelProyecto.some(vivienda => {
+            // Si estamos editando, excluimos la misma vivienda de la comprobación
             if (viviendaAEditar?.id && vivienda.id === viviendaAEditar.id) return false;
+            // Comparamos manzana y número de casa
             return vivienda.manzana === manzana && vivienda.numeroCasa?.toString() === numero.trim();
         });
-        if (isDuplicate) errors.numero = "Ya existe una vivienda con esta manzana y número.";
+
+        if (isDuplicate) {
+            errors.numero = "Ya existe una vivienda con esta manzana y número en este proyecto.";
+        }
     }
 
     return errors;
@@ -221,6 +247,26 @@ export const validateAbono = (formData, resumenPago, fechaIngresoCliente, proces
 
     if (!formData.metodoPago || formData.metodoPago.trim() === "") {
         errors.metodoPago = "Debes seleccionar un método de pago.";
+    }
+
+    return errors;
+};
+
+export const validateProyecto = (formData, todosLosProyectos, proyectoIdAEditar = null) => {
+    const errors = {};
+
+    if (!formData.nombre || formData.nombre.trim() === '') {
+        errors.nombre = 'El nombre del proyecto es obligatorio.';
+    } else {
+        // Validar que el nombre del proyecto sea único (insensible a mayúsculas/minúsculas)
+        const nombreNormalizado = formData.nombre.trim().toLowerCase();
+        const proyectoDuplicado = todosLosProyectos.find(p =>
+            p.nombre.toLowerCase() === nombreNormalizado && p.id !== proyectoIdAEditar
+        );
+
+        if (proyectoDuplicado) {
+            errors.nombre = 'Ya existe un proyecto con este nombre.';
+        }
     }
 
     return errors;

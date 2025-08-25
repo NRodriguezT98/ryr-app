@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useForm } from "../useForm.jsx";
 import { validateVivienda } from "../../utils/validation.js"; // <-- RUTA ACTUALIZADA
 import { updateVivienda } from "../../utils/storage";
+import { useData } from "../../context/DataContext.jsx";
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 
@@ -24,7 +25,9 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
     const [cambios, setCambios] = useState([]);
     const [camposFinancierosBloqueados, setCamposFinancierosBloqueados] = useState(false);
 
+    const { proyectos } = useData();
     const initialState = useMemo(() => ({
+        proyectoId: vivienda?.proyectoId || "",
         manzana: vivienda?.manzana || "",
         numero: vivienda?.numeroCasa?.toString() || "",
         matricula: vivienda?.matricula || "",
@@ -101,16 +104,31 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
             manzana: 'Manzana', numero: 'Número de Casa', matricula: 'Matrícula', nomenclatura: 'Nomenclatura',
             areaLote: 'Área del Lote (m²)', areaConstruida: 'Área Construida (m²)', linderoNorte: 'Lindero Norte',
             linderoSur: 'Lindero Sur', linderoOriente: 'Lindero Oriente', linderoOccidente: 'Lindero Occidente',
-            valorBase: 'Valor Base', esEsquinera: 'Esquinera', recargoEsquinera: 'Recargo Esquinera'
+            valorBase: 'Valor Base', esEsquinera: 'Esquinera', recargoEsquinera: 'Recargo Esquinera',
+            proyectoId: 'Proyecto',
         };
 
+        const oldProyecto = proyectos.find(p => p.id === initialState.proyectoId);
+        const newProyecto = proyectos.find(p => p.id === formData.proyectoId);
+
+        // Si hay un cambio en el proyecto, lo agregamos primero al array
+        if (initialState.proyectoId !== formData.proyectoId) {
+            cambiosDetectados.push({
+                campo: fieldLabels.proyectoId,
+                anterior: oldProyecto?.nombre || 'Ninguno',
+                actual: newProyecto?.nombre || 'Ninguno',
+            });
+        }
+
+        // Recorremos los demás campos para encontrar diferencias
         for (const key in formData) {
-            if (key === 'urlCertificadoTradicion' || key === 'errors') continue;
+            if (key === 'urlCertificadoTradicion' || key === 'errors' || key === 'proyectoId') continue; // <-- Ignoramos el campo 'proyectoId' aquí
+
             if (String(initialState[key]) !== String(formData[key])) {
                 cambiosDetectados.push({
                     campo: fieldLabels[key] || key,
                     anterior: String(initialState[key]),
-                    actual: String(formData[key])
+                    actual: String(formData[key]),
                 });
             }
         }
@@ -157,7 +175,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
 
     return {
         step, formData, errors, isSubmitting, valorTotalCalculado, gastosNotarialesFijos: GASTOS_NOTARIALES_FIJOS,
-        isConfirming, setIsConfirming, cambios, hayCambios, camposFinancierosBloqueados,
+        isConfirming, setIsConfirming, cambios, hayCambios, camposFinancierosBloqueados, proyectos,
         handlers: {
             handleNextStep, handlePrevStep, handleCheckboxChange, handlePreSave, handleSubmit,
             handleInputChange, handleValueChange

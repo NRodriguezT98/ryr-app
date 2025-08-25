@@ -10,7 +10,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
 
     const {
         step, formData, errors, isSubmitting, valorTotalCalculado, gastosNotarialesFijos,
-        isConfirming, setIsConfirming, cambios, hayCambios, camposFinancierosBloqueados,
+        isConfirming, setIsConfirming, cambios, hayCambios, camposFinancierosBloqueados, proyectos,
         handlers
     } = useEditarVivienda(vivienda, todasLasViviendas, isOpen, onSave, onClose);
 
@@ -69,6 +69,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                         valorTotalCalculado={valorTotalCalculado}
                         gastosNotarialesFijos={gastosNotarialesFijos}
                         isFinancialLocked={camposFinancierosBloqueados}
+                        proyectos={proyectos}
                     />
                 )}
 

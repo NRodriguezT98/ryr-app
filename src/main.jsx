@@ -31,6 +31,8 @@ import ReportesPage from './pages/reportes/ReportesPage';
 import AdminPage from './pages/admin/AdminPage';
 import CrearUsuarioPage from './pages/admin/CrearUsuarioPage';
 import GestionRolesPage from './pages/admin/GestionRolesPage';
+import CrearProyecto from './pages/admin/CrearProyecto'
+import ListarProyectos from './pages/admin/ListarProyectos';
 import AuditLogPage from './pages/admin/AuditLogPage';
 
 // Definimos las rutas como un array de objetos
@@ -79,6 +81,8 @@ const router = createBrowserRouter([
       { path: "/admin/crear-usuario", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><CrearUsuarioPage /></PermissionProtectedRoute> },
       { path: "/admin/roles", element: <PermissionProtectedRoute module="admin" action="gestionarRoles"><GestionRolesPage /></PermissionProtectedRoute> },
       { path: "/admin/auditoria", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AuditLogPage /></PermissionProtectedRoute> },
+      { path: "/admin/proyectos", element: <PermissionProtectedRoute module="admin" action="listarProyectos"><ListarProyectos /></PermissionProtectedRoute> },
+      { path: "/admin/proyectos/crear", element: <PermissionProtectedRoute module="admin" action="crearProyectos"><CrearProyecto /></PermissionProtectedRoute> },
     ],
   },
 ]);

@@ -19,6 +19,7 @@ export const DataProvider = ({ children }) => {
     const [clientes, setClientes] = useState([]);
     const [abonos, setAbonos] = useState([]);
     const [renuncias, setRenuncias] = useState([]);
+    const [proyectos, setProyectos] = useState([]);
 
     const recargarDatos = useCallback(() => {
         // Esta función podría forzar una recarga si fuera necesario,
@@ -27,7 +28,7 @@ export const DataProvider = ({ children }) => {
 
     useEffect(() => {
         setIsLoading(true);
-        const dataLoaded = { viviendas: false, clientes: false, abonos: false, renuncias: false };
+        const dataLoaded = { viviendas: false, clientes: false, abonos: false, renuncias: false, proyectos: false };
 
         const checkLoadingComplete = () => {
             if (Object.values(dataLoaded).every(Boolean)) {
@@ -39,7 +40,8 @@ export const DataProvider = ({ children }) => {
             viviendas: setViviendas,
             clientes: setClientes,
             abonos: setAbonos,
-            renuncias: setRenuncias
+            renuncias: setRenuncias,
+            proyectos: setProyectos
         };
 
         const subscriptions = Object.entries(collectionsToListen).map(([name, setter]) => {
@@ -76,9 +78,10 @@ export const DataProvider = ({ children }) => {
             clientes: clientesEnriquecidos, // Usamos el valor ya procesado.
             abonos,
             renuncias,
+            proyectos,
             recargarDatos
         };
-    }, [isLoading, viviendas, clientesEnriquecidos, abonos, renuncias, recargarDatos]);
+    }, [isLoading, viviendas, clientesEnriquecidos, abonos, renuncias, proyectos, recargarDatos]);
 
     return (
         <DataContext.Provider value={value}>

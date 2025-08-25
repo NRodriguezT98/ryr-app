@@ -1,4 +1,6 @@
-import { useReducer, useCallback, useState, useEffect } from 'react';
+// src/hooks/useForm.jsx
+
+import { useReducer, useCallback, useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 
 function formReducer(state, action) {
@@ -26,10 +28,6 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
     const setFormData = useCallback((newData) => {
         dispatch({ type: 'INITIALIZE_FORM', payload: newData });
     }, []);
-
-    useEffect(() => {
-        setFormData(initialState);
-    }, [initialState, setFormData]);
 
     const setErrors = useCallback((errors) => {
         dispatch({ type: 'SET_ERRORS', payload: errors });
@@ -75,9 +73,9 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         } finally {
             setIsSubmitting(false);
         }
-    }, [onSubmit, formData, validate, resetForm]);
+    }, [onSubmit, formData, validate, resetForm, dispatch]); // Añadimos dispatch aquí para la llamada de setErrors
 
-    return {
+    return useMemo(() => ({
         formData,
         errors: formData.errors || {},
         isSubmitting,
@@ -87,6 +85,6 @@ export const useForm = ({ initialState, validate = () => ({}), onSubmit, options
         setFormData,
         setErrors,
         resetForm,
-        dispatch // <-- Exportamos dispatch para que otros hooks lo usen
-    };
+        dispatch
+    }), [formData, isSubmitting, handleSubmit, handleInputChange, handleValueChange, setFormData, setErrors, resetForm, dispatch]); // <-- CORRECCIÓN AQUÍ: 'errors' fue eliminado del array
 };

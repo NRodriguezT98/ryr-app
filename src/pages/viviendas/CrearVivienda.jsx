@@ -7,7 +7,7 @@ import FormularioVivienda from "./FormularioVivienda";
 const CrearVivienda = () => {
     const {
         step, isLoading, formData, errors, isSubmitting,
-        valorTotalCalculado, gastosNotarialesFijos, handlers
+        valorTotalCalculado, gastosNotarialesFijos, proyectos, handlers
     } = useCrearVivienda();
 
     const STEPS_CONFIG = [
@@ -49,6 +49,7 @@ const CrearVivienda = () => {
                         handleCheckboxChange={handlers.handleCheckboxChange}
                         valorTotalCalculado={valorTotalCalculado}
                         gastosNotarialesFijos={gastosNotarialesFijos}
+                        proyectos={proyectos}
                     />
                     <div className="mt-10 flex justify-between">
                         {step > 1 ? (

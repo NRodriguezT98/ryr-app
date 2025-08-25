@@ -4,11 +4,12 @@ import toast from 'react-hot-toast';
 import { useForm } from "../useForm.jsx";
 import { validateVivienda } from "../../utils/validation.js"; // <-- RUTA ACTUALIZADA
 import { addVivienda, getViviendas } from "../../utils/storage";
+import { useData } from '../../context/DataContext.jsx'
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 
 const initialState = {
-    manzana: "", numero: "", matricula: "", nomenclatura: "",
+    proyectoId: "", manzana: "", numero: "", matricula: "", nomenclatura: "",
     areaLote: "", areaConstruida: "", linderoNorte: "", linderoSur: "",
     linderoOriente: "", linderoOccidente: "", urlCertificadoTradicion: null,
     valorBase: "", esEsquinera: false, recargoEsquinera: "0"
@@ -33,6 +34,8 @@ export const useCrearVivienda = () => {
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const { proyectos } = useData();
+
     const {
         formData, errors, setErrors, handleInputChange,
         handleValueChange, dispatch, handleSubmit
@@ -54,6 +57,7 @@ export const useCrearVivienda = () => {
                 urlCertificadoTradicion: formData.urlCertificadoTradicion,
                 valorBase: valorBaseNum, recargoEsquinera: recargoEsquineraNum,
                 gastosNotariales: GASTOS_NOTARIALES_FIJOS, valorTotal: valorTotalVivienda,
+                proyectoId: formData.proyectoId,
             };
             try {
                 await addVivienda(nuevaVivienda);
@@ -69,7 +73,9 @@ export const useCrearVivienda = () => {
     });
 
     useEffect(() => {
-        getViviendas().then(setTodasLasViviendas).finally(() => setIsLoading(false));
+        Promise.all([getViviendas()]).then(([viviendasData]) => {
+            setTodasLasViviendas(viviendasData);
+        }).finally(() => setIsLoading(false));
     }, []);
 
     const valorTotalCalculado = useMemo(() => {
@@ -81,7 +87,7 @@ export const useCrearVivienda = () => {
     const handleNextStep = () => {
         const allErrors = validateVivienda(formData, todasLasViviendas);
         const fieldsToValidate = step === 1
-            ? ['manzana', 'numero', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente']
+            ? ['proyectoId', 'manzana', 'numero', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente']
             : ['matricula', 'nomenclatura', 'areaLote', 'areaConstruida'];
 
         const stepErrors = {};
@@ -107,7 +113,7 @@ export const useCrearVivienda = () => {
 
     return {
         step, isLoading, formData, errors, isSubmitting, valorTotalCalculado,
-        gastosNotarialesFijos: GASTOS_NOTARIALES_FIJOS,
+        gastosNotarialesFijos: GASTOS_NOTARIALES_FIJOS, proyectos,
         handlers: {
             handleNextStep, handlePrevStep, handleSubmit,
             handleInputChange, handleValueChange, handleCheckboxChange

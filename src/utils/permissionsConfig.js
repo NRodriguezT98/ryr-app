@@ -66,6 +66,8 @@ export const PERMISSIONS_CONFIG = [
             { key: 'verAuditoria', displayName: 'Ver Auditoria' },
             { key: 'gestionarUsuarios', displayName: 'Gestionar Usuarios' },
             { key: 'gestionarRoles', displayName: 'Gestionar Roles' },
+            { key: 'crearProyectos', displayName: 'Crear Proyectos' },
+            { key: 'listarProyectos', displayName: 'Listar Proyectos' },
         ]
     }
 ];

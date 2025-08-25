@@ -4,7 +4,7 @@ import Step2_InfoLegal from './wizard/Step2_InfoLegal.jsx';
 import Step3_Valor from './wizard/Step3_Valor.jsx';
 
 // Este componente ahora es un presentador "tonto" que muestra el paso correcto.
-const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleValueChange, handleCheckboxChange, valorTotalCalculado, gastosNotarialesFijos, isFinancialLocked }) => {
+const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleValueChange, handleCheckboxChange, valorTotalCalculado, gastosNotarialesFijos, isFinancialLocked, proyectos }) => {
 
     // Un array que contiene los componentes de cada paso para renderizar dinámicamente.
     const stepsComponents = [
@@ -13,6 +13,7 @@ const FormularioVivienda = ({ step, formData, errors, handleInputChange, handleV
             formData={formData}
             errors={errors}
             handleInputChange={handleInputChange}
+            proyectos={proyectos}
         />,
         <Step2_InfoLegal
             key="step2"
