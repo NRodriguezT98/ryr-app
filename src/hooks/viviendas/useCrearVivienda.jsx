@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useForm } from "../useForm.jsx";
 import { validateVivienda } from "../../utils/validation.js"; // <-- RUTA ACTUALIZADA
-import { addVivienda, getViviendas } from "../../utils/storage";
+import { addVivienda, getViviendas, createAuditLog } from "../../utils/storage";
 import { useData } from '../../context/DataContext.jsx'
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;
@@ -62,8 +62,43 @@ export const useCrearVivienda = () => {
             try {
                 await addVivienda(nuevaVivienda);
                 toast.success("¡Vivienda registrada con éxito!");
+
+                // Aquí empieza la Auditoria.
+                const proyectoAsignado = proyectos.find(p => p.id === formData.proyectoId);
+                const nombreProyecto = proyectoAsignado ? proyectoAsignado.nombre : 'Proyecto no encontrado';
+
+                const auditDetails = {
+                    type: "Creación de Vivienda",
+                    details: `Creó la vivienda Mz ${formData.manzana} - Casa ${formData.numero} para el proyecto '${nombreProyecto}'.`,
+                    action: 'CREATE_VIVIENDA',
+                    // Ahora guardamos un snapshot completo de los datos de creación
+                    viviendaInfo: {
+                        proyectoNombre: nombreProyecto,
+                        manzana: formData.manzana,
+                        numeroCasa: formData.numero,
+                        linderoNorte: formData.linderoNorte,
+                        linderoSur: formData.linderoSur,
+                        linderoOriente: formData.linderoOriente,
+                        linderoOccidente: formData.linderoOccidente,
+                        matricula: formData.matricula,
+                        nomenclatura: formData.nomenclatura,
+                        areaLote: formData.areaLote,
+                        areaConstruida: formData.areaConstruida,
+                        certificadoTradicionAnexado: formData.urlCertificadoTradicion ? 'Sí' : 'No',
+                        valorBase: valorBaseNum,
+                        esEsquinera: formData.esEsquinera ? 'Sí' : 'No',
+                        recargoEsquinera: recargoEsquineraNum,
+                        valorTotal: valorTotalVivienda,
+                    }
+                };
+                await createAuditLog(
+                    auditDetails.details,
+                    auditDetails
+                );
+
                 navigate("/viviendas/listar");
             } catch (error) {
+                console.error("Error al crear vivienda:", error);
                 toast.error("No se pudo registrar la vivienda.");
             } finally {
                 setIsSubmitting(false);

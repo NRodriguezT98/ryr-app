@@ -50,20 +50,34 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
     } = useForm({
         initialState,
         validate: (data) => validateVivienda(data, todasLasViviendas, vivienda),
-        onSubmit: async (data) => {
-            const valorBaseNum = parseInt(String(data.valorBase).replace(/\D/g, ''), 10) || 0;
-            const recargoEsquineraNum = data.esEsquinera ? parseInt(data.recargoEsquinera, 10) || 0 : 0;
+        onSubmit: async (formData) => { // formData aquí ya contiene los datos del formulario
+            // 👇 INICIO DE LA CORRECCIÓN 👇
+            // 1. Sacamos 'errors' para no guardarlo en la BD
+            const { errors, ...datosParaGuardar } = formData;
+
+            // 2. Preparamos el contexto para la auditoría
+            const oldProyecto = proyectos.find(p => p.id === initialState.proyectoId);
+            const newProyecto = proyectos.find(p => p.id === datosParaGuardar.proyectoId);
+            const auditContext = {
+                proyectoAnteriorNombre: oldProyecto?.nombre || 'Ninguno',
+                proyectoActualNombre: newProyecto?.nombre || 'Ninguno'
+            };
+
+            const valorBaseNum = parseInt(String(datosParaGuardar.valorBase).replace(/\D/g, ''), 10) || 0;
+            const recargoEsquineraNum = datosParaGuardar.esEsquinera ? parseInt(datosParaGuardar.recargoEsquinera, 10) || 0 : 0;
             const datosActualizados = {
-                ...formData,
-                numeroCasa: parseInt(data.numero, 10),
-                areaLote: parseFloat(String(data.areaLote).replace(',', '.')) || 0,
-                areaConstruida: parseFloat(String(data.areaConstruida).replace(',', '.')) || 0,
+                ...datosParaGuardar, // Usamos los datos limpios
+                numeroCasa: parseInt(datosParaGuardar.numero, 10),
+                areaLote: parseFloat(String(datosParaGuardar.areaLote).replace(',', '.')) || 0,
+                areaConstruida: parseFloat(String(datosParaGuardar.areaConstruida).replace(',', '.')) || 0,
                 valorBase: valorBaseNum,
                 recargoEsquinera: recargoEsquineraNum,
                 valorTotal: valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS,
             };
+
             try {
-                await updateVivienda(vivienda.id, datosActualizados);
+                // 3. Pasamos tanto los datos como el contexto a la función de storage
+                await updateVivienda(vivienda.id, datosActualizados, auditContext);
                 toast.success("¡Vivienda actualizada con éxito!");
                 onSave();
                 onClose();
@@ -87,9 +101,16 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
 
     const hayCambios = useMemo(() => {
         if (!formData) return false;
-        const currentData = { ...formData };
-        delete currentData.errors;
-        return JSON.stringify(currentData) !== JSON.stringify(initialState);
+
+        // Comparamos el certificado por separado, ya que es el caso especial.
+        if (formData.urlCertificadoTradicion !== initialState.urlCertificadoTradicion) {
+            return true;
+        }
+
+        // Para los demás campos, comparamos sus valores como strings.
+        const otherKeys = Object.keys(initialState).filter(key => key !== 'urlCertificadoTradicion');
+        return otherKeys.some(key => String(initialState[key]) !== String(formData[key]));
+
     }, [formData, initialState]);
 
     const handlePreSave = useCallback(() => {
@@ -101,18 +122,17 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
 
         const cambiosDetectados = [];
         const fieldLabels = {
-            manzana: 'Manzana', numero: 'Número de Casa', matricula: 'Matrícula', nomenclatura: 'Nomenclatura',
+            proyectoId: 'Proyecto', manzana: 'Manzana', numero: 'Número de Casa', matricula: 'Matrícula', nomenclatura: 'Nomenclatura',
             areaLote: 'Área del Lote (m²)', areaConstruida: 'Área Construida (m²)', linderoNorte: 'Lindero Norte',
             linderoSur: 'Lindero Sur', linderoOriente: 'Lindero Oriente', linderoOccidente: 'Lindero Occidente',
             valorBase: 'Valor Base', esEsquinera: 'Esquinera', recargoEsquinera: 'Recargo Esquinera',
-            proyectoId: 'Proyecto',
+            urlCertificadoTradicion: 'Certificado de Tradición',
         };
 
-        const oldProyecto = proyectos.find(p => p.id === initialState.proyectoId);
-        const newProyecto = proyectos.find(p => p.id === formData.proyectoId);
-
-        // Si hay un cambio en el proyecto, lo agregamos primero al array
+        // --- Manejo especial para el Proyecto ---
         if (initialState.proyectoId !== formData.proyectoId) {
+            const oldProyecto = proyectos.find(p => p.id === initialState.proyectoId);
+            const newProyecto = proyectos.find(p => p.id === formData.proyectoId);
             cambiosDetectados.push({
                 campo: fieldLabels.proyectoId,
                 anterior: oldProyecto?.nombre || 'Ninguno',
@@ -120,9 +140,19 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
             });
         }
 
-        // Recorremos los demás campos para encontrar diferencias
+        // --- Manejo especial para el Certificado de Tradición ---
+        if (initialState.urlCertificadoTradicion !== formData.urlCertificadoTradicion) {
+            cambiosDetectados.push({
+                campo: fieldLabels.urlCertificadoTradicion,
+                anterior: initialState.urlCertificadoTradicion ? 'Documento Anexado' : 'No había documento',
+                actual: formData.urlCertificadoTradicion ? 'Documento Anexado' : 'Documento Eliminado',
+            });
+        }
+
+        // --- Recorremos los demás campos para encontrar diferencias ---
         for (const key in formData) {
-            if (key === 'urlCertificadoTradicion' || key === 'errors' || key === 'proyectoId') continue; // <-- Ignoramos el campo 'proyectoId' aquí
+            // Ignoramos los campos ya manejados y los que no son de datos
+            if (['urlCertificadoTradicion', 'proyectoId', 'errors'].includes(key)) continue;
 
             if (String(initialState[key]) !== String(formData[key])) {
                 cambiosDetectados.push({
@@ -139,7 +169,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
 
         setCambios(cambiosDetectados);
         setIsConfirming(true);
-    }, [formData, todasLasViviendas, vivienda, initialState, setErrors]);
+    }, [formData, todasLasViviendas, vivienda, initialState, setErrors, proyectos]);
 
     const valorTotalCalculado = useMemo(() => {
         if (!formData) return 0;

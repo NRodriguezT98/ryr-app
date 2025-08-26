@@ -89,10 +89,11 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                             data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}
                         >
                             <button
+                                id="guardar-cambios-btn" // 1. Agregamos un ID único al botón
                                 type="button"
                                 onClick={handlers.handlePreSave}
                                 disabled={!hayCambios || isSubmitting}
-                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full flex items-center justify-center gap-2"
+                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-40 flex items-center justify-center gap-2 ml-auto"
                             >
                                 {isSubmitting ? <Loader size={20} className="animate-spin" /> : null}
                                 {isSubmitting ? "Guardando..." : "Guardar Cambios"}
@@ -112,7 +113,11 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                     isSubmitting={isSubmitting}
                 />
             )}
-            <Tooltip id="app-tooltip" />
+            <Tooltip
+                id="app-tooltip"
+                anchorSelect="#guardar-cambios-btn"
+                content={!hayCambios ? "No hay cambios para guardar" : ''}
+            />
         </>
     );
 };

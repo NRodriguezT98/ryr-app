@@ -8,16 +8,19 @@ import ArchiveDetails from './audit-details/ArchiveDetails';
 import RestoreDetails from './audit-details/RestoreDetails';
 import DeleteDetails from './audit-details/DeleteDetails';
 import DefaultDetails from './audit-details/DefaultDetails';
+import CreateViviendaDetails from './audit-details/CreateViviendaDetails';
+import UpdateViviendaDetails from './audit-details/UpdateViviendaDetails';
 
 // 2. Crea un mapa para asociar cada tipo de acción con su componente de vista
 const ACTION_COMPONENTS = {
     'UPDATE_CLIENT': UpdateDetails,
-    'UPDATE_VIVIENDA': UpdateDetails,
+    'UPDATE_VIVIENDA': UpdateViviendaDetails,
     'CLIENT_RENOUNCE': RenounceDetails,
     'RESTART_CLIENT_PROCESS': RestartProcessDetails,
     'ARCHIVE_CLIENT': ArchiveDetails,
     'RESTORE_CLIENT': RestoreDetails,
     'DELETE_CLIENT_PERMANENTLY': DeleteDetails,
+    'CREATE_VIVIENDA': CreateViviendaDetails,
 };
 
 const AuditLogDetails = ({ log }) => {

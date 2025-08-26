@@ -79,19 +79,6 @@ export const addVivienda = async (viviendaData) => {
         valorFinal: valorTotalFinal,
     };
     await addDoc(collection(db, "viviendas"), nuevaVivienda);
-
-    // --- INICIO DE LA MODIFICACIÓN (AUDITORÍA) ---
-    await createAuditLog(
-        `Creó la vivienda Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`,
-        {
-            action: 'CREATE_VIVIENDA',
-            viviendaInfo: {
-                manzana: viviendaData.manzana,
-                numeroCasa: viviendaData.numeroCasa,
-                valorTotal: viviendaData.valorTotal
-            }
-        }
-    );
 };
 
 export const addClienteAndAssignVivienda = async (clienteData) => {
@@ -251,7 +238,7 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
 
 // src/utils/storage.js
 
-export const updateVivienda = async (id, datosActualizados) => {
+export const updateVivienda = async (id, datosActualizados, auditContext) => {
     const viviendaRef = doc(db, "viviendas", String(id));
     const viviendaSnap = await getDoc(viviendaRef);
 
@@ -286,25 +273,38 @@ export const updateVivienda = async (id, datosActualizados) => {
         datosFinales.saldoPendiente = datosFinales.valorFinal - (viviendaOriginal.totalAbonado || 0);
     }
 
-    // 2. Detectamos los cambios comparando el estado original con el estado final.
     const cambios = [];
-    const formatValue = (value) => value ?? 'No definido';
+
+    const formatAuditValue = (key, value) => {
+        if (value === null || typeof value === 'undefined') return 'No definido';
+        if (key === 'esEsquinera') return value ? 'Sí' : 'No';
+        if (key === 'urlCertificadoTradicion') return value ? 'Documento Anexado' : 'Sin Documento';
+        if (typeof value === 'object') return JSON.stringify(value);
+        return String(value);
+    };
 
     Object.keys(datosFinales).forEach(key => {
-        // Se compara el dato original con el dato final ya procesado
         if (viviendaOriginal[key] !== datosFinales[key]) {
-            cambios.push({
-                campo: key,
-                anterior: formatValue(viviendaOriginal[key]),
-                actual: formatValue(datosFinales[key])
-            });
+            // 👇 3. Lógica especial para el proyecto usando el contexto
+            if (key === 'proyectoId') {
+                cambios.push({
+                    campo: 'Proyecto', // Usamos un nombre legible directamente
+                    anterior: auditContext.proyectoAnteriorNombre,
+                    actual: auditContext.proyectoActualNombre
+                });
+            } else {
+                cambios.push({
+                    campo: key,
+                    anterior: formatAuditValue(key, viviendaOriginal[key]),
+                    actual: formatAuditValue(key, datosFinales[key])
+                });
+            }
         }
     });
 
-    // 3. Realizamos UNA SOLA escritura en la base de datos con los datos finales.
     await updateDoc(viviendaRef, datosFinales);
 
-    // 4. Registramos la auditoría solo si hubo cambios.
+
     if (cambios.length > 0) {
         const nombreVivienda = `Mz ${viviendaOriginal.manzana} - Casa ${viviendaOriginal.numeroCasa}`;
         await createAuditLog(
@@ -317,7 +317,6 @@ export const updateVivienda = async (id, datosActualizados) => {
             }
         );
     }
-    // --- FIN DE LA REFRACTORIZACIÓN ---
 };
 
 export const deleteViviendaPermanently = async (viviendaId) => {
