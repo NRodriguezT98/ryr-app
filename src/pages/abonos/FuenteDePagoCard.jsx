@@ -131,23 +131,29 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                 ) : !mostrandoFormulario && !isViviendaPagada && fuente !== 'condonacion' ? (
                     <div className="flex justify-center items-center gap-4">
                         {isCredito ? (
-                            <button onClick={onRegistrarDesembolso} disabled={creditoYaDesembolsado} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline disabled:text-gray-400 disabled:no-underline flex items-center gap-2">
-                                <Banknote size={16} />
-                                {creditoYaDesembolsado ? 'Desembolso Registrado' : 'Registrar Desembolso de Crédito'}
-                            </button>
+                            onRegistrarDesembolso && (
+                                <button onClick={onRegistrarDesembolso} disabled={creditoYaDesembolsado} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline disabled:text-gray-400 disabled:no-underline flex items-center gap-2">
+                                    <Banknote size={16} />
+                                    {creditoYaDesembolsado ? 'Desembolso Registrado' : 'Registrar Desembolso de Crédito'}
+                                </button>
+                            )
                         ) : (
-                            <button onClick={() => setMostrandoFormulario(true)} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline flex items-center gap-2">
-                                <PlusCircle size={16} />
-                                Registrar Abono
-                            </button>
+                            onAbonoRegistrado && (
+                                <button onClick={() => setMostrandoFormulario(true)} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline flex items-center gap-2">
+                                    <PlusCircle size={16} />
+                                    Registrar Abono
+                                </button>
+                            )
                         )}
                         {fuente === 'cuotaInicial' && !isCredito && (
-                            <>
-                                <span className="text-gray-300 dark:text-gray-600">|</span>
-                                <button onClick={onCondonarSaldo} className="text-green-600 dark:text-green-400 font-semibold text-sm hover:underline">
-                                    Condonar Saldo
-                                </button>
-                            </>
+                            onCondonarSaldo && (
+                                <>
+                                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                                    <button onClick={onCondonarSaldo} className="text-green-600 dark:text-green-400 font-semibold text-sm hover:underline">
+                                        Condonar Saldo
+                                    </button>
+                                </>
+                            )
                         )}
                     </div>
                 ) : null}

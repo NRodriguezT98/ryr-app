@@ -7,6 +7,7 @@ import { formatCurrency, formatID, toTitleCase } from '../../utils/textFormatter
 import TabInformacion from './components/TabInformacion';
 import TabFinanciero from './components/TabFinanciero';
 import CondonarSaldoModal from './CondonarSaldoModal';
+import RegistrarDesembolsoModal from '../abonos/components/ModalRegistrarDesembolso.jsx';
 
 const DetalleVivienda = () => {
     const {
@@ -18,7 +19,10 @@ const DetalleVivienda = () => {
         navigate,
         fuenteACondonar,
         setFuenteACondonar,
-        handleGuardado
+        handleGuardado,
+        desembolsoACrear,
+        setDesembolsoACrear,
+        handleRegistrarDesembolso
     } = useDetalleVivienda();
 
     if (isLoading) {
@@ -62,15 +66,17 @@ const DetalleVivienda = () => {
                         <button onClick={() => setActiveTab('info')} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'info' ? 'bg-red-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
                             <Info size={16} /> Información General
                         </button>
-                        <button onClick={() => setActiveTab('financiero')} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'financiero' ? 'bg-red-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`} disabled={!cliente}>
-                            <Wallet size={16} /> Resumen Financiero
-                        </button>
+                        {cliente && (
+                            <button onClick={() => setActiveTab('financiero')} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-md transition-colors ${activeTab === 'financiero' ? 'bg-red-500 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`} disabled={!cliente}>
+                                <Wallet size={16} /> Resumen Financiero
+                            </button>
+                        )}
                     </nav>
                 </div>
 
                 <div>
                     {activeTab === 'info' && <TabInformacion vivienda={vivienda} desglose={desgloseValorVivienda} />}
-                    {activeTab === 'financiero' && (
+                    {activeTab === 'financiero' && cliente && (
                         <TabFinanciero
                             vivienda={vivienda}
                             cliente={cliente}
@@ -78,6 +84,7 @@ const DetalleVivienda = () => {
                             historialAbonos={historialAbonos}
                             onAbonoRegistrado={recargarDatos}
                             onCondonarSaldo={setFuenteACondonar}
+                            onRegistrarDesembolso={handleRegistrarDesembolso}
                         />
                     )}
                 </div>
@@ -91,6 +98,16 @@ const DetalleVivienda = () => {
                     fuenteData={fuenteACondonar}
                 />
             )}
+
+            {desembolsoACrear && (
+                <RegistrarDesembolsoModal
+                    isOpen={!!desembolsoACrear}
+                    onClose={() => setDesembolsoACrear(null)}
+                    onSave={handleGuardado}
+                    datos={desembolsoACrear}
+                />
+            )}
+
         </AnimatedPage>
     );
 };

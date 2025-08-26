@@ -10,6 +10,7 @@ import { Home, PlusCircle, Search } from 'lucide-react';
 import Select from 'react-select';
 import Pagination from '../../components/Pagination.jsx';
 import { usePermissions } from '../../hooks/auth/usePermissions';
+import { useData } from '../../context/DataContext.jsx';
 
 const sortOptions = [
     { value: 'ubicacion', label: 'Ubicación (Mz/Casa)' },
@@ -44,6 +45,7 @@ const getSelectStyles = (isDarkMode) => ({
 
 const ListarViviendas = () => {
     const { can } = usePermissions();
+    const { proyectos } = useData();
     const {
         isLoading,
         viviendasVisibles,
@@ -102,14 +104,19 @@ const ListarViviendas = () => {
             ) : viviendasVisibles.length > 0 ? (
                 <>
                     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {viviendasVisibles.map(vivienda => (
-                            <ViviendaCard
-                                key={vivienda.id}
-                                vivienda={vivienda}
-                                onEdit={modals.setViviendaAEditar}
-                                onDelete={handlers.handleIniciarEliminacion}
-                            />
-                        ))}
+                        {viviendasVisibles.map(vivienda => {
+                            const proyectoDeVivienda = proyectos.find(p => p.id === vivienda.proyectoId);
+                            const nombreProyecto = proyectoDeVivienda ? proyectoDeVivienda.nombre : 'Sin Proyecto Asignado';
+                            return (
+                                <ViviendaCard
+                                    key={vivienda.id}
+                                    vivienda={vivienda}
+                                    nombreProyecto={nombreProyecto}
+                                    onEdit={modals.setViviendaAEditar}
+                                    onDelete={handlers.handleIniciarEliminacion}
+                                />
+                            );
+                        })}
                     </div>
                     <Pagination
                         currentPage={pagination.currentPage}

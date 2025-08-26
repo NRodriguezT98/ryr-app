@@ -9,6 +9,7 @@ export const useDetalleVivienda = () => {
     const [activeTab, setActiveTab] = useState('info');
     const [datosDetalle, setDatosDetalle] = useState(null);
     const [fuenteACondonar, setFuenteACondonar] = useState(null);
+    const [desembolsoACrear, setDesembolsoACrear] = useState(null);
 
     useEffect(() => {
         if (!isLoading) {
@@ -72,6 +73,15 @@ export const useDetalleVivienda = () => {
         setFuenteACondonar(null);
     }, [recargarDatos]);
 
+    const handleRegistrarDesembolso = useCallback(() => {
+        if (datosDetalle) {
+            setDesembolsoACrear({
+                cliente: datosDetalle.cliente,
+                vivienda: datosDetalle.vivienda
+            });
+        }
+    }, [datosDetalle]);
+
     return {
         isLoading: isLoading || !datosDetalle,
         datosDetalle,
@@ -81,6 +91,9 @@ export const useDetalleVivienda = () => {
         navigate,
         fuenteACondonar,
         setFuenteACondonar,
-        handleGuardado
+        handleGuardado,
+        desembolsoACrear,
+        setDesembolsoACrear,
+        handleRegistrarDesembolso
     };
 };

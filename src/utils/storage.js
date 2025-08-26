@@ -65,6 +65,7 @@ export const addVivienda = async (viviendaData) => {
     const valorTotalFinal = viviendaData.valorTotal;
     const nuevaVivienda = {
         ...viviendaData,
+        status: 'disponible',
         nomenclatura: toSentenceCase(viviendaData.nomenclatura),
         linderoNorte: toSentenceCase(viviendaData.linderoNorte),
         linderoSur: toSentenceCase(viviendaData.linderoSur),
@@ -257,6 +258,11 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
         datosFinales.valorBase = viviendaOriginal.valorBase;
         datosFinales.recargoEsquinera = viviendaOriginal.recargoEsquinera;
         datosFinales.valorTotal = viviendaOriginal.valorTotal;
+
+        if (datosFinales.proyectoId !== viviendaOriginal.proyectoId) {
+            console.warn("Intento de cambio de proyecto bloqueado para vivienda asignada.");
+            datosFinales.proyectoId = viviendaOriginal.proyectoId;
+        }
     }
 
     // Conversión de tipos y cálculos necesarios.

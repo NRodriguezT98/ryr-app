@@ -1,11 +1,11 @@
 import React, { Fragment, memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign } from 'lucide-react';
+import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign, MapPin } from 'lucide-react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 
-const ViviendaCard = ({ vivienda, onEdit, onDelete }) => {
+const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto }) => {
     const { can } = usePermissions();
     const {
         manzana, numeroCasa, matricula, nomenclatura, valorFinal, totalAbonado,
@@ -23,7 +23,7 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete }) => {
     // --- INICIO DE LA MODIFICACIÓN ---
     // Se determina si el usuario tiene permiso para alguna de las acciones del menú.
     const tieneAccionesDisponibles = useMemo(() => {
-        return can('viviendas', 'editar') || can('viviendas', 'eliminar');
+        return can('viviendas', 'editar') || can('viviendas', 'eliminar') || can('viviendas', 'verDetalle');
     }, [can]);
     // --- FIN DE LA MODIFICACIÓN ---
 
@@ -40,11 +40,11 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete }) => {
                 <div className='flex items-center gap-2 flex-shrink-0'>
                     {tieneValorEscrituraDiferente && (
                         <div
-                            className="bg-purple-100 dark:bg-purple-900/50 p-1.5 rounded-full"
+                            className="bg-purple-100 dark:bg-green-900/50 p-1.5 rounded-full"
                             data-tooltip-id="app-tooltip"
                             data-tooltip-content="Esta vivienda tiene un valor en escritura diferente al comercial."
                         >
-                            <DollarSign className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                            <DollarSign className="w-4 h-4 text-purple-600 dark:text-green-400" />
                         </div>
                     )}
                     {isPagada ? (
@@ -61,6 +61,13 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete }) => {
             </div>
 
             <div className="p-5 space-y-4 flex-grow">
+                {/* 👇 3. Agregamos la nueva etiqueta del proyecto aquí */}
+                {nombreProyecto && (
+                    <div className="flex items-center gap-2 pb-3 border-b dark:border-gray-700">
+                        <MapPin size={16} className="text-gray-400" />
+                        <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">{nombreProyecto}</span>
+                    </div>
+                )}
                 <div className='space-y-3'>
                     <div className="flex items-center gap-2 flex-wrap">
                         {esEsquinera && (<span className="flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full"><Star size={14} />Esquinera</span>)}

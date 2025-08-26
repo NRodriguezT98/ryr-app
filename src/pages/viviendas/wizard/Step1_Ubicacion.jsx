@@ -2,11 +2,16 @@ import React from 'react';
 import AnimatedPage from '../../../components/AnimatedPage';
 import HelpTooltip from '../../../components/HelpTooltip';
 
-const Step1_Ubicacion = ({ formData, errors, handleInputChange, proyectos }) => {
+const Step1_Ubicacion = ({ formData, errors, handleInputChange, proyectos, isProyectoLocked }) => {
     return (
         <AnimatedPage>
             <div className="space-y-6">
-                <div className="col-span-1 md:col-span-2">
+                {/* 👇 2. Envolvemos el select en un div para el tooltip */}
+                <div
+                    className="col-span-1 md:col-span-2"
+                    data-tooltip-id="app-tooltip"
+                    data-tooltip-content={isProyectoLocked ? "No se puede cambiar el proyecto de una vivienda ya asignada." : ''}
+                >
                     <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="proyectoId">
                         Proyecto <span className="text-red-600">*</span>
                         <HelpTooltip id="proyecto" content="Seleccione el proyecto al que pertenece esta vivienda." />
@@ -16,7 +21,9 @@ const Step1_Ubicacion = ({ formData, errors, handleInputChange, proyectos }) => 
                         name="proyectoId"
                         value={formData.proyectoId}
                         onChange={handleInputChange}
-                        className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.proyectoId ? "border-red-500" : "border-gray-300"}`}
+                        // 👇 3. Aplicamos el estado 'disabled' y clases visuales
+                        disabled={isProyectoLocked}
+                        className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.proyectoId ? "border-red-500" : "border-gray-300"} disabled:bg-gray-200 dark:disabled:bg-gray-700/50 disabled:cursor-not-allowed`}
                     >
                         <option value="">Selecciona un Proyecto</option>
                         {proyectos.map((proyecto) => (

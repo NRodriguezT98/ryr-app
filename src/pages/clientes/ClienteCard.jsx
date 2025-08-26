@@ -1,13 +1,13 @@
 import React, { Fragment, memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, User, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign } from 'lucide-react';
+import { MoreVertical, User, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign, MapPin } from 'lucide-react';
 import { getInitials, formatID, formatCurrency } from '../../utils/textFormatters';
 import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic';
 import { Tooltip } from 'react-tooltip';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 
-const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar }) => {
+const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, nombreProyecto }) => {
     const { can } = usePermissions();
 
     const {
@@ -83,6 +83,16 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                             <span className="text-gray-500 dark:text-gray-400">Sin vivienda asignada</span>
                         )}
                     </p>
+                    {/* Nueva sección para el proyecto, solo se muestra si existe */}
+                    {nombreProyecto && (
+                        <p className="flex items-center gap-3">
+                            <MapPin size={16} className="text-gray-500 dark:text-gray-400" />
+                            <span className="text-gray-600 dark:text-gray-300 font-semibold">
+                                Proyecto:
+                                <span className="font-bold ml-1">{nombreProyecto}</span>
+                            </span>
+                        </p>
+                    )}
                 </div>
 
                 {enRenunciaPendiente ? (

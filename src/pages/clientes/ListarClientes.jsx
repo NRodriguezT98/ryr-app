@@ -40,7 +40,7 @@ const getSelectStyles = (isDarkMode) => ({
     input: (base) => ({ ...base, color: isDarkMode ? '#d1d5db' : '#111827' }),
 });
 
-const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar }) => {
+const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, nombreProyecto }) => {
     const cardData = useClienteCardLogic(cliente);
     return <ClienteCard
         cardData={cardData}
@@ -50,11 +50,14 @@ const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar,
         onRenunciar={onRenunciar}
         onReactivar={onReactivar}
         onRestaurar={onRestaurar}
+        nombreProyecto={nombreProyecto}
     />;
 };
 
 const ListarClientes = () => {
     const { can } = usePermissions();
+    // Obtenemos toda la data que necesitamos para hacer los cruces
+    const { viviendas, proyectos } = useData();
     const {
         isLoading,
         clientesVisibles,
@@ -116,18 +119,26 @@ const ListarClientes = () => {
             ) : clientesVisibles.length > 0 ? (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {clientesVisibles.map(cliente => (
-                            <ClienteCardWrapper
-                                key={cliente.id}
-                                cliente={cliente}
-                                onEdit={handlers.iniciarEdicion}
-                                onArchive={handlers.iniciarArchivado}
-                                onDelete={handlers.iniciarEliminacionPermanente}
-                                onRenunciar={handlers.iniciarRenuncia}
-                                onReactivar={handlers.iniciarReactivacion}
-                                onRestaurar={handlers.iniciarRestauracion}
-                            />
-                        ))}
+                        {clientesVisibles.map(cliente => {
+                            // Hacemos el "doble salto" para encontrar el nombre del proyecto
+                            const viviendaAsignada = viviendas.find(v => v.id === cliente.viviendaId);
+                            const proyectoAsignado = viviendaAsignada ? proyectos.find(p => p.id === viviendaAsignada.proyectoId) : null;
+                            const nombreProyecto = proyectoAsignado ? proyectoAsignado.nombre : null;
+
+                            return (
+                                <ClienteCardWrapper
+                                    key={cliente.id}
+                                    cliente={cliente}
+                                    nombreProyecto={nombreProyecto}
+                                    onEdit={handlers.iniciarEdicion}
+                                    onArchive={handlers.iniciarArchivado}
+                                    onDelete={handlers.iniciarEliminacionPermanente}
+                                    onRenunciar={handlers.iniciarRenuncia}
+                                    onReactivar={handlers.iniciarReactivacion}
+                                    onRestaurar={handlers.iniciarRestauracion}
+                                />
+                            );
+                        })}
                     </div>
                     <Pagination
                         currentPage={pagination.currentPage}

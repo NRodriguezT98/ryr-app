@@ -24,6 +24,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
     const [isConfirming, setIsConfirming] = useState(false);
     const [cambios, setCambios] = useState([]);
     const [camposFinancierosBloqueados, setCamposFinancierosBloqueados] = useState(false);
+    const isProyectoLocked = !!vivienda?.clienteId;
 
     const { proyectos } = useData();
     const initialState = useMemo(() => ({
@@ -205,7 +206,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
 
     return {
         step, formData, errors, isSubmitting, valorTotalCalculado, gastosNotarialesFijos: GASTOS_NOTARIALES_FIJOS,
-        isConfirming, setIsConfirming, cambios, hayCambios, camposFinancierosBloqueados, proyectos,
+        isConfirming, setIsConfirming, cambios, hayCambios, camposFinancierosBloqueados, proyectos, isProyectoLocked,
         handlers: {
             handleNextStep, handlePrevStep, handleCheckboxChange, handlePreSave, handleSubmit,
             handleInputChange, handleValueChange
