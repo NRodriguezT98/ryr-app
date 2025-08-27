@@ -10,6 +10,9 @@ import DeleteDetails from './audit-details/DeleteDetails';
 import DefaultDetails from './audit-details/DefaultDetails';
 import CreateViviendaDetails from './audit-details/CreateViviendaDetails';
 import UpdateViviendaDetails from './audit-details/UpdateViviendaDetails';
+import ArchiveViviendaDetails from './audit-details/ArchiveViviendaDetails';
+import RestoreViviendaDetails from './audit-details/RestoreViviendaDetails';
+import DeleteViviendaDetails from './audit-details/DeleteViviendaDetails';
 
 // 2. Crea un mapa para asociar cada tipo de acción con su componente de vista
 const ACTION_COMPONENTS = {
@@ -21,6 +24,10 @@ const ACTION_COMPONENTS = {
     'RESTORE_CLIENT': RestoreDetails,
     'DELETE_CLIENT_PERMANENTLY': DeleteDetails,
     'CREATE_VIVIENDA': CreateViviendaDetails,
+    'ARCHIVE_VIVIENDA': ArchiveViviendaDetails,
+    'RESTORE_VIVIENDA': RestoreViviendaDetails,
+    'DELETE_VIVIENDA': DeleteViviendaDetails,
+
 };
 
 const AuditLogDetails = ({ log }) => {

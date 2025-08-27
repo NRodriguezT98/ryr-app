@@ -82,6 +82,59 @@ export const addVivienda = async (viviendaData) => {
     await addDoc(collection(db, "viviendas"), nuevaVivienda);
 };
 
+export const archiveVivienda = async (vivienda, nombreProyecto) => {
+    if (vivienda.clienteId) {
+        throw new Error("No se puede archivar una vivienda que está asignada a un cliente.");
+    }
+
+    const viviendaRef = doc(db, "viviendas", vivienda.id);
+
+    await updateDoc(viviendaRef, {
+        status: 'archivada',
+        fechaArchivado: new Date().toISOString()
+    });
+
+    const nombreVivienda = `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`;
+    await createAuditLog(
+        `Archivó la vivienda ${nombreVivienda} del proyecto ${nombreProyecto}`,
+        {
+            action: 'ARCHIVE_VIVIENDA',
+            viviendaId: vivienda.id,
+            viviendaNombre: nombreVivienda,
+            proyectoNombre: nombreProyecto, // <-- Agregamos el nombre del proyecto
+            details: 'La vivienda fue marcada como archivada y no será visible en la lista principal.'
+        }
+    );
+};
+
+export const restoreVivienda = async (vivienda, nombreProyecto) => {
+    // Regla de negocio: solo se pueden restaurar viviendas archivadas.
+    if (vivienda.status !== 'archivada') {
+        throw new Error("Esta vivienda no está archivada y no puede ser restaurada.");
+    }
+
+    const viviendaRef = doc(db, "viviendas", vivienda.id);
+
+    // Actualizamos el estado de la vivienda a 'disponible'
+    await updateDoc(viviendaRef, {
+        status: 'disponible',
+        fechaRestaurado: new Date().toISOString()
+    });
+
+    // Creamos el registro de auditoría
+    const nombreVivienda = `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`;
+    await createAuditLog(
+        `Restauró la vivienda ${nombreVivienda} del proyecto ${nombreProyecto} `,
+        {
+            action: 'RESTORE_VIVIENDA',
+            viviendaId: vivienda.id,
+            viviendaNombre: nombreVivienda,
+            proyectoNombre: nombreProyecto,
+            details: 'La vivienda fue restaurada y ahora está disponible en la lista principal.'
+        }
+    );
+};
+
 export const addClienteAndAssignVivienda = async (clienteData) => {
     const newClienteRef = doc(db, "clientes", clienteData.datosCliente.cedula);
     const clienteParaGuardar = {
@@ -314,7 +367,7 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
     if (cambios.length > 0) {
         const nombreVivienda = `Mz ${viviendaOriginal.manzana} - Casa ${viviendaOriginal.numeroCasa}`;
         await createAuditLog(
-            `Actualizó la vivienda ${nombreVivienda}`,
+            `Actualizó la vivienda ${nombreVivienda} del proyecto "${auditContext.proyectoActualNombre}"`,
             {
                 action: 'UPDATE_VIVIENDA',
                 viviendaId: id,
@@ -325,15 +378,16 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
     }
 };
 
-export const deleteViviendaPermanently = async (viviendaId) => {
+export const deleteViviendaPermanently = async (vivienda, nombreProyecto) => {
+    // 1. Recibimos el objeto 'vivienda' completo y el 'nombreProyecto'.
+    const viviendaRef = doc(db, "viviendas", vivienda.id);
+    const nombreVivienda = `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`;
+
     const batch = writeBatch(db);
-    const viviendaRef = doc(db, "viviendas", viviendaId);
 
-    // 1. Buscamos todas las renuncias asociadas a esta vivienda.
-    const renunciasQuery = query(collection(db, "renuncias"), where("viviendaId", "==", viviendaId));
+    // 2. Buscamos y añadimos al batch la eliminación de renuncias asociadas.
+    const renunciasQuery = query(collection(db, "renuncias"), where("viviendaId", "==", vivienda.id));
     const renunciasSnapshot = await getDocs(renunciasQuery);
-
-    // 2. Añadimos la eliminación de cada renuncia encontrada al batch.
     renunciasSnapshot.forEach(doc => {
         batch.delete(doc.ref);
     });
@@ -343,6 +397,28 @@ export const deleteViviendaPermanently = async (viviendaId) => {
 
     // 4. Ejecutamos todas las eliminaciones en una sola operación atómica.
     await batch.commit();
+
+    // 5. Creamos el registro de auditoría con la "ficha técnica" completa.
+    await createAuditLog(
+        `Eliminó permanentemente la vivienda ${nombreVivienda} del proyecto "${nombreProyecto}"`,
+        {
+            action: 'DELETE_VIVIENDA',
+            viviendaId: vivienda.id,
+            viviendaNombre: nombreVivienda,
+            proyectoNombre: nombreProyecto,
+            // Snapshot de la ficha técnica al momento de la eliminación
+            snapshotVivienda: {
+                matricula: vivienda.matricula,
+                nomenclatura: vivienda.nomenclatura,
+                areaLote: `${vivienda.areaLote} m²`,
+                areaConstruida: `${vivienda.areaConstruida} m²`,
+                linderoNorte: vivienda.linderoNorte,
+                linderoSur: vivienda.linderoSur,
+                linderoOriente: vivienda.linderoOriente,
+                linderoOccidente: vivienda.linderoOccidente,
+            }
+        }
+    );
 };
 
 export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId, auditDetails = {}) => {

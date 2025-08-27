@@ -47,12 +47,12 @@ const Step1_Ubicacion = ({ formData, errors, handleInputChange, proyectos, isPro
                         {errors.manzana && <p className="text-red-600 text-sm mt-1">{errors.manzana}</p>}
                     </div>
                     <div>
-                        <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="numero">
+                        <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="numeroCasa">
                             Número de casa <span className="text-red-600">*</span>
                             <HelpTooltip id="numero" content="Indique aquí el número de la vivienda a registrar" />
                         </label>
-                        <input id="numero" name="numero" type="text" value={formData.numero} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.numero ? "border-red-500" : "border-gray-300"}`} maxLength={6} />
-                        {errors.numero && <p className="text-red-600 text-sm mt-1">{errors.numero}</p>}
+                        <input id="numeroCasa" name="numeroCasa" type="text" value={formData.numeroCasa} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.numero ? "border-red-500" : "border-gray-300"}`} maxLength={6} />
+                        {errors.numeroCasa && <p className="text-red-600 text-sm mt-1">{errors.numeroCasa}</p>}
                     </div>
                 </div>
                 <div className="mt-6 pt-6 border-t border-dashed dark:border-gray-600">

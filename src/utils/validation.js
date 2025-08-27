@@ -4,7 +4,7 @@ import { formatCurrency, formatDisplayDate } from './textFormatters';
 // --- VALIDACIONES DE VIVIENDA ---
 export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = null) => {
     const errors = {};
-    const { proyectoId, manzana, numero, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente, areaLote, areaConstruida } = formData;
+    const { proyectoId, manzana, numeroCasa, matricula, nomenclatura, valorBase, linderoNorte, linderoSur, linderoOriente, linderoOccidente, areaLote, areaConstruida } = formData;
     const linderoRegex = /^[a-zA-ZáéíóúÁÉÍÓÚ0-9\s.,\(\)-]*$/;
 
     if (!proyectoId) {
@@ -12,7 +12,7 @@ export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = 
     }
 
     if (!manzana) errors.manzana = "La manzana es obligatoria.";
-    if (!numero) errors.numero = "El número de casa es obligatorio.";
+    if (!numeroCasa) errors.numeroCasa = "El número de casa es obligatorio.";
 
     if (!linderoNorte?.trim()) errors.linderoNorte = "El lindero Norte es obligatorio.";
     else if (!linderoRegex.test(linderoNorte)) errors.linderoNorte = "Contiene caracteres no permitidos.";
@@ -57,7 +57,7 @@ export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = 
         errors.areaConstruida = "No puede ser mayor al área del lote.";
     }
 
-    if (todasLasViviendas && proyectoId && manzana && numero) {
+    if (todasLasViviendas && proyectoId && manzana && numeroCasa) {
         // Filtramos las viviendas que pertenecen al proyecto seleccionado
         const viviendasDelProyecto = todasLasViviendas.filter(v => v.proyectoId === proyectoId);
 
@@ -65,11 +65,11 @@ export const validateVivienda = (formData, todasLasViviendas, viviendaAEditar = 
             // Si estamos editando, excluimos la misma vivienda de la comprobación
             if (viviendaAEditar?.id && vivienda.id === viviendaAEditar.id) return false;
             // Comparamos manzana y número de casa
-            return vivienda.manzana === manzana && vivienda.numeroCasa?.toString() === numero.trim();
+            return vivienda.manzana === manzana && vivienda.numeroCasa?.toString() === numeroCasa.trim();
         });
 
         if (isDuplicate) {
-            errors.numero = "Ya existe una vivienda con esta manzana y número en este proyecto.";
+            errors.numeroCasa = "Ya existe una vivienda con esta manzana y número en este proyecto.";
         }
     }
 

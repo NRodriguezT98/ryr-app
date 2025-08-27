@@ -40,6 +40,7 @@ export const useUndoableDelete = (deleteFunction, onSuccessfulDelete, itemName =
                 onSuccessfulDelete();
             }
         } catch (error) {
+            console.error(`Error detallado al eliminar el ${itemName}:`, error);
             toast.error(`No se pudo eliminar el ${itemName.toLowerCase()}.`);
             // Si la eliminación en la base de datos falla, volvemos a mostrar el elemento en la UI.
             setHiddenItems(prev => prev.filter(id => id !== item.id));

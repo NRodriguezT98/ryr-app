@@ -5,7 +5,7 @@ import { useData } from '../../context/DataContext';
 export const useDetalleVivienda = () => {
     const { viviendaId } = useParams();
     const navigate = useNavigate();
-    const { viviendas, clientes, abonos, isLoading, recargarDatos } = useData();
+    const { viviendas, clientes, abonos, proyectos, isLoading, recargarDatos } = useData();
     const [activeTab, setActiveTab] = useState('info');
     const [datosDetalle, setDatosDetalle] = useState(null);
     const [fuenteACondonar, setFuenteACondonar] = useState(null);
@@ -19,6 +19,7 @@ export const useDetalleVivienda = () => {
                 return;
             }
 
+            const proyecto = proyectos.find(p => p.id === vivienda.proyectoId);
             let cliente = null;
             let historialAbonos = [];
             let fuentes = [];
@@ -64,9 +65,9 @@ export const useDetalleVivienda = () => {
             ];
             // --- FIN DE LA CORRECCIÓN ---
 
-            setDatosDetalle({ vivienda, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado });
+            setDatosDetalle({ vivienda, proyecto, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado });
         }
-    }, [viviendaId, viviendas, clientes, abonos, isLoading, navigate]);
+    }, [viviendaId, viviendas, clientes, abonos, proyectos, isLoading, navigate]);
 
     const handleGuardado = useCallback(() => {
         recargarDatos();

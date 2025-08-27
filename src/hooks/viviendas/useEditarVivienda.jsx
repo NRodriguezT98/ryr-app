@@ -30,7 +30,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
     const initialState = useMemo(() => ({
         proyectoId: vivienda?.proyectoId || "",
         manzana: vivienda?.manzana || "",
-        numero: vivienda?.numeroCasa?.toString() || "",
+        numeroCasa: vivienda?.numeroCasa?.toString() || "",
         matricula: vivienda?.matricula || "",
         nomenclatura: vivienda?.nomenclatura || "",
         areaLote: vivienda?.areaLote?.toString() || "",
@@ -68,7 +68,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
             const recargoEsquineraNum = datosParaGuardar.esEsquinera ? parseInt(datosParaGuardar.recargoEsquinera, 10) || 0 : 0;
             const datosActualizados = {
                 ...datosParaGuardar, // Usamos los datos limpios
-                numeroCasa: parseInt(datosParaGuardar.numero, 10),
+                numeroCasa: parseInt(datosParaGuardar.numeroCasa, 10),
                 areaLote: parseFloat(String(datosParaGuardar.areaLote).replace(',', '.')) || 0,
                 areaConstruida: parseFloat(String(datosParaGuardar.areaConstruida).replace(',', '.')) || 0,
                 valorBase: valorBaseNum,
@@ -123,7 +123,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
 
         const cambiosDetectados = [];
         const fieldLabels = {
-            proyectoId: 'Proyecto', manzana: 'Manzana', numero: 'Número de Casa', matricula: 'Matrícula', nomenclatura: 'Nomenclatura',
+            proyectoId: 'Proyecto', manzana: 'Manzana', numeroCasa: 'Número de Casa', matricula: 'Matrícula', nomenclatura: 'Nomenclatura',
             areaLote: 'Área del Lote (m²)', areaConstruida: 'Área Construida (m²)', linderoNorte: 'Lindero Norte',
             linderoSur: 'Lindero Sur', linderoOriente: 'Lindero Oriente', linderoOccidente: 'Lindero Occidente',
             valorBase: 'Valor Base', esEsquinera: 'Esquinera', recargoEsquinera: 'Recargo Esquinera',

@@ -70,6 +70,7 @@ const ListarViviendas = () => {
                             <button onClick={() => filters.setStatusFilter('disponibles')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'disponibles' ? 'bg-white dark:bg-gray-900 shadow text-yellow-600' : 'text-gray-600 dark:text-gray-300'}`}>Disponibles</button>
                             <button onClick={() => filters.setStatusFilter('asignadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'asignadas' ? 'bg-white dark:bg-gray-900 shadow text-blue-600' : 'text-gray-600 dark:text-gray-300'}`}>Asignadas</button>
                             <button onClick={() => filters.setStatusFilter('pagadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'pagadas' ? 'bg-white dark:bg-gray-900 shadow text-green-600' : 'text-gray-600 dark:text-gray-300'}`}>Pagadas</button>
+                            <button onClick={() => filters.setStatusFilter('archivadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'archivadas' ? 'bg-white dark:bg-gray-900 shadow text-gray-500' : 'text-gray-600 dark:text-gray-300'}`}>Archivadas</button>
                         </div>
                     </div>
                     <div className="flex flex-col md:flex-row items-center gap-4">
@@ -94,57 +95,80 @@ const ListarViviendas = () => {
                             />
                         </div>
                     </div>
-                </div>
+                </div >
             }
         >
-            {isLoading ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {[...Array(9)].map((_, i) => <ViviendaCardSkeleton key={i} />)}
-                </div>
-            ) : viviendasVisibles.length > 0 ? (
-                <>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {viviendasVisibles.map(vivienda => {
-                            const proyectoDeVivienda = proyectos.find(p => p.id === vivienda.proyectoId);
-                            const nombreProyecto = proyectoDeVivienda ? proyectoDeVivienda.nombre : 'Sin Proyecto Asignado';
-                            return (
-                                <ViviendaCard
-                                    key={vivienda.id}
-                                    vivienda={vivienda}
-                                    nombreProyecto={nombreProyecto}
-                                    onEdit={modals.setViviendaAEditar}
-                                    onDelete={handlers.handleIniciarEliminacion}
-                                />
-                            );
-                        })}
+            {
+                isLoading ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6" >
+                        {[...Array(9)].map((_, i) => <ViviendaCardSkeleton key={i} />)
+                        }
+                    </div >
+                ) : viviendasVisibles.length > 0 ? (
+                    <>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {viviendasVisibles.map(vivienda => {
+                                const proyectoDeVivienda = proyectos.find(p => p.id === vivienda.proyectoId);
+                                const nombreProyecto = proyectoDeVivienda ? proyectoDeVivienda.nombre : 'Sin Proyecto Asignado';
+                                return (
+                                    <ViviendaCard
+                                        key={vivienda.id}
+                                        vivienda={vivienda}
+                                        nombreProyecto={nombreProyecto}
+                                        onEdit={modals.setViviendaAEditar}
+                                        onDelete={() => handlers.handleIniciarEliminacion(vivienda, nombreProyecto)}
+                                        onArchive={() => handlers.handleIniciarArchivado(vivienda, nombreProyecto)}
+                                        onRestore={() => handlers.handleIniciarRestauracion(vivienda, nombreProyecto)}
+                                    />
+                                );
+                            })}
+                        </div>
+                        <Pagination
+                            currentPage={pagination.currentPage}
+                            totalPages={pagination.totalPages}
+                            onPageChange={pagination.onPageChange}
+                        />
+                    </>
+                ) : todasLasViviendasFiltradas.length === 0 && filters.searchTerm === '' ? (
+                    <div className="text-center py-16 border-2 border-dashed rounded-xl dark:border-gray-700">
+                        <Home size={48} className="mx-auto text-gray-300 dark:text-gray-600" />
+                        <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">No hay viviendas registradas</h3>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Parece que aún no has añadido ninguna vivienda al sistema.</p>
+                        {can('viviendas', 'crear') && (
+                            <Link to="/viviendas/crear" className="mt-6 inline-flex items-center gap-2 bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-red-700 transition-colors">
+                                <PlusCircle size={18} />
+                                Crear la primera vivienda
+                            </Link>
+                        )}
                     </div>
-                    <Pagination
-                        currentPage={pagination.currentPage}
-                        totalPages={pagination.totalPages}
-                        onPageChange={pagination.onPageChange}
-                    />
-                </>
-            ) : todasLasViviendasFiltradas.length === 0 && filters.searchTerm === '' ? (
-                <div className="text-center py-16 border-2 border-dashed rounded-xl dark:border-gray-700">
-                    <Home size={48} className="mx-auto text-gray-300 dark:text-gray-600" />
-                    <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">No hay viviendas registradas</h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Parece que aún no has añadido ninguna vivienda al sistema.</p>
-                    {can('viviendas', 'crear') && (
-                        <Link to="/viviendas/crear" className="mt-6 inline-flex items-center gap-2 bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-red-700 transition-colors">
-                            <PlusCircle size={18} />
-                            Crear la primera vivienda
-                        </Link>
-                    )}
-                </div>
-            ) : (
-                <div className="text-center py-16">
-                    <p className="text-gray-500 dark:text-gray-400">No se encontraron viviendas con los filtros actuales.</p>
-                </div>
-            )}
+                ) : (
+                    <div className="text-center py-16">
+                        <p className="text-gray-500 dark:text-gray-400">No se encontraron viviendas con los filtros actuales.</p>
+                    </div>
+                )}
 
             {modals.viviendaAEliminar && (<ModalConfirmacion isOpen={!!modals.viviendaAEliminar} onClose={() => modals.setViviendaAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Vivienda?" mensaje="¿Estás seguro? Tendrás 5 segundos para deshacer la acción." />)}
             {modals.viviendaAEditar && (<EditarVivienda isOpen={!!modals.viviendaAEditar} onClose={() => modals.setViviendaAEditar(null)} onSave={handlers.handleGuardado} vivienda={modals.viviendaAEditar} todasLasViviendas={todasLasViviendasFiltradas} />)}
-        </ResourcePageLayout>
+            {modals.viviendaAArchivar && (
+                <ModalConfirmacion
+                    isOpen={!!modals.viviendaAArchivar}
+                    onClose={() => modals.setViviendaAArchivar(null)}
+                    onConfirm={handlers.confirmarArchivado}
+                    titulo="¿Archivar Vivienda?"
+                    mensaje="Esta vivienda se ocultará de la vista principal. Podrás verla usando el filtro 'Archivadas'. ¿Estás seguro?"
+                />
+            )}
+
+            {modals.viviendaARestaurar && (
+                <ModalConfirmacion
+                    isOpen={!!modals.viviendaARestaurar}
+                    onClose={() => modals.setViviendaARestaurar(null)}
+                    onConfirm={handlers.confirmarRestauracion}
+                    titulo="¿Restaurar Vivienda?"
+                    mensaje="Esta vivienda volverá a estar disponible en la lista principal. ¿Estás seguro?"
+                />
+            )}
+        </ResourcePageLayout >
     );
 };
 

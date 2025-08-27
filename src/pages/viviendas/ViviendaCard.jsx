@@ -1,16 +1,16 @@
 import React, { Fragment, memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign, MapPin } from 'lucide-react';
+import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign, MapPin, Archive, ArchiveRestore } from 'lucide-react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 
-const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto }) => {
+const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto, onArchive, onRestore }) => {
     const { can } = usePermissions();
     const {
         manzana, numeroCasa, matricula, nomenclatura, valorFinal, totalAbonado,
         saldoPendiente, clienteNombre, clienteId, descuentoMonto, recargoEsquinera, areaConstruida,
-        puedeEditar, puedeEliminar, tieneValorEscrituraDiferente
+        puedeEditar, puedeEliminar, tieneValorEscrituraDiferente, puedeArchivar, puedeRestaurar
     } = vivienda;
 
     const porcentajePagado = valorFinal > 0 ? (totalAbonado / valorFinal) * 100 : 0;
@@ -136,11 +136,35 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto }) => {
                                         </Menu.Item>
                                     </div>
                                 )}
+                                {can('viviendas', 'archivar') && puedeArchivar && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button onClick={() => onArchive(vivienda)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
+                                                    <Archive className="w-5 h-5 mr-2" /> Archivar
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
+                                )}
+
+                                {can('viviendas', 'restaurar') && puedeRestaurar && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button onClick={() => onRestore(vivienda)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
+                                                    <ArchiveRestore className="w-5 h-5 mr-2" /> Restaurar
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
+                                )}
+
                                 {can('viviendas', 'eliminar') && (
                                     <div className="px-1 py-1">
                                         <Menu.Item disabled={!puedeEliminar}>
                                             {({ active, disabled }) => (
-                                                <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede eliminar una vivienda con historial." : ''}>
+                                                <div data-tooltip-id="app-tooltip" data-tooltip-content={disabled ? "No se puede eliminar una vivienda sí tiene un cliente asignado o sí tuvo abonos en el pasado." : ''}>
                                                     <button onClick={() => onDelete(vivienda)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeEliminar}>
                                                         <Trash className="w-5 h-5 mr-2" /> Eliminar
                                                     </button>

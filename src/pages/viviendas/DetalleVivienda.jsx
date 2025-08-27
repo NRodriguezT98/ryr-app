@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, Home, Info, Wallet } from 'lucide-react';
+import { ArrowLeft, Home, Info, Wallet, MapPin } from 'lucide-react';
 import { useDetalleVivienda } from '../../hooks/viviendas/useDetalleVivienda';
 import { formatCurrency, formatID, toTitleCase } from '../../utils/textFormatters';
 import TabInformacion from './components/TabInformacion';
@@ -29,7 +29,7 @@ const DetalleVivienda = () => {
         return <div className="text-center p-10 animate-pulse">Cargando detalles de la vivienda...</div>;
     }
 
-    const { vivienda, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado } = datosDetalle;
+    const { vivienda, proyecto, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado } = datosDetalle;
 
     return (
         <AnimatedPage>
@@ -41,7 +41,13 @@ const DetalleVivienda = () => {
                         </div>
                         <div>
                             <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">{`Vivienda ${vivienda.manzana}${vivienda.numeroCasa}`}</h2>
-                            <p className="text-gray-500 dark:text-gray-400">{vivienda.nomenclatura}</p>
+                            {/* 👇 3. Mostramos el nombre del proyecto como un subtítulo */}
+                            {proyecto && (
+                                <p className="flex items-center gap-2 text-lg text-gray-500 dark:text-gray-400 mt-1">
+                                    <MapPin size={18} />
+                                    {proyecto.nombre}
+                                </p>
+                            )}
                         </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
