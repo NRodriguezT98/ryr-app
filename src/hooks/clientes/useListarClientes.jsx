@@ -7,7 +7,7 @@ import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 const ITEMS_PER_PAGE = 1;
 
 export const useListarClientes = () => {
-    const { isLoading, clientes, abonos, viviendas, recargarDatos } = useData();
+    const { isLoading, clientes, abonos, viviendas, proyectos, recargarDatos } = useData();
 
     const [clienteAArchivar, setClienteAArchivar] = useState(null);
     const [clienteAEliminar, setClienteAEliminar] = useState(null);
@@ -19,6 +19,7 @@ export const useListarClientes = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('activo');
+    const [proyectoFilter, setProyectoFilter] = useState('todos');
     const [sortOrder, setSortOrder] = useState('ubicacion');
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -35,6 +36,10 @@ export const useListarClientes = () => {
                 puedeSerEliminado: !tieneAbonos
             };
         });
+
+        if (proyectoFilter !== 'todos') {
+            itemsProcesados = itemsProcesados.filter(c => c.vivienda?.proyectoId === proyectoFilter);
+        }
 
         if (statusFilter !== 'todos') {
             itemsProcesados = itemsProcesados.filter(c => c.status === statusFilter);
@@ -87,7 +92,7 @@ export const useListarClientes = () => {
         }
 
         return itemsProcesados;
-    }, [clientes, abonos, viviendas, searchTerm, statusFilter, sortOrder]);
+    }, [clientes, abonos, viviendas, searchTerm, statusFilter, proyectoFilter, sortOrder]);
 
     const totalPages = useMemo(() => Math.ceil(clientesFiltrados.length / ITEMS_PER_PAGE), [clientesFiltrados]);
 
@@ -98,7 +103,7 @@ export const useListarClientes = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [statusFilter, searchTerm, sortOrder]);
+    }, [statusFilter, searchTerm, sortOrder, proyectoFilter]);
 
     const handleGuardado = useCallback(() => {
         recargarDatos();
@@ -206,6 +211,7 @@ export const useListarClientes = () => {
         clientesVisibles: clientesPaginados,
         todosLosClientesFiltrados: clientesFiltrados,
         statusFilter, setStatusFilter,
+        proyectoFilter, setProyectoFilter,
         searchTerm, setSearchTerm,
         sortOrder, setSortOrder,
         pagination: {

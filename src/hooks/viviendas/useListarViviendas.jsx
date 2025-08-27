@@ -1,3 +1,5 @@
+// src/hooks/viviendas/useListarViviendas.jsx
+
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from 'react-router-dom';
 import { useData } from "../../context/DataContext";
@@ -11,7 +13,9 @@ export const useListarViviendas = () => {
     const location = useLocation();
     const { isLoading, viviendas, clientes, abonos, recargarDatos } = useData();
 
+    // --- Estados del hook ---
     const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || 'todas');
+    const [proyectoFilter, setProyectoFilter] = useState('todos'); // Estado para el filtro de proyecto
     const [searchTerm, setSearchTerm] = useState('');
     const [sortOrder, setSortOrder] = useState('ubicacion');
     const [currentPage, setCurrentPage] = useState(1);
@@ -21,6 +25,7 @@ export const useListarViviendas = () => {
     const [viviendaARestaurar, setViviendaARestaurar] = useState(null);
 
     const viviendasFiltradasYOrdenadas = useMemo(() => {
+        // 1. Procesamos todas las viviendas para añadirles las propiedades calculadas
         let itemsProcesados = viviendas.map(vivienda => {
             const clienteAsignado = clientes.find(c => c.id === vivienda.clienteId);
             const procesoFinalizado = clienteAsignado?.proceso?.facturaVenta?.completado === true;
@@ -38,16 +43,19 @@ export const useListarViviendas = () => {
             };
         });
 
-        // 2. Aplicamos los filtros de estado de forma secuencial
-        let itemsFiltrados;
+        // 2. Aplicamos los filtros de forma secuencial
+        let itemsFiltrados = itemsProcesados;
 
+        // Filtro de Proyecto
+        if (proyectoFilter !== 'todos') {
+            itemsFiltrados = itemsFiltrados.filter(v => v.proyectoId === proyectoFilter);
+        }
+
+        // Filtro de Estado
         if (statusFilter === 'archivadas') {
-            itemsFiltrados = itemsProcesados.filter(v => v.status === 'archivada');
+            itemsFiltrados = itemsFiltrados.filter(v => v.status === 'archivada');
         } else {
-            // Por defecto, excluimos las archivadas
-            itemsFiltrados = itemsProcesados.filter(v => v.status !== 'archivada');
-
-            // Si el filtro no es 'todas', aplicamos el filtro específico
+            itemsFiltrados = itemsFiltrados.filter(v => v.status !== 'archivada');
             if (statusFilter !== 'todas') {
                 if (statusFilter === 'disponibles') itemsFiltrados = itemsFiltrados.filter(v => !v.clienteId);
                 if (statusFilter === 'asignadas') itemsFiltrados = itemsFiltrados.filter(v => v.clienteId && v.saldoPendiente > 0);
@@ -55,7 +63,7 @@ export const useListarViviendas = () => {
             }
         }
 
-        // 3. Aplicamos el filtro de búsqueda
+        // Filtro de Búsqueda
         if (searchTerm) {
             const lowerCaseSearchTerm = searchTerm.toLowerCase().replace(/\s/g, '');
             itemsFiltrados = itemsFiltrados.filter(v => {
@@ -66,8 +74,8 @@ export const useListarViviendas = () => {
             });
         }
 
+        // 3. Aplicamos el ordenamiento
         let itemsOrdenados = [...itemsFiltrados];
-
         switch (sortOrder) {
             case 'nombre_cliente':
                 itemsOrdenados.sort((a, b) => (a.clienteNombre || 'z').localeCompare(b.clienteNombre || 'z'));
@@ -94,7 +102,7 @@ export const useListarViviendas = () => {
         }
 
         return itemsOrdenados;
-    }, [viviendas, clientes, abonos, statusFilter, searchTerm, sortOrder]);
+    }, [viviendas, clientes, abonos, statusFilter, proyectoFilter, searchTerm, sortOrder]);
 
     const totalPages = useMemo(() => Math.ceil(viviendasFiltradasYOrdenadas.length / ITEMS_PER_PAGE), [viviendasFiltradasYOrdenadas]);
 
@@ -106,7 +114,7 @@ export const useListarViviendas = () => {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [statusFilter, searchTerm, sortOrder]);
+    }, [statusFilter, proyectoFilter, searchTerm, sortOrder]);
 
     const { hiddenItems: viviendasOcultas, initiateDelete } = useUndoableDelete(
         async ({ vivienda, nombreProyecto }) => deleteViviendaPermanently(vivienda, nombreProyecto),
@@ -169,7 +177,13 @@ export const useListarViviendas = () => {
         isLoading,
         viviendasVisibles,
         todasLasViviendasFiltradas: viviendasFiltradasYOrdenadas,
-        filters: { statusFilter, setStatusFilter, searchTerm, setSearchTerm, sortOrder, setSortOrder },
+        totalViviendasCount: viviendas.length,
+        filters: {
+            statusFilter, setStatusFilter,
+            proyectoFilter, setProyectoFilter,
+            searchTerm, setSearchTerm,
+            sortOrder, setSortOrder
+        },
         pagination: { currentPage, totalPages, onPageChange: setCurrentPage },
         modals: { viviendaAEditar, setViviendaAEditar, viviendaAEliminar, setViviendaAEliminar, viviendaAArchivar, setViviendaAArchivar, viviendaARestaurar, setViviendaARestaurar },
         handlers: {

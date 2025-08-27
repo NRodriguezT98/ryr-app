@@ -5,7 +5,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import toast from 'react-hot-toast';
 
-const LOGS_PER_PAGE = 10; // Puedes ajustar el número de registros por página
+const LOGS_PER_PAGE = 15; // Puedes ajustar el número de registros por página
 
 export const useAuditLog = () => {
     const [allLogs, setAllLogs] = useState([]);

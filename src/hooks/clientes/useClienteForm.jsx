@@ -80,7 +80,7 @@ function formReducer(state, action) {
 
 export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveSuccess, modo = 'editar') => {
     const navigate = useNavigate();
-    const { clientes: todosLosClientes, viviendas } = useData();
+    const { clientes: todosLosClientes, viviendas, proyectos } = useData();
     const [step, setStep] = useState(1);
     const [formData, dispatch] = useReducer(formReducer, blankInitialState);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -146,12 +146,18 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         const disponibles = viviendas.filter(v => !v.clienteId || v.id === clienteAEditar?.viviendaId);
         return disponibles
             .sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa)
-            .map(v => ({
-                value: v.id,
-                label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${formatCurrency(v.valorFinal || v.valorTotal || 0)})`,
-                vivienda: v
-            }));
-    }, [viviendas, clienteAEditar]);
+            .map(v => {
+                const proyecto = proyectos.find(p => p.id === v.proyectoId);
+                return {
+                    value: v.id,
+                    label: `Mz ${v.manzana} - Casa ${v.numeroCasa} (${formatCurrency(v.valorFinal || v.valorTotal || 0)})`,
+                    vivienda: v,
+                    // Los nuevos datos que necesita el componente Step1_SelectVivienda
+                    nombreProyecto: proyecto ? proyecto.nombre : 'Sin Proyecto Asignado',
+                    ubicacionSearchKey: `${v.manzana}${v.numeroCasa}`.toLowerCase().replace(/\s/g, '')
+                };
+            });
+    }, [viviendas, proyectos, clienteAEditar]);
 
     const handleNextStep = () => {
         let errors = {};
@@ -272,7 +278,48 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     viviendaId: formData.viviendaSeleccionada.id,
                     fechaInicioProceso: formData.datosCliente.fechaIngreso
                 };
-                await addClienteAndAssignVivienda(clienteParaGuardar);
+
+                const { datosCliente, financiero, documentos, viviendaSeleccionada } = formData;
+
+                // 1. Obtenemos el nombre del proyecto
+                const proyectoAsignado = proyectos.find(p => p.id === viviendaSeleccionada.proyectoId);
+                const nombreProyecto = proyectoAsignado ? proyectoAsignado.nombre : 'N/A';
+                const nombreVivienda = `Mz ${viviendaSeleccionada.manzana} - Casa ${viviendaSeleccionada.numeroCasa}`;
+                const nombreCompleto = `${datosCliente.nombres} ${datosCliente.apellidos}`;
+
+                // 2. Creamos el mensaje detallado
+                const auditMessage = `Creó al cliente ${toTitleCase(nombreCompleto)} (C.C. ${datosCliente.cedula}), asignándole la vivienda ${nombreVivienda} del proyecto "${nombreProyecto}"`;
+
+                // 3. Creamos el objeto de detalles con el snapshot completo
+                const fuentesDePago = [];
+                if (financiero.aplicaCuotaInicial) fuentesDePago.push({ nombre: 'Cuota Inicial', monto: financiero.cuotaInicial.monto });
+                if (financiero.aplicaCredito) fuentesDePago.push({ nombre: 'Crédito Hipotecario', monto: financiero.credito.monto });
+                if (financiero.aplicaSubsidioVivienda) fuentesDePago.push({ nombre: 'Subsidio Mi Casa Ya', monto: financiero.subsidioVivienda.monto });
+                if (financiero.aplicaSubsidioCaja) fuentesDePago.push({ nombre: `Subsidio Caja (${financiero.subsidioCaja.caja})`, monto: financiero.subsidioCaja.monto });
+
+                const auditDetails = {
+                    action: 'CREATE_CLIENT',
+                    clienteId: datosCliente.cedula,
+                    clienteNombre: toTitleCase(nombreCompleto),
+                    snapshotCliente: {
+                        viviendaAsignada: `${nombreVivienda} del Proyecto ${nombreProyecto}`,
+                        valorVivienda: viviendaSeleccionada.valorTotal,
+                        nombreCompleto: toTitleCase(nombreCompleto),
+                        cedula: datosCliente.cedula,
+                        telefono: datosCliente.telefono,
+                        correo: datosCliente.correo,
+                        direccion: datosCliente.direccion,
+                        fechaIngreso: datosCliente.fechaIngreso,
+                        cedulaAdjuntada: datosCliente.urlCedula ? 'Sí' : 'No',
+                        promesaAdjuntada: documentos.promesaEnviadaUrl ? 'Sí' : 'No',
+                        correoAdjuntado: documentos.promesaEnviadaCorreoUrl ? 'Sí' : 'No',
+                        fuentesDePago: fuentesDePago,
+                        usaValorEscrituraDiferente: financiero.usaValorEscrituraDiferente,
+                        valorEscritura: financiero.valorEscritura
+                    }
+                };
+
+                await addClienteAndAssignVivienda(clienteParaGuardar, auditMessage, auditDetails);
                 toast.success("¡Cliente y proceso iniciados con éxito!");
                 const clienteNombre = `${clienteParaGuardar.datosCliente.nombres} ${clienteParaGuardar.datosCliente.apellidos}`.trim();
                 await createNotification('cliente', `Nuevo cliente registrado: ${clienteNombre}`, `/clientes/detalle/${clienteParaGuardar.datosCliente.cedula}`);
@@ -372,6 +419,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         setIsConfirming,
         cambios,
         hayCambios,
+        proyectos,
         handlers: {
             handleNextStep,
             handlePrevStep,

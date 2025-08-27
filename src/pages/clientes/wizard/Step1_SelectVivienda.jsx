@@ -1,13 +1,20 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import Select, { components } from 'react-select';
 import AnimatedPage from '../../../components/AnimatedPage';
-import { Home, Search } from 'lucide-react';
+import { Home, Search, MapPin } from 'lucide-react';
 import { formatCurrency } from '../../../utils/textFormatters';
 
 const CustomOption = (props) => {
     const { innerProps, label, data } = props;
     return (
         <div {...innerProps} className="p-3 hover:bg-blue-50 dark:hover:bg-blue-900/50 cursor-pointer border-b last:border-b-0 dark:border-gray-700">
+            {/* 👇 2. Mostramos el nombre del proyecto como una etiqueta */}
+            {data.nombreProyecto && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                    <MapPin size={14} />
+                    <span>{data.nombreProyecto}</span>
+                </div>
+            )}
             <p className="font-semibold text-gray-800 dark:text-gray-200">{label}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{`Matrícula: ${data.vivienda.matricula}`}</p>
         </div>
@@ -22,7 +29,7 @@ const DropdownIndicator = (props) => {
     );
 };
 
-const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked }) => {
+const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked, proyectos }) => {
 
     const handleSelectChange = useCallback((selectedOption) => {
         dispatch({
@@ -55,6 +62,23 @@ const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked }) => {
         input: (base) => ({ ...base, color: 'var(--color-text-form)' }),
     };
 
+    const filterOption = (option, inputValue) => {
+        const term = inputValue.toLowerCase().replace(/\s/g, '');
+        if (!term) return true;
+
+        const labelMatch = option.label.toLowerCase().includes(term);
+        const matriculaMatch = option.data.vivienda.matricula.toLowerCase().includes(term);
+        // Buscamos en la nueva clave de búsqueda combinada
+        const ubicacionMatch = option.data.ubicacionSearchKey.includes(term);
+
+        return labelMatch || matriculaMatch || ubicacionMatch;
+    };
+
+    const proyectoAsignado = useMemo(() => {
+        if (!formData.viviendaSeleccionada || !proyectos) return null;
+        return proyectos.find(p => p.id === formData.viviendaSeleccionada.proyectoId);
+    }, [formData.viviendaSeleccionada, proyectos]);
+
     return (
         <AnimatedPage>
             <style>{`
@@ -85,15 +109,23 @@ const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked }) => {
                         styles={selectStyles}
                         components={{ Option: CustomOption, DropdownIndicator }}
                         isDisabled={isLocked} // <-- Aplicamos el bloqueo aquí
+                        filterOption={filterOption}
                     />
                 </div>
 
                 {formData.viviendaSeleccionada && (
                     <div className="mt-6 bg-green-50 dark:bg-green-900/50 border-2 border-dashed border-green-200 dark:border-green-700 p-4 rounded-xl animate-fade-in">
-                        <h4 className="font-bold text-green-800 dark:text-green-300">Propiedad Asignada</h4>
+                        <h4 className="font-bold text-green-800 dark:text-green-300">Vivienda Asignada</h4>
                         <div className='mt-2 space-y-1 text-green-700 dark:text-green-400 text-sm'>
+                            {/* 👇 3. Mostramos el nombre del proyecto */}
+                            {proyectoAsignado && (
+                                <p className="flex items-center gap-1.5">
+                                    <strong>Proyecto:</strong>
+                                    <span>{proyectoAsignado.nombre}</span>
+                                </p>
+                            )}
                             <p><strong>Ubicación:</strong>{` Mz ${formData.viviendaSeleccionada.manzana} - Casa ${formData.viviendaSeleccionada.numeroCasa}`}</p>
-                            <p><strong>Valor:</strong>{` ${formatCurrency(formData.viviendaSeleccionada.valorTotal)}`}</p>
+                            <p><strong>Valor Total:</strong>{` ${formatCurrency(formData.viviendaSeleccionada.valorTotal)}`}</p>
                         </div>
                     </div>
                 )}

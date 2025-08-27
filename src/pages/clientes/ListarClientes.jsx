@@ -63,6 +63,7 @@ const ListarClientes = () => {
         clientesVisibles,
         todosLosClientesFiltrados,
         statusFilter, setStatusFilter,
+        proyectoFilter, setProyectoFilter,
         searchTerm, setSearchTerm,
         sortOrder, setSortOrder,
         pagination,
@@ -72,6 +73,11 @@ const ListarClientes = () => {
 
     const { clientes: todosLosClientes } = useData();
     const isDarkMode = document.documentElement.classList.contains('dark');
+
+    const projectOptions = [
+        { value: 'todos', label: 'Todos los Proyectos' },
+        ...proyectos.map(p => ({ value: p.id, label: p.nombre }))
+    ];
 
     return (
         <ResourcePageLayout
@@ -98,6 +104,17 @@ const ListarClientes = () => {
                                 className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-900/50 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        {/* 👇 3. Agregamos el nuevo Select para Proyectos 👇 */}
+                        <div className="w-full md:w-64 flex-shrink-0">
+                            <Select
+                                options={projectOptions}
+                                value={projectOptions.find(option => option.value === proyectoFilter)}
+                                onChange={(option) => setProyectoFilter(option.value)}
+                                styles={getSelectStyles(isDarkMode)}
+                                isSearchable={false}
+                                placeholder="Filtrar por proyecto..."
                             />
                         </div>
                         <div className="w-full md:w-64 flex-shrink-0">

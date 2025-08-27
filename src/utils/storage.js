@@ -135,7 +135,7 @@ export const restoreVivienda = async (vivienda, nombreProyecto) => {
     );
 };
 
-export const addClienteAndAssignVivienda = async (clienteData) => {
+export const addClienteAndAssignVivienda = async (clienteData, auditMessage, auditDetails) => {
     const newClienteRef = doc(db, "clientes", clienteData.datosCliente.cedula);
     const clienteParaGuardar = {
         ...clienteData,
@@ -154,14 +154,10 @@ export const addClienteAndAssignVivienda = async (clienteData) => {
         });
         await batch.commit();
 
+        if (auditMessage && auditDetails) {
+            await createAuditLog(auditMessage, auditDetails);
+        }
         // AUDITORÍA: Se registra la creación del cliente
-        const clienteNombreCompleto = toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`);
-        await createAuditLog(
-            `Creó al cliente ${clienteNombreCompleto} (C.C. ${clienteData.datosCliente.cedula})`,
-            {
-                clienteId: clienteData.datosCliente.cedula,
-                clienteNombre: clienteNombreCompleto
-            })
 
     } else {
         await setDoc(newClienteRef, clienteParaGuardar);

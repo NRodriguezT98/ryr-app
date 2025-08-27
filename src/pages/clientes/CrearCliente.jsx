@@ -12,6 +12,7 @@ const CrearCliente = () => {
         errors,
         isSubmitting,
         viviendasOptions,
+        proyectos,
         handlers,
     } = useClienteForm(false);
 
@@ -49,6 +50,7 @@ const CrearCliente = () => {
                         dispatch={dispatch}
                         errors={errors}
                         viviendaOptions={viviendasOptions}
+                        proyectos={proyectos}
                         handleInputChange={handlers.handleInputChange}
                         handleFinancialFieldChange={handlers.handleFinancialFieldChange}
                     />
