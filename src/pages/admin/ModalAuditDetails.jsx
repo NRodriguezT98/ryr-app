@@ -23,7 +23,7 @@ const ModalAuditDetails = ({ log, onClose }) => {
                     </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-4 -mr-2">
                     <div>
                         <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Usuario</p>
                         <p className="text-gray-800 dark:text-gray-200">{log.userName}</p>

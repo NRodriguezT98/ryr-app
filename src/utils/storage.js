@@ -419,6 +419,17 @@ export const deleteViviendaPermanently = async (vivienda, nombreProyecto) => {
 
 export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId, auditDetails = {}) => {
     const clienteRef = doc(db, "clientes", String(clienteId));
+    const clienteOriginalSnap = await getDoc(clienteRef);
+    const clienteOriginal = clienteOriginalSnap.data();
+
+    if (
+        auditDetails.tieneAbonos &&
+        clienteOriginal.datosCliente.fechaIngreso !== clienteActualizado.datosCliente.fechaIngreso
+    ) {
+        console.warn("Intento de cambio de fecha de ingreso bloqueado para cliente con abonos.");
+        // Revertimos silenciosamente el cambio de fecha al valor original
+        clienteActualizado.datosCliente.fechaIngreso = clienteOriginal.datosCliente.fechaIngreso;
+    }
 
     // 1. Lógica para sincronizar el proceso del cliente (sin cambios)
     const procesoSincronizado = { ...(clienteActualizado.proceso || {}) };
@@ -826,6 +837,20 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
         const clienteData = clienteDoc.data();
         const viviendaData = viviendaDoc.data();
 
+        // 👇 INICIO DE LA VALIDACIÓN 👇
+        // Verificamos que el paso de 'solicitud' esté completado en el proceso del cliente.
+        const pasoConfig = FUENTE_PROCESO_MAP['credito'];
+        if (pasoConfig) {
+            const solicitudKey = pasoConfig.solicitudKey;
+            const pasoSolicitud = clienteData.proceso?.[solicitudKey];
+
+            // Si el paso de la solicitud no está completado, lanzamos un error.
+            if (!pasoSolicitud?.completado) {
+                throw new Error("Debe completar la solicitud de desembolso del crédito en el proceso del cliente, antes de registrar el desembolso  .");
+            }
+        }
+        // 👆 FIN DE LA VALIDACIÓN 👆
+
         clienteNombre = toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`);
 
         const montoCreditoPactado = clienteData.financiero?.credito?.monto || 0;
@@ -855,7 +880,6 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         transaction.set(abonoRef, abonoParaGuardar);
 
-        const pasoConfig = FUENTE_PROCESO_MAP['credito'];
         if (pasoConfig) {
             const desembolsoKey = pasoConfig.desembolsoKey;
             const nuevoProceso = { ...clienteData.proceso };

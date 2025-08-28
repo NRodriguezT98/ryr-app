@@ -3,7 +3,7 @@ import Step1_SelectVivienda from './wizard/Step1_SelectVivienda';
 import Step2_ClientInfo from './wizard/Step2_ClientInfo';
 import Step3_Financial from './wizard/Step3_Financial';
 
-const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, proyectos, handleInputChange, handleFinancialFieldChange, isEditing = false, isFinancialLocked = false, isPersonalInfoLocked = false, modo = 'editar' }) => {
+const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, proyectos, handleInputChange, handleFinancialFieldChange, isEditing = false, isFinancialLocked = false, isPersonalInfoLocked = false, isFechaIngresoLocked = false, modo = 'editar' }) => {
     const stepsComponents = [
         <Step1_SelectVivienda
             key="step1"
@@ -21,6 +21,7 @@ const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, 
             handleInputChange={handleInputChange}
             isEditing={isEditing}
             isLocked={isPersonalInfoLocked}
+            isFechaIngresoLocked={isFechaIngresoLocked}
             modo={modo} // <-- Se añade la prop 'modo' que faltaba
         />,
         <Step3_Financial

@@ -91,7 +91,8 @@ const ListarViviendas = () => {
     const {
         isLoading,
         viviendasVisibles,
-        totalViviendasCount, // Obtenemos el conteo total
+        totalViviendasCount,
+        todasLasViviendasFiltradas, // Obtenemos el conteo total
         filters,
         pagination,
         modals,

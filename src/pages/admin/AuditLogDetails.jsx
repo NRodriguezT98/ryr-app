@@ -1,7 +1,7 @@
 import React from 'react';
 
 // 1. Importa todos los componentes de detalle específicos
-import UpdateDetails from './audit-details/UpdateDetails';
+import UpdateClienteDetails from './audit-details/UpdateClienteDetails';
 import RenounceDetails from './audit-details/RenounceDetails';
 import RestartProcessDetails from './audit-details/RestartProcessDetails';
 import ArchiveDetails from './audit-details/ArchiveDetails';
@@ -17,7 +17,7 @@ import CreateClienteDetails from './audit-details/CreateClienteDetails'
 
 // 2. Crea un mapa para asociar cada tipo de acción con su componente de vista
 const ACTION_COMPONENTS = {
-    'UPDATE_CLIENT': UpdateDetails,
+    'UPDATE_CLIENT': UpdateClienteDetails,
     'UPDATE_VIVIENDA': UpdateViviendaDetails,
     'CLIENT_RENOUNCE': RenounceDetails,
     'RESTART_CLIENT_PROCESS': RestartProcessDetails,

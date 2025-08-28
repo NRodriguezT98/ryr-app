@@ -178,6 +178,8 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
     const handlePrevStep = () => setStep(s => s - 1);
 
+    const isFechaIngresoLocked = abonosDelCliente.length > 0;
+
     const executeSave = useCallback(async () => {
         setIsSubmitting(true);
         try {
@@ -240,7 +242,8 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 };
                 await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId, {
                     action: 'UPDATE_CLIENT',
-                    cambios
+                    cambios,
+                    tieneAbonos: abonosDelCliente.length > 0
                 });
                 toast.success("¡Cliente actualizado con éxito!");
                 createNotification('cliente', `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`, `/clientes/detalle/${clienteAEditar.id}`);
@@ -406,7 +409,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         } else {
             executeSave();
         }
-    }, [formData, todosLosClientes, isEditing, modo, clienteAEditar, abonosDelCliente, initialData, executeSave, viviendas]);
+    }, [formData, todosLosClientes, isEditing, modo, clienteAEditar, abonosDelCliente, initialData, executeSave, viviendas, abonosDelCliente]);
 
     return {
         step,
@@ -420,6 +423,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         cambios,
         hayCambios,
         proyectos,
+        isFechaIngresoLocked,
         handlers: {
             handleNextStep,
             handlePrevStep,

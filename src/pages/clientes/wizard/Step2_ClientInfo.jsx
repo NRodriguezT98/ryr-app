@@ -5,7 +5,7 @@ import { FileText, XCircle } from 'lucide-react';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
-const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEditing, isLocked, modo }) => {
+const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEditing, isLocked, modo, isFechaIngresoLocked }) => {
 
     const handleValueChange = useCallback((field, value) => {
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field, value } });
@@ -64,8 +64,8 @@ const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEdi
                 </div>
                 <div className="md:col-span-2">
                     <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="fechaIngreso">Fecha de Ingreso al Proceso <span className="text-red-600">*</span></label>
-                    <div data-tooltip-id="app-tooltip" data-tooltip-content={isPersonalInfoLocked ? "La fecha de ingreso original no se puede modificar." : ''}>
-                        <input id="fechaIngreso" name="fechaIngreso" type="date" value={formData.fechaIngreso} onChange={handleInputChange} max={getTodayString()} disabled={isPersonalInfoLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.fechaIngreso ? 'border-red-500' : 'border-gray-300'}`} />
+                    <div data-tooltip-id="app-tooltip" data-tooltip-content={isFechaIngresoLocked ? "La fecha de ingreso no se puede modificar porque el cliente ya tiene abonos registrados." : ''}>
+                        <input id="fechaIngreso" name="fechaIngreso" type="date" value={formData.fechaIngreso} onChange={handleInputChange} max={getTodayString()} disabled={isFechaIngresoLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.fechaIngreso ? 'border-red-500' : 'border-gray-300'}`} />
                     </div>
                     {errors.fechaIngreso && <p className="text-red-600 text-sm mt-1">{errors.fechaIngreso}</p>}
                 </div>

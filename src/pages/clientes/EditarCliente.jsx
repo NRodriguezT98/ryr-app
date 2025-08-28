@@ -19,6 +19,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
         cambios,
         hayCambios,
         viviendasOptions,
+        proyectos,
+        isFechaIngresoLocked,
         handlers,
     } = useClienteForm(true, clienteAEditar, onGuardar, modo);
 
@@ -65,9 +67,11 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
                                 dispatch={dispatch}
                                 errors={errors}
                                 viviendaOptions={viviendasOptions}
+                                proyectos={proyectos}
                                 isEditing={true}
                                 isFinancialLocked={modo === 'editar' && escrituraFirmada}
                                 isPersonalInfoLocked={modo === 'editar' && escrituraFirmada}
+                                isFechaIngresoLocked={isFechaIngresoLocked}
                                 modo={modo}
                                 clienteAEditar={clienteAEditar}
                                 handleInputChange={handlers.handleInputChange}
