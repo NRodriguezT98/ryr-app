@@ -1,3 +1,5 @@
+// src/pages/clientes/components/TabProcesoCliente.jsx
+
 import React, { useEffect } from 'react';
 import { useProcesoLogic } from '../../../hooks/clientes/useProcesoLogic';
 import { useAuth } from '../../../context/AuthContext';
@@ -10,6 +12,7 @@ import { PartyPopper, Unlock } from 'lucide-react';
 import ClienteEstadoView from './ClienteEstadoView';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePermissions } from '../../../hooks/auth/usePermissions';
+import Timeline from './Timeline'; // <-- Importamos el nuevo componente
 
 const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange }) => {
 
@@ -23,13 +26,13 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
         return <ClienteEstadoView cliente={cliente} renuncia={renuncia} contexto="proceso" />;
     }
 
-    const handleSave = async (nuevoProceso) => {
+    const handleSave = async (nuevoProceso, userName) => {
         const clienteActualizado = {
             ...cliente,
             proceso: nuevoProceso
         };
         const { vivienda, ...datosParaGuardar } = clienteActualizado;
-        await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId);
+        await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId, { userName });
         onDatosRecargados();
     };
 
@@ -83,8 +86,6 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                             <p className="text-sm text-green-700 dark:text-green-400">Todos los pasos de este cliente se han completado exitosamente.</p>
                         </div>
                     </div>
-                    {/* --- INICIO DE LA MODIFICACIÓN --- */}
-                    {/* 4. Botón condicional para el admin */}
                     {userData?.role === 'admin' && (
                         <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
                             <button
@@ -96,7 +97,6 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                             </button>
                         </div>
                     )}
-                    {/* --- FIN DE LA MODIFICACIÓN --- */}
                 </div>
             ) : (
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border dark:border-gray-700 shadow-sm">
@@ -112,35 +112,23 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                 </div>
             )}
 
-            <div className="space-y-4">
-                <AnimatePresence>
-                    {pasosRenderizables.map((paso, index) => (
-                        <motion.div
-                            key={paso.key}
-                            layout
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                        >
-                            <PasoProcesoCard
-                                paso={{
-                                    ...paso,
-                                    label: `${index + 1}. ${paso.label}`,
-                                    stepNumber: index + 1,
-                                    hayPasoEnReapertura
-                                }}
-                                justSaved={justSaved}
-                                onUpdateEvidencia={handlers.handleUpdateEvidencia}
-                                onCompletarPaso={handlers.handleCompletarPaso}
-                                onIniciarReapertura={handlers.iniciarReapertura}
-                                onDeshacerReapertura={handlers.deshacerReapertura}
-                                onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
-                                clienteId={cliente.id}
-                                isReadOnly={isReadOnly}
-                            />
-                        </motion.div>
-                    ))}
-                </AnimatePresence>
+            <div className="mt-6">
+                <Timeline
+                    pasos={pasosRenderizables.map((paso, index) => ({
+                        ...paso,
+                        label: paso.label,
+                        stepNumber: index + 1,
+                        hayPasoEnReapertura
+                    }))}
+                    justSaved={justSaved}
+                    onUpdateEvidencia={handlers.handleUpdateEvidencia}
+                    onCompletarPaso={handlers.handleCompletarPaso}
+                    onIniciarReapertura={handlers.iniciarReapertura}
+                    onDeshacerReapertura={handlers.deshacerReapertura}
+                    onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
+                    clienteId={cliente.id}
+                    isReadOnly={isReadOnly}
+                />
             </div>
 
             <ModalConfirmacion
@@ -165,7 +153,6 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                 onConfirm={handlers.confirmarEdicionFecha}
                 pasoInfo={pasoAEditarFecha ? { ...pasoAEditarFecha, ...pasosRenderizables.find(p => p.key === pasoAEditarFecha.key) } : null}
             />
-
         </div>
     );
 };

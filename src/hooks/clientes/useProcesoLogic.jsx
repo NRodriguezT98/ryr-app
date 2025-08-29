@@ -3,9 +3,13 @@ import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 import { updateCliente, createNotification, anularCierreProceso } from '../../utils/storage';
 import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency, toTitleCase } from '../../utils/textFormatters';
+import { useAuth } from '../../context/AuthContext';
 
 
 export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
+    const { userData } = useAuth();
+    const userName = userData ? toTitleCase(`${userData.nombres} ${userData.apellidos}`) : 'Usuario Desconocido';
+
     const [procesoState, setProcesoState] = useState(cliente.proceso || {});
     const [initialProcesoState, setInitialProcesoState] = useState(cliente.proceso || {});
 
@@ -303,7 +307,7 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
             return;
         }
         try {
-            await onSave(procesoState);
+            await onSave(procesoState, userName);
 
             PROCESO_CONFIG.forEach(paso => {
                 const estadoAnterior = initialProcesoState[paso.key];

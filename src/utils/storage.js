@@ -1,7 +1,7 @@
 import { db, auth } from '../firebase/config';
 import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, runTransaction, getDoc, writeBatch, setDoc, query, where, serverTimestamp } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { toSentenceCase, formatCurrency, toTitleCase, getTodayString } from './textFormatters';
+import { toSentenceCase, formatCurrency, toTitleCase, getTodayString, formatDisplayDate } from './textFormatters';
 import { PROCESO_CONFIG, FUENTE_PROCESO_MAP } from './procesoConfig.js';
 import { DOCUMENTACION_CONFIG } from './documentacionConfig.js';
 
@@ -417,21 +417,117 @@ export const deleteViviendaPermanently = async (vivienda, nombreProyecto) => {
     );
 };
 
+const generarActividadProceso = (procesoOriginal, procesoActual, userName) => {
+    const nuevoProcesoConActividad = JSON.parse(JSON.stringify(procesoActual));
+
+    PROCESO_CONFIG.forEach(pasoConfig => {
+        const key = pasoConfig.key;
+        const pasoOriginal = procesoOriginal[key] || {};
+        const pasoActual = nuevoProcesoConActividad[key];
+
+        if (!pasoActual) return;
+        if (!pasoActual.actividad) {
+            pasoActual.actividad = pasoOriginal.actividad || [];
+        }
+
+        const crearEntrada = (mensaje) => ({
+            mensaje,
+            userName,
+            fecha: new Date()
+        });
+
+        let seCompletoEnEsteCambio = false;
+
+        // 1. Detectar si el paso se completó en esta actualización
+        if (!pasoOriginal.completado && pasoActual.completado) {
+            seCompletoEnEsteCambio = true;
+        }
+
+        // 2. Detectar cambios en evidencias
+        let evidenciasSubidasMsg = [];
+        pasoConfig.evidenciasRequeridas.forEach(ev => {
+            const idEvidencia = ev.id;
+            const urlOriginal = pasoOriginal.evidencias?.[idEvidencia]?.url;
+            const urlActual = pasoActual.evidencias?.[idEvidencia]?.url;
+
+            if (urlOriginal !== urlActual) {
+                if (urlActual) {
+                    evidenciasSubidasMsg.push(`'${ev.label}'`);
+                } else {
+                    pasoActual.actividad.push(crearEntrada(`Se eliminó la evidencia "${ev.label}".`));
+                }
+            }
+        });
+
+        // 3. Lógica para unificar mensajes
+        if (seCompletoEnEsteCambio) {
+            if (evidenciasSubidasMsg.length > 0) {
+                // Mensaje unificado
+                const msg = `Se subió la evidencia ${evidenciasSubidasMsg.join(', ')} y se marcó el paso como completado con fecha ${formatDisplayDate(pasoActual.fecha)}.`;
+                pasoActual.actividad.push(crearEntrada(msg));
+            } else {
+                // Mensaje solo de completado
+                pasoActual.actividad.push(crearEntrada(`Paso completado con fecha ${formatDisplayDate(pasoActual.fecha)}.`));
+            }
+        } else if (evidenciasSubidasMsg.length > 0) {
+            // Mensaje solo de subida de evidencia (si el paso no se completó)
+            pasoActual.actividad.push(crearEntrada(`Se subió la evidencia ${evidenciasSubidasMsg.join(', ')}.`));
+        }
+
+        // 4. Detectar otros cambios (fecha en paso ya completado y reapertura)
+        if (pasoOriginal.completado && pasoActual.completado && pasoOriginal.fecha !== pasoActual.fecha) {
+            pasoActual.actividad.push(crearEntrada(`Fecha de completado actualizada a ${formatDisplayDate(pasoActual.fecha)}.`));
+        } else if (pasoOriginal.completado && !pasoActual.completado) {
+            pasoActual.actividad.push(crearEntrada('Paso reabierto.'));
+        }
+    });
+
+    return nuevoProcesoConActividad;
+};
 export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId, auditDetails = {}) => {
     const clienteRef = doc(db, "clientes", String(clienteId));
+
     const clienteOriginalSnap = await getDoc(clienteRef);
+    if (!clienteOriginalSnap.exists()) {
+        throw new Error("El cliente que intentas actualizar no existe.");
+    }
     const clienteOriginal = clienteOriginalSnap.data();
 
-    if (
-        auditDetails.tieneAbonos &&
-        clienteOriginal.datosCliente.fechaIngreso !== clienteActualizado.datosCliente.fechaIngreso
-    ) {
-        console.warn("Intento de cambio de fecha de ingreso bloqueado para cliente con abonos.");
-        // Revertimos silenciosamente el cambio de fecha al valor original
-        clienteActualizado.datosCliente.fechaIngreso = clienteOriginal.datosCliente.fechaIngreso;
+    // Lógica de seguridad para la fecha de ingreso
+    const fechaOriginal = clienteOriginal.datosCliente.fechaIngreso;
+    const fechaNueva = clienteActualizado.datosCliente.fechaIngreso;
+
+    if (fechaOriginal !== fechaNueva) {
+        // Obtenemos los abonos para verificar la primera condición
+        const abonosQuery = query(collection(db, "abonos"), where("clienteId", "==", clienteId));
+        const abonosSnap = await getDocs(abonosQuery);
+
+        // Verificamos si hay más de un paso completado
+        const procesoOriginal = clienteOriginal.proceso || {};
+        const otrosPasosCompletados = Object.keys(procesoOriginal).filter(key =>
+            procesoOriginal[key]?.completado && key !== 'promesaEnviada'
+        ).length;
+
+        // Si alguna de las condiciones de bloqueo se cumple, revertimos el cambio.
+        if (abonosSnap.size > 0 || otrosPasosCompletados > 0) {
+            console.warn("Intento de cambio de fecha de ingreso bloqueado para cliente con proceso avanzado.");
+            // Revertimos silenciosamente el cambio de fecha al valor original
+            clienteActualizado.datosCliente.fechaIngreso = fechaOriginal;
+            // También revertimos la fecha sincronizada del proceso si existe
+            if (clienteActualizado.proceso?.promesaEnviada) {
+                clienteActualizado.proceso.promesaEnviada.fecha = fechaOriginal;
+            }
+        }
     }
 
-    // 1. Lógica para sincronizar el proceso del cliente (sin cambios)
+    const procesoConActividad = generarActividadProceso(
+        clienteOriginal.proceso || {},
+        clienteActualizado.proceso || {},
+        auditDetails.userName || 'Sistema' // Usamos el nombre de usuario
+    );
+    clienteActualizado.proceso = procesoConActividad;
+
+    // 1. Lógica para sincronizar el proceso del cliente
     const procesoSincronizado = { ...(clienteActualizado.proceso || {}) };
     PROCESO_CONFIG.forEach(pasoConfig => {
         const aplicaAhora = pasoConfig.aplicaA(clienteActualizado.financiero || {});
@@ -455,7 +551,7 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
 
     const datosFinales = { ...clienteActualizado, proceso: procesoSincronizado };
 
-    // 2. Lógica para actualizar las viviendas (sin cambios)
+    // 2. Lógica para actualizar las viviendas
     const batch = writeBatch(db);
     batch.update(clienteRef, datosFinales);
     const nuevaViviendaId = datosFinales.viviendaId;
@@ -474,13 +570,11 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
     // 3. Se ejecuta la escritura en la base de datos
     await batch.commit();
 
-    // --- INICIO DE LA LÓGICA DE AUDITORÍA CENTRALIZADA ---
-    // 4. Se decide qué tipo de registro de auditoría crear
+    // 4. Lógica de auditoría centralizada
     const { action, cambios, snapshotCompleto, nombreNuevaVivienda } = auditDetails;
     const clienteNombreCompleto = toTitleCase(`${clienteActualizado.datosCliente.nombres} ${clienteActualizado.datosCliente.apellidos}`);
 
     if (action === 'RESTART_CLIENT_PROCESS') {
-        // Crea el log para "Iniciar Nuevo Proceso"
         await createAuditLog(
             `Inició un nuevo proceso para el cliente ${clienteNombreCompleto}`,
             {
@@ -488,22 +582,20 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
                 clienteId: clienteId,
                 clienteNombre: clienteNombreCompleto,
                 nombreNuevaVivienda: nombreNuevaVivienda || 'No especificado',
-                snapshotCompleto: snapshotCompleto // Usa el snapshot completo
+                snapshotCompleto: snapshotCompleto
             }
         );
     } else {
-        // Crea el log estándar para "Actualizar Datos"
         await createAuditLog(
             `Actualizó los datos del cliente ${clienteNombreCompleto} (C.C. ${clienteId})`,
             {
                 action: 'UPDATE_CLIENT',
                 clienteId: clienteId,
                 clienteNombre: clienteNombreCompleto,
-                cambios: cambios || [] // Usa los cambios o un array vacío para evitar errores
+                cambios: cambios || []
             }
         );
     }
-    // --- FIN DE LA LÓGICA DE AUDITORÍA CENTRALIZADA ---
 };
 
 export const deleteCliente = async (clienteId) => {

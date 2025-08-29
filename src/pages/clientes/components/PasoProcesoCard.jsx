@@ -1,6 +1,8 @@
+// src/pages/clientes/components/PasoProcesoCard.jsx
+
 import React, { useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Lock, FileText, Calendar, AlertCircle, RotateCcw, Eye, Trash2, Replace, X, Pencil, Info } from 'lucide-react';
+import { CheckCircle, Lock, FileText, Calendar, AlertCircle, RotateCcw, Eye, Trash2, Replace, X, Pencil, Info, ChevronDown, History } from 'lucide-react';
 import FileUpload from '../../../components/FileUpload';
 import toast from 'react-hot-toast';
 import { getTodayString, formatDisplayDate, parseDateAsUTC } from '../../../utils/textFormatters';
@@ -88,6 +90,8 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
     const { key, label, data, isLocked, puedeCompletarse, evidenciasRequeridas, error, esSiguientePaso, isPermanentlyLocked, hayPasoEnReapertura, esHito, esAutomatico, facturaBloqueadaPorSaldo } = paso;
     const [fechaCompletado, setFechaCompletado] = useState(data?.fecha || getTodayString());
     const [fechaErrorLocal, setFechaErrorLocal] = useState(null);
+    const [historialVisible, setHistorialVisible] = useState(false); // Estado para el historial
+    const actividad = paso.data?.actividad || [];
 
     const evidenciasSubidas = useMemo(() => {
         if (!data?.evidencias) return 0;
@@ -201,7 +205,42 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
                     )}
                 </div>
             )}
+
             {error && !fechaErrorLocal && <div className="mt-2 pl-9 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold"><AlertCircle size={14} /><p>{error}</p></div>}
+
+            {/* Nueva sección para el historial de actividad */}
+            {actividad.length > 0 && (
+                <div className="mt-4 pt-4 border-t dark:border-gray-600">
+                    <button
+                        onClick={() => setHistorialVisible(!historialVisible)}
+                        className="w-full flex justify-between items-center text-sm font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                    >
+                        <span className="flex items-center gap-2">
+                            <History size={16} />
+                            Historial de Actividad ({actividad.length})
+                        </span>
+                        <ChevronDown size={20} className={`transition-transform ${historialVisible ? 'rotate-180' : ''}`} />
+                    </button>
+                    {historialVisible && (
+                        <div className="mt-3 pl-2 space-y-3 animate-fade-in">
+                            {/* 👇 Mapeamos en orden cronológico y añadimos numeración */}
+                            {actividad.map((item, index) => (
+                                <div key={index} className="text-xs flex gap-2">
+                                    <span className="font-bold text-gray-500">{index + 1}.</span>
+                                    <div>
+                                        <p className="text-gray-800 dark:text-gray-300">{item.mensaje}</p>
+                                        <p className="text-gray-500 dark:text-gray-400">
+                                            Esta acción se realizó el día {item.fecha?.toDate ? formatDisplayDate(item.fecha.toDate()) : 'Fecha inválida'}
+                                            {' por el usuario: '}
+                                            <strong className="text-gray-600 dark:text-gray-300">{item.userName}</strong>
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

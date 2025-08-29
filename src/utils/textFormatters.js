@@ -71,25 +71,51 @@ export const formatID = (cedula) => {
 /**
  * Parsea un string de fecha 'YYYY-MM-DD' como si fuera UTC para evitar desfases.
  */
-export const parseDateAsUTC = (dateString) => {
-    if (!dateString) return null;
-    const [year, month, day] = dateString.split('-').map(Number);
-    return new Date(Date.UTC(year, month - 1, day));
+export const parseDateAsUTC = (dateInput) => {
+    // Si la entrada es nula o indefinida, devolvemos null.
+    if (!dateInput) return null;
+
+    // Si ya es un objeto Date de JavaScript, lo devolvemos directamente.
+    if (dateInput instanceof Date) {
+        return dateInput;
+    }
+
+    // Si es un objeto Timestamp de Firestore, lo convertimos a Date.
+    if (typeof dateInput.toDate === 'function') {
+        return dateInput.toDate();
+    }
+
+    // Si es un string, lo procesamos como antes.
+    if (typeof dateInput === 'string') {
+        const parts = dateInput.split('-');
+        if (parts.length !== 3) return null; // String con formato inválido
+        const [year, month, day] = parts.map(Number);
+        return new Date(Date.UTC(year, month - 1, day));
+    }
+
+    // Si no es ninguno de los anteriores, es un tipo no soportado.
+    return null;
 };
 
 /**
  * Formatea un string de fecha (YYYY-MM-DD) a un formato legible.
  */
-export const formatDisplayDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = parseDateAsUTC(dateString);
-    if (!date) return 'N/A';
-    return date.toLocaleDateString('es-ES', {
+export const formatDisplayDate = (dateInput) => {
+    if (!dateInput) return 'N/A';
+
+    const date = parseDateAsUTC(dateInput);
+
+    // Verificamos si la fecha resultante es válida antes de formatear.
+    if (!date || isNaN(date.getTime())) {
+        return 'Fecha inválida';
+    }
+
+    return new Intl.DateTimeFormat('es-CO', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
-        timeZone: 'UTC',
-    });
+        timeZone: 'UTC' // Usamos UTC para consistencia con parseDateAsUTC
+    }).format(date);
 };
 
 /**

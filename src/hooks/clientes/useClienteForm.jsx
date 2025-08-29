@@ -178,7 +178,21 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
     const handlePrevStep = () => setStep(s => s - 1);
 
-    const isFechaIngresoLocked = abonosDelCliente.length > 0;
+    const isFechaIngresoLocked = useMemo(() => {
+        if (!isEditing || !clienteAEditar) return false; // La fecha no se bloquea al crear
+
+        // Condición 1: ¿Hay abonos?
+        if (abonosDelCliente.length > 0) return true;
+
+        // Condición 2: ¿Se ha completado más de un paso?
+        const proceso = clienteAEditar.proceso || {};
+        const otrosPasosCompletados = Object.keys(proceso).filter(key =>
+            proceso[key]?.completado && key !== 'promesaEnviada'
+        ).length;
+
+        // Si hay otros pasos completados, se bloquea.
+        return otrosPasosCompletados > 0;
+    }, [clienteAEditar, abonosDelCliente, isEditing]);
 
     const executeSave = useCallback(async () => {
         setIsSubmitting(true);
@@ -233,6 +247,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 await createNotification('cliente', `El cliente ${clienteNombre} fue reactivado.`, `/clientes/detalle/${clienteAEditar.id}`);
 
             } else if (isEditing) {
+                const { errors, ...datosParaGuardar } = formData;
                 const clienteParaActualizar = {
                     datosCliente: formData.datosCliente,
                     financiero: formData.financiero,
@@ -240,10 +255,27 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     viviendaId: formData.viviendaSeleccionada?.id || null,
                     status: formData.status
                 };
+                const fechaOriginal = initialData?.datosCliente?.fechaIngreso;
+                const fechaNueva = formData.datosCliente.fechaIngreso;
+
+                if (fechaOriginal !== fechaNueva) {
+                    if (isFechaIngresoLocked) {
+                        toast.error("La fecha de inicio no se puede modificar porque el cliente ya tiene abonos o ha avanzado en el proceso.");
+                        setIsSubmitting(false);
+                        return; // Detenemos el guardado
+                    }
+
+                    // Si la fecha cambió y es permitido, sincronizamos el primer paso del proceso
+                    if (clienteParaActualizar.proceso?.promesaEnviada) {
+                        clienteParaActualizar.proceso.promesaEnviada.fecha = fechaNueva;
+                    }
+
+                    clienteParaActualizar.fechaInicioProceso = fechaNueva;
+                }
+
                 await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId, {
                     action: 'UPDATE_CLIENT',
-                    cambios,
-                    tieneAbonos: abonosDelCliente.length > 0
+                    cambios
                 });
                 toast.success("¡Cliente actualizado con éxito!");
                 createNotification('cliente', `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`, `/clientes/detalle/${clienteAEditar.id}`);
@@ -336,7 +368,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             setIsSubmitting(false);
             setIsConfirming(false);
         }
-    }, [formData, navigate, todosLosClientes, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId, modo, cambios]);
+    }, [formData, navigate, todosLosClientes, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId, modo, cambios, initialData, isFechaIngresoLocked, proyectos]);
 
     const hayCambios = useMemo(() => {
         if (!initialData || !formData) return false;

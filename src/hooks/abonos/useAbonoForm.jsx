@@ -1,3 +1,5 @@
+// src/hooks/abonos/useAbonoForm.jsx
+
 import { useMemo } from 'react';
 import { useForm } from '../useForm.jsx';
 import toast from 'react-hot-toast';
@@ -5,8 +7,11 @@ import { addAbonoAndUpdateProceso } from '../../utils/storage';
 import { validateAbono } from '../../utils/validation.js';
 import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
 import { FUENTE_PROCESO_MAP } from '../../utils/procesoConfig.js';
+import { useData } from '../../context/DataContext.jsx'; // <-- 1. Importamos useData
 
 export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente, onAbonoRegistrado }) => {
+    const { clientes } = useData(); // <-- 2. Obtenemos la lista FRESCA de clientes
+
     const initialAbonoFormState = useMemo(() => ({
         monto: '',
         fechaPago: getTodayString(),
@@ -19,8 +24,13 @@ export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente
         initialState: initialAbonoFormState,
         validate: (data) => {
             const pasoConfig = FUENTE_PROCESO_MAP[fuente];
-            const fechaDeInicio = cliente?.fechaInicioProceso || cliente?.datosCliente?.fechaIngreso;
-            return validateAbono(data, { saldoPendiente }, fechaDeInicio, cliente?.proceso, pasoConfig);
+
+            // 👇 3. Buscamos la última versión del cliente desde useData
+            const clienteFresco = clientes.find(c => c.id === cliente.id);
+            const fechaDeInicio = clienteFresco?.fechaInicioProceso || clienteFresco?.datosCliente?.fechaIngreso;
+
+            // Pasamos los datos frescos a la validación
+            return validateAbono(data, { saldoPendiente }, fechaDeInicio, clienteFresco?.proceso, pasoConfig);
         },
         onSubmit: async (data) => {
             const nuevoAbono = {
@@ -42,7 +52,7 @@ export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente
                 if (error.message === 'SOLICITUD_PENDIENTE') {
                     toast.error("El paso de solicitud de desembolso aún no está completado en el proceso.");
                 } else {
-                    toast.error("No se pudo registrar el abono.");
+                    toast.error(error.message || "No se pudo registrar el abono.");
                 }
             }
         }

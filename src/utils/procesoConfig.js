@@ -39,14 +39,14 @@ export const PROCESO_CONFIG = [
         label: 'Pago Estudio de Títulos',
         aplicaA: (financiero) => financiero.aplicaCredito,
         evidenciasRequeridas: [
-            { id: 'pagoEstudioTitulosSoporte', label: 'Comprobante de Pago', tipo: 'documento' }
+            { id: 'pagoEstudioTitulosSoporte', label: 'Comprobante de Pago Estudio de Títulos', tipo: 'documento' }
         ]
     },
     {
         key: 'minutaEnviadaAbogada',
         label: 'Minuta de Compraventa Enviada a Abogada',
         aplicaA: (financiero) => financiero.aplicaCredito,
-        evidenciasRequeridas: [{ id: 'minutaEnviadaSoporte', label: 'Soporte de Envío', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'minutaEnviadaSoporte', label: 'Soporte de Envío de Minuta a Abogada', tipo: 'documento' }]
     },
     {
         key: 'minutaAprobadaAbogada',
@@ -65,7 +65,7 @@ export const PROCESO_CONFIG = [
         label: 'Minuta Firmada por Ambas Partes',
         aplicaA: () => true,
         esHito: true,
-        evidenciasRequeridas: [{ id: 'minutaFirmadaDoc', label: 'Documento Minuta Firmada', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'minutaFirmadaDoc', label: 'Factura emitida por Notaría', tipo: 'documento' }]
     },
     {
         key: 'actaEntregaEnviada',
