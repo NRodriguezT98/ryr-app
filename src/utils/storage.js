@@ -417,7 +417,11 @@ export const deleteViviendaPermanently = async (vivienda, nombreProyecto) => {
     );
 };
 
-const generarActividadProceso = (procesoOriginal, procesoActual, userName) => {
+// 🔽 COPIA Y REEMPLAZA LA FUNCIÓN ENTERA CON ESTE CÓDIGO 🔽
+
+// 🔽 COPIA Y REEMPLAZA LA FUNCIÓN ENTERA CON ESTE CÓDIGO ACTUALIZADO 🔽
+
+export const generarActividadProceso = (procesoOriginal, procesoActual, userName) => {
     const nuevoProcesoConActividad = JSON.parse(JSON.stringify(procesoActual));
 
     PROCESO_CONFIG.forEach(pasoConfig => {
@@ -436,47 +440,72 @@ const generarActividadProceso = (procesoOriginal, procesoActual, userName) => {
             fecha: new Date()
         });
 
-        let seCompletoEnEsteCambio = false;
+        // 1. Detectar el caso "Editar un paso ya completado"
+        if (pasoOriginal.completado && pasoActual.completado) {
 
-        // 1. Detectar si el paso se completó en esta actualización
-        if (!pasoOriginal.completado && pasoActual.completado) {
-            seCompletoEnEsteCambio = true;
+            // 👇 INICIO DE LA MODIFICACIÓN DE ORDEN 👇
+            let accionDeFecha = null;
+            let accionesDeEvidencia = [];
+
+            // Primero, capturamos la acción de la fecha por separado
+            if (pasoOriginal.fecha !== pasoActual.fecha) {
+                accionDeFecha = `modificó la fecha de completado a ${formatDisplayDate(pasoActual.fecha)}`;
+            }
+
+            // Segundo, capturamos todas las acciones de evidencia
+            pasoConfig.evidenciasRequeridas.forEach(ev => {
+                const idEvidencia = ev.id;
+                const urlOriginal = pasoOriginal.evidencias?.[idEvidencia]?.url;
+                const urlActual = pasoActual.evidencias?.[idEvidencia]?.url;
+                if (urlOriginal !== urlActual) {
+                    if (urlActual) {
+                        accionesDeEvidencia.push(`reemplazó la evidencia '${ev.label}'`);
+                    } else {
+                        accionesDeEvidencia.push(`eliminó la evidencia '${ev.label}'`);
+                    }
+                }
+            });
+
+            // Tercero, construimos el mensaje final en el orden deseado
+            if (accionDeFecha || accionesDeEvidencia.length > 0) {
+                const partesDelMensaje = [];
+
+                if (accionesDeEvidencia.length > 0) {
+                    partesDelMensaje.push(accionesDeEvidencia.join(', '));
+                }
+                if (accionDeFecha) {
+                    partesDelMensaje.push(accionDeFecha);
+                }
+
+                // Unimos las partes con "y" para formar la frase.
+                const mensajeCompleto = `Reabrió el paso, ${partesDelMensaje.join(' y ')}.`;
+                pasoActual.actividad.push(crearEntrada(mensajeCompleto));
+                return;
+            }
+            // 🔼 FIN DE LA MODIFICACIÓN DE ORDEN 🔼
         }
 
-        // 2. Detectar cambios en evidencias
+        // Lógica para los demás casos (se mantiene igual)
+        let seCompletoEnEsteCambio = !pasoOriginal.completado && pasoActual.completado;
         let evidenciasSubidasMsg = [];
+
         pasoConfig.evidenciasRequeridas.forEach(ev => {
             const idEvidencia = ev.id;
             const urlOriginal = pasoOriginal.evidencias?.[idEvidencia]?.url;
             const urlActual = pasoActual.evidencias?.[idEvidencia]?.url;
-
-            if (urlOriginal !== urlActual) {
-                if (urlActual) {
-                    evidenciasSubidasMsg.push(`'${ev.label}'`);
-                } else {
-                    pasoActual.actividad.push(crearEntrada(`Se eliminó la evidencia "${ev.label}".`));
-                }
+            if (urlActual && !urlOriginal) {
+                evidenciasSubidasMsg.push(`'${ev.label}'`);
             }
         });
 
-        // 3. Lógica para unificar mensajes
         if (seCompletoEnEsteCambio) {
+            let msg = `Paso completado con fecha ${formatDisplayDate(pasoActual.fecha)}.`;
             if (evidenciasSubidasMsg.length > 0) {
-                // Mensaje unificado
-                const msg = `Se subió la evidencia ${evidenciasSubidasMsg.join(', ')} y se marcó el paso como completado con fecha ${formatDisplayDate(pasoActual.fecha)}.`;
-                pasoActual.actividad.push(crearEntrada(msg));
-            } else {
-                // Mensaje solo de completado
-                pasoActual.actividad.push(crearEntrada(`Paso completado con fecha ${formatDisplayDate(pasoActual.fecha)}.`));
+                msg = `Se subió la evidencia ${evidenciasSubidasMsg.join(', ')} y se completó el paso con fecha ${formatDisplayDate(pasoActual.fecha)}.`;
             }
+            pasoActual.actividad.push(crearEntrada(msg));
         } else if (evidenciasSubidasMsg.length > 0) {
-            // Mensaje solo de subida de evidencia (si el paso no se completó)
             pasoActual.actividad.push(crearEntrada(`Se subió la evidencia ${evidenciasSubidasMsg.join(', ')}.`));
-        }
-
-        // 4. Detectar otros cambios (fecha en paso ya completado y reapertura)
-        if (pasoOriginal.completado && pasoActual.completado && pasoOriginal.fecha !== pasoActual.fecha) {
-            pasoActual.actividad.push(crearEntrada(`Fecha de completado actualizada a ${formatDisplayDate(pasoActual.fecha)}.`));
         } else if (pasoOriginal.completado && !pasoActual.completado) {
             pasoActual.actividad.push(crearEntrada('Paso reabierto.'));
         }
@@ -520,12 +549,6 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
         }
     }
 
-    const procesoConActividad = generarActividadProceso(
-        clienteOriginal.proceso || {},
-        clienteActualizado.proceso || {},
-        auditDetails.userName || 'Sistema' // Usamos el nombre de usuario
-    );
-    clienteActualizado.proceso = procesoConActividad;
 
     // 1. Lógica para sincronizar el proceso del cliente
     const procesoSincronizado = { ...(clienteActualizado.proceso || {}) };

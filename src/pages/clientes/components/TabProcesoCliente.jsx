@@ -26,11 +26,8 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
         return <ClienteEstadoView cliente={cliente} renuncia={renuncia} contexto="proceso" />;
     }
 
-    const handleSave = async (nuevoProceso, userName) => {
-        const clienteActualizado = {
-            ...cliente,
-            proceso: nuevoProceso
-        };
+    const handleSave = async (procesoConActividad, userName) => {
+        const clienteActualizado = { ...cliente, proceso: procesoConActividad };
         const { vivienda, ...datosParaGuardar } = clienteActualizado;
         await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId, { userName });
         onDatosRecargados();
@@ -124,7 +121,7 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                     onUpdateEvidencia={handlers.handleUpdateEvidencia}
                     onCompletarPaso={handlers.handleCompletarPaso}
                     onIniciarReapertura={handlers.iniciarReapertura}
-                    onDeshacerReapertura={handlers.deshacerReapertura}
+                    onDescartarCambios={handlers.descartarCambiosEnPaso}
                     onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
                     clienteId={cliente.id}
                     isReadOnly={isReadOnly}

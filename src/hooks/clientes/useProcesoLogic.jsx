@@ -1,10 +1,183 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
-import { updateCliente, createNotification, anularCierreProceso } from '../../utils/storage';
+import { generarActividadProceso, updateCliente, createNotification, anularCierreProceso } from '../../utils/storage';
 import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { useAuth } from '../../context/AuthContext';
 
+// 🔽 COPIA Y PEGA ESTE BLOQUE COMPLETO 🔽
+
+const getPasosAplicables = (cliente) => PROCESO_CONFIG.filter(paso => paso.aplicaA(cliente.financiero || {}));
+
+const validarPasos = (procesoState, pasosAplicables, cliente) => {
+    const errores = {};
+    const fechaDeInicio = cliente.fechaInicioProceso || cliente.datosCliente.fechaIngreso;
+    const fechaInicioProceso = parseDateAsUTC(fechaDeInicio);
+    const hoy = parseDateAsUTC(getTodayString());
+
+    pasosAplicables.forEach(pasoConfig => {
+        const pasoActual = procesoState[pasoConfig.key];
+        if (!pasoActual?.completado) return;
+
+        // Validación de evidencias
+        const todasEvidenciasPresentes = pasoConfig.evidenciasRequeridas.every(
+            ev => pasoActual.evidencias?.[ev.id]?.url
+        );
+        if (!todasEvidenciasPresentes) {
+            errores[pasoConfig.key] = "Faltan evidencias requeridas en este paso completado.";
+            return; // Si faltan evidencias, no seguimos validando este paso
+        }
+
+        // Validación de fecha
+        if (!pasoActual.fecha) {
+            errores[pasoConfig.key] = "Se requiere una fecha para este paso completado.";
+            return;
+        }
+
+        const fechaSeleccionada = parseDateAsUTC(pasoActual.fecha);
+        if (fechaSeleccionada > hoy) {
+            errores[pasoConfig.key] = "La fecha no puede ser futura.";
+        } else if (fechaSeleccionada < fechaInicioProceso) {
+            errores[pasoConfig.key] = `La fecha no puede ser anterior al inicio del proceso (${formatDisplayDate(fechaDeInicio)}).`;
+        }
+    });
+    // Validación de consistencia cronológica entre pasos
+    let ultimaFechaValida = fechaDeInicio;
+    let ultimoPasoLabel = "inicio del proceso";
+
+    pasosAplicables.forEach(pasoConfig => {
+        const pasoActual = procesoState[pasoConfig.key];
+        // Solo validamos pasos completados y sin errores previos
+        if (pasoActual?.completado && pasoActual.fecha && !errores[pasoConfig.key]) {
+            const fechaActual = parseDateAsUTC(pasoActual.fecha);
+            const fechaAnterior = parseDateAsUTC(ultimaFechaValida);
+
+            if (fechaActual < fechaAnterior) {
+                errores[pasoConfig.key] = `La fecha no puede ser anterior al paso "${ultimoPasoLabel}" (${formatDisplayDate(ultimaFechaValida)}).`;
+            } else {
+                // Si la fecha es válida, actualizamos los valores para la siguiente iteración
+                ultimaFechaValida = pasoActual.fecha;
+                ultimoPasoLabel = pasoConfig.label;
+            }
+        }
+    });
+    return errores;
+};
+
+const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationErrors, cliente) => {
+    let previousStepCompleted = true;
+    let primerPasoIncompletoEncontrado = false;
+    const fechaDeInicio = cliente.fechaInicioProceso || cliente.datosCliente.fechaIngreso;
+
+    const isStepValidAndCompleted = (key) => procesoState[key]?.completado && !validationErrors[key];
+    const allPreviousStepsForInvoiceCompleted = pasosAplicables.filter(p => p.key !== 'facturaVenta').every(p => isStepValidAndCompleted(p.key));
+    const isBoletaRegistroCompleted = isStepValidAndCompleted('pagoBoletaRegistro');
+
+    // Encontrar último hito completado para bloqueo permanente
+    let ultimoHitoIndex = -1;
+    for (let i = pasosAplicables.length - 1; i >= 0; i--) {
+        const paso = pasosAplicables[i];
+        if (paso.esHito && isStepValidAndCompleted(paso.key)) {
+            ultimoHitoIndex = i;
+            break;
+        }
+    }
+
+    return pasosAplicables.map((pasoConfig, index) => {
+        const pasoData = procesoState[pasoConfig.key] || { completado: false, fecha: null, evidencias: {} };
+        const error = validationErrors[pasoConfig.key];
+
+        // Lógica de bloqueo
+        let isLocked = !previousStepCompleted;
+        switch (pasoConfig.key) {
+            case 'solicitudDesembolsoCredito': case 'solicitudDesembolsoMCY': case 'solicitudDesembolsoCaja':
+                isLocked = !isBoletaRegistroCompleted; break;
+            case 'desembolsoCredito': isLocked = !isStepValidAndCompleted('solicitudDesembolsoCredito'); break;
+            case 'desembolsoMCY': isLocked = !isStepValidAndCompleted('solicitudDesembolsoMCY'); break;
+            case 'desembolsoCaja': isLocked = !isStepValidAndCompleted('solicitudDesembolsoCaja'); break;
+            case 'facturaVenta': isLocked = !allPreviousStepsForInvoiceCompleted; break;
+        }
+
+        let facturaBloqueadaPorSaldo = false;
+        if (pasoConfig.key === 'facturaVenta' && !isLocked) {
+            if ((cliente.vivienda?.saldoPendiente ?? 1) > 0) {
+                isLocked = true;
+                facturaBloqueadaPorSaldo = true;
+            }
+        }
+
+        const isPermanentlyLocked = ultimoHitoIndex !== -1 && index <= ultimoHitoIndex;
+
+        if (!isStepValidAndCompleted(pasoConfig.key) && !pasoConfig.esAutomatico) {
+            previousStepCompleted = false;
+        }
+
+        // Lógica de "Siguiente Paso"
+        let esSiguientePaso = false;
+        if (!isLocked && !pasoData.completado && !primerPasoIncompletoEncontrado) {
+            esSiguientePaso = true;
+            primerPasoIncompletoEncontrado = true;
+        }
+
+        const todasEvidenciasSubidas = pasoConfig.evidenciasRequeridas.every(ev => pasoData.evidencias?.[ev.id]?.url);
+        const puedeCompletarse = todasEvidenciasSubidas && !pasoData.completado && !isLocked;
+
+        // Lógica de fechas
+        let minDateForStep = fechaDeInicio;
+        if (index > 0) {
+            for (let i = index - 1; i >= 0; i--) {
+                const prevPasoKey = pasosAplicables[i].key;
+                if (isStepValidAndCompleted(prevPasoKey)) {
+                    minDateForStep = procesoState[prevPasoKey].fecha;
+                    break;
+                }
+            }
+        }
+
+        if (['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(pasoConfig.key)) {
+            minDateForStep = procesoState['pagoBoletaRegistro']?.fecha || minDateForStep;
+        }
+        if (pasoConfig.key === 'facturaVenta') {
+            let maxDateBeforeInvoice = fechaDeInicio;
+            pasosAplicables.forEach(paso => {
+                if (paso.key !== 'facturaVenta' && isStepValidAndCompleted(paso.key)) {
+                    if (parseDateAsUTC(procesoState[paso.key].fecha) > parseDateAsUTC(maxDateBeforeInvoice)) {
+                        maxDateBeforeInvoice = procesoState[paso.key].fecha;
+                    }
+                }
+            });
+            minDateForStep = maxDateBeforeInvoice;
+        }
+
+        // Calcular la fecha máxima basada en el siguiente paso completado.
+        let maxDateForStep = getTodayString(); // Por defecto, el máximo es hoy.
+        for (let i = index + 1; i < pasosAplicables.length; i++) {
+            const nextPasoKey = pasosAplicables[i].key;
+            if (isStepValidAndCompleted(nextPasoKey)) {
+                // Encontramos el siguiente paso completado. Su fecha es nuestro máximo.
+                maxDateForStep = procesoState[nextPasoKey].fecha;
+                break; // No necesitamos seguir buscando.
+            }
+        }
+        // Nos aseguramos de que la fecha máxima nunca sea mayor que hoy.
+        if (parseDateAsUTC(maxDateForStep) > parseDateAsUTC(getTodayString())) {
+            maxDateForStep = getTodayString();
+        }
+
+        return {
+            ...pasoConfig,
+            data: pasoData,
+            isLocked: isLocked || isPermanentlyLocked,
+            isPermanentlyLocked,
+            puedeCompletarse,
+            esSiguientePaso,
+            error,
+            minDate: minDateForStep,
+            maxDate: maxDateForStep,
+            facturaBloqueadaPorSaldo
+        };
+    });
+};
 
 export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
     const { userData } = useAuth();
@@ -55,9 +228,9 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
 
     const cancelarReapertura = useCallback(() => setPasoAReabrir(null), []);
 
-    const deshacerReapertura = useCallback((pasoKey) => {
-        setProcesoState(prev => ({ ...prev, [pasoKey]: initialProcesoState[pasoKey] }));
-        toast.success('Reapertura cancelada.');
+    const descartarCambiosEnPaso = useCallback((pasoKey) => {
+        setProcesoState(prev => ({ ...prev, [pasoKey]: initialProcesoState[pasoKey] || { completado: false, fecha: null, evidencias: {} } }));
+        toast('Cambios en el paso descartados.', { icon: '↩️' });
     }, [initialProcesoState]);
 
     const iniciarEdicionFecha = useCallback((pasoKey) => setPasoAEditarFecha({ key: pasoKey, fecha: procesoState[pasoKey].fecha, motivo: '' }), [procesoState]);
@@ -103,155 +276,26 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
         }
     }, [cliente.id, onDatosRecargados]);
 
+    // 🔽 REEMPLAZA EL useMemo ANTIGUO CON ESTE 🔽
     const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura, procesoCompletado } = useMemo(() => {
-        const errores = {};
-        const fechaDeInicio = cliente.fechaInicioProceso || cliente.datosCliente.fechaIngreso;
-        const fechaInicioProceso = parseDateAsUTC(fechaDeInicio);
-        const hoy = parseDateAsUTC(getTodayString());
+        // 1. Obtener los pasos que aplican a este cliente específico
+        const pasosAplicables = getPasosAplicables(cliente);
 
-        const pasosAplicables = PROCESO_CONFIG.filter(paso => paso.aplicaA(cliente.financiero || {}));
+        // 2. Validar el estado actual del proceso
+        const errores = validarPasos(procesoState, pasosAplicables, cliente);
 
-        pasosAplicables.forEach(pasoConfig => {
-            const pasoActual = procesoState[pasoConfig.key];
-            if (pasoActual?.completado) {
-                const todasEvidenciasPresentes = pasoConfig.evidenciasRequeridas.every(
-                    ev => pasoActual.evidencias?.[ev.id]?.url
-                );
-                if (!todasEvidenciasPresentes) {
-                    errores[pasoConfig.key] = "Faltan evidencias requeridas en este paso completado.";
-                }
+        // 3. Calcular estados derivados (bloqueos, fechas, etc.)
+        const resultado = calcularEstadoYDependencias(procesoState, pasosAplicables, errores, cliente);
 
-                if (pasoActual.fecha) {
-                    const fechaSeleccionada = parseDateAsUTC(pasoActual.fecha);
-                    if (fechaSeleccionada > hoy && !errores[pasoConfig.key]) {
-                        errores[pasoConfig.key] = "La fecha no puede ser futura.";
-                    } else if (fechaSeleccionada < fechaInicioProceso && !errores[pasoConfig.key]) {
-                        errores[pasoConfig.key] = `La fecha no puede ser anterior al inicio del proceso (${formatDisplayDate(fechaDeInicio)}).`;
-                    }
-                } else if (!errores[pasoConfig.key]) {
-                    errores[pasoConfig.key] = "Se requiere una fecha para este paso completado.";
-                }
-            }
-        });
-
-        let ultimaFechaValida = fechaDeInicio;
-        pasosAplicables.forEach(pasoConfig => {
-            const pasoActual = procesoState[pasoConfig.key];
-            if (pasoActual?.completado && pasoActual.fecha && !errores[pasoConfig.key]) {
-                if (parseDateAsUTC(pasoActual.fecha) > parseDateAsUTC(ultimaFechaValida)) {
-                    ultimaFechaValida = pasoActual.fecha;
-                }
-            }
-        });
-
+        // 4. Calcular datos finales para la UI
+        const pasosCompletados = resultado.filter(p => p.data?.completado && !p.error).length;
+        const procesoEstaCompleto = pasosCompletados === resultado.length && resultado.length > 0;
 
         const algunPasoEnReapertura = pasosAplicables.some(pasoConfig => {
             const estadoInicial = initialProcesoState[pasoConfig.key];
             const estadoActual = procesoState[pasoConfig.key];
             return estadoInicial?.completado === true && estadoActual?.completado === false;
         });
-
-        let previousStepCompleted = true;
-        let primerPasoIncompletoEncontrado = false;
-
-        const isStepValidAndCompletedGlobal = (key) => procesoState[key]?.completado && !errores[key];
-        const allPreviousStepsForInvoiceCompleted = pasosAplicables.filter(p => p.key !== 'facturaVenta').every(p => isStepValidAndCompletedGlobal(p.key));
-
-        const fechaBoletaRegistro = isStepValidAndCompletedGlobal('pagoBoletaRegistro') ? procesoState['pagoBoletaRegistro'].fecha : null;
-
-        let maxDateBeforeInvoice = fechaDeInicio;
-        pasosAplicables.forEach(paso => {
-            if (paso.key !== 'facturaVenta' && isStepValidAndCompletedGlobal(paso.key)) {
-                const fechaPaso = procesoState[paso.key]?.fecha;
-                if (fechaPaso && parseDateAsUTC(fechaPaso) > parseDateAsUTC(maxDateBeforeInvoice)) {
-                    maxDateBeforeInvoice = fechaPaso;
-                }
-            }
-        });
-
-        const resultado = pasosAplicables.map((pasoConfig, index) => {
-            const pasoData = procesoState[pasoConfig.key] || { completado: false, fecha: null, evidencias: {} };
-            const isStepValidAndCompleted = (key) => procesoState[key]?.completado && !errores[key];
-
-            let previousStepDate = fechaDeInicio;
-            if (index > 0) {
-                for (let i = index - 1; i >= 0; i--) {
-                    const prevPasoKey = pasosAplicables[i].key;
-                    if (isStepValidAndCompleted(prevPasoKey)) {
-                        previousStepDate = procesoState[prevPasoKey].fecha;
-                        break;
-                    }
-                }
-            }
-
-            const isBoletaRegistroCompleted = isStepValidAndCompleted('pagoBoletaRegistro');
-
-            let isLocked = !previousStepCompleted;
-            switch (pasoConfig.key) {
-                case 'solicitudDesembolsoCredito': case 'solicitudDesembolsoMCY': case 'solicitudDesembolsoCaja':
-                    isLocked = !isBoletaRegistroCompleted; break;
-                case 'desembolsoCredito': isLocked = !isStepValidAndCompleted('solicitudDesembolsoCredito'); break;
-                case 'desembolsoMCY': isLocked = !isStepValidAndCompleted('solicitudDesembolsoMCY'); break;
-                case 'desembolsoCaja': isLocked = !isStepValidAndCompleted('solicitudDesembolsoCaja'); break;
-                case 'facturaVenta': isLocked = !allPreviousStepsForInvoiceCompleted; break;
-            }
-
-            let facturaBloqueadaPorSaldo = false;
-            if (pasoConfig.key === 'facturaVenta' && !isLocked) {
-                const saldoPendiente = cliente.vivienda?.saldoPendiente ?? 1;
-                if (saldoPendiente > 0) {
-                    isLocked = true;
-                    facturaBloqueadaPorSaldo = true;
-                }
-            }
-
-            if (!isStepValidAndCompleted(pasoConfig.key) && !pasoConfig.esAutomatico) {
-                previousStepCompleted = false;
-            }
-
-            let ultimoHitoIndex = -1;
-            for (let i = pasosAplicables.length - 1; i >= 0; i--) {
-                const paso = pasosAplicables[i];
-                if (paso.esHito && procesoState[paso.key]?.completado && procesoState[paso.key]?.fecha) {
-                    ultimoHitoIndex = i;
-                    break;
-                }
-            }
-            const isPermanentlyLocked = ultimoHitoIndex !== -1 && index <= ultimoHitoIndex;
-
-            let esSiguientePaso = false;
-            if (!isLocked && !pasoData.completado && !primerPasoIncompletoEncontrado) {
-                esSiguientePaso = true;
-                primerPasoIncompletoEncontrado = true;
-            }
-
-            const todasEvidenciasSubidas = pasoConfig.evidenciasRequeridas.every(ev => pasoData.evidencias?.[ev.id]?.url);
-            const puedeCompletarse = todasEvidenciasSubidas && !pasoData.completado && !isLocked;
-
-            let minDateForStep = previousStepDate;
-            if (['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(pasoConfig.key)) {
-                minDateForStep = fechaBoletaRegistro || fechaDeInicio;
-            }
-            if (pasoConfig.key === 'facturaVenta') {
-                minDateForStep = maxDateBeforeInvoice;
-            }
-
-            return {
-                ...pasoConfig,
-                data: pasoData,
-                isLocked: isLocked || isPermanentlyLocked,
-                isPermanentlyLocked,
-                puedeCompletarse,
-                esSiguientePaso,
-                error: errores[pasoConfig.key],
-                minDate: minDateForStep,
-                maxDate: getTodayString(),
-                facturaBloqueadaPorSaldo
-            };
-        });
-
-        const pasosCompletados = resultado.filter(p => p.data?.completado && !p.error).length;
-        const procesoEstaCompleto = pasosCompletados === resultado.length && resultado.length > 0;
 
         return {
             pasosRenderizables: resultado,
@@ -260,7 +304,9 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
             hayPasoEnReapertura: algunPasoEnReapertura,
             procesoCompletado: procesoEstaCompleto,
         };
+
     }, [cliente, procesoState, initialProcesoState]);
+    //
 
     const hayCambiosSinGuardar = useMemo(() => {
         return JSON.stringify(procesoState) !== JSON.stringify(initialProcesoState);
@@ -307,6 +353,13 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
             return;
         }
         try {
+            // 1. Generamos el estado final CON el historial de actividad ANTES de guardar
+            const procesoConActividad = generarActividadProceso(
+                initialProcesoState,
+                procesoState,
+                userName
+            );
+
             await onSave(procesoState, userName);
 
             PROCESO_CONFIG.forEach(paso => {
@@ -319,7 +372,9 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
             });
 
             toast.success("Proceso del cliente actualizado con éxito.");
-            setInitialProcesoState(procesoState);
+
+            // 3. Actualizamos el estado inicial con la versión que SÍ tiene el historial
+            setInitialProcesoState(procesoConActividad);
             setJustSaved(true);
             setTimeout(() => setJustSaved(false), 2000);
         } catch (error) {
@@ -346,7 +401,7 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
             iniciarReapertura,
             confirmarReapertura,
             cancelarReapertura,
-            deshacerReapertura,
+            descartarCambiosEnPaso,
             iniciarEdicionFecha,
             confirmarEdicionFecha,
             cancelarEdicionFecha,

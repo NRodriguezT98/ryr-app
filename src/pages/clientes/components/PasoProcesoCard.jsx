@@ -86,7 +86,7 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
 };
 
 
-const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarReapertura, onDeshacerReapertura, onIniciarEdicionFecha, clienteId, isReadOnly }) => {
+const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarReapertura, onDescartarCambios, onIniciarEdicionFecha, clienteId, isReadOnly }) => {
     const { key, label, data, isLocked, puedeCompletarse, evidenciasRequeridas, error, esSiguientePaso, isPermanentlyLocked, hayPasoEnReapertura, esHito, esAutomatico, facturaBloqueadaPorSaldo } = paso;
     const [fechaCompletado, setFechaCompletado] = useState(data?.fecha || getTodayString());
     const [fechaErrorLocal, setFechaErrorLocal] = useState(null);
@@ -121,10 +121,33 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
     };
 
     const handleFechaChange = (e) => {
-        setFechaCompletado(e.target.value);
-        if (fechaErrorLocal) {
-            setFechaErrorLocal(null);
+        const nuevaFecha = e.target.value;
+
+        // Validamos solo si el campo de fecha tiene un valor
+        if (nuevaFecha) {
+            const fechaSeleccionada = parseDateAsUTC(nuevaFecha);
+            const fechaMinima = parseDateAsUTC(paso.minDate);
+            const fechaMaxima = parseDateAsUTC(paso.maxDate);
+
+            if (fechaSeleccionada < fechaMinima || fechaSeleccionada > fechaMaxima) {
+                // 1. Si la fecha es inválida, establecemos el mensaje de error local.
+                setFechaErrorLocal(`La fecha debe estar entre ${formatDisplayDate(paso.minDate)} y ${formatDisplayDate(paso.maxDate)}.`);
+                // 2. IMPORTANTE: Detenemos la ejecución para no actualizar el estado con la fecha inválida.
+                return;
+            }
         }
+
+        // 3. Si la fecha es válida (o el campo está vacío), nos aseguramos de limpiar cualquier error previo.
+        setFechaErrorLocal(null);
+        // 4. Y actualizamos el estado de la fecha.
+        setFechaCompletado(nuevaFecha);
+    };
+
+    const handleCancelarCambios = () => {
+        // Primero, limpiamos el error local para quitar el estilo rojo.
+        setFechaErrorLocal(null);
+        // Luego, llamamos a la función del hook para revertir los datos.
+        onDescartarCambios(key);
     };
 
     const cardClasses = `relative p-5 rounded-xl border-2 transition-all ${error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
@@ -187,7 +210,7 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
                     {puedeCompletarse && !isReadOnly && (
                         <div className="pt-3 border-t dark:border-gray-600">
                             <div className="flex items-center justify-end gap-3">
-                                <button onClick={() => onDeshacerReapertura(key)} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center gap-2">
+                                <button onClick={handleCancelarCambios} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center gap-2">
                                     <X size={16} /> Cancelar
                                 </button>
                                 <input type="date" value={fechaCompletado} onChange={handleFechaChange} min={paso.minDate} max={paso.maxDate} className={`text-sm border p-1.5 rounded-md dark:bg-gray-700 ${fechaErrorLocal || error ? 'border-red-500' : 'dark:border-gray-600'}`} />
