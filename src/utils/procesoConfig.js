@@ -6,8 +6,8 @@ export const PROCESO_CONFIG = [
         label: 'Promesa de Compraventa Enviada',
         aplicaA: () => true,
         evidenciasRequeridas: [
-            { id: 'promesaEnviadaCorreo', label: 'Captura del Correo de Envío', tipo: 'imagen' },
-            { id: 'promesaEnviadaDoc', label: 'Documento de Promesa Enviado (PDF)', tipo: 'documento' }
+            { id: 'promesaEnviadaCorreo', label: 'Captura de Envio de Promesa', tipo: 'imagen' },
+            { id: 'promesaEnviadaDoc', label: 'Promesa de Compraventa Enviada (PDF)', tipo: 'documento' }
         ]
     },
     {
@@ -15,7 +15,7 @@ export const PROCESO_CONFIG = [
         label: 'Promesa de Compraventa Firmada',
         aplicaA: () => true,
         evidenciasRequeridas: [
-            { id: 'promesaRecibidaDoc', label: 'Documento de Promesa Firmado (PDF)', tipo: 'documento' }
+            { id: 'promesaRecibidaDoc', label: 'Promesa de Compraventa Firmada (PDF)', tipo: 'documento' }
         ]
     },
     {
@@ -23,7 +23,7 @@ export const PROCESO_CONFIG = [
         label: 'Envío Documentación para Avalúo',
         aplicaA: (financiero) => financiero.aplicaCredito,
         evidenciasRequeridas: [
-            { id: 'docAvaluo', label: 'Soporte de Envío de Documentos', tipo: 'documento' }
+            { id: 'docAvaluo', label: 'Captura de Correo con Envío Documentación para Avalúo', tipo: 'documento' }
         ]
     },
     {
@@ -31,7 +31,7 @@ export const PROCESO_CONFIG = [
         label: 'Carta de Ratificación Recibida',
         aplicaA: (financiero) => financiero.aplicaCredito,
         evidenciasRequeridas: [
-            { id: 'cartaRatificacionDoc', label: 'Documento Carta de Ratificación (PDF)', tipo: 'documento' }
+            { id: 'cartaRatificacionDoc', label: 'Carta de Ratificación (PDF)', tipo: 'documento' }
         ]
     },
     {
@@ -46,19 +46,19 @@ export const PROCESO_CONFIG = [
         key: 'minutaEnviadaAbogada',
         label: 'Minuta de Compraventa Enviada a Abogada',
         aplicaA: (financiero) => financiero.aplicaCredito,
-        evidenciasRequeridas: [{ id: 'minutaEnviadaSoporte', label: 'Soporte de Envío de Minuta a Abogada', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'minutaEnviadaSoporte', label: 'Captura de Correo con Envío de Minuta a Abogada', tipo: 'documento' }]
     },
     {
         key: 'minutaAprobadaAbogada',
         label: 'Minuta Aprobada por Abogada',
         aplicaA: (financiero) => financiero.aplicaCredito,
-        evidenciasRequeridas: [{ id: 'minutaAprobadaSoporte', label: 'Soporte de Aprobación', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'minutaAprobadaSoporte', label: 'Captura de Correo Aprobación de Minuta por Abogada', tipo: 'documento' }]
     },
     {
         key: 'minutaEnviadaNotaria',
         label: 'Minuta Enviada a Notaría',
         aplicaA: () => true,
-        evidenciasRequeridas: [{ id: 'minutaNotariaSoporte', label: 'Soporte de Envío', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'minutaNotariaSoporte', label: 'Captura de Correo con Envío de Minuta a Notaría', tipo: 'documento' }]
     },
     {
         key: 'minutaFirmada',
@@ -71,31 +71,31 @@ export const PROCESO_CONFIG = [
         key: 'actaEntregaEnviada',
         label: 'Acta de Entrega Enviada',
         aplicaA: () => true,
-        evidenciasRequeridas: [{ id: 'actaEnviadaSoporte', label: 'Soporte de Envío', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'actaEnviadaSoporte', label: 'Acta de Entrega Enviada para Firma', tipo: 'documento' }]
     },
     {
         key: 'actaEntregaRecibida',
         label: 'Acta de Entrega Firmada',
         aplicaA: () => true,
-        evidenciasRequeridas: [{ id: 'actaFirmadaDoc', label: 'Documento Acta Firmada', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'actaFirmadaDoc', label: 'Acta de Entrega Firmada por Cliente', tipo: 'documento' }]
     },
     {
         key: 'pagoBoletaFiscal',
         label: 'Pago de Boleta Fiscal',
         aplicaA: () => true,
-        evidenciasRequeridas: [{ id: 'pagoBoletaFiscalSoporte', label: 'Comprobante de Pago', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'pagoBoletaFiscalSoporte', label: 'Comprobante de Pago Boleta Fiscal', tipo: 'documento' }]
     },
     {
         key: 'pagoBoletaRegistro',
         label: 'Pago de Boleta de Registro',
         aplicaA: () => true,
-        evidenciasRequeridas: [{ id: 'pagoBoletaRegistroSoporte', label: 'Comprobante de Pago', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'pagoBoletaRegistroSoporte', label: 'Comprobante de Pago Boleta de Registro', tipo: 'documento' }]
     },
     {
         key: 'solicitudDesembolsoCredito',
         label: 'Solicitud Desembolso Crédito',
         aplicaA: (financiero) => financiero.aplicaCredito,
-        evidenciasRequeridas: [{ id: 'solicitudCreditoSoporte', label: 'Soporte de Solicitud', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'solicitudCreditoSoporte', label: 'Captura envío de Solicitud desembolso de Crédito', tipo: 'documento' }]
     },
     {
         key: 'desembolsoCredito',
@@ -103,13 +103,13 @@ export const PROCESO_CONFIG = [
         aplicaA: (financiero) => financiero.aplicaCredito,
         esHito: true,
         esAutomatico: true,
-        evidenciasRequeridas: [{ id: 'desembolsoCreditoSoporte', label: 'Soporte de Desembolso', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'desembolsoCreditoSoporte', label: 'Captura confirmación de desembolso de Crédito', tipo: 'documento' }]
     },
     {
         key: 'solicitudDesembolsoMCY',
         label: 'Solicitud Desembolso Sub. MCY',
         aplicaA: (financiero) => financiero.aplicaSubsidioVivienda,
-        evidenciasRequeridas: [{ id: 'solicitudMCYSoporte', label: 'Soporte de Solicitud', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'solicitudMCYSoporte', label: 'Captura envío de Solicitud desembolso Subsidio MCY', tipo: 'documento' }]
     },
     {
         key: 'desembolsoMCY',
@@ -117,13 +117,13 @@ export const PROCESO_CONFIG = [
         aplicaA: (financiero) => financiero.aplicaSubsidioVivienda,
         esHito: true,
         esAutomatico: true,
-        evidenciasRequeridas: [{ id: 'desembolsoMCYSoporte', label: 'Soporte de Desembolso', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'desembolsoMCYSoporte', label: 'Captura confirmación de desembolso Subsidio MCY', tipo: 'documento' }]
     },
     {
         key: 'solicitudDesembolsoCaja',
         label: 'Solicitud Desembolso Sub. Caja Comp.',
         aplicaA: (financiero) => financiero.aplicaSubsidioCaja,
-        evidenciasRequeridas: [{ id: 'solicitudCajaSoporte', label: 'Soporte de Solicitud', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'solicitudCajaSoporte', label: 'Captura envío de Solicitud desembolso Subsidio Caja de Compensación', tipo: 'documento' }]
     },
     {
         key: 'desembolsoCaja',
@@ -131,14 +131,14 @@ export const PROCESO_CONFIG = [
         aplicaA: (financiero) => financiero.aplicaSubsidioCaja,
         esHito: true,
         esAutomatico: true,
-        evidenciasRequeridas: [{ id: 'desembolsoCajaSoporte', label: 'Soporte de Desembolso', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'desembolsoCajaSoporte', label: 'Captura confirmación de desembolso Subsidio Caja de Compensación', tipo: 'documento' }]
     },
     {
         key: 'facturaVenta',
         label: 'Factura de Venta',
         aplicaA: () => true,
         esHito: true,
-        evidenciasRequeridas: [{ id: 'facturaVentaDoc', label: 'Documento Factura de Venta', tipo: 'documento' }]
+        evidenciasRequeridas: [{ id: 'facturaVentaDoc', label: 'Factura de Venta Emitida por La Constructora', tipo: 'documento' }]
     },
 ];
 

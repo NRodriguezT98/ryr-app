@@ -126,3 +126,31 @@ export const getInitials = (nombres = '', apellidos = '') => {
     const a = apellidos.charAt(0) || '';
     return `${n}${a}`.toUpperCase();
 };
+
+export const normalizeDate = (dateInput) => {
+    if (!dateInput) return null;
+
+    // Caso 1: Es un Timestamp de Firestore con el método .toDate()
+    if (typeof dateInput.toDate === 'function') {
+        return dateInput.toDate();
+    }
+
+    // Caso 2: Es un objeto simple con 'seconds'
+    if (typeof dateInput.seconds === 'number') {
+        return new Date(dateInput.seconds * 1000);
+    }
+
+    // Caso 3: Ya es un objeto Date de JavaScript
+    if (dateInput instanceof Date) {
+        return dateInput;
+    }
+
+    // --- LA LÍNEA CLAVE QUE FALTABA ---
+    // Caso 4: Es un string (ej: "2025-09-01")
+    if (typeof dateInput === 'string') {
+        // Reutilizamos la función que ya maneja strings y zonas horarias correctamente.
+        return parseDateAsUTC(dateInput);
+    }
+
+    return null;
+};

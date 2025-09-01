@@ -5,8 +5,9 @@ import { Link } from 'react-router-dom';
 import { CheckCircle, Lock, FileText, Calendar, AlertCircle, RotateCcw, Eye, Trash2, Replace, X, Pencil, Info, ChevronDown, History } from 'lucide-react';
 import FileUpload from '../../../components/FileUpload';
 import toast from 'react-hot-toast';
-import { getTodayString, formatDisplayDate, parseDateAsUTC } from '../../../utils/textFormatters';
+import { getTodayString, formatDisplayDate, parseDateAsUTC, normalizeDate } from '../../../utils/textFormatters';
 import { uploadFile } from '../../../utils/storage';
+import { usePermissions } from '../../../hooks/auth/usePermissions';
 
 const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPermanentlyLocked, esHito, isReadOnly }) => {
     const evidenciaData = evidencia.data || {};
@@ -86,12 +87,48 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
 };
 
 
+const generarTooltipInteligente = (data, formatDisplayDate) => {
+    if (!data || !data.actividad || data.actividad.length === 0) {
+        return ''; // No hay actividad, no hay tooltip.
+    }
+
+    // Obtenemos la información de la última acción registrada en el historial
+    const ultimaActividad = data.actividad[data.actividad.length - 1];
+    const autor = ultimaActividad.userName || 'Usuario Desconocido';
+
+    // Escenario 1: El paso fue reabierto y esa fue la última gran modificación.
+    if (data.motivoReapertura && data.motivoUltimoCambio === 'Paso reabierto') {
+        const fechaModificacion = formatDisplayDate(normalizeDate(data.fechaUltimaModificacion)) || 'N/A';
+        return `Reabierto por ${autor} el ${fechaModificacion}. Motivo: "${data.motivoReapertura}"`;
+    }
+
+    // Escenario 2: Se editó la fecha de un paso ya completado.
+    if (data.motivoUltimoCambio && data.motivoUltimoCambio !== 'Paso reabierto') {
+        const fechaModificacion = formatDisplayDate(normalizeDate(data.fechaUltimaModificacion)) || 'N/A';
+        return `Fecha actualizada por ${autor} el ${fechaModificacion}. Motivo: "${data.motivoUltimoCambio}"`;
+    }
+
+    // Escenario 3: El paso fue completado (primera vez o re-completado) y no hay otro cambio posterior.
+    if (data.completado && data.fecha) {
+        // La fecha que el usuario seleccionó en el calendario para el paso.
+        const fechaCompletado = formatDisplayDate(normalizeDate(data.fecha)) || 'N/A';
+
+        // La fecha en que el usuario REALIZÓ la acción (el "hoy"). La tomamos del último registro del historial.
+        const fechaDeLaAccion = formatDisplayDate(normalizeDate(ultimaActividad.fecha)) || 'N/A';
+
+        // Construimos el mensaje con el formato exacto que deseas.
+        return `El día ${fechaDeLaAccion}, ${autor} marcó como completado este paso con fecha de ${fechaCompletado}.`;
+    }
+    return ''; // Fallback por si no coincide ningún escenario.
+};
+
 const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarReapertura, onDescartarCambios, onIniciarEdicionFecha, clienteId, isReadOnly }) => {
     const { key, label, data, isLocked, puedeCompletarse, evidenciasRequeridas, error, esSiguientePaso, isPermanentlyLocked, hayPasoEnReapertura, esHito, esAutomatico, facturaBloqueadaPorSaldo } = paso;
     const [fechaCompletado, setFechaCompletado] = useState(data?.fecha || getTodayString());
     const [fechaErrorLocal, setFechaErrorLocal] = useState(null);
     const [historialVisible, setHistorialVisible] = useState(false); // Estado para el historial
     const actividad = paso.data?.actividad || [];
+    const { can } = usePermissions();
 
     const evidenciasSubidas = useMemo(() => {
         if (!data?.evidencias) return 0;
@@ -150,6 +187,8 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
         onDescartarCambios(key);
     };
 
+    const tooltipContent = generarTooltipInteligente(paso.data, formatDisplayDate);
+
     const cardClasses = `relative p-5 rounded-xl border-2 transition-all ${error || fechaErrorLocal ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
         data?.completado ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-800' :
             (isLocked && !facturaBloqueadaPorSaldo) ? 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700 opacity-60' :
@@ -167,9 +206,9 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
                     <div className="flex items-center gap-2">
                         <div className="flex items-center gap-2">
                             <Calendar size={16} className="text-gray-500 dark:text-gray-400" />
-                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{formatDisplayDate(data.fecha)}</p>
-                            {data.motivoUltimoCambio && (
-                                <div data-tooltip-id="app-tooltip" data-tooltip-content={`Motivo: ${data.motivoUltimoCambio} (Modificado el ${formatDisplayDate(data.fechaUltimaModificacion)})`}>
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">{formatDisplayDate(normalizeDate(data.fecha))}</p>
+                            {tooltipContent && (
+                                <div data-tooltip-id="app-tooltip" data-tooltip-content={tooltipContent}>
                                     <Info size={16} className="text-blue-500 dark:text-blue-400 cursor-help" />
                                 </div>
                             )}
@@ -178,14 +217,34 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
                             <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
                                 <Lock size={12} /> Cerrado
                             </span>
-                        ) : !isReadOnly && (
+                        ) : (
+                            // La parte 'else' del ternario ahora contiene las comprobaciones de permisos
                             <>
-                                <button onClick={() => onIniciarEdicionFecha(key)} disabled={hayPasoEnReapertura} className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed" data-tooltip-id="app-tooltip" data-tooltip-content="Editar fecha y motivo">
-                                    <Pencil size={16} />
-                                </button>
-                                <button onClick={() => onIniciarReapertura(key)} disabled={isLocked || hayPasoEnReapertura} className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed" data-tooltip-id="app-tooltip" data-tooltip-content="Reabrir este paso">
-                                    <RotateCcw size={16} />
-                                </button>
+                                {/* Botón para Editar Fecha */}
+                                {!isReadOnly && can('clientes', 'editarFechaProceso') && (
+                                    <button
+                                        onClick={() => onIniciarEdicionFecha(key)}
+                                        disabled={hayPasoEnReapertura}
+                                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed"
+                                        data-tooltip-id="app-tooltip"
+                                        data-tooltip-content="Editar fecha y motivo"
+                                    >
+                                        <Pencil size={16} />
+                                    </button>
+                                )}
+
+                                {/* Botón para Reabrir Paso */}
+                                {!isReadOnly && can('clientes', 'reabrirProceso') && (
+                                    <button
+                                        onClick={() => onIniciarReapertura(key)}
+                                        disabled={isLocked || hayPasoEnReapertura}
+                                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-full disabled:text-gray-300 disabled:cursor-not-allowed"
+                                        data-tooltip-id="app-tooltip"
+                                        data-tooltip-content="Reabrir este paso"
+                                    >
+                                        <RotateCcw size={16} />
+                                    </button>
+                                )}
                             </>
                         )}
                     </div>
@@ -232,7 +291,7 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
             {error && !fechaErrorLocal && <div className="mt-2 pl-9 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold"><AlertCircle size={14} /><p>{error}</p></div>}
 
             {/* Nueva sección para el historial de actividad */}
-            {actividad.length > 0 && (
+            {can('clientes', 'verHistorialProceso') && actividad.length > 0 && (
                 <div className="mt-4 pt-4 border-t dark:border-gray-600">
                     <button
                         onClick={() => setHistorialVisible(!historialVisible)}
@@ -253,7 +312,7 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
                                     <div>
                                         <p className="text-gray-800 dark:text-gray-300">{item.mensaje}</p>
                                         <p className="text-gray-500 dark:text-gray-400">
-                                            Esta acción se realizó el día {item.fecha?.toDate ? formatDisplayDate(item.fecha.toDate()) : 'Fecha inválida'}
+                                            Esta acción se realizó el día {formatDisplayDate(normalizeDate(item.fecha)) || 'Fecha inválida'}
                                             {' por el usuario: '}
                                             <strong className="text-gray-600 dark:text-gray-300">{item.userName}</strong>
                                         </p>

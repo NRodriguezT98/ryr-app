@@ -421,6 +421,7 @@ export const deleteViviendaPermanently = async (vivienda, nombreProyecto) => {
 
 // 🔽 COPIA Y REEMPLAZA LA FUNCIÓN ENTERA CON ESTE CÓDIGO ACTUALIZADO 🔽
 
+// 🔽 REEMPLAZA LA FUNCIÓN ENTERA CON ESTE CÓDIGO 🔽
 export const generarActividadProceso = (procesoOriginal, procesoActual, userName) => {
     const nuevoProcesoConActividad = JSON.parse(JSON.stringify(procesoActual));
 
@@ -440,36 +441,27 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
             fecha: new Date()
         });
 
-        // 1. Detectar el caso "Editar un paso ya completado"
+        // 1. Manejo del "Super-Caso": Reabrir, modificar y volver a completar
         if (pasoOriginal.completado && pasoActual.completado) {
-
-            // 👇 INICIO DE LA MODIFICACIÓN DE ORDEN 👇
             let accionDeFecha = null;
             let accionesDeEvidencia = [];
 
-            // Primero, capturamos la acción de la fecha por separado
             if (pasoOriginal.fecha !== pasoActual.fecha) {
                 accionDeFecha = `modificó la fecha de completado a ${formatDisplayDate(pasoActual.fecha)}`;
             }
 
-            // Segundo, capturamos todas las acciones de evidencia
             pasoConfig.evidenciasRequeridas.forEach(ev => {
                 const idEvidencia = ev.id;
                 const urlOriginal = pasoOriginal.evidencias?.[idEvidencia]?.url;
                 const urlActual = pasoActual.evidencias?.[idEvidencia]?.url;
                 if (urlOriginal !== urlActual) {
-                    if (urlActual) {
-                        accionesDeEvidencia.push(`reemplazó la evidencia '${ev.label}'`);
-                    } else {
-                        accionesDeEvidencia.push(`eliminó la evidencia '${ev.label}'`);
-                    }
+                    accionesDeEvidencia.push(urlActual ? `se reemplazó la evidencia '${ev.label}'` : `eliminó la evidencia '${ev.label}'`);
                 }
             });
 
-            // Tercero, construimos el mensaje final en el orden deseado
-            if (accionDeFecha || accionesDeEvidencia.length > 0) {
+            // Si hay un motivo de reapertura, o algún cambio, generamos un log unificado.
+            if (pasoActual.motivoReapertura || accionDeFecha || accionesDeEvidencia.length > 0) {
                 const partesDelMensaje = [];
-
                 if (accionesDeEvidencia.length > 0) {
                     partesDelMensaje.push(accionesDeEvidencia.join(', '));
                 }
@@ -477,16 +469,24 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
                     partesDelMensaje.push(accionDeFecha);
                 }
 
-                // Unimos las partes con "y" para formar la frase.
-                const mensajeCompleto = `Reabrió el paso, ${partesDelMensaje.join(' y ')}.`;
-                pasoActual.actividad.push(crearEntrada(mensajeCompleto));
+                let mensajeInicial = 'Se actualizó el paso:';
+                if (pasoActual.motivoReapertura) {
+                    mensajeInicial = `Se reabrió el paso por el motivo: "${pasoActual.motivoReapertura}". Posteriormente,`;
+                }
+
+                const mensajeCompleto = `${mensajeInicial} ${partesDelMensaje.join(' y ')}.`;
+                pasoActual.actividad.push(crearEntrada(mensajeCompleto.trim()));
+
+                // Solución Bug #1: Limpiamos la propiedad temporal para evitar el doble guardado.
+                delete pasoActual.motivoReapertura;
                 return;
             }
-            // 🔼 FIN DE LA MODIFICACIÓN DE ORDEN 🔼
         }
 
-        // Lógica para los demás casos (se mantiene igual)
+        // 2. Lógica para los demás casos (se mantiene igual)
         let seCompletoEnEsteCambio = !pasoOriginal.completado && pasoActual.completado;
+        // ... (el resto de la función se mantiene exactamente igual que antes)
+
         let evidenciasSubidasMsg = [];
 
         pasoConfig.evidenciasRequeridas.forEach(ev => {
@@ -507,7 +507,12 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
         } else if (evidenciasSubidasMsg.length > 0) {
             pasoActual.actividad.push(crearEntrada(`Se subió la evidencia ${evidenciasSubidasMsg.join(', ')}.`));
         } else if (pasoOriginal.completado && !pasoActual.completado) {
-            pasoActual.actividad.push(crearEntrada('Paso reabierto.'));
+            let mensaje = 'Paso reabierto.';
+            if (pasoActual.motivoReapertura) {
+                mensaje += ` Motivo: "${pasoActual.motivoReapertura}"`;
+                delete pasoActual.motivoReapertura; // Limpiamos también aquí por consistencia
+            }
+            pasoActual.actividad.push(crearEntrada(mensaje));
         }
     });
 
@@ -1081,4 +1086,15 @@ export const createAuditLog = async (message, details = {}) => {
     } catch (error) {
         console.error("Error al crear el registro de auditoría:", error);
     }
+};
+
+export const getClienteProceso = async (clienteId) => {
+    const clienteRef = doc(db, "clientes", String(clienteId));
+    const clienteSnap = await getDoc(clienteRef);
+    if (!clienteSnap.exists()) {
+        // Lanzamos un error específico que podemos capturar si es necesario
+        throw new Error("CLIENT_NOT_FOUND");
+    }
+    // Devolvemos solo el objeto 'proceso' o un objeto vacío si no existe
+    return clienteSnap.data().proceso || {};
 };

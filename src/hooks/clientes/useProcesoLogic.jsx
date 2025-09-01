@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
-import { generarActividadProceso, updateCliente, createNotification, anularCierreProceso } from '../../utils/storage';
+import { generarActividadProceso, updateCliente, createNotification, anularCierreProceso, getClienteProceso } from '../../utils/storage';
 import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { useAuth } from '../../context/AuthContext';
 
@@ -164,6 +164,23 @@ const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationEr
             maxDateForStep = getTodayString();
         }
 
+        let duracionDesdePasoAnterior = null;
+        if (pasoData.completado && pasoData.fecha) {
+            // Usamos la fecha mínima que ya habíamos calculado, que es la fecha
+            // de finalización del último paso válido anterior.
+            const fechaEstePaso = parseDateAsUTC(pasoData.fecha);
+            const fechaPasoAnterior = parseDateAsUTC(minDateForStep);
+
+            // Calculamos la diferencia en milisegundos y la convertimos a días
+            const diffTime = Math.abs(fechaEstePaso - fechaPasoAnterior);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // Solo mostramos la duración si es mayor a 0 días.
+            if (diffDays > 0) {
+                duracionDesdePasoAnterior = `${diffDays} día${diffDays > 1 ? 's' : ''}`;
+            }
+        }
+
         return {
             ...pasoConfig,
             data: pasoData,
@@ -174,7 +191,8 @@ const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationEr
             error,
             minDate: minDateForStep,
             maxDate: maxDateForStep,
-            facturaBloqueadaPorSaldo
+            facturaBloqueadaPorSaldo,
+            duracionDesdePasoAnterior
         };
     });
 };
@@ -186,7 +204,7 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
     const [procesoState, setProcesoState] = useState(cliente.proceso || {});
     const [initialProcesoState, setInitialProcesoState] = useState(cliente.proceso || {});
 
-    const [pasoAReabrir, setPasoAReabrir] = useState(null);
+    const [reaperturaInfo, setReaperturaInfo] = useState(null);
     const [pasoAEditarFecha, setPasoAEditarFecha] = useState(null);
     const [cierreAAnular, setCierreAAnular] = useState(false);
     const [justSaved, setJustSaved] = useState(false);
@@ -214,19 +232,28 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
         }));
     }, []);
 
-    const iniciarReapertura = useCallback((pasoKey) => setPasoAReabrir(pasoKey), []);
+    const iniciarReapertura = useCallback((pasoKey) => setReaperturaInfo({ key: pasoKey, motivo: '' }), []);
 
-    const confirmarReapertura = useCallback(() => {
-        if (!pasoAReabrir) return;
+    const confirmarReapertura = useCallback((motivo) => {
+        if (!reaperturaInfo?.key || !motivo.trim()) return;
+
         setProcesoState(prev => {
             const newState = { ...prev };
-            newState[pasoAReabrir] = { ...newState[pasoAReabrir], completado: false, fecha: null, motivoUltimoCambio: 'Paso reabierto', fechaUltimaModificacion: getTodayString() };
+            const pasoKey = reaperturaInfo.key;
+            newState[pasoKey] = {
+                ...newState[pasoKey],
+                completado: false,
+                fecha: null,
+                motivoReapertura: motivo, // <-- Aquí guardamos el motivo
+                motivoUltimoCambio: 'Paso reabierto',
+                fechaUltimaModificacion: getTodayString()
+            };
             return newState;
         });
-        setPasoAReabrir(null);
-    }, [pasoAReabrir]);
+        setReaperturaInfo(null);
+    }, [reaperturaInfo]);
 
-    const cancelarReapertura = useCallback(() => setPasoAReabrir(null), []);
+    const cancelarReapertura = useCallback(() => setReaperturaInfo(null), []);
 
     const descartarCambiosEnPaso = useCallback((pasoKey) => {
         setProcesoState(prev => ({ ...prev, [pasoKey]: initialProcesoState[pasoKey] || { completado: false, fecha: null, evidencias: {} } }));
@@ -353,18 +380,30 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
             return;
         }
         try {
-            // 1. Generamos el estado final CON el historial de actividad ANTES de guardar
+            // 1. Validación de Concurrencia (datos obsoletos)
+            const procesoActualEnDB = await getClienteProceso(cliente.id);
+            if (JSON.stringify(initialProcesoState) !== JSON.stringify(procesoActualEnDB)) {
+                toast.error(
+                    "⚠️ ¡Conflicto de datos! Alguien más ha guardado cambios. Por favor, recarga la página.",
+                    { duration: 6000 }
+                );
+                return; // Detenemos el guardado
+            }
+
+            // 2. Generamos el estado final con el historial de actividad
             const procesoConActividad = generarActividadProceso(
                 initialProcesoState,
                 procesoState,
                 userName
             );
 
-            await onSave(procesoState, userName);
+            // 3. Guardamos la versión final y correcta
+            await onSave(procesoConActividad, userName);
 
+            // 4. Creamos notificaciones si se alcanzó un hito
             PROCESO_CONFIG.forEach(paso => {
                 const estadoAnterior = initialProcesoState[paso.key];
-                const estadoNuevo = procesoState[paso.key];
+                const estadoNuevo = procesoConActividad[paso.key];
                 if (paso.esHito && !estadoAnterior?.completado && estadoNuevo?.completado) {
                     const nombreCliente = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
                     createNotification('hito', `¡Hito alcanzado! ${paso.label} para ${nombreCliente}.`, `/clientes/detalle/${cliente.id}`);
@@ -373,21 +412,30 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
 
             toast.success("Proceso del cliente actualizado con éxito.");
 
-            // 3. Actualizamos el estado inicial con la versión que SÍ tiene el historial
+            // 5. Sincronizamos ambos estados locales para evitar bugs visuales
             setInitialProcesoState(procesoConActividad);
+            setProcesoState(procesoConActividad);
+
             setJustSaved(true);
             setTimeout(() => setJustSaved(false), 2000);
+
         } catch (error) {
-            toast.error("No se pudo guardar los cambios en el proceso.");
+            // Manejo de errores (ej. cliente no encontrado en la validación)
+            if (error.message === 'CLIENT_NOT_FOUND') {
+                toast.error("Error: No se pudo encontrar el cliente en la base de datos. Pudo haber sido eliminado.");
+            } else {
+                toast.error("No se pudo guardar los cambios en el proceso.");
+            }
             console.error("Error al guardar proceso:", error);
         }
     };
+
 
     return {
         pasosRenderizables,
         progreso,
         hayPasoEnReapertura,
-        pasoAReabrir,
+        reaperturaInfo,
         pasoAEditarFecha,
         cierreAAnular,
         justSaved,

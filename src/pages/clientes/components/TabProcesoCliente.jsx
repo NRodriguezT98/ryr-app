@@ -12,7 +12,8 @@ import { PartyPopper, Unlock } from 'lucide-react';
 import ClienteEstadoView from './ClienteEstadoView';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePermissions } from '../../../hooks/auth/usePermissions';
-import Timeline from './Timeline'; // <-- Importamos el nuevo componente
+import Timeline from './Timeline';
+import ModalMotivoReapertura from './ModalMotivoReapertura';
 
 const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange }) => {
 
@@ -37,7 +38,7 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
         pasosRenderizables,
         progreso,
         hayPasoEnReapertura,
-        pasoAReabrir,
+        reaperturaInfo,
         pasoAEditarFecha,
         cierreAAnular,
         justSaved,
@@ -52,7 +53,7 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
         onHayCambiosChange(hayCambiosSinGuardar);
     }, [hayCambiosSinGuardar, onHayCambiosChange]);
 
-    const pasoAReabrirInfo = pasoAReabrir ? pasosRenderizables.find(p => p.key === pasoAReabrir) : null;
+    const pasoAReabrirInfo = reaperturaInfo ? pasosRenderizables.find(p => p.key === reaperturaInfo.key) : null;
     const nombrePasoAReabrir = pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '';
 
     const porcentajeProgreso = progreso.total > 0 ? (progreso.completados / progreso.total) * 100 : 0;
@@ -128,12 +129,12 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                 />
             </div>
 
-            <ModalConfirmacion
-                isOpen={!!pasoAReabrir}
+            <ModalMotivoReapertura
+                isOpen={!!reaperturaInfo}
                 onClose={handlers.cancelarReapertura}
                 onConfirm={handlers.confirmarReapertura}
-                titulo="¿Reabrir este paso?"
-                mensaje={`Estás a punto de reabrir el paso ${nombrePasoAReabrir}. Perderás la fecha de completado y deberás volver a validarlo. ¿Estás seguro?`}
+                titulo="Justificar Reapertura de Paso"
+                nombrePaso={nombrePasoAReabrir}
             />
 
             <ModalConfirmacion
