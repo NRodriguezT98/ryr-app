@@ -1,190 +1,171 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { User, Phone, Mail, MapPin, Home, Wallet, CheckCircle, Briefcase, HelpCircle, AlertTriangle, Info } from 'lucide-react';
-import { formatCurrency, formatID } from '../../../utils/textFormatters';
+import { Link, useNavigate } from 'react-router-dom';
+import { usePermissions } from '../../../hooks/auth/usePermissions';
+import { User, Phone, Mail, MapPin, Home, Wallet, Calendar, AlertTriangle, Building, Building2, Banknote, Landmark, Award, Briefcase, PlusCircle } from 'lucide-react';
+import { formatID, formatDisplayDate, formatCurrency } from '../../../utils/textFormatters';
 import ClienteEstadoView from './ClienteEstadoView';
-import { useDocumentacion } from '../../../hooks/clientes/useDocumentacion';
-import DocumentoRow from '../../../components/documentos/DocumentoRow';
 
 // --- Sub-componentes para un código más limpio ---
 
-const InfoCard = ({ title, icon, children, filterControls = null }) => (
+const InfoCard = ({ title, icon, children, headerActions = null }) => (
     <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border dark:border-gray-700 h-full">
         <div className="flex justify-between items-center mb-4 border-b dark:border-gray-600 pb-3">
-            <h3 className="font-bold text-lg flex items-center gap-2 text-gray-700 dark:text-gray-200">
-                {icon} {title}
-            </h3>
-            {filterControls}
+            <h3 className="font-bold text-lg flex items-center gap-2 text-gray-700 dark:text-gray-200">{icon} {title}</h3>
+            {headerActions && <div>{headerActions}</div>}
         </div>
-        <div className="text-sm">
+        <div className="text-sm space-y-3">{children}</div>
+    </div>
+);
+
+const InfoRow = ({ icon, label, value, valueClassName = '' }) => (
+    <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 text-gray-400 mt-0.5">{icon}</div>
+        <div>
+            <span className="font-semibold text-gray-800 dark:text-gray-200">{label}:</span>
+            <span className={`text-gray-600 dark:text-gray-300 ${valueClassName}`}> {value || 'No especificado'}</span>
+        </div>
+    </div>
+);
+
+const FuenteFinancieraCard = ({ icon, titulo, banco, children }) => (
+    <div className="flex items-center gap-3 py-1.5">
+        <div className="flex-shrink-0 text-blue-500">{icon}</div>
+        <div className="flex-grow">
+            <p className="font-semibold text-gray-700 dark:text-gray-200">{titulo}</p>
+            {banco && <p className="text-xs text-gray-500 dark:text-gray-400">{banco}</p>}
+        </div>
+        <div className="text-right">
             {children}
         </div>
     </div>
 );
 
-const InfoRow = ({ icon, label, value }) => (
-    <div className="flex items-start gap-3 py-1">
-        <div className="flex-shrink-0 text-gray-400 mt-0.5">{icon}</div>
-        <div className="flex-grow">
-            <span className="font-semibold text-gray-800 dark:text-gray-200">{label}: </span>
-            <span className="text-gray-600 dark:text-gray-300">{value}</span>
-        </div>
-    </div>
-);
+// --- Componente Principal Reestructurado ---
 
-const FuenteFinancieraCard = ({ titulo, montoPactado, abonos, fuente }) => {
-    const totalAbonado = (abonos || []).filter(a => a.fuente === fuente).reduce((sum, abono) => sum + abono.monto, 0);
-    const isCompletada = totalAbonado >= montoPactado;
+const TabInfoGeneralCliente = ({ cliente, renuncia, vivienda, historialAbonos, proyecto }) => {
+    const { can } = usePermissions();
+    const navigate = useNavigate();
 
-    return (
-        <div className={`p-3 rounded-lg flex items-center justify-between ${isCompletada ? 'bg-green-50 dark:bg-green-900/30' : 'bg-gray-50 dark:bg-gray-700/50'}`}>
-            <span className={`font-semibold ${isCompletada ? 'text-green-800 dark:text-green-300' : 'text-gray-700 dark:text-gray-200'}`}>{titulo}</span>
-            <div className="text-right">
-                <p className={`font-bold text-sm ${isCompletada ? 'text-green-700 dark:text-green-300' : 'text-gray-800 dark:text-gray-100'}`}>{formatCurrency(totalAbonado)}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">de {formatCurrency(montoPactado)}</p>
-            </div>
-        </div>
-    );
-};
+    if (!cliente) return null; // Protección en caso de que el cliente sea nulo
 
-// --- Componente Principal ---
-
-const TabInfoGeneralCliente = ({ cliente, renuncia, historialAbonos }) => {
-    const { status } = cliente;
-    const { filtro, setFiltro, documentosFiltrados, handleFileAction } = useDocumentacion(cliente);
-
-    if (status === 'renunciado' || status === 'inactivo') {
+    if (cliente.status === 'renunciado' || cliente.status === 'inactivo') {
         return <ClienteEstadoView cliente={cliente} renuncia={renuncia} contexto="infoGeneral" />;
     }
 
-    const { datosCliente, vivienda, financiero } = cliente;
+    const { datosCliente, financiero } = cliente;
+
+    // --- Lógica para los datos financieros ---
+    const valorTotalVivienda = [
+        financiero?.cuotaInicial?.monto,
+        financiero?.credito?.monto,
+        financiero?.subsidioVivienda?.monto,
+        financiero?.subsidioCaja?.monto
+    ].reduce((acc, monto) => acc + (monto || 0), 0);
+
+    const totalAbonado = (historialAbonos || []).reduce((acc, abono) => acc + abono.monto, 0);
+    const saldoPendiente = valorTotalVivienda - totalAbonado;
+    const progresoPago = valorTotalVivienda > 0 ? (totalAbonado / valorTotalVivienda) * 100 : 0;
+
+    const handleGoToAbonos = () => {
+        navigate(`/abonos/gestionar/${cliente.id}`);
+    };
 
     return (
-        <div className="animate-fade-in space-y-6">
-            {status === 'enProcesoDeRenuncia' && renuncia && (
-                <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 dark:border-orange-500 rounded-r-lg flex items-center gap-4">
-                    <AlertTriangle size={32} className="text-orange-500 dark:text-orange-400 flex-shrink-0" />
+        <div className="animate-fade-in grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {cliente.status === 'enProcesoDeRenuncia' && renuncia && (
+                <div className="lg:col-span-2 p-4 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-r-lg flex items-center gap-4">
+                    <AlertTriangle size={32} className="text-orange-500 flex-shrink-0" />
                     <div>
                         <h4 className="font-bold text-orange-800 dark:text-orange-200">Renuncia en Proceso</h4>
-                        <p className="text-sm text-orange-700 dark:text-orange-300">
-                            Este cliente tiene una renuncia pendiente. La información es de solo lectura hasta que se cierre el caso.
-                        </p>
-                        <Link to={`/renuncias/detalle/${renuncia.id}`} className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-1 block">
-                            Ir a Gestionar Renuncia
-                        </Link>
+                        <p className="text-sm text-orange-700 dark:text-orange-300">Este cliente tiene una renuncia pendiente.</p>
+                        <Link to={`/renuncias/detalle/${renuncia.id}`} className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-1 block">Ir a Gestionar Renuncia</Link>
                     </div>
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 flex flex-col gap-6">
-                    <InfoCard title="Datos de Contacto" icon={<User size={20} />}>
-                        <div className="space-y-3">
-                            <InfoRow icon={<User size={14} />} label="Cédula" value={formatID(datosCliente.cedula)} />
-                            <InfoRow icon={<Phone size={14} />} label="Teléfono" value={datosCliente.telefono} />
-                            <InfoRow icon={<Mail size={14} />} label="Correo" value={datosCliente.correo} />
-                            <InfoRow icon={<MapPin size={14} />} label="Dirección" value={datosCliente.direccion} />
-                        </div>
-                    </InfoCard>
+            {/* 1. Datos de Contacto */}
+            <InfoCard title="Datos de Contacto" icon={<User size={20} />}>
+                <InfoRow icon={<User size={14} />} label="Cédula" value={formatID(datosCliente.cedula)} />
+                <InfoRow icon={<Phone size={14} />} label="Teléfono" value={datosCliente.telefono} />
+                <InfoRow icon={<Mail size={14} />} label="Correo" value={datosCliente.correo} />
+                <InfoRow icon={<MapPin size={14} />} label="Dirección" value={datosCliente.direccion} />
+            </InfoCard>
 
-                    {vivienda ? (
-                        <InfoCard title={status === 'enProcesoDeRenuncia' ? "Vivienda a la cual Renunció" : "Vivienda Asignada"} icon={<Home size={20} />}>
-                            <div className="space-y-4">
-                                <Link to={`/viviendas/detalle/${vivienda.id}`} className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:underline">
-                                    {`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
-                                </Link>
-                                {status !== 'enProcesoDeRenuncia' && (
-                                    <>
-                                        <div>
-                                            <div className="flex justify-between text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-                                                <span>Progreso</span>
-                                                <span>{`${Math.round((vivienda.totalAbonado / vivienda.valorFinal) * 100)}%`}</span>
-                                            </div>
-                                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
-                                                <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(vivienda.totalAbonado / vivienda.valorFinal) * 100}%` }}></div>
-                                            </div>
-                                        </div>
-                                        <div className="text-sm space-y-2 pt-2 border-t dark:border-gray-600">
-                                            <InfoRow label="Valor Total" value={formatCurrency(vivienda.valorFinal)} />
-                                            <InfoRow label="Total Abonado" value={<span className="text-green-600 font-semibold">{formatCurrency(vivienda.totalAbonado)}</span>} />
-                                            <InfoRow label="Saldo Pendiente" value={<span className="text-red-600 font-semibold">{formatCurrency(vivienda.saldoPendiente)}</span>} />
-                                        </div>
-                                    </>
-                                )}
+            {/* 2. Vivienda Asignada (Enriquecida) */}
+            {vivienda ? (
+                <InfoCard title="Vivienda Asignada" icon={<Home size={20} />}>
+                    <Link to={`/viviendas/detalle/${vivienda.id}`} className="font-bold text-lg text-blue-600 dark:text-blue-400 hover:underline">
+                        {`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
+                    </Link>
+                    <div className="mt-3 pt-3 border-t border-dashed dark:border-gray-600 space-y-2">
+                        <InfoRow icon={<Building size={14} />} label="Matrícula" value={vivienda.matricula} />
+                        <InfoRow icon={<MapPin size={14} />} label="Nomenclatura" value={vivienda.nomenclatura} />
+                        {proyecto && <InfoRow icon={<Building2 size={14} />} label="Proyecto" value={proyecto.nombre} />}
+                    </div>
+                </InfoCard>
+            ) : (
+                <InfoCard title="Vivienda Asignada" icon={<Home size={20} />}><p>No tiene vivienda asignada.</p></InfoCard>
+            )}
+
+            {/* 3. Resumen Financiero (con Acciones) */}
+            <InfoCard
+                title="Resumen Financiero"
+                icon={<Wallet size={20} />}
+                headerActions={
+                    can('abonos', 'crear') && vivienda && (
+                        <button
+                            onClick={handleGoToAbonos}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-full hover:bg-blue-700 transition"
+                        >
+                            <PlusCircle size={14} />
+                            Agregar Abono
+                        </button>
+                    )
+                }
+            >
+                {Object.keys(financiero || {}).length > 0 && vivienda ? (
+                    <>
+                        <div className="pt-2">
+                            <div className="flex justify-between text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                                <span>Progreso General de Pago</span>
+                                <span>{`${Math.round(progresoPago)}%`}</span>
                             </div>
-                        </InfoCard>
-                    ) : (
-                        <InfoCard title="Vivienda Asignada" icon={<Home size={20} />}>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Este cliente no tiene una vivienda asignada actualmente.</p>
-                        </InfoCard>
-                    )}
-                </div>
-
-                <div className="lg:col-span-2 flex flex-col gap-6">
-                    <InfoCard title={status === 'enProcesoDeRenuncia' ? "Este fue su Cierre Financiero" : "Resumen de Cierre Financiero"} icon={<Wallet size={20} />}>
-                        {Object.keys(financiero || {}).length > 0 ? (
-                            <div className="space-y-3">
-                                {financiero.aplicaCuotaInicial && <FuenteFinancieraCard titulo="Cuota Inicial" montoPactado={financiero.cuotaInicial.monto} abonos={historialAbonos} fuente="cuotaInicial" />}
-                                {financiero.aplicaCredito && <FuenteFinancieraCard titulo="Crédito Hipotecario" montoPactado={financiero.credito.monto} abonos={historialAbonos} fuente="credito" />}
-                                {financiero.aplicaSubsidioVivienda && <FuenteFinancieraCard titulo="Subsidio Mi Casa Ya" montoPactado={financiero.subsidioVivienda.monto} abonos={historialAbonos} fuente="subsidioVivienda" />}
-                                {financiero.aplicaSubsidioCaja && <FuenteFinancieraCard titulo="Subsidio Caja de Compensación" montoPactado={financiero.subsidioCaja.monto} abonos={historialAbonos} fuente="subsidioCaja" />}
-
-                                {/* --- INICIO DE LA MODIFICACIÓN --- */}
-                                {financiero.usaValorEscrituraDiferente && financiero.valorEscritura > 0 && (
-                                    <div className="mt-4 pt-4 border-t border-dashed dark:border-gray-600">
-                                        <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border-l-4 border-blue-400 space-y-2">
-                                            <h4 className="font-bold text-blue-800 dark:text-blue-200 flex items-center gap-2">
-                                                <Info size={16} /> Alerta de Valor en Escritura
-                                            </h4>
-                                            <p className="text-xs text-blue-700 dark:text-blue-300">
-                                                Esta vivienda tiene un valor en escritura distinto a su valor comercial real.
-                                            </p>
-                                            <div className="text-sm space-y-1 pt-2 border-t border-blue-200 dark:border-blue-700">
-                                                <InfoRow label="Valor en Escritura" value={<span className="font-bold">{`${formatCurrency(financiero.valorEscritura)} (Informativo)`}</span>} />
-                                                <InfoRow label="Valor Comercial Real" value={<span className="font-bold">{formatCurrency(vivienda.valorFinal)}</span>} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                                {/* --- FIN DE LA MODIFICACIÓN --- */}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-gray-500 dark:text-gray-400">No se ha definido una estructura financiera para este cliente.</p>
-                        )}
-                    </InfoCard>
-
-                    <InfoCard
-                        title="Repositorio de Documentos"
-                        icon={<Briefcase size={20} />}
-                        filterControls={
-                            <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
-                                <button onClick={() => setFiltro('importantes')} className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${filtro === 'importantes' ? 'bg-white dark:bg-gray-900 shadow text-blue-600' : 'text-gray-600 dark:text-gray-300'}`}>Importantes</button>
-                                <button onClick={() => setFiltro('todos')} className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${filtro === 'todos' ? 'bg-white dark:bg-gray-900 shadow text-gray-800' : 'text-gray-600 dark:text-gray-300'}`}>Todos</button>
-                            </div>
-                        }
-                    >
-                        <div className="-m-5">
-                            <div className="divide-y dark:divide-gray-700">
-                                {documentosFiltrados.length > 0 ? (
-                                    documentosFiltrados.map(doc => (
-                                        <DocumentoRow
-                                            key={doc.id}
-                                            label={doc.label}
-                                            isRequired={true}
-                                            currentFileUrl={doc.url}
-                                            isReadOnly={true}
-                                        />
-                                    ))
-                                ) : (
-                                    <p className="p-8 text-center text-gray-500 dark:text-gray-400">
-                                        No hay documentos que coincidan con el filtro actual.
-                                    </p>
-                                )}
+                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${progresoPago}%` }}></div>
                             </div>
                         </div>
-                    </InfoCard>
-                </div>
-            </div>
+                        <div className="divide-y dark:divide-gray-600 -my-3">
+                            {cliente.financiero.aplicaCuotaInicial && <FuenteFinancieraCard icon={<Banknote size={20} />} titulo="Cuota Inicial">
+                                <p className="font-bold text-gray-800 dark:text-gray-100">{formatCurrency((historialAbonos || []).filter(a => a.fuente === 'cuotaInicial').reduce((s, a) => s + a.monto, 0))}</p>
+                            </FuenteFinancieraCard>}
+                            {cliente.financiero.aplicaCredito && <FuenteFinancieraCard icon={<Landmark size={20} />} titulo="Crédito Hipotecario" banco={cliente.financiero.credito.banco}>
+                                <p className="font-bold text-gray-800 dark:text-gray-100">{formatCurrency((historialAbonos || []).filter(a => a.fuente === 'credito').reduce((s, a) => s + a.monto, 0))}</p>
+                            </FuenteFinancieraCard>}
+                            {cliente.financiero.aplicaSubsidioVivienda && <FuenteFinancieraCard icon={<Award size={20} />} titulo="Subsidio Mi Casa Ya">
+                                <p className="font-bold text-gray-800 dark:text-gray-100">{formatCurrency((historialAbonos || []).filter(a => a.fuente === 'subsidioVivienda').reduce((s, a) => s + a.monto, 0))}</p>
+                            </FuenteFinancieraCard>}
+                            {cliente.financiero.aplicaSubsidioCaja && <FuenteFinancieraCard icon={<Briefcase size={20} />} titulo="Subsidio Caja Comp.">
+                                <p className="font-bold text-gray-800 dark:text-gray-100">{formatCurrency((historialAbonos || []).filter(a => a.fuente === 'subsidioCaja').reduce((s, a) => s + a.monto, 0))}</p>
+                            </FuenteFinancieraCard>}
+                        </div>
+
+                        <div className="pt-3 mt-3 border-t border-dashed dark:border-gray-600 space-y-3">
+                            <InfoRow label="Valor Total Pactado" value={formatCurrency(valorTotalVivienda)} valueClassName="font-bold" />
+                            <InfoRow label="Total Abonado" value={formatCurrency(totalAbonado)} valueClassName="font-bold text-green-600" />
+                            <InfoRow label="Saldo Pendiente" value={formatCurrency(saldoPendiente)} valueClassName="font-bold text-red-600" />
+                        </div>
+                    </>
+                ) : (
+                    <p>No se ha definido una estructura financiera.</p>
+                )}
+            </InfoCard>
+
+            {/* 4. Resumen del Proceso */}
+            <InfoCard title="Resumen del Proceso" icon={<Calendar size={20} />}>
+                <InfoRow icon={<Calendar size={14} />} label="Cliente desde" value={formatDisplayDate(cliente.fechaCreacion)} />
+                <InfoRow icon={<Calendar size={14} />} label="Inicio de Proceso" value={formatDisplayDate(cliente.fechaInicioProceso)} />
+            </InfoCard>
         </div>
     );
 };

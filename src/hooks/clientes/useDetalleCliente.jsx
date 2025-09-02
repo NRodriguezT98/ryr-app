@@ -2,12 +2,14 @@ import { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import toast from 'react-hot-toast';
+import { determineClientStatus } from '../../utils/statusHelper';
+import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 
 export const useDetalleCliente = () => {
     const { clienteId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { clientes, abonos, renuncias, isLoading, recargarDatos } = useData();
+    const { clientes, viviendas, proyectos, abonos, renuncias, isLoading, recargarDatos } = useData();
 
     const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'info');
 
@@ -18,6 +20,11 @@ export const useDetalleCliente = () => {
 
         const cliente = clientes.find(c => c.id === clienteId);
         if (!cliente) return { isLoading: false, data: null };
+
+        const viviendaAsignada = viviendas.find(v => v.id === cliente.viviendaId) || null;
+        const proyectoAsignado = viviendaAsignada
+            ? proyectos.find(p => p.id === viviendaAsignada.proyectoId)
+            : null;
 
         // --- INICIO DE LA MODIFICACIÓN ---
         // Buscamos la renuncia más reciente y determinamos si está pendiente.
@@ -32,17 +39,41 @@ export const useDetalleCliente = () => {
             .filter(a => a.clienteId === clienteId && a.estadoProceso === 'activo')
             .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
 
+        //Obtenemos la información de status con colores
+        const statusInfo = determineClientStatus(cliente);
+
+        // Buscamos el nombre del paso actual en el proceso
+        let pasoActualLabel = 'No iniciado';
+        if (cliente.proceso && Object.keys(cliente.proceso).length > 0) {
+            const pasosAplicables = PROCESO_CONFIG.filter(p => p.aplicaA(cliente.financiero || {}));
+            const primerPasoIncompleto = pasosAplicables.find(p => !cliente.proceso[p.key]?.completado);
+
+            if (primerPasoIncompleto) {
+                pasoActualLabel = primerPasoIncompleto.label;
+            } else if (pasosAplicables.length > 0) {
+                pasoActualLabel = 'Completado';
+            }
+        }
+
+        // Comprobamos si el valor de escritura es diferente al valor final
+        const mostrarAvisoValorEscritura = cliente.financiero?.usaValorEscrituraDiferente === true &&
+            cliente.financiero?.valorEscritura > 0;
+
+
         return {
             isLoading: false,
             data: {
-                // Añadimos la bandera 'tieneRenunciaPendiente' al objeto del cliente para que sea fácil de usar
                 cliente: { ...cliente, tieneRenunciaPendiente },
-                vivienda: cliente.vivienda,
+                vivienda: viviendaAsignada, // <-- Usamos la vivienda completa que encontramos
+                proyecto: proyectoAsignado,
                 historialAbonos,
-                renuncia: renunciaAsociada
+                renuncia: renunciaAsociada,
+                statusInfo,
+                pasoActualLabel,
+                mostrarAvisoValorEscritura
             }
         };
-    }, [clienteId, clientes, abonos, renuncias, isLoading]);
+    }, [clienteId, clientes, viviendas, proyectos, abonos, renuncias, isLoading]);
 
     useEffect(() => {
         if (!isLoading && !datosDetalle?.data) {
