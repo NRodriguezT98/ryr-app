@@ -15,22 +15,21 @@ const validarPasos = (procesoState, pasosAplicables, cliente) => {
     const fechaInicioProceso = parseDateAsUTC(fechaDeInicio);
     const hoy = parseDateAsUTC(getTodayString());
 
+    // Primera pasada: Validaciones individuales de cada paso
     pasosAplicables.forEach(pasoConfig => {
         const pasoActual = procesoState[pasoConfig.key];
         if (!pasoActual?.completado) return;
 
-        // Validación de evidencias
         const todasEvidenciasPresentes = pasoConfig.evidenciasRequeridas.every(
             ev => pasoActual.evidencias?.[ev.id]?.url
         );
         if (!todasEvidenciasPresentes) {
-            errores[pasoConfig.key] = "Faltan evidencias requeridas en este paso completado.";
-            return; // Si faltan evidencias, no seguimos validando este paso
+            errores[pasoConfig.key] = "Faltan evidencias requeridas.";
+            return;
         }
 
-        // Validación de fecha
         if (!pasoActual.fecha) {
-            errores[pasoConfig.key] = "Se requiere una fecha para este paso completado.";
+            errores[pasoConfig.key] = "Se requiere una fecha.";
             return;
         }
 
@@ -38,29 +37,39 @@ const validarPasos = (procesoState, pasosAplicables, cliente) => {
         if (fechaSeleccionada > hoy) {
             errores[pasoConfig.key] = "La fecha no puede ser futura.";
         } else if (fechaSeleccionada < fechaInicioProceso) {
-            errores[pasoConfig.key] = `La fecha no puede ser anterior al inicio del proceso (${formatDisplayDate(fechaDeInicio)}).`;
+            errores[pasoConfig.key] = `La fecha no puede ser anterior al inicio (${formatDisplayDate(fechaDeInicio)}).`;
         }
     });
-    // Validación de consistencia cronológica entre pasos
-    let ultimaFechaValida = fechaDeInicio;
-    let ultimoPasoLabel = "inicio del proceso";
 
-    pasosAplicables.forEach(pasoConfig => {
+    // Segunda pasada: Validación de consistencia cronológica entre pasos
+    pasosAplicables.forEach((pasoConfig, index) => {
         const pasoActual = procesoState[pasoConfig.key];
-        // Solo validamos pasos completados y sin errores previos
-        if (pasoActual?.completado && pasoActual.fecha && !errores[pasoConfig.key]) {
-            const fechaActual = parseDateAsUTC(pasoActual.fecha);
-            const fechaAnterior = parseDateAsUTC(ultimaFechaValida);
 
-            if (fechaActual < fechaAnterior) {
-                errores[pasoConfig.key] = `La fecha no puede ser anterior al paso "${ultimoPasoLabel}" (${formatDisplayDate(ultimaFechaValida)}).`;
+        if (pasoActual?.completado && pasoActual.fecha && !errores[pasoConfig.key]) {
+            let fechaMinimaReal = fechaDeInicio;
+            let labelPasoAnterior = "inicio del proceso";
+            const isSolicitudParalela = ['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(pasoConfig.key);
+
+            if (isSolicitudParalela) {
+                fechaMinimaReal = procesoState['pagoBoletaRegistro']?.fecha || fechaDeInicio;
+                labelPasoAnterior = 'Pago de Boleta de Registro';
             } else {
-                // Si la fecha es válida, actualizamos los valores para la siguiente iteración
-                ultimaFechaValida = pasoActual.fecha;
-                ultimoPasoLabel = pasoConfig.label;
+                for (let i = index - 1; i >= 0; i--) {
+                    const pasoPrevio = procesoState[pasosAplicables[i].key];
+                    if (pasoPrevio?.completado && pasoPrevio?.fecha) {
+                        fechaMinimaReal = pasoPrevio.fecha;
+                        labelPasoAnterior = pasosAplicables[i].label;
+                        break;
+                    }
+                }
+            }
+
+            if (parseDateAsUTC(pasoActual.fecha) < parseDateAsUTC(fechaMinimaReal)) {
+                errores[pasoConfig.key] = `La fecha no puede ser anterior al paso "${labelPasoAnterior}" (${formatDisplayDate(fechaMinimaReal)}).`;
             }
         }
     });
+
     return errores;
 };
 
@@ -124,19 +133,24 @@ const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationEr
 
         // Lógica de fechas
         let minDateForStep = fechaDeInicio;
-        if (index > 0) {
-            for (let i = index - 1; i >= 0; i--) {
-                const prevPasoKey = pasosAplicables[i].key;
-                if (isStepValidAndCompleted(prevPasoKey)) {
-                    minDateForStep = procesoState[prevPasoKey].fecha;
-                    break;
+        const isSolicitudParalela = ['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(pasoConfig.key);
+
+        if (isSolicitudParalela) {
+            // Para estas 3 solicitudes, la fecha mínima SIEMPRE es la de la boleta de registro.
+            minDateForStep = procesoState['pagoBoletaRegistro']?.fecha || fechaDeInicio;
+        } else {
+            // Para todos los demás pasos, usamos la lógica lineal que ya teníamos.
+            if (index > 0) {
+                for (let i = index - 1; i >= 0; i--) {
+                    const prevPasoKey = pasosAplicables[i].key;
+                    if (isStepValidAndCompleted(prevPasoKey)) {
+                        minDateForStep = procesoState[prevPasoKey].fecha;
+                        break;
+                    }
                 }
             }
         }
 
-        if (['solicitudDesembolsoCredito', 'solicitudDesembolsoMCY', 'solicitudDesembolsoCaja'].includes(pasoConfig.key)) {
-            minDateForStep = procesoState['pagoBoletaRegistro']?.fecha || minDateForStep;
-        }
         if (pasoConfig.key === 'facturaVenta') {
             let maxDateBeforeInvoice = fechaDeInicio;
             pasosAplicables.forEach(paso => {
@@ -192,7 +206,8 @@ const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationEr
             minDate: minDateForStep,
             maxDate: maxDateForStep,
             facturaBloqueadaPorSaldo,
-            duracionDesdePasoAnterior
+            duracionDesdePasoAnterior,
+            saldoPendiente: cliente.vivienda?.saldoPendiente ?? 0
         };
     });
 };

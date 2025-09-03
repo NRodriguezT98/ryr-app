@@ -2,10 +2,10 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Lock, FileText, Calendar, AlertCircle, RotateCcw, Eye, Trash2, Replace, X, Pencil, Info, ChevronDown, History } from 'lucide-react';
+import { CheckCircle, Lock, FileText, Calendar, AlertCircle, RotateCcw, Eye, Trash2, Replace, X, Pencil, Info, ChevronDown, History, Wallet } from 'lucide-react';
 import FileUpload from '../../../components/FileUpload';
 import toast from 'react-hot-toast';
-import { getTodayString, formatDisplayDate, parseDateAsUTC, normalizeDate } from '../../../utils/textFormatters';
+import { getTodayString, formatDisplayDate, parseDateAsUTC, normalizeDate, formatCurrency } from '../../../utils/textFormatters';
 import { uploadFile } from '../../../utils/storage';
 import { usePermissions } from '../../../hooks/auth/usePermissions';
 
@@ -122,13 +122,46 @@ const generarTooltipInteligente = (data, formatDisplayDate) => {
     return ''; // Fallback por si no coincide ningún escenario.
 };
 
+const AvisoPasoAutomatico = ({ clienteId }) => (
+    <div className="mt-4 pl-9">
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 rounded-r-lg flex items-start gap-3">
+            <Info size={18} className="text-blue-500 flex-shrink-0 mt-0.5" />
+            <div>
+                <h4 className="font-bold text-blue-800 dark:text-blue-200 text-sm">Este es un paso automático</h4>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    Se marcará como completado cuando registres el abono o desembolso correspondiente desde el
+                    <Link to={`/abonos/gestionar/${clienteId}`} className="font-bold underline hover:text-blue-500"> Módulo de Abonos</Link>.
+                </p>
+            </div>
+        </div>
+    </div>
+);
+
+const AvisoSaldoPendiente = ({ clienteId, saldoPendiente }) => (
+    <div className="mt-4 pl-9">
+        <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-r-lg flex items-start gap-3">
+            <Wallet size={18} className="text-orange-500 flex-shrink-0 mt-0.5" />
+            <div>
+                <h4 className="font-bold text-orange-800 dark:text-orange-200 text-sm">Acción Requerida</h4>
+                <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                    Este paso se habilitará automáticamente una vez que el cliente esté a paz y salvo.
+                </p>
+                <p className="mt-2 text-xs font-semibold text-gray-700 dark:text-gray-200">
+                    Saldo pendiente actual: <strong className="text-red-600">{formatCurrency(saldoPendiente)}</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+);
+
 const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarReapertura, onDescartarCambios, onIniciarEdicionFecha, clienteId, isReadOnly }) => {
-    const { key, label, data, isLocked, puedeCompletarse, evidenciasRequeridas, error, esSiguientePaso, isPermanentlyLocked, hayPasoEnReapertura, esHito, esAutomatico, facturaBloqueadaPorSaldo } = paso;
+    const { key, label, data, isLocked, puedeCompletarse, evidenciasRequeridas, error, esSiguientePaso, isPermanentlyLocked, hayPasoEnReapertura, esHito, esAutomatico, facturaBloqueadaPorSaldo, saldoPendiente } = paso;
     const [fechaCompletado, setFechaCompletado] = useState(data?.fecha || getTodayString());
     const [fechaErrorLocal, setFechaErrorLocal] = useState(null);
     const [historialVisible, setHistorialVisible] = useState(false); // Estado para el historial
     const actividad = paso.data?.actividad || [];
     const { can } = usePermissions();
+    const PASOS_AUTOMATICOS = ['desembolsoCredito', 'desembolsoMCY', 'desembolsoCaja'];
 
     const evidenciasSubidas = useMemo(() => {
         if (!data?.evidencias) return 0;
@@ -251,41 +284,52 @@ const PasoProcesoCard = ({ paso, onUpdateEvidencia, onCompletarPaso, onIniciarRe
                 )}
             </div>
 
-            {!data?.completado && !isLocked && !facturaBloqueadaPorSaldo && !esAutomatico && !isReadOnly && (
-                <div className="mt-4 pl-9 space-y-3">
-                    <div className="flex justify-between items-center"><p className="text-sm font-semibold text-gray-600 dark:text-gray-300">Evidencias Requeridas:</p><span className={`text-xs font-bold px-2 py-1 rounded-full ${evidenciasSubidas === totalEvidencias ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300'}`}>{`${evidenciasSubidas} de ${totalEvidencias} subidas`}</span></div>
-                    {evidenciasRequeridas.map(ev => (
-                        <EvidenciaItem
-                            key={ev.id}
-                            evidencia={{ ...ev, data: data?.evidencias?.[ev.id] }}
-                            pasoKey={key}
-                            onUpdateEvidencia={onUpdateEvidencia}
-                            clienteId={clienteId}
-                            isPermanentlyLocked={isPermanentlyLocked}
-                            esHito={esHito}
-                            isReadOnly={isReadOnly}
-                        />
-                    ))}
-                    {puedeCompletarse && !isReadOnly && (
-                        <div className="pt-3 border-t dark:border-gray-600">
-                            <div className="flex items-center justify-end gap-3">
-                                <button onClick={handleCancelarCambios} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center gap-2">
-                                    <X size={16} /> Cancelar
-                                </button>
-                                <input type="date" value={fechaCompletado} onChange={handleFechaChange} min={paso.minDate} max={paso.maxDate} className={`text-sm border p-1.5 rounded-md dark:bg-gray-700 ${fechaErrorLocal || error ? 'border-red-500' : 'dark:border-gray-600'}`} />
-                                <button onClick={handleConfirmar} className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Marcar como Completado</button>
-                            </div>
-                            {fechaErrorLocal && (
-                                <div className="mt-2 text-right">
-                                    <p className="inline-flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold">
-                                        <AlertCircle size={16} />
-                                        {fechaErrorLocal}
-                                    </p>
+            {/* 1. Si la factura está bloqueada por saldo, muestra el aviso específico */}
+            {facturaBloqueadaPorSaldo ? (
+                <AvisoSaldoPendiente clienteId={clienteId} saldoPendiente={saldoPendiente} />
+
+                /* 2. Si es un paso automático (y no está bloqueado), muestra su aviso */
+            ) : PASOS_AUTOMATICOS.includes(key) && !data?.completado && !isLocked ? (
+                <AvisoPasoAutomatico clienteId={clienteId} />
+
+                /* 3. Para todos los demás casos, muestra la lógica normal */
+            ) : (
+                !data?.completado && !isLocked && !facturaBloqueadaPorSaldo && !esAutomatico && !isReadOnly && (
+                    <div className="mt-4 pl-9 space-y-3">
+                        <div className="flex justify-between items-center"><p className="text-sm font-semibold text-gray-600 dark:text-gray-300">Evidencias Requeridas:</p><span className={`text-xs font-bold px-2 py-1 rounded-full ${evidenciasSubidas === totalEvidencias ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300' : 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300'}`}>{`${evidenciasSubidas} de ${totalEvidencias} subidas`}</span></div>
+                        {evidenciasRequeridas.map(ev => (
+                            <EvidenciaItem
+                                key={ev.id}
+                                evidencia={{ ...ev, data: data?.evidencias?.[ev.id] }}
+                                pasoKey={key}
+                                onUpdateEvidencia={onUpdateEvidencia}
+                                clienteId={clienteId}
+                                isPermanentlyLocked={isPermanentlyLocked}
+                                esHito={esHito}
+                                isReadOnly={isReadOnly}
+                            />
+                        ))}
+                        {puedeCompletarse && !isReadOnly && (
+                            <div className="pt-3 border-t dark:border-gray-600">
+                                <div className="flex items-center justify-end gap-3">
+                                    <button onClick={handleCancelarCambios} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 flex items-center gap-2">
+                                        <X size={16} /> Cancelar
+                                    </button>
+                                    <input type="date" value={fechaCompletado} onChange={handleFechaChange} min={paso.minDate} max={paso.maxDate} className={`text-sm border p-1.5 rounded-md dark:bg-gray-700 ${fechaErrorLocal || error ? 'border-red-500' : 'dark:border-gray-600'}`} />
+                                    <button onClick={handleConfirmar} className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Marcar como Completado</button>
                                 </div>
-                            )}
-                        </div>
-                    )}
-                </div>
+                                {fechaErrorLocal && (
+                                    <div className="mt-2 text-right">
+                                        <p className="inline-flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold">
+                                            <AlertCircle size={16} />
+                                            {fechaErrorLocal}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )
             )}
 
             {error && !fechaErrorLocal && <div className="mt-2 pl-9 flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-semibold"><AlertCircle size={14} /><p>{error}</p></div>}
