@@ -235,7 +235,7 @@ export const deleteProyecto = async (proyectoId, viviendas) => {
     );
 };
 
-export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
+export const addAbonoAndUpdateProceso = async (abonoData, cliente, userName) => {
     const viviendaRef = doc(db, "viviendas", abonoData.viviendaId);
     const clienteRef = doc(db, "clientes", abonoData.clienteId);
     const abonoRef = doc(collection(db, "abonos"));
@@ -278,12 +278,34 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente) => {
                 url: abonoData.urlComprobante,
                 estado: abonoData.urlComprobante ? 'subido' : 'pendiente'
             };
+            const entradaHistorial = {
+                mensaje: `Desembolso registrado por ${formatCurrency(abonoData.monto)}. El paso se completó automáticamente.`,
+                userName: userName || 'Sistema',
+                fecha: new Date() // Firestore lo convertirá a Timestamp
+            };
+
+            if (!nuevoProceso[desembolsoKey].actividad) {
+                nuevoProceso[desembolsoKey].actividad = [];
+            }
+            nuevoProceso[desembolsoKey].actividad.push(entradaHistorial);
             transaction.update(clienteRef, { proceso: nuevoProceso });
         }
     });
     const viviendaInfo = (await getDoc(viviendaRef)).data();
     const message = `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaInfo.manzana} - Casa ${viviendaInfo.numeroCasa}`;
     await createNotification('abono', message, `/viviendas/detalle/${abonoData.viviendaId}`);
+
+    const clienteNombre = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
+    await createAuditLog(
+        `Registró un desembolso de "${abonoData.metodoPago}" por ${formatCurrency(abonoData.monto)} para el cliente ${clienteNombre}`,
+        {
+            action: 'REGISTER_DISBURSEMENT',
+            clienteId: cliente.id,
+            viviendaId: abonoData.viviendaId,
+            fuente: abonoData.fuente,
+            monto: abonoData.monto
+        }
+    );
 };
 
 // src/utils/storage.js
@@ -942,7 +964,7 @@ export const deleteAbono = async (abonoAEliminar) => {
     });
 };
 
-export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData) => {
+export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData, userName) => {
     const viviendaRef = doc(db, "viviendas", viviendaId);
     const clienteRef = doc(db, "clientes", clienteId);
     const abonoRef = doc(collection(db, "abonos"));
@@ -1012,12 +1034,34 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
                     [pasoConfig.evidenciaId]: { url: desembolsoData.urlComprobante, estado: 'subido' }
                 }
             };
+            // Añadimos la entrada al historial de actividad del paso
+            const entradaHistorial = {
+                mensaje: `Desembolso de crédito registrado por ${formatCurrency(montoADesembolsar)}. El paso se completó automáticamente.`,
+                userName: userName || 'Sistema',
+                fecha: new Date()
+            };
+
+            if (!nuevoProceso[desembolsoKey].actividad) {
+                nuevoProceso[desembolsoKey].actividad = [];
+            }
+            nuevoProceso[desembolsoKey].actividad.push(entradaHistorial);
+
             transaction.update(clienteRef, { proceso: nuevoProceso });
         }
     });
 
     const message = `Se registró el desembolso del crédito hipotecario para ${clienteNombre}`;
     await createNotification('abono', message, `/clientes/detalle/${clienteId}`);
+
+    await createAuditLog(
+        `Registró el desembolso del crédito hipotecario por ${formatCurrency(desembolsoData.monto)} para el cliente ${clienteNombre}`,
+        {
+            action: 'REGISTER_CREDIT_DISBURSEMENT',
+            clienteId: clienteId,
+            viviendaId: viviendaId,
+            monto: desembolsoData.monto
+        }
+    );
 };
 
 export const anularCierreProceso = async (clienteId) => {

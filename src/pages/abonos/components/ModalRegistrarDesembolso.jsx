@@ -1,30 +1,46 @@
 import React from 'react';
 import Modal from '../../../components/Modal';
-import { Banknote, FileText, XCircle } from 'lucide-react';
+import { Banknote, FileText, XCircle, Gift, Landmark } from 'lucide-react'; // Añadimos iconos
 import { useRegistrarDesembolso } from '../../../hooks/abonos/useRegistrarDesembolso';
-import { formatCurrency, getTodayString, formatDisplayDate } from '../../../utils/textFormatters';
+import { formatCurrency, getTodayString } from '../../../utils/textFormatters';
 import FileUpload from '../../../components/FileUpload';
 import { FUENTE_PROCESO_MAP } from '../../../utils/procesoConfig';
 
-const ModalRegistrarDesembolso = ({ isOpen, onClose, onSave, fuenteData }) => {
-    const { formData, isSubmitting, errors, handlers } = useRegistrarDesembolso(fuenteData, isOpen, onSave, onClose);
-    const montoADesembolsar = fuenteData.montoPactado - fuenteData.abonos.reduce((sum, a) => sum + a.monto, 0);
+// Un pequeño helper para seleccionar el icono correcto
+const ICONS = {
+    credito: <Banknote size={28} className="text-blue-600" />,
+    subsidioVivienda: <Gift size={28} className="text-green-600" />,
+    subsidioCaja: <Banknote size={28} className="text-purple-600" />,
+};
 
-    const pasoConfig = FUENTE_PROCESO_MAP['credito'];
-    const pasoSolicitud = fuenteData.cliente.proceso?.[pasoConfig.solicitudKey];
+const ModalRegistrarDesembolso = ({ isOpen, onClose, onSave, fuenteData }) => {
+    // Protección por si el modal se renderiza sin datos
+    if (!fuenteData) return null;
+
+    const { formData, isSubmitting, errors, handlers } = useRegistrarDesembolso(fuenteData, isOpen, onSave, onClose);
+
+    // --- LÓGICA DINÁMICA ---
+    const { fuente, titulo, abonos, montoPactado, cliente } = fuenteData;
+    const montoADesembolsar = montoPactado - abonos.reduce((sum, a) => sum + a.monto, 0);
+
+    // 1. Buscamos el paso de prerrequisito dinámicamente usando la 'fuente'
+    const pasoConfig = FUENTE_PROCESO_MAP[fuente];
+    const pasoSolicitud = cliente.proceso?.[pasoConfig.solicitudKey];
     const minDate = (pasoSolicitud?.completado && pasoSolicitud.fecha) ? pasoSolicitud.fecha : null;
 
     return (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Registrar Desembolso del Crédito"
-            icon={<Banknote size={28} className="text-green-600" />}
+            // 2. Título e Icono ahora son dinámicos
+            title={`Registrar Desembolso de ${titulo}`}
+            icon={ICONS[fuente] || <Banknote size={28} className="text-gray-600" />}
             size="2xl"
         >
             <form onSubmit={handlers.handleSubmit} noValidate className="space-y-4">
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-center">
-                    <p className="text-sm text-gray-600 dark:text-gray-300">Se registrará un abono por el monto total pendiente del crédito:</p>
+                    {/* 3. Mensaje dinámico */}
+                    <p className="text-sm text-gray-600 dark:text-gray-300">Se registrará un abono por el monto total pendiente de esta fuente:</p>
                     <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(montoADesembolsar)}</p>
                 </div>
 
@@ -56,9 +72,9 @@ const ModalRegistrarDesembolso = ({ isOpen, onClose, onSave, fuenteData }) => {
                         ) : (
                             <FileUpload
                                 label="Subir Comprobante"
-                                filePath={(fileName) => `comprobantes_desembolso/${fuenteData.cliente.id}/${fileName}`}
+                                filePath={(fileName) => `comprobantes_desembolso/${cliente.id}/${fuente}-${fileName}`}
                                 onUploadSuccess={handlers.handleFileChange}
-                                disabled={!fuenteData.cliente.id}
+                                disabled={!cliente.id}
                             />
                         )}
                         {errors.urlComprobante && <p className="text-red-600 text-sm mt-1">{errors.urlComprobante}</p>}
@@ -68,11 +84,8 @@ const ModalRegistrarDesembolso = ({ isOpen, onClose, onSave, fuenteData }) => {
                 <div>
                     <label htmlFor="observacion" className="block font-medium mb-1 dark:text-gray-200">Observaciones (Opcional)</label>
                     <textarea
-                        id="observacion"
-                        name="observacion"
-                        rows="3"
-                        value={formData.observacion}
-                        onChange={handlers.handleInputChange}
+                        id="observacion" name="observacion" rows="3"
+                        value={formData.observacion} onChange={handlers.handleInputChange}
                         className="w-full border p-2.5 rounded-lg dark:bg-gray-700 dark:text-white border-gray-300 dark:border-gray-600"
                         placeholder="Añade cualquier detalle adicional sobre el desembolso."
                     />

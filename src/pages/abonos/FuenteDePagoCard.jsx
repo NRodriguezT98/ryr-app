@@ -43,6 +43,8 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
 
     const isCredito = fuente === 'credito';
     const creditoYaDesembolsado = isCredito && saldoPendiente <= 0;
+    const isSubsidio = fuente.includes('subsidio');
+    const subsidioYaDesembolsado = isSubsidio && totalAbonado > 0;
 
     return (
         <div className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -126,15 +128,15 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
             )}
 
             <div className="mt-4 pt-4 border-t dark:border-gray-700 text-center">
-                {saldoPendiente <= 0 && fuente !== 'condonacion' ? (
+                {saldoPendiente <= 0 ? (
                     <p className="text-green-600 dark:text-green-400 font-bold text-sm">✅ Esta fuente de pago ha sido completada.</p>
-                ) : !mostrandoFormulario && !isViviendaPagada && fuente !== 'condonacion' ? (
+                ) : !mostrandoFormulario && !isViviendaPagada ? (
                     <div className="flex justify-center items-center gap-4">
-                        {isCredito ? (
+                        {isCredito || isSubsidio ? (
                             onRegistrarDesembolso && (
-                                <button onClick={onRegistrarDesembolso} disabled={creditoYaDesembolsado} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline disabled:text-gray-400 disabled:no-underline flex items-center gap-2">
+                                <button onClick={onRegistrarDesembolso} disabled={creditoYaDesembolsado || subsidioYaDesembolsado} className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline disabled:text-gray-400 disabled:no-underline flex items-center gap-2">
                                     <Banknote size={16} />
-                                    {creditoYaDesembolsado ? 'Desembolso Registrado' : 'Registrar Desembolso de Crédito'}
+                                    {creditoYaDesembolsado || subsidioYaDesembolsado ? 'Desembolso Registrado' : 'Registrar Desembolso'}
                                 </button>
                             )
                         ) : (
@@ -149,9 +151,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, vivienda, clie
                             onCondonarSaldo && (
                                 <>
                                     <span className="text-gray-300 dark:text-gray-600">|</span>
-                                    <button onClick={onCondonarSaldo} className="text-green-600 dark:text-green-400 font-semibold text-sm hover:underline">
-                                        Condonar Saldo
-                                    </button>
+                                    <button onClick={onCondonarSaldo} className="text-green-600 dark:text-green-400 font-semibold text-sm hover:underline">Condonar Saldo</button>
                                 </>
                             )
                         )}

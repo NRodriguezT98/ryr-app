@@ -1,5 +1,5 @@
 import React from 'react';
-import { Award, ShieldCheck, Handshake, PenSquare, FileCheck2, Search, FileSignature, FileUp, UserPlus, AlertTriangle, FileText, UserX, Archive } from 'lucide-react';
+import { Award, ShieldCheck, Handshake, PenSquare, FileCheck2, Search, FileSignature, FileUp, UserPlus, AlertTriangle, FileText, UserX, Archive, CheckCircle, User, Clock } from 'lucide-react';
 import { PROCESO_CONFIG } from './procesoConfig';
 
 const PROCESS_STAGES_ORDER = [...PROCESO_CONFIG].map(p => p.key).reverse();

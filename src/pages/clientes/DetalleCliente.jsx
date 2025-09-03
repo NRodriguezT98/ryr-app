@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useBlocker } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, FileDown, Info, GitCommit, Home, Building2, Wallet, Briefcase, Clock, DollarSign, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, FileDown, Info, GitCommit, Home, Building2, Wallet, Briefcase, Clock, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useDetalleCliente } from '../../hooks/clientes/useDetalleCliente.jsx';
 import { getInitials, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
@@ -96,6 +96,8 @@ const DetalleCliente = () => {
     // 👇 AJUSTE #1: Añadimos un fallback y desestructuramos las nuevas variables
     const { cliente, renuncia, historialAbonos, vivienda, proyecto, statusInfo, pasoActualLabel, mostrarAvisoValorEscritura } = datosDetalle || {};
 
+    const estaAPazYSalvo = cliente.status === 'activo' && vivienda && vivienda.saldoPendiente <= 0;
+
     return (
         <AnimatedPage>
             <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
@@ -125,35 +127,62 @@ const DetalleCliente = () => {
                 </div>
 
                 {/* 👇 AJUSTE #2: El nuevo Dashboard de Estado Rápido */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 
-                    {/* --- AVISO DE VALOR DE ESCRITURA (RENDERIZADO CONDICIONAL) --- */}
+                    {/* --- 1. AVISO DE VALOR DE ESCRITURA (REINTEGRADO) --- */}
                     {mostrarAvisoValorEscritura && (
-                        <div className="md:col-span-2 p-4 rounded-lg flex items-start gap-3 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400">
+                        <div className="md:col-span-3 p-4 rounded-lg flex items-start gap-3 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400">
                             <AlertTriangle size={24} className="text-yellow-500 flex-shrink-0 mt-0.5" />
                             <div>
-                                <p className="font-bold text-yellow-800 dark:text-yellow-200">Aviso de Valor Diferente en Escritura</p>
+                                <p className="font-bold text-yellow-800 dark:text-yellow-200">Recordatorio importante sobre el valor de esta vivienda</p>
                                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                                    El valor total a pagar del cliente por esta vivienda es de {formatCurrency(vivienda.valorFinal)}, pero en Notaría se firmó la escritura por un valor de ({formatCurrency(cliente.financiero.valorEscritura)}).
+                                    El valor total a pagar del cliente por esta vivienda es de {formatCurrency(vivienda.valorFinal)}, pero en Notaría se firmo el valor de la vivienda en escritura por: {formatCurrency(cliente.financiero.valorEscritura)}.
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    {/* --- TARJETAS DE ESTADO --- */}
-                    <div className="p-4 rounded-lg flex items-center gap-3 bg-gray-100 dark:bg-gray-700/50">
-                        <GitCommit size={24} className="text-blue-500 flex-shrink-0" />
+                    {/* --- 2. TARJETAS DE ESTADO (CON LA LÓGICA DE COMPLETADO) --- */}
+                    <div className={`p-4 rounded-lg flex items-center gap-3 ${estaAPazYSalvo ? 'bg-green-100 dark:bg-green-900/50' : statusInfo.bgColor}`}>
+                        {estaAPazYSalvo ? <CheckCircle size={24} className="text-green-700 dark:text-green-300 flex-shrink-0" /> : statusInfo.icon}
                         <div>
-                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Paso Actual del Proceso</p>
-                            <p className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate" title={pasoActualLabel}>{pasoActualLabel}</p>
+                            <p className="text-sm font-medium opacity-80">Estado del Cliente</p>
+                            <p className={`text-lg font-bold ${estaAPazYSalvo ? 'text-green-700 dark:text-green-300' : statusInfo.textColor}`}>
+                                {estaAPazYSalvo ? 'Paz y Salvo' : statusInfo.text}
+                            </p>
                         </div>
                     </div>
-                    <div className="p-4 rounded-lg flex items-center gap-3 bg-gray-100 dark:bg-gray-700/50">
+
+                    <div className={`p-4 rounded-lg flex items-center gap-3 ${vivienda && vivienda.saldoPendiente <= 0 && pasoActualLabel === 'Completado' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-gray-100 dark:bg-gray-700/50'}`}>
                         <DollarSign size={24} className="text-green-500 flex-shrink-0" />
                         <div>
                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Saldo Pendiente</p>
-                            <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{vivienda ? formatCurrency(vivienda.saldoPendiente) : 'N/A'}</p>
+                            {vivienda && vivienda.saldoPendiente <= 0 && pasoActualLabel === 'Completado' ? (
+                                <p className="text-lg font-bold text-green-700 dark:text-green-300">Pagado en su Totalidad</p>
+                            ) : (
+                                <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{vivienda ? formatCurrency(vivienda.saldoPendiente) : 'N/A'}</p>
+                            )}
                         </div>
+                    </div>
+
+                    <div className={`p-4 rounded-lg flex items-center gap-3 ${pasoActualLabel === 'Completado' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-gray-100 dark:bg-gray-700/50'}`}>
+                        {pasoActualLabel === 'Completado' ? (
+                            <>
+                                <CheckCircle size={24} className="text-green-500 flex-shrink-0" />
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Siguiente paso a completar</p>
+                                    <p className="text-lg font-bold text-green-600 dark:text-green-400">¡Proceso Finalizado!</p>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <GitCommit size={24} className="text-blue-500 flex-shrink-0" />
+                                <div>
+                                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Paso Actual del Proceso</p>
+                                    <p className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate" title={pasoActualLabel}>{pasoActualLabel}</p>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
