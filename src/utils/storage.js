@@ -913,7 +913,7 @@ export const updateAbono = async (abonoId, datosNuevos, abonoOriginal) => {
     });
 };
 
-export const anularAbono = async (abonoAAnular, userName) => {
+export const anularAbono = async (abonoAAnular, userName, motivo) => {
     if (!abonoAAnular || !abonoAAnular.id || !abonoAAnular.viviendaId) {
         throw new Error("Datos del abono a anular incompletos.");
     }
@@ -922,10 +922,15 @@ export const anularAbono = async (abonoAAnular, userName) => {
     const viviendaRef = doc(db, "viviendas", String(abonoAAnular.viviendaId));
     const clienteRef = doc(db, "clientes", String(abonoAAnular.clienteId));
 
+    const motivoFinal = String(motivo || '');
+
+    // Ejecutamos la transacción solo con las operaciones de escritura críticas
     await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);
         const clienteDoc = await transaction.get(clienteRef);
-        if (!viviendaDoc.exists() || !clienteDoc.exists()) throw new Error("Cliente o vivienda no encontrados.");
+        if (!viviendaDoc.exists() || !clienteDoc.exists()) {
+            throw new Error("Cliente o vivienda no encontrados.");
+        }
 
         const viviendaData = viviendaDoc.data();
         const clienteData = clienteDoc.data();
@@ -948,7 +953,6 @@ export const anularAbono = async (abonoAAnular, userName) => {
             const pasoKey = pasoConfig.desembolsoKey;
             if (nuevoProceso[pasoKey]) {
                 nuevoProceso[pasoKey].completado = false;
-
                 const entradaHistorial = {
                     mensaje: `Abono de ${formatCurrency(montoAAnular)} anulado. El paso se reabrió automáticamente.`,
                     userName: userName || 'Sistema',
@@ -956,24 +960,53 @@ export const anularAbono = async (abonoAAnular, userName) => {
                 };
                 if (!nuevoProceso[pasoKey].actividad) nuevoProceso[pasoKey].actividad = [];
                 nuevoProceso[pasoKey].actividad.push(entradaHistorial);
-
                 transaction.update(clienteRef, { proceso: nuevoProceso });
             }
         }
 
         // 4. Marcar el abono como anulado
-        transaction.update(abonoRef, { estadoProceso: 'anulado' });
+        transaction.update(abonoRef, {
+            estadoProceso: 'anulado',
+            motivoAnulacion: motivoFinal
+        });
     });
 
-    const clienteNombre = toTitleCase(`${(await getDoc(clienteRef)).data().datosCliente.nombres} ${(await getDoc(clienteRef)).data().datosCliente.apellidos}`);
+    // --- RECOPILAMOS DATOS PARA LA AUDITORÍA DESPUÉS DE LA TRANSACCIÓN EXITOSA ---
+    const clienteSnap = await getDoc(clienteRef);
+    const viviendaSnap = await getDoc(viviendaRef);
+    const clienteData = clienteSnap.data();
+    const viviendaData = viviendaSnap.data();
+
+    const proyectoRef = doc(db, "proyectos", viviendaData.proyectoId);
+    const proyectoSnap = await getDoc(proyectoRef);
+    const proyectoData = proyectoSnap.exists() ? proyectoSnap.data() : { nombre: 'No encontrado' };
+
+    const datosParaAuditoria = {
+        cliente: {
+            id: clienteSnap.id,
+            nombre: toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`)
+        },
+        vivienda: {
+            id: viviendaSnap.id,
+            display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`
+        },
+        proyecto: {
+            id: viviendaData.proyectoId,
+            nombre: proyectoData.nombre
+        },
+        abono: {
+            monto: formatCurrency(abonoAAnular.monto),
+            fechaPago: formatDisplayDate(abonoAAnular.fechaPago),
+            fuente: abonoAAnular.fuente,
+            motivo: motivoFinal
+        }
+    };
+
     await createAuditLog(
-        `Anuló un abono de ${formatCurrency(abonoAAnular.monto)} para ${clienteNombre}`,
+        `Anuló un abono de ${datosParaAuditoria.abono.monto} para ${datosParaAuditoria.cliente.nombre}`,
         {
             action: 'VOID_ABONO',
-            clienteId: abonoAAnular.clienteId,
-            abonoId: abonoAAnular.id,
-            monto: formatCurrency(abonoAAnular.monto),
-            fuente: abonoAAnular.fuente
+            ...datosParaAuditoria
         }
     );
 };
@@ -984,6 +1017,8 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
     const clienteRef = doc(db, "clientes", abonoARevertir.clienteId);
     const abonoRef = doc(db, "abonos", abonoARevertir.id);
     const abonosCollectionRef = collection(db, "abonos");
+
+    let datosParaAuditoria = {};
 
     await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);
@@ -1030,17 +1065,39 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
                 transaction.update(clienteRef, { proceso: nuevoProceso });
             }
         }
+
+        const proyectoRef = doc(db, "proyectos", viviendaData.proyectoId);
+        const proyectoDoc = await getDoc(proyectoRef);
+        const proyectoData = proyectoDoc.exists() ? proyectoDoc.data() : { nombre: 'No encontrado' };
+
+        datosParaAuditoria = {
+            cliente: {
+                // ✅ Se usa `clienteDoc.id` en lugar de `clienteData.id`
+                id: clienteDoc.id,
+                nombre: toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`)
+            },
+            vivienda: {
+                // ✅ Se usa `viviendaDoc.id` en lugar de `viviendaData.id`
+                id: viviendaDoc.id,
+                display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`
+            },
+            proyecto: {
+                id: viviendaData.proyectoId,
+                nombre: proyectoData.nombre
+            },
+            abono: {
+                monto: formatCurrency(abonoARevertir.monto),
+                fechaPago: formatDisplayDate(abonoARevertir.fechaPago),
+                fuente: abonoARevertir.fuente
+            }
+        };
     });
 
-    const clienteNombre = toTitleCase(`${(await getDoc(clienteRef)).data().datosCliente.nombres} ${(await getDoc(clienteRef)).data().datosCliente.apellidos}`);
     await createAuditLog(
-        `Revirtió la anulación de un abono para ${clienteNombre}`,
+        `Revirtió la anulación de un abono de ${datosParaAuditoria.abono.monto} para ${datosParaAuditoria.cliente.nombre}`,
         {
             action: 'REVERT_VOID_ABONO',
-            clienteId: abonoARevertir.clienteId,
-            abonoId: abonoARevertir.id,
-            monto: formatCurrency(abonoARevertir.monto),
-            fuente: abonoARevertir.fuente
+            ...datosParaAuditoria
         }
     );
 };

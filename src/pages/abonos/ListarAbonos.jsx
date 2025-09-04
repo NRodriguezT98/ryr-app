@@ -7,10 +7,10 @@ import { useAbonosFilters } from '../../hooks/abonos/useAbonosFilters';
 import AbonoCard from './AbonoCard';
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
+import ModalAnularAbono from './components/ModalAnularAbono';
 import toast from 'react-hot-toast';
 import Select, { components } from 'react-select';
-import { Filter } from 'lucide-react';
-import UndoToast from '../../components/UndoToast';
+import { Filter, Undo2 } from 'lucide-react';
 import AbonoCardSkeleton from './AbonoCardSkeleton';
 import Pagination from '../../components/Pagination';
 import { usePermissions } from '../../hooks/auth/usePermissions';
@@ -42,7 +42,17 @@ const getSelectStyles = () => ({
 
 const ListarAbonos = () => {
     const { can } = usePermissions();
-    const { isLoading, abonos, clientes, viviendas, renuncias, recargarDatos } = useData();
+    const {
+        modals,
+        handlers,
+        isLoading,
+        abonos,
+        clientes,
+        viviendas,
+        renuncias
+    } = useGestionarAbonos();
+    const { abonoAEditar, setAbonoAEditar, abonoAAnular, setAbonoAAnular, abonoARevertir, setAbonoARevertir } = modals;
+    const { handleGuardado, iniciarAnulacion, confirmarAnulacion, iniciarReversion, confirmarReversion } = handlers;
     const {
         abonosFiltrados,
         clienteFiltro, setClienteFiltro,
@@ -52,11 +62,6 @@ const ListarAbonos = () => {
         statusFiltro, setStatusFiltro,
         pagination
     } = useAbonosFilters(abonos, clientes, viviendas, renuncias);
-
-    const [abonoAEditar, setAbonoAEditar] = useState(null);
-    const [abonoAEliminar, setAbonoAEliminar] = useState(null);
-    const [abonosOcultos, setAbonosOcultos] = useState([]);
-    const deletionTimeouts = useRef({});
 
     const clienteOptions = useMemo(() => {
         const opciones = clientes.filter(c => c.vivienda).map(c => ({
@@ -75,45 +80,6 @@ const ListarAbonos = () => {
         { value: 'subsidioCaja', label: 'Subsidio Caja Comp.' },
         { value: 'gastosNotariales', label: 'Gastos Notariales' }
     ], []);
-
-    const handleGuardado = () => recargarDatos();
-
-    const iniciarEliminacion = (abono) => {
-        if (abono.estadoProceso === 'archivado' || abono.tieneRenunciaPendiente) {
-            toast.error("No se pueden eliminar abonos de procesos cerrados o en curso.");
-            return;
-        }
-        setAbonoAEliminar(abono);
-    };
-
-    const confirmarEliminar = () => {
-        if (!abonoAEliminar) return;
-        const id = abonoAEliminar.id;
-        setAbonosOcultos(prev => [...prev, id]);
-        toast.custom((t) => (<UndoToast t={t} message="Abono eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
-        const timeoutId = setTimeout(() => { confirmarEliminarReal(abonoAEliminar); }, 5000);
-        deletionTimeouts.current[id] = timeoutId;
-        setAbonoAEliminar(null);
-    };
-
-    const deshacerEliminacion = (id) => {
-        clearTimeout(deletionTimeouts.current[id]);
-        delete deletionTimeouts.current[id];
-        setAbonosOcultos(prev => prev.filter(aId => aId !== id));
-        toast.success("Eliminación deshecha.");
-    };
-
-    const confirmarEliminarReal = async (abono) => {
-        try {
-            await deleteAbono(abono);
-            recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo eliminar el abono.");
-            setAbonosOcultos(prev => prev.filter(aId => aId !== abono.id));
-        }
-    };
-
-    const abonosVisibles = abonosFiltrados.filter(a => !abonosOcultos.includes(a.id));
 
     return (
         <AnimatedPage>
@@ -161,10 +127,31 @@ const ListarAbonos = () => {
                     </div>
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Estado del Proceso</label>
-                        <div className="flex-shrink-0 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg mt-1 flex max-w-sm">
-                            <button onClick={() => setStatusFiltro('activo')} className={`w-1/3 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'activo' ? 'bg-white dark:bg-gray-900 shadow text-green-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>Activos</button>
-                            <button onClick={() => setStatusFiltro('renunciado')} className={`w-1/3 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'renunciado' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>De Renuncias</button>
-                            <button onClick={() => setStatusFiltro('todos')} className={`w-1/3 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'todos' ? 'bg-white dark:bg-gray-900 shadow text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>Todos</button>
+                        <div className="flex-shrink-0 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg mt-1 flex max-w-md">
+                            <button
+                                onClick={() => setStatusFiltro('activo')}
+                                className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'activo' ? 'bg-white dark:bg-gray-900 shadow text-green-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                            >
+                                Activos
+                            </button>
+                            <button
+                                onClick={() => setStatusFiltro('anulado')}
+                                className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'anulado' ? 'bg-white dark:bg-gray-900 shadow text-red-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                            >
+                                Anulados
+                            </button>
+                            <button
+                                onClick={() => setStatusFiltro('renunciado')}
+                                className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'renunciado' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                            >
+                                De Renuncias
+                            </button>
+                            <button
+                                onClick={() => setStatusFiltro('todos')}
+                                className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'todos' ? 'bg-white dark:bg-gray-900 shadow text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                            >
+                                Todos
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -172,15 +159,16 @@ const ListarAbonos = () => {
                     <div className="space-y-4">
                         {[...Array(5)].map((_, i) => <AbonoCardSkeleton key={i} />)}
                     </div>
-                ) : abonosVisibles.length > 0 ? (
+                ) : abonosFiltrados.length > 0 ? (
                     <>
                         <div className="space-y-4">
-                            {abonosVisibles.map(abono => (
+                            {abonosFiltrados.map(abono => (
                                 <AbonoCard
                                     key={abono.id}
                                     abono={abono}
                                     onEdit={() => setAbonoAEditar(abono)}
                                     onAnular={iniciarAnulacion}
+                                    onRevertir={iniciarReversion}
                                 />
                             ))}
                         </div>
@@ -197,8 +185,32 @@ const ListarAbonos = () => {
                     <p className="text-center text-gray-500 dark:text-gray-400 py-10">No se encontraron abonos con los filtros seleccionados.</p>
                 )}
             </div>
-            {abonoAEditar && (<EditarAbonoModal isOpen={!!abonoAEditar} onClose={() => setAbonoAEditar(null)} onSave={handleGuardado} abonoAEditar={abonoAEditar} viviendaDelAbono={viviendas.find(v => v.id === abonoAEditar.viviendaId)} />)}
-            {abonoAEliminar && (<ModalConfirmacion isOpen={!!abonoAEliminar} onClose={() => setAbonoAEliminar(null)} onConfirm={confirmarEliminar} titulo="¿Eliminar Abono?" mensaje="¿Estás seguro? Esta acción recalculará los saldos de la vivienda asociada y no se puede deshacer." />)}
+            {abonoAEditar && (
+                <EditarAbonoModal
+                    isOpen={!!abonoAEditar}
+                    onClose={() => setAbonoAEditar(null)}
+                    onSave={handleGuardado}
+                    abonoAEditar={abonoAEditar}
+                />
+            )}
+            {/* ✨ 2. Reemplaza el modal genérico por el nuevo */}
+            {abonoAAnular && (
+                <ModalAnularAbono
+                    isOpen={!!abonoAAnular}
+                    onClose={() => setAbonoAAnular(null)}
+                    onConfirm={confirmarAnulacion} // confirmarAnulacion ya está preparada para recibir el motivo
+                    abono={abonoAAnular}
+                />
+            )}
+            {abonoARevertir && (
+                <ModalConfirmacion
+                    isOpen={!!abonoARevertir}
+                    onClose={() => setAbonoARevertir(null)}
+                    onConfirm={confirmarReversion}
+                    titulo="¿Revertir Anulación?"
+                    mensaje="Esto reactivará el abono y volverá a afectar los saldos de la vivienda. ¿Deseas continuar?"
+                />
+            )}
         </AnimatedPage >
     );
 };

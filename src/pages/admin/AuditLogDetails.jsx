@@ -15,6 +15,8 @@ import RestoreViviendaDetails from './audit-details/RestoreViviendaDetails';
 import DeleteViviendaDetails from './audit-details/DeleteViviendaDetails';
 import CreateClienteDetails from './audit-details/CreateClienteDetails'
 import DetalleDesembolso from './audit-details/DetalleDesembolso';
+import RevertirAnulacionAbonoDetails from './audit-details/RevertirAnulacionAbonoDetails';
+import AnularAbonoDetails from './audit-details/AnularAbonoDetails';
 
 // 2. Crea un mapa para asociar cada tipo de acción con su componente de vista
 const ACTION_COMPONENTS = {
@@ -32,6 +34,8 @@ const ACTION_COMPONENTS = {
     'CREATE_CLIENT': CreateClienteDetails,
     'REGISTER_DISBURSEMENT': DetalleDesembolso,
     'REGISTER_CREDIT_DISBURSEMENT': DetalleDesembolso,
+    'REVERT_VOID_ABONO': RevertirAnulacionAbonoDetails,
+    'VOID_ABONO': AnularAbonoDetails,
 
 };
 

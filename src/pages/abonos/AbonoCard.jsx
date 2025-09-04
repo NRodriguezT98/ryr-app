@@ -2,11 +2,11 @@ import React, { Fragment, memo } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Menu, Transition } from '@headlessui/react';
-import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertical, Pencil, Trash, AlertTriangle, Archive, HandCoins } from 'lucide-react';
+import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertical, Pencil, Trash, AlertTriangle, Archive, HandCoins, Undo2, Info } from 'lucide-react';
 import { formatCurrency, formatDisplayDate } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 
-const AbonoCard = ({ abono, onEdit, onAnular, isReadOnly = false }) => {
+const AbonoCard = ({ abono, onEdit, onAnular, onRevertir, isReadOnly = false }) => {
 
     const { can } = usePermissions();
 
@@ -115,24 +115,54 @@ const AbonoCard = ({ abono, onEdit, onAnular, isReadOnly = false }) => {
                             {/* --- FIN DE LA MODIFICACIÓN --- */}
                             {label && (
                                 <div className="flex justify-end mt-1">
-                                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${iconBg} ${iconColor} flex items-center gap-1`}>
-                                        <Icon size={12} />
-                                        {label}
-                                    </span>
+                                    {/* Si el abono está anulado Y tiene un motivo, mostramos el badge con tooltip */}
+                                    {abono.estadoProceso === 'anulado' && abono.motivoAnulacion ? (
+                                        <div className="relative group flex items-center">
+                                            {/* Badge "ANULADO" */}
+                                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${iconBg} ${iconColor} flex items-center gap-1`}>
+                                                <Icon size={12} />
+                                                {label}
+                                            </span>
+                                            {/* Ícono de Info que activa el tooltip */}
+                                            <Info size={14} className="ml-1.5 text-gray-400 dark:text-gray-500 cursor-help" />
+                                            {/* El Tooltip (aparece al hacer hover) */}
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-gray-800 text-white text-xs rounded py-1.5 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                                <span className="font-bold">Motivo:</span> {abono.motivoAnulacion}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        // Para todos los demás estados, mostramos el badge normal
+                                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${iconBg} ${iconColor} flex items-center gap-1`}>
+                                            <Icon size={12} />
+                                            {label}
+                                        </span>
+                                    )}
                                 </div>
                             )}
                         </div>
-                        {!isReadOnly && tieneAccionesDisponibles && (
+                        {!isReadOnly && tieneAccionesDisponibles && !abono.procesoClienteFinalizado && (
                             <Menu as="div" className="relative">
                                 <Menu.Button className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full disabled:opacity-50 disabled:cursor-not-allowed">
                                     <MoreVertical size={20} />
                                 </Menu.Button>
                                 <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                                     <Menu.Items className="absolute bottom-full right-0 mb-2 w-48 origin-bottom-right bg-white dark:bg-gray-800 divide-y dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
-                                        {can('abonos', 'editar') && abono.estadoProceso === 'activo' && (
-                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onEdit(abono)} disabled={!canDoActions} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Pencil className="w-5 h-5 mr-2" /> Editar</button>)}</Menu.Item></div>
+                                        {can('abonos', 'editar') && abono.estadoProceso === 'activo' && !abono.procesoClienteFinalizado && (
+                                            <div className="px-1 py-1">
+                                                <Menu.Item>
+                                                    {({ active }) => (
+                                                        <button
+                                                            onClick={() => onEdit(abono)}
+                                                            disabled={!canDoActions}
+                                                            className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                                                        >
+                                                            <Pencil className="w-5 h-5 mr-2" /> Editar
+                                                        </button>
+                                                    )}
+                                                </Menu.Item>
+                                            </div>
                                         )}
-                                        {can('abonos', 'anular') && abono.estadoProceso === 'activo' && (
+                                        {can('abonos', 'anular') && abono.estadoProceso === 'activo' && !abono.procesoClienteFinalizado && (
                                             <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onAnular(abono)} disabled={!canDoActions} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Trash className="w-5 h-5 mr-2" /> Anular</button>)}</Menu.Item></div>
                                         )}
                                         {can('abonos', 'revertirAnulacion') && abono.estadoProceso === 'anulado' && (

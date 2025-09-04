@@ -1,0 +1,122 @@
+import React, { useState } from 'react';
+import { AlertTriangle, User, Home, Building2, DollarSign, Calendar } from 'lucide-react';
+import Modal from '../../../components/Modal';
+import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
+
+const ModalAnularAbono = ({ isOpen, onClose, onConfirm, abono }) => {
+    // 1. 'motivo' en el estado siempre debe ser un string.
+    const [motivo, setMotivo] = useState('');
+
+    const handleConfirm = () => {
+        // 3. Cuando se confirma, se pasa el 'motivo' (que es un string del estado)
+        // a la función onConfirm.
+        if (motivo.trim()) {
+            onConfirm(motivo);
+        }
+    };
+
+    const handleClose = () => {
+        setMotivo('');
+        onClose();
+    };
+
+    const isBotonDeshabilitado = !motivo.trim();
+    const montoFormateado = abono ? formatCurrency(abono.monto) : '';
+    const fechaFormateada = abono ? formatDisplayDate(abono.fechaPago) : '';
+
+    let nombreCliente = abono?.clienteInfo || 'No disponible';
+    let infoVivienda = abono?.viviendaInfo || 'No disponible';
+
+    if (abono?.clienteInfo && abono.clienteInfo.includes(' - ')) {
+        const partes = abono.clienteInfo.split(' - ');
+        infoVivienda = partes[0];
+        nombreCliente = partes[1];
+    }
+
+    const nombreProyecto = abono?.proyectoNombre || 'No disponible';
+
+    return (
+        <Modal
+            isOpen={isOpen}
+            onClose={handleClose}
+            title="Anular Abono"
+        >
+            <div>
+                {/* --- SECCIÓN DE CONTEXTO --- */}
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    <p>Vas a anular el siguiente abono. Esta acción recalculará los saldos de la vivienda y no se puede deshacer.</p>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg border dark:border-gray-600 space-y-4">
+                    <div className="flex justify-between items-start">
+                        <InfoItem icon={<DollarSign className="text-green-500" />} label="Monto del Abono" value={montoFormateado} isLarge={true} />
+                        <InfoItem icon={<Calendar className="text-blue-500" />} label="Fecha del Abono" value={fechaFormateada} />
+                    </div>
+                    <hr className="border-gray-200 dark:border-gray-600" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InfoItem icon={<User className="text-purple-500" />} label="Cliente" value={nombreCliente} />
+                        <InfoItem icon={<Home className="text-teal-500" />} label="Vivienda" value={infoVivienda} />
+                        <InfoItem icon={<Building2 className="text-orange-500" />} label="Proyecto" value={nombreProyecto} />
+                    </div>
+                </div>
+                <hr className="my-4 border-gray-200 dark:border-gray-600" />
+
+                {/* --- SECCIÓN DE ACCIÓN REQUERIDA --- */}
+                <div>
+                    <label htmlFor="motivo" className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center">
+                        <AlertTriangle className="w-4 h-4 mr-2 text-red-500" />
+                        Motivo de la anulación (obligatorio)
+                    </label>
+                    <textarea
+                        id="motivo"
+                        name="motivo"
+                        rows={3}
+                        className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-red-500 focus:border-red-500 px-3 py-2"
+                        value={motivo}
+                        // 2. Aquí es el punto crítico. 'onChange' debe usar 'e.target.value'
+                        // para asegurar que solo el texto se guarde en el estado.
+                        onChange={(e) => setMotivo(e.target.value)}
+                        placeholder="Ej: Error al digitar el monto, pago duplicado..."
+                    />
+                </div>
+
+                {/* --- SECCIÓN DE BOTONES --- */}
+                <div className="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse items-center">
+                    <div className="relative">
+                        <button
+                            type="button"
+                            className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={handleConfirm}
+                            disabled={isBotonDeshabilitado}
+                        >
+                            Confirmar Anulación
+                        </button>
+                        {isBotonDeshabilitado && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max bg-gray-700 text-white text-xs rounded py-1 px-2 pointer-events-none opacity-90">
+                                Debes ingresar un motivo para anular.
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
+                        onClick={handleClose}
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+const InfoItem = ({ icon, label, value, isLarge = false }) => (
+    <div className="flex items-start">
+        <div className={`flex-shrink-0 mt-1 ${isLarge ? 'w-6' : 'w-5'}`}>{icon}</div>
+        <div className="ml-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+            <p className={`font-semibold text-gray-800 dark:text-gray-200 ${isLarge ? 'text-lg' : 'text-base'}`}>{value}</p>
+        </div>
+    </div>
+);
+
+export default ModalAnularAbono;

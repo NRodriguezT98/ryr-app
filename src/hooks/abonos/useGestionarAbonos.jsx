@@ -7,15 +7,14 @@ import UndoToast from '../../components/UndoToast';
 import { useAuth } from '../../context/AuthContext';
 
 export const useGestionarAbonos = (clienteIdDesdeUrl) => {
-    const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos, proyectos } = useData();
+    const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos, proyectos, renuncias } = useData();
+    const { user } = useAuth();
+    const userName = user?.displayName || 'Usuario desconocido';
     const [selectedClienteId, setSelectedClienteId] = useState(clienteIdDesdeUrl || null);
-
     const [abonoAEditar, setAbonoAEditar] = useState(null);
     const [abonoAAnular, setAbonoAAnular] = useState(null);
     const [abonoARevertir, setAbonoARevertir] = useState(null);
     const [desembolsoARegistrar, setDesembolsoARegistrar] = useState(null);
-    const [abonosOcultos, setAbonosOcultos] = useState([]);
-    const deletionTimeouts = useRef({});
     const [fuenteACondonar, setFuenteACondonar] = useState(null);
 
     useEffect(() => {
@@ -93,11 +92,12 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
 
     // Lógica de Anulación (antes eliminación)
     const iniciarAnulacion = (abono) => setAbonoAAnular(abono);
-    const confirmarAnulacion = async () => {
+    const confirmarAnulacion = async (motivo) => {
+
         if (!abonoAAnular) return;
         try {
             toast.loading('Anulando abono...');
-            await anularAbono(abonoAAnular, userName);
+            await anularAbono(abonoAAnular, userName, motivo);
             toast.dismiss();
             toast.success('¡Abono anulado correctamente!');
             recargarDatos();
@@ -110,12 +110,14 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         }
     };
 
+
     // Nueva Lógica de Reversión
     const iniciarReversion = (abono) => setAbonoARevertir(abono);
     const confirmarReversion = async () => {
         if (!abonoARevertir) return;
         try {
             toast.loading('Revirtiendo anulación...');
+            // 'userName' también estará disponible aquí
             await revertirAnulacionAbono(abonoARevertir, userName);
             toast.dismiss();
             toast.success('¡Anulación revertida con éxito!');
@@ -131,10 +133,13 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
 
     return {
         isLoading: isDataLoading,
+        abonos,
+        clientes,
+        viviendas,
+        renuncias,
         clientesParaLaLista,
         selectedClienteId, setSelectedClienteId,
         datosClienteSeleccionado,
-        abonosOcultos,
         modals: {
             abonoAEditar, setAbonoAEditar,
             abonoAAnular, setAbonoAAnular,

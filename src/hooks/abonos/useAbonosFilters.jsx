@@ -4,7 +4,7 @@ import { useData } from '../../context/DataContext';
 const ITEMS_PER_PAGE = 10; // Definimos cuántos abonos mostrar por página
 
 export const useAbonosFilters = () => {
-    const { isLoading, abonos, clientes, viviendas, renuncias } = useData();
+    const { isLoading, abonos, clientes, viviendas, renuncias, proyectos } = useData();
 
     // Estados para los filtros (se mantienen)
     const [clienteFiltro, setClienteFiltro] = useState(null);
@@ -23,23 +23,42 @@ export const useAbonosFilters = () => {
         let abonosProcesados = abonos.map(abono => {
             const cliente = clientes.find(c => c.id === abono.clienteId);
             const vivienda = viviendas.find(v => v.id === abono.viviendaId);
+            const proyecto = vivienda ? proyectos.find(p => p.id === vivienda.proyectoId) : null;
+
             const tieneRenunciaPendiente = renuncias.some(r => r.clienteId === abono.clienteId && r.estadoDevolucion === 'Pendiente');
             const clienteInfo = cliente && vivienda ? `${vivienda.manzana}${vivienda.numeroCasa} - ${cliente.datosCliente.nombres.toUpperCase()} ${cliente.datosCliente.apellidos.toUpperCase()}` : 'Información no disponible';
+            const nombreCompletoCliente = cliente ? `${cliente.datosCliente.nombres.toUpperCase()} ${cliente.datosCliente.apellidos.toUpperCase()}` : 'Cliente no encontrado';
+            const infoVivienda = vivienda ? `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}` : 'Vivienda no encontrada';
+
+            const procesoClienteFinalizado = cliente?.proceso?.facturaVenta?.completado || false;
 
             return {
                 ...abono,
                 clienteInfo,
-                vivienda,
+                viviendaInfo: infoVivienda,
+                proyectoNombre: proyecto ? proyecto.nombre : 'No Asignado',
                 clienteStatus: cliente?.status,
-                tieneRenunciaPendiente
+                tieneRenunciaPendiente,
+                procesoClienteFinalizado
             };
         });
 
         if (statusFiltro !== 'todos') {
-            if (statusFiltro === 'activo') {
-                abonosProcesados = abonosProcesados.filter(a => a.estadoProceso !== 'archivado');
-            } else { // 'renunciado' (que en realidad son los archivados)
-                abonosProcesados = abonosProcesados.filter(a => a.estadoProceso === 'archivado');
+            switch (statusFiltro) {
+                case 'activo':
+                    // Ahora solo muestra los que están estrictamente activos
+                    abonosProcesados = abonosProcesados.filter(a => a.estadoProceso === 'activo');
+                    break;
+                case 'anulado':
+                    // Nuevo filtro para los anulados
+                    abonosProcesados = abonosProcesados.filter(a => a.estadoProceso === 'anulado');
+                    break;
+                case 'renunciado':
+                    // Mantenemos la lógica para los archivados (de renuncias)
+                    abonosProcesados = abonosProcesados.filter(a => a.estadoProceso === 'archivado');
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -57,7 +76,7 @@ export const useAbonosFilters = () => {
         }
 
         return abonosProcesados.sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
-    }, [abonos, clientes, viviendas, renuncias, clienteFiltro, fechaInicioFiltro, fechaFinFiltro, fuenteFiltro, statusFiltro, isLoading]);
+    }, [abonos, clientes, viviendas, proyectos, renuncias, clienteFiltro, fechaInicioFiltro, fechaFinFiltro, fuenteFiltro, statusFiltro, isLoading]);
 
     // --- INICIO DE LA MODIFICACIÓN: Lógica de paginación ---
     const totalPages = useMemo(() => Math.ceil(abonosFiltrados.length / ITEMS_PER_PAGE), [abonosFiltrados]);
