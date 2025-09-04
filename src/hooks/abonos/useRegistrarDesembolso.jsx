@@ -7,7 +7,6 @@ import { FUENTE_PROCESO_MAP } from '../../utils/procesoConfig';
 import { useAuth } from '../../context/AuthContext';
 
 export const useRegistrarDesembolso = (fuenteData, isOpen, onSave, onClose) => {
-    // 1. Obtenemos el nombre del usuario
     const { userData } = useAuth();
     const userName = userData ? toTitleCase(`${userData.nombres} ${userData.apellidos}`) : 'Usuario Desconocido';
 
@@ -28,7 +27,7 @@ export const useRegistrarDesembolso = (fuenteData, isOpen, onSave, onClose) => {
                 validationErrors.urlComprobante = "El comprobante es obligatorio.";
             }
 
-            const { fuente, cliente, titulo } = fuenteData;
+            const { fuente, cliente, titulo, vivienda, proyecto } = fuenteData;
             const pasoConfig = FUENTE_PROCESO_MAP[fuente];
             const pasoSolicitud = cliente.proceso?.[pasoConfig.solicitudKey];
 
@@ -61,11 +60,10 @@ export const useRegistrarDesembolso = (fuenteData, isOpen, onSave, onClose) => {
             };
 
             try {
-                // 2. Pasamos 'userName' como último argumento en AMBAS llamadas
                 if (fuenteData.fuente === 'credito') {
-                    await registrarDesembolsoCredito(fuenteData.cliente.id, fuenteData.vivienda.id, abonoData, userName);
+                    await registrarDesembolsoCredito(cliente.id, vivienda.id, abonoData, proyecto, userName);
                 } else {
-                    await addAbonoAndUpdateProceso(abonoData, fuenteData.cliente, userName);
+                    await addAbonoAndUpdateProceso(abonoData, cliente, proyecto, userName);
                 }
 
                 toast.success(`¡Desembolso de ${fuenteData.titulo} registrado con éxito!`);

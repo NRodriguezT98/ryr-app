@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import UndoToast from '../../components/UndoToast';
 
 export const useGestionarAbonos = (clienteIdDesdeUrl) => {
-    const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos } = useData();
+    const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos, proyectos } = useData();
     const [selectedClienteId, setSelectedClienteId] = useState(clienteIdDesdeUrl || null);
 
     const [abonoAEditar, setAbonoAEditar] = useState(null);
@@ -27,6 +27,9 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         if (!cliente) return null;
 
         const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
+
+        const proyecto = vivienda ? proyectos.find(p => p.id === vivienda.proyectoId) : null;
+
         if (!vivienda) return { data: { cliente, vivienda: null, historial: [], fuentes: [], isPagada: false } };
 
         const historial = abonos
@@ -65,7 +68,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         }
 
         return {
-            data: { cliente, vivienda, historial, fuentes, isPagada: vivienda.saldoPendiente <= 0 }
+            data: { cliente, vivienda, proyecto, historial, fuentes, isPagada: vivienda.saldoPendiente <= 0 }
         };
     }, [selectedClienteId, clientes, viviendas, abonos, isDataLoading]);
 

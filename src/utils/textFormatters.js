@@ -154,3 +154,22 @@ export const normalizeDate = (dateInput) => {
 
     return null;
 };
+
+export const formatDisplayDateWithTime = (date) => {
+    if (!date) return 'N/A';
+    try {
+        const options = {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        };
+        return new Date(date).toLocaleString('es-ES', options);
+    } catch (error) {
+        console.error("Error formateando fecha y hora:", error);
+        return 'Fecha inválida';
+    }
+};

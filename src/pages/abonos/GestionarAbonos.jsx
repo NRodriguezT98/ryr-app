@@ -85,7 +85,12 @@ const GestionarAbonos = () => {
                                             cliente={datosClienteSeleccionado.data.cliente}
                                             onAbonoRegistrado={handlers.recargarDatos}
                                             onCondonarSaldo={() => modals.setFuenteACondonar({ ...fuente, saldoPendiente: fuente.montoPactado - fuente.abonos.reduce((sum, a) => sum + a.monto, 0), vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente })}
-                                            onRegistrarDesembolso={() => modals.setDesembolsoARegistrar({ ...fuente, vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente })}
+                                            onRegistrarDesembolso={() => modals.setDesembolsoARegistrar({
+                                                ...fuente,
+                                                vivienda: datosClienteSeleccionado.data.vivienda,
+                                                cliente: datosClienteSeleccionado.data.cliente,
+                                                proyecto: datosClienteSeleccionado.data.proyecto
+                                            })}
                                         />
                                     ))}
                                 </div>

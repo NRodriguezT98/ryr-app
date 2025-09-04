@@ -160,3 +160,12 @@ export const FUENTE_PROCESO_MAP = {
         evidenciaId: 'desembolsoCajaSoporte'
     }
 };
+
+export const NOMBRE_FUENTE_PAGO = {
+    cuotaInicial: "Cuota Inicial",
+    credito: "Crédito Hipotecario",
+    subsidioVivienda: "Subsidio Mi Casa Ya",
+    subsidioCaja: "Subsidio Caja de Compensación",
+    condonacion: "Condonación de Saldo",
+    gastosNotariales: "Gastos Notariales",
+};

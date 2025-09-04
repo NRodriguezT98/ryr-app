@@ -235,80 +235,74 @@ export const deleteProyecto = async (proyectoId, viviendas) => {
     );
 };
 
-export const addAbonoAndUpdateProceso = async (abonoData, cliente, userName) => {
+export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, userName) => {
     const viviendaRef = doc(db, "viviendas", abonoData.viviendaId);
     const clienteRef = doc(db, "clientes", abonoData.clienteId);
     const abonoRef = doc(collection(db, "abonos"));
 
-    const abonoParaGuardar = {
-        ...abonoData,
-        id: abonoRef.id,
-        estadoProceso: 'activo'
-    };
-
-    await runTransaction(db, async (transaction) => {
+    const { viviendaData, clienteNombre } = await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);
         const clienteDoc = await transaction.get(clienteRef);
-        if (!viviendaDoc.exists()) throw new Error("La vivienda ya no existe.");
-        if (!clienteDoc.exists()) throw new Error("El cliente ya no existe.");
-        const viviendaData = viviendaDoc.data();
-        const clienteData = clienteDoc.data();
+        if (!viviendaDoc.exists() || !clienteDoc.exists()) throw new Error("El cliente o la vivienda ya no existen.");
+
+        const transViviendaData = viviendaDoc.data();
+        const transClienteData = clienteDoc.data();
+
         const pasoConfig = FUENTE_PROCESO_MAP[abonoData.fuente];
         if (pasoConfig) {
             const solicitudKey = pasoConfig.solicitudKey;
-            const pasoSolicitud = clienteData.proceso?.[solicitudKey];
-            if (!pasoSolicitud?.completado) {
-                throw new Error('SOLICITUD_PENDIENTE');
-            }
+            const pasoSolicitud = transClienteData.proceso?.[solicitudKey];
+            if (pasoSolicitud && !pasoSolicitud.completado) throw new Error('SOLICITUD_PENDIENTE');
         }
-        const nuevoTotalAbonado = (viviendaData.totalAbonado || 0) + abonoData.monto;
-        const valorFinal = viviendaData.valorFinal || viviendaData.valorTotal;
-        const nuevoSaldo = valorFinal - nuevoTotalAbonado;
+
+        const nuevoTotalAbonado = (transViviendaData.totalAbonado || 0) + abonoData.monto;
+        const nuevoSaldo = transViviendaData.valorFinal - nuevoTotalAbonado;
+
+        const abonoParaGuardar = { ...abonoData, id: abonoRef.id, estadoProceso: 'activo', timestampCreacion: new Date() };
+
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         transaction.set(abonoRef, abonoParaGuardar);
+
         if (pasoConfig) {
             const desembolsoKey = pasoConfig.desembolsoKey;
             const evidenciaId = pasoConfig.evidenciaId;
-            const nuevoProceso = { ...clienteData.proceso };
-            if (!nuevoProceso[desembolsoKey]) nuevoProceso[desembolsoKey] = { evidencias: {} };
+            const nuevoProceso = { ...transClienteData.proceso };
+
+            if (!nuevoProceso[desembolsoKey]) nuevoProceso[desembolsoKey] = { evidencias: {}, actividad: [] };
             if (!nuevoProceso[desembolsoKey].evidencias) nuevoProceso[desembolsoKey].evidencias = {};
+            if (!nuevoProceso[desembolsoKey].actividad) nuevoProceso[desembolsoKey].actividad = [];
+
             nuevoProceso[desembolsoKey].completado = true;
             nuevoProceso[desembolsoKey].fecha = abonoData.fechaPago;
-            nuevoProceso[desembolsoKey].evidencias[evidenciaId] = {
-                url: abonoData.urlComprobante,
-                estado: abonoData.urlComprobante ? 'subido' : 'pendiente'
-            };
+            nuevoProceso[desembolsoKey].evidencias[evidenciaId] = { url: abonoData.urlComprobante, estado: 'subido' };
+
             const entradaHistorial = {
                 mensaje: `Desembolso registrado por ${formatCurrency(abonoData.monto)}. El paso se completó automáticamente.`,
                 userName: userName || 'Sistema',
-                fecha: new Date() // Firestore lo convertirá a Timestamp
+                fecha: new Date()
             };
-
-            if (!nuevoProceso[desembolsoKey].actividad) {
-                nuevoProceso[desembolsoKey].actividad = [];
-            }
             nuevoProceso[desembolsoKey].actividad.push(entradaHistorial);
             transaction.update(clienteRef, { proceso: nuevoProceso });
         }
+        return {
+            viviendaData: transViviendaData,
+            clienteNombre: toTitleCase(`${transClienteData.datosCliente.nombres} ${transClienteData.datosCliente.apellidos}`)
+        };
     });
-    const viviendaInfo = (await getDoc(viviendaRef)).data();
-    const message = `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaInfo.manzana} - Casa ${viviendaInfo.numeroCasa}`;
+    const message = `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`;
     await createNotification('abono', message, `/viviendas/detalle/${abonoData.viviendaId}`);
 
-    const clienteNombre = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
     await createAuditLog(
-        `Registró un desembolso de "${abonoData.metodoPago}" por ${formatCurrency(abonoData.monto)} para el cliente ${clienteNombre}`,
+        `Registró desembolso de "${abonoData.metodoPago}" para ${clienteNombre}`,
         {
             action: 'REGISTER_DISBURSEMENT',
-            clienteId: cliente.id,
-            viviendaId: abonoData.viviendaId,
-            fuente: abonoData.fuente,
-            monto: abonoData.monto
+            cliente: { id: abonoData.clienteId, nombre: clienteNombre },
+            vivienda: { id: viviendaData.id, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
+            proyecto: { id: proyecto.id, nombre: proyecto.nombre },
+            abono: { monto: formatCurrency(abonoData.monto), fechaPago: formatDisplayDate(abonoData.fechaPago), fuente: abonoData.fuente }
         }
     );
 };
-
-// src/utils/storage.js
 
 export const updateVivienda = async (id, datosActualizados, auditContext) => {
     const viviendaRef = doc(db, "viviendas", String(id));
@@ -964,102 +958,70 @@ export const deleteAbono = async (abonoAEliminar) => {
     });
 };
 
-export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData, userName) => {
+export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData, proyecto, userName) => {
     const viviendaRef = doc(db, "viviendas", viviendaId);
     const clienteRef = doc(db, "clientes", clienteId);
     const abonoRef = doc(collection(db, "abonos"));
-    let clienteNombre = ''; // Variable para el nombre del cliente
 
-    await runTransaction(db, async (transaction) => {
+    const { clienteNombre, viviendaData, montoADesembolsar } = await runTransaction(db, async (transaction) => {
         const clienteDoc = await transaction.get(clienteRef);
         const viviendaDoc = await transaction.get(viviendaRef);
-        if (!clienteDoc.exists() || !viviendaDoc.exists()) {
-            throw new Error("El cliente o la vivienda no existen.");
-        }
-        const clienteData = clienteDoc.data();
-        const viviendaData = viviendaDoc.data();
+        if (!clienteDoc.exists() || !viviendaDoc.exists()) throw new Error("El cliente o la vivienda no existen.");
 
-        // 👇 INICIO DE LA VALIDACIÓN 👇
-        // Verificamos que el paso de 'solicitud' esté completado en el proceso del cliente.
+        const transClienteData = clienteDoc.data();
+        const transViviendaData = viviendaDoc.data();
+        const transClienteNombre = toTitleCase(`${transClienteData.datosCliente.nombres} ${transClienteData.datosCliente.apellidos}`);
+
         const pasoConfig = FUENTE_PROCESO_MAP['credito'];
         if (pasoConfig) {
-            const solicitudKey = pasoConfig.solicitudKey;
-            const pasoSolicitud = clienteData.proceso?.[solicitudKey];
-
-            // Si el paso de la solicitud no está completado, lanzamos un error.
-            if (!pasoSolicitud?.completado) {
-                throw new Error("Debe completar la solicitud de desembolso del crédito en el proceso del cliente, antes de registrar el desembolso  .");
-            }
+            const pasoSolicitud = transClienteData.proceso?.[pasoConfig.solicitudKey];
+            if (!pasoSolicitud?.completado) throw new Error("Debe completar la solicitud de desembolso del crédito.");
         }
-        // 👆 FIN DE LA VALIDACIÓN 👆
 
-        clienteNombre = toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`);
-
-        const montoCreditoPactado = clienteData.financiero?.credito?.monto || 0;
-
+        const montoCreditoPactado = transClienteData.financiero?.credito?.monto || 0;
         const abonosPreviosSnapshot = await getDocs(query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("fuente", "==", "credito")));
         const totalAbonadoCredito = abonosPreviosSnapshot.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
+        const transMontoADesembolsar = montoCreditoPactado - totalAbonadoCredito;
+        if (transMontoADesembolsar <= 0) throw new Error("El crédito para este cliente ya ha sido completamente desembolsado.");
 
-        const montoADesembolsar = montoCreditoPactado - totalAbonadoCredito;
+        const abonoParaGuardar = { ...desembolsoData, monto: transMontoADesembolsar, fuente: 'credito', metodoPago: 'Desembolso Bancario', clienteId, viviendaId, id: abonoRef.id, estadoProceso: 'activo', timestampCreacion: new Date() };
 
-        if (montoADesembolsar <= 0) {
-            throw new Error("El crédito para este cliente ya ha sido completamente desembolsado.");
-        }
+        const nuevoTotalAbonado = (transViviendaData.totalAbonado || 0) + transMontoADesembolsar;
+        const nuevoSaldo = transViviendaData.valorFinal - nuevoTotalAbonado;
 
-        const abonoParaGuardar = {
-            ...desembolsoData,
-            monto: montoADesembolsar,
-            fuente: 'credito',
-            metodoPago: 'Desembolso Bancario',
-            clienteId,
-            viviendaId,
-            id: abonoRef.id,
-            estadoProceso: 'activo'
-        };
-
-        const nuevoTotalAbonado = viviendaData.totalAbonado + montoADesembolsar;
-        const nuevoSaldo = viviendaData.valorFinal - nuevoTotalAbonado;
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         transaction.set(abonoRef, abonoParaGuardar);
 
         if (pasoConfig) {
             const desembolsoKey = pasoConfig.desembolsoKey;
-            const nuevoProceso = { ...clienteData.proceso };
-            nuevoProceso[desembolsoKey] = {
-                ...nuevoProceso[desembolsoKey],
-                completado: true,
-                fecha: desembolsoData.fechaPago,
-                evidencias: {
-                    ...nuevoProceso[desembolsoKey]?.evidencias,
-                    [pasoConfig.evidenciaId]: { url: desembolsoData.urlComprobante, estado: 'subido' }
-                }
-            };
-            // Añadimos la entrada al historial de actividad del paso
+            const nuevoProceso = { ...transClienteData.proceso };
+            if (!nuevoProceso[desembolsoKey]) nuevoProceso[desembolsoKey] = { actividad: [] };
+            if (!nuevoProceso[desembolsoKey].actividad) nuevoProceso[desembolsoKey].actividad = [];
+
+            nuevoProceso[desembolsoKey] = { ...nuevoProceso[desembolsoKey], completado: true, fecha: desembolsoData.fechaPago, evidencias: { ...nuevoProceso[desembolsoKey]?.evidencias, [pasoConfig.evidenciaId]: { url: desembolsoData.urlComprobante, estado: 'subido' } } };
+
             const entradaHistorial = {
-                mensaje: `Desembolso de crédito registrado por ${formatCurrency(montoADesembolsar)}. El paso se completó automáticamente.`,
+                mensaje: `Desembolso de crédito registrado por ${formatCurrency(transMontoADesembolsar)}. El paso se completó automáticamente.`,
                 userName: userName || 'Sistema',
                 fecha: new Date()
             };
-
-            if (!nuevoProceso[desembolsoKey].actividad) {
-                nuevoProceso[desembolsoKey].actividad = [];
-            }
             nuevoProceso[desembolsoKey].actividad.push(entradaHistorial);
-
             transaction.update(clienteRef, { proceso: nuevoProceso });
         }
+        return { clienteNombre: transClienteNombre, viviendaData: transViviendaData, montoADesembolsar: transMontoADesembolsar };
     });
 
     const message = `Se registró el desembolso del crédito hipotecario para ${clienteNombre}`;
     await createNotification('abono', message, `/clientes/detalle/${clienteId}`);
 
     await createAuditLog(
-        `Registró el desembolso del crédito hipotecario por ${formatCurrency(desembolsoData.monto)} para el cliente ${clienteNombre}`,
+        `Registró desembolso de Crédito Hipotecario para ${clienteNombre}`,
         {
             action: 'REGISTER_CREDIT_DISBURSEMENT',
-            clienteId: clienteId,
-            viviendaId: viviendaId,
-            monto: desembolsoData.monto
+            cliente: { id: clienteId, nombre: clienteNombre },
+            vivienda: { id: viviendaId, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
+            proyecto: { id: proyecto.id, nombre: proyecto.nombre },
+            abono: { monto: formatCurrency(montoADesembolsar), fechaPago: formatDisplayDate(desembolsoData.fechaPago), fuente: 'credito' }
         }
     );
 };
