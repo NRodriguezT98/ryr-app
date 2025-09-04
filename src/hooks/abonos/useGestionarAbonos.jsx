@@ -1,16 +1,18 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
-import { deleteAbono } from '../../utils/storage';
+import { anularAbono, revertirAnulacionAbono } from '../../utils/storage';
 import toast from 'react-hot-toast';
 import UndoToast from '../../components/UndoToast';
+import { useAuth } from '../../context/AuthContext';
 
 export const useGestionarAbonos = (clienteIdDesdeUrl) => {
     const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos, proyectos } = useData();
     const [selectedClienteId, setSelectedClienteId] = useState(clienteIdDesdeUrl || null);
 
     const [abonoAEditar, setAbonoAEditar] = useState(null);
-    const [abonoAEliminar, setAbonoAEliminar] = useState(null);
+    const [abonoAAnular, setAbonoAAnular] = useState(null);
+    const [abonoARevertir, setAbonoARevertir] = useState(null);
     const [desembolsoARegistrar, setDesembolsoARegistrar] = useState(null);
     const [abonosOcultos, setAbonosOcultos] = useState([]);
     const deletionTimeouts = useRef({});
@@ -89,33 +91,42 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         setDesembolsoARegistrar(null);
     }, [recargarDatos]);
 
-    const iniciarEliminacion = (abono) => setAbonoAEliminar(abono);
-
-    const confirmarEliminarReal = async (abono) => {
+    // Lógica de Anulación (antes eliminación)
+    const iniciarAnulacion = (abono) => setAbonoAAnular(abono);
+    const confirmarAnulacion = async () => {
+        if (!abonoAAnular) return;
         try {
-            await deleteAbono(abono);
+            toast.loading('Anulando abono...');
+            await anularAbono(abonoAAnular, userName);
+            toast.dismiss();
+            toast.success('¡Abono anulado correctamente!');
             recargarDatos();
         } catch (error) {
-            toast.error("No se pudo eliminar el abono.");
-            setAbonosOcultos(prev => prev.filter(aId => aId !== abono.id));
+            toast.dismiss();
+            toast.error(error.message || "No se pudo anular el abono.");
+            console.error(error);
+        } finally {
+            setAbonoAAnular(null);
         }
     };
 
-    const deshacerEliminacion = (id) => {
-        clearTimeout(deletionTimeouts.current[id]);
-        delete deletionTimeouts.current[id];
-        setAbonosOcultos(prev => prev.filter(aId => aId !== id));
-        toast.success("Eliminación deshecha.");
-    };
-
-    const confirmarEliminar = () => {
-        if (!abonoAEliminar) return;
-        const id = abonoAEliminar.id;
-        setAbonosOcultos(prev => [...prev, id]);
-        toast.custom((t) => (<UndoToast t={t} message="Abono eliminado" onUndo={() => deshacerEliminacion(id)} />), { duration: 5000 });
-        const timeoutId = setTimeout(() => confirmarEliminarReal(abonoAEliminar), 5000);
-        deletionTimeouts.current[id] = timeoutId;
-        setAbonoAEliminar(null);
+    // Nueva Lógica de Reversión
+    const iniciarReversion = (abono) => setAbonoARevertir(abono);
+    const confirmarReversion = async () => {
+        if (!abonoARevertir) return;
+        try {
+            toast.loading('Revirtiendo anulación...');
+            await revertirAnulacionAbono(abonoARevertir, userName);
+            toast.dismiss();
+            toast.success('¡Anulación revertida con éxito!');
+            recargarDatos();
+        } catch (error) {
+            toast.dismiss();
+            toast.error(error.message || "No se pudo revertir la anulación.");
+            console.error(error);
+        } finally {
+            setAbonoARevertir(null);
+        }
     };
 
     return {
@@ -126,15 +137,18 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         abonosOcultos,
         modals: {
             abonoAEditar, setAbonoAEditar,
-            abonoAEliminar, setAbonoAEliminar,
+            abonoAAnular, setAbonoAAnular,
+            abonoARevertir, setAbonoARevertir,
             fuenteACondonar, setFuenteACondonar,
             desembolsoARegistrar, setDesembolsoARegistrar
         },
         handlers: {
             recargarDatos,
             handleGuardado,
-            iniciarEliminacion,
-            confirmarEliminar
+            iniciarAnulacion, // Renombrado
+            confirmarAnulacion, // Renombrado
+            iniciarReversion, // Nuevo
+            confirmarReversion
         }
     };
 };

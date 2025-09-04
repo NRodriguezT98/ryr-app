@@ -6,10 +6,9 @@ import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertic
 import { formatCurrency, formatDisplayDate } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 
-const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
+const AbonoCard = ({ abono, onEdit, onAnular, isReadOnly = false }) => {
 
     const { can } = usePermissions();
-    const tieneAccionesDisponibles = can('abonos', 'editar') || can('abonos', 'eliminar');
 
     const getStatusInfo = () => {
         if (abono.estadoProceso === 'archivado') {
@@ -18,7 +17,18 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
                 iconBg: 'bg-gray-100 dark:bg-gray-700',
                 iconColor: 'text-gray-500 dark:text-gray-400',
                 Icon: Archive,
-                label: 'Venta Cancelada'
+                label: 'Venta Cancelada',
+                montoClasses: ''
+            };
+        }
+        if (abono.estadoProceso === 'anulado') {
+            return {
+                cardBorder: 'border-gray-300 dark:border-gray-700 opacity-60',
+                iconBg: 'bg-gray-100 dark:bg-gray-700',
+                iconColor: 'text-gray-500 dark:text-gray-400',
+                Icon: Archive,
+                label: 'ANULADO',
+                montoClasses: 'line-through' // Clase para tachar el monto
             };
         }
         // --- INICIO DE LA MODIFICACIÓN ---
@@ -29,7 +39,8 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
                 iconBg: 'bg-indigo-100 dark:bg-indigo-900/50',
                 iconColor: 'text-indigo-600 dark:text-indigo-400',
                 Icon: HandCoins,
-                label: null
+                label: null,
+                montoClasses: ''
             };
         }
         // --- FIN DE LA MODIFICACIÓN ---
@@ -39,20 +50,23 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
                 iconBg: 'bg-orange-100 dark:bg-orange-900/50',
                 iconColor: 'text-orange-600 dark:text-orange-400',
                 Icon: AlertTriangle,
-                label: 'Proceso de Renuncia'
+                label: 'Proceso de Renuncia',
+                montoClasses: ''
             };
         }
         return {
             cardBorder: 'border-gray-100 dark:border-gray-700',
-            iconBg: 'bg-green-100 dark:bg-green-900/50',
-            iconColor: 'text-green-600 dark:text-green-400',
+            iconBg: 'bg-green-100 dark:bg-green-900/50', // <-- Define un fondo verde claro
+            iconColor: 'text-green-600 dark:text-green-400', // <-- Define el color del icono
             Icon: DollarSign,
-            label: null
+            label: null,
+            montoClasses: ''
         };
     };
 
-    const { cardBorder, iconBg, iconColor, Icon, label } = getStatusInfo();
-    const canEditOrDelete = abono.estadoProceso === 'activo' && !abono.tieneRenunciaPendiente;
+    const { cardBorder, iconBg, iconColor, Icon, label, montoClasses } = getStatusInfo();
+    const canDoActions = abono.estadoProceso === 'activo' && !abono.tieneRenunciaPendiente;
+    const tieneAccionesDisponibles = can('abonos', 'editar') || can('abonos', 'anular') || can('abonos', 'revertirAnulacion');
 
     return (
         <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-md border ${cardBorder} p-4 flex items-start gap-4 transition-all`}>
@@ -110,16 +124,19 @@ const AbonoCard = ({ abono, onEdit, onDelete, isReadOnly = false }) => {
                         </div>
                         {!isReadOnly && tieneAccionesDisponibles && (
                             <Menu as="div" className="relative">
-                                <Menu.Button className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full disabled:opacity-50 disabled:cursor-not-allowed" disabled={!canEditOrDelete}>
+                                <Menu.Button className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full disabled:opacity-50 disabled:cursor-not-allowed">
                                     <MoreVertical size={20} />
                                 </Menu.Button>
                                 <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                    <Menu.Items className="absolute bottom-full right-0 mb-2 w-40 origin-bottom-right bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
-                                        {can('abonos', 'editar') && (
-                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onEdit(abono)} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Pencil className="w-5 h-5 mr-2" /> Editar</button>)}</Menu.Item></div>
+                                    <Menu.Items className="absolute bottom-full right-0 mb-2 w-48 origin-bottom-right bg-white dark:bg-gray-800 divide-y dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
+                                        {can('abonos', 'editar') && abono.estadoProceso === 'activo' && (
+                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onEdit(abono)} disabled={!canDoActions} className={`${active ? 'bg-blue-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Pencil className="w-5 h-5 mr-2" /> Editar</button>)}</Menu.Item></div>
                                         )}
-                                        {can('abonos', 'eliminar') && (
-                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onDelete(abono)} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Trash className="w-5 h-5 mr-2" /> Eliminar</button>)}</Menu.Item></div>
+                                        {can('abonos', 'anular') && abono.estadoProceso === 'activo' && (
+                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onAnular(abono)} disabled={!canDoActions} className={`${active ? 'bg-red-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Trash className="w-5 h-5 mr-2" /> Anular</button>)}</Menu.Item></div>
+                                        )}
+                                        {can('abonos', 'revertirAnulacion') && abono.estadoProceso === 'anulado' && (
+                                            <div className="px-1 py-1"><Menu.Item>{({ active }) => (<button onClick={() => onRevertir(abono)} className={`${active ? 'bg-green-500 text-white' : 'text-gray-900 dark:text-gray-200'} group flex rounded-md items-center w-full px-2 py-2 text-sm`}><Undo2 className="w-5 h-5 mr-2" /> Revertir Anulación</button>)}</Menu.Item></div>
                                         )}
                                     </Menu.Items>
                                 </Transition>

@@ -99,7 +99,13 @@ const GestionarAbonos = () => {
                                     {historialVisible.length > 0 ? (
                                         <div className="space-y-4">
                                             {historialVisible.map(abono => (
-                                                <AbonoCard key={abono.id} abono={abono} onEdit={() => modals.setAbonoAEditar(abono)} onDelete={handlers.iniciarEliminacion} />
+                                                <AbonoCard
+                                                    key={abono.id}
+                                                    abono={abono}
+                                                    onEdit={() => modals.setAbonoAEditar(abono)}
+                                                    onAnular={() => handlers.iniciarAnulacion(abono)} // 👈 Conectamos el nuevo handler
+                                                    onRevertir={() => handlers.iniciarReversion(abono)} // 👈 Conectamos el nuevo handler
+                                                />
                                             ))}
                                         </div>
                                     ) : (

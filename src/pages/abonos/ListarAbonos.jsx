@@ -2,9 +2,9 @@ import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { useData } from '../../context/DataContext';
+import { useGestionarAbonos } from '../../hooks/abonos/useGestionarAbonos';
 import { useAbonosFilters } from '../../hooks/abonos/useAbonosFilters';
 import AbonoCard from './AbonoCard';
-import { deleteAbono } from '../../utils/storage';
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import toast from 'react-hot-toast';
@@ -180,7 +180,7 @@ const ListarAbonos = () => {
                                     key={abono.id}
                                     abono={abono}
                                     onEdit={() => setAbonoAEditar(abono)}
-                                    onDelete={iniciarEliminacion}
+                                    onAnular={iniciarAnulacion}
                                 />
                             ))}
                         </div>

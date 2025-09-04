@@ -913,49 +913,136 @@ export const updateAbono = async (abonoId, datosNuevos, abonoOriginal) => {
     });
 };
 
-export const deleteAbono = async (abonoAEliminar) => {
-    if (!abonoAEliminar || !abonoAEliminar.id || !abonoAEliminar.viviendaId) {
-        throw new Error("Datos del abono a eliminar incompletos.");
+export const anularAbono = async (abonoAAnular, userName) => {
+    if (!abonoAAnular || !abonoAAnular.id || !abonoAAnular.viviendaId) {
+        throw new Error("Datos del abono a anular incompletos.");
     }
 
-    const abonoRef = doc(db, "abonos", String(abonoAEliminar.id));
-    const viviendaRef = doc(db, "viviendas", String(abonoAEliminar.viviendaId));
-    const clienteRef = doc(db, "clientes", String(abonoAEliminar.clienteId));
+    const abonoRef = doc(db, "abonos", String(abonoAAnular.id));
+    const viviendaRef = doc(db, "viviendas", String(abonoAAnular.viviendaId));
+    const clienteRef = doc(db, "clientes", String(abonoAAnular.clienteId));
 
     await runTransaction(db, async (transaction) => {
-        // --- INICIO DE LA CORRECCIÓN ---
-        // 1. LEER todos los documentos necesarios PRIMERO.
         const viviendaDoc = await transaction.get(viviendaRef);
         const clienteDoc = await transaction.get(clienteRef);
+        if (!viviendaDoc.exists() || !clienteDoc.exists()) throw new Error("Cliente o vivienda no encontrados.");
 
-        // 2. Realizar todas las operaciones de ESCRITURA y BORRADO después.
-        if (viviendaDoc.exists()) {
-            const viviendaData = viviendaDoc.data();
-            const montoAEliminar = abonoAEliminar.monto || 0;
-            const nuevoTotalAbonado = (viviendaData.totalAbonado || 0) - montoAEliminar;
-            const nuevoSaldo = viviendaData.valorFinal - nuevoTotalAbonado;
-            transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
+        const viviendaData = viviendaDoc.data();
+        const clienteData = clienteDoc.data();
+
+        // 1. Verificar que el proceso no esté cerrado
+        if (clienteData.proceso?.facturaVenta?.completado) {
+            throw new Error("No se puede anular un abono de un proceso ya facturado.");
         }
 
-        const pasoConfig = FUENTE_PROCESO_MAP[abonoAEliminar.fuente];
-        if (pasoConfig && pasoConfig.desembolsoKey && clienteDoc.exists()) {
-            const clienteData = clienteDoc.data();
+        // 2. Revertir el impacto financiero
+        const montoAAnular = abonoAAnular.monto || 0;
+        const nuevoTotalAbonado = (viviendaData.totalAbonado || 0) - montoAAnular;
+        const nuevoSaldo = viviendaData.valorFinal - nuevoTotalAbonado;
+        transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
+
+        // 3. Reabrir el paso del proceso si es un desembolso
+        const pasoConfig = FUENTE_PROCESO_MAP[abonoAAnular.fuente];
+        if (pasoConfig && pasoConfig.desembolsoKey) {
             const nuevoProceso = { ...clienteData.proceso };
             const pasoKey = pasoConfig.desembolsoKey;
-
             if (nuevoProceso[pasoKey]) {
-                nuevoProceso[pasoKey] = {
-                    ...nuevoProceso[pasoKey],
-                    completado: false,
-                    fecha: null
+                nuevoProceso[pasoKey].completado = false;
+
+                const entradaHistorial = {
+                    mensaje: `Abono de ${formatCurrency(montoAAnular)} anulado. El paso se reabrió automáticamente.`,
+                    userName: userName || 'Sistema',
+                    fecha: new Date()
                 };
+                if (!nuevoProceso[pasoKey].actividad) nuevoProceso[pasoKey].actividad = [];
+                nuevoProceso[pasoKey].actividad.push(entradaHistorial);
+
                 transaction.update(clienteRef, { proceso: nuevoProceso });
             }
         }
 
-        transaction.delete(abonoRef);
-        // --- FIN DE LA CORRECCIÓN ---
+        // 4. Marcar el abono como anulado
+        transaction.update(abonoRef, { estadoProceso: 'anulado' });
     });
+
+    const clienteNombre = toTitleCase(`${(await getDoc(clienteRef)).data().datosCliente.nombres} ${(await getDoc(clienteRef)).data().datosCliente.apellidos}`);
+    await createAuditLog(
+        `Anuló un abono de ${formatCurrency(abonoAAnular.monto)} para ${clienteNombre}`,
+        {
+            action: 'VOID_ABONO',
+            clienteId: abonoAAnular.clienteId,
+            abonoId: abonoAAnular.id,
+            monto: formatCurrency(abonoAAnular.monto),
+            fuente: abonoAAnular.fuente
+        }
+    );
+};
+
+// AÑADE ESTA FUNCIÓN NUEVA:
+export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
+    const viviendaRef = doc(db, "viviendas", abonoARevertir.viviendaId);
+    const clienteRef = doc(db, "clientes", abonoARevertir.clienteId);
+    const abonoRef = doc(db, "abonos", abonoARevertir.id);
+    const abonosCollectionRef = collection(db, "abonos");
+
+    await runTransaction(db, async (transaction) => {
+        const viviendaDoc = await transaction.get(viviendaRef);
+        const clienteDoc = await transaction.get(clienteRef);
+        if (!viviendaDoc.exists() || !clienteDoc.exists()) throw new Error("Cliente o vivienda no encontrados.");
+
+        const viviendaData = viviendaDoc.data();
+        const clienteData = clienteDoc.data();
+
+        // VALIDACIÓN 1: ANTI-SOBREPAGO
+        if (abonoARevertir.monto > viviendaData.saldoPendiente) {
+            throw new Error(`No se puede revertir. El monto (${formatCurrency(abonoARevertir.monto)}) es mayor al saldo pendiente (${formatCurrency(viviendaData.saldoPendiente)}).`);
+        }
+
+        // VALIDACIÓN 2: UNICIDAD DE DESEMBOLSO (solo para desembolsos)
+        const pasoConfig = FUENTE_PROCESO_MAP[abonoARevertir.fuente];
+        if (pasoConfig) {
+            const q = query(abonosCollectionRef, where("clienteId", "==", abonoARevertir.clienteId), where("fuente", "==", abonoARevertir.fuente), where("estadoProceso", "==", "activo"));
+            const abonosActivosExistentes = await transaction.get(q);
+            if (!abonosActivosExistentes.empty) {
+                throw new Error(`No se puede revertir. Ya existe otro desembolso activo para la fuente "${abonoARevertir.fuente}".`);
+            }
+        }
+
+        // --- Si las validaciones pasan, se procede con la reversión ---
+        const nuevoTotalAbonado = viviendaData.totalAbonado + abonoARevertir.monto;
+        const nuevoSaldo = viviendaData.saldoPendiente - abonoARevertir.monto;
+
+        transaction.update(abonoRef, { estadoProceso: 'activo' });
+        transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
+
+        if (pasoConfig) {
+            const desembolsoKey = pasoConfig.desembolsoKey;
+            const nuevoProceso = { ...clienteData.proceso };
+            if (nuevoProceso[desembolsoKey]) {
+                nuevoProceso[desembolsoKey].completado = true;
+                const entradaHistorial = {
+                    mensaje: `Se revirtió la anulación de un abono de ${formatCurrency(abonoARevertir.monto)}. El paso se completó de nuevo.`,
+                    userName: userName || 'Sistema',
+                    fecha: new Date()
+                };
+                if (!nuevoProceso[desembolsoKey].actividad) nuevoProceso[desembolsoKey].actividad = [];
+                nuevoProceso[desembolsoKey].actividad.push(entradaHistorial);
+                transaction.update(clienteRef, { proceso: nuevoProceso });
+            }
+        }
+    });
+
+    const clienteNombre = toTitleCase(`${(await getDoc(clienteRef)).data().datosCliente.nombres} ${(await getDoc(clienteRef)).data().datosCliente.apellidos}`);
+    await createAuditLog(
+        `Revirtió la anulación de un abono para ${clienteNombre}`,
+        {
+            action: 'REVERT_VOID_ABONO',
+            clienteId: abonoARevertir.clienteId,
+            abonoId: abonoARevertir.id,
+            monto: formatCurrency(abonoARevertir.monto),
+            fuente: abonoARevertir.fuente
+        }
+    );
 };
 
 export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData, proyecto, userName) => {
