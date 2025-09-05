@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useForm } from '../useForm';
 import { useData } from '../../context/DataContext';
 import { validateProyecto } from '../../utils/validation';
-import { updateProyecto } from '../../utils/storage';
+import { updateProyecto } from "../../services/proyectoService";
 import toast from 'react-hot-toast';
 
 export const useEditarProyecto = (proyectoAEditar, isOpen, onSaveSuccess) => {

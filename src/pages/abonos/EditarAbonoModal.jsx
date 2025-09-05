@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { NumericFormat } from 'react-number-format';
 import { useForm } from '../../hooks/useForm.jsx';
 import { validateAbono } from '../../utils/validation.js';
-import { updateAbono } from '../../utils/storage.js';
+import { updateAbono } from "../../services/abonoService";
 import toast from 'react-hot-toast';
 import Modal from '../../components/Modal.jsx';
 import { Pencil, User, Home, Building2, ArrowRight, FileText, XCircle, Loader } from 'lucide-react';

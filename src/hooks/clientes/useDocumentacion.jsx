@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { DOCUMENTACION_CONFIG } from '../../utils/documentacionConfig';
-import { updateCliente } from '../../utils/storage';
+import { updateCliente } from "../../services/clienteService";
 import toast from 'react-hot-toast';
 
 export const useDocumentacion = (cliente) => {

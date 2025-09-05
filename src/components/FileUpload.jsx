@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, Loader } from 'lucide-react';
-import { uploadFile } from '../utils/storage';
+import { uploadFile } from "../services/fileService";;
 import toast from 'react-hot-toast';
 
 const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false }) => {

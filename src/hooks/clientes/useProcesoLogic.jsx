@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
-import { generarActividadProceso, updateCliente, createNotification, anularCierreProceso, getClienteProceso } from '../../utils/storage';
+import { generarActividadProceso, updateCliente, anularCierreProceso, getClienteProceso } from "../../services/clienteService";
+import { createNotification } from "../../services/notificationService";
 import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { useAuth } from '../../context/AuthContext';
 

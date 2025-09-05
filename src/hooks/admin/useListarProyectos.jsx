@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
-import { updateProyecto, deleteProyecto } from '../../utils/storage';
+import { updateProyecto, deleteProyecto } from "../../services/proyectoService";
 import toast from 'react-hot-toast';
 
 export const useListarProyectos = () => {

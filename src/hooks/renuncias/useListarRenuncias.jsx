@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useData } from '../context/DataContext';
-import { cancelarRenuncia } from '../utils/storage';
+import { useData } from '../../context/DataContext';
+import { cancelarRenuncia } from "../../services/renunciaService";
 import toast from 'react-hot-toast';
 
 export const useListarRenuncias = () => {

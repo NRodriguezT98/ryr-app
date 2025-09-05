@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
-import { deleteClientePermanently, inactivarCliente, renunciarAVivienda, createNotification, restaurarCliente } from '../../utils/storage';
+import { deleteClientePermanently, inactivarCliente, renunciarAVivienda, restaurarCliente } from "../../services/clienteService";
+import { createNotification } from "../../services/notificationService";
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 

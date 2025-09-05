@@ -2,8 +2,10 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useForm } from "../useForm.jsx";
-import { validateVivienda } from "../../utils/validation.js"; // <-- RUTA ACTUALIZADA
-import { addVivienda, getViviendas, createAuditLog } from "../../utils/storage";
+import { validateVivienda } from "../../utils/validation.js";
+import { addVivienda } from "../../services/viviendaService";
+import { getViviendas } from '../../services/dataService.js';
+import { createAuditLog } from "../../services/auditService";
 import { useData } from '../../context/DataContext.jsx'
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;

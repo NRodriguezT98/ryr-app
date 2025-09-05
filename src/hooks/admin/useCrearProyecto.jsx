@@ -3,7 +3,7 @@
 import { useForm } from '../useForm';
 import { useData } from '../../context/DataContext';
 import { validateProyecto } from '../../utils/validation';
-import { addProyecto } from '../../utils/storage';
+import { addProyecto } from "../../services/proyectoService";
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 

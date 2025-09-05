@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useForm } from '../useForm.jsx';
 import toast from 'react-hot-toast';
-import { addAbonoAndUpdateProceso } from '../../utils/storage';
+import { addAbonoAndUpdateProceso } from "../../services/abonoService";
 import { validateAbono } from '../../utils/validation.js';
 import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
 import { FUENTE_PROCESO_MAP } from '../../utils/procesoConfig.js';

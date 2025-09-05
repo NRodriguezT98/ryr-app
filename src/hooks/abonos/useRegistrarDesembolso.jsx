@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useForm } from '../useForm';
-import { registrarDesembolsoCredito, addAbonoAndUpdateProceso } from '../../utils/storage';
+import { registrarDesembolsoCredito, addAbonoAndUpdateProceso } from "../../services/abonoService";
 import { getTodayString, formatDisplayDate, toTitleCase } from '../../utils/textFormatters';
 import { FUENTE_PROCESO_MAP } from '../../utils/procesoConfig';
 import { useAuth } from '../../context/AuthContext';

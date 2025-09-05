@@ -6,7 +6,7 @@ import { CheckCircle, Lock, FileText, Calendar, AlertCircle, RotateCcw, Eye, Tra
 import FileUpload from '../../../components/FileUpload';
 import toast from 'react-hot-toast';
 import { getTodayString, formatDisplayDate, parseDateAsUTC, normalizeDate, formatCurrency } from '../../../utils/textFormatters';
-import { uploadFile } from '../../../utils/storage';
+import { uploadFile } from "../../../services/fileService";
 import { usePermissions } from '../../../hooks/auth/usePermissions';
 
 const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPermanentlyLocked, esHito, isReadOnly }) => {

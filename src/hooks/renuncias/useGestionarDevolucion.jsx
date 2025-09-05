@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useForm } from '../useForm';
 import toast from 'react-hot-toast';
-import { marcarDevolucionComoPagada } from '../../utils/storage';
+import { marcarDevolucionComoPagada } from "../../services/renunciaService";
 import { getTodayString, formatDisplayDate, parseDateAsUTC } from '../../utils/textFormatters';
 
 export const useGestionarDevolucion = (renuncia, onSave, onClose) => {

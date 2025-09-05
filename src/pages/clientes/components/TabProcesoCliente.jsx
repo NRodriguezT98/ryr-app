@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useProcesoLogic } from '../../../hooks/clientes/useProcesoLogic';
 import { useAuth } from '../../../context/AuthContext';
-import { updateCliente } from '../../../utils/storage';
+import { updateCliente } from "../../../services/clienteService";
 import { Tooltip } from 'react-tooltip';
 import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';

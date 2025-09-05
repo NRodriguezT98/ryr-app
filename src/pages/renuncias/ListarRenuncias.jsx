@@ -1,5 +1,5 @@
 import React from 'react';
-import { useListarRenuncias } from '../../hooks/useListarRenuncias';
+import { useListarRenuncias } from '../../hooks/renuncias/useListarRenuncias';
 import ResourcePageLayout from '../../layout/ResourcePageLayout';
 import RenunciaCard from './components/RenunciaCard';
 import ModalGestionarDevolucion from './components/ModalGestionarDevolucion';

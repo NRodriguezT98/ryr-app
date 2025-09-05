@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
-import { anularAbono, revertirAnulacionAbono } from '../../utils/storage';
+import { anularAbono, revertirAnulacionAbono } from "../../services/abonoService";
 import toast from 'react-hot-toast';
 import UndoToast from '../../components/UndoToast';
 import { useAuth } from '../../context/AuthContext';

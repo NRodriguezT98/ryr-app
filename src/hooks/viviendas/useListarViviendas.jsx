@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from 'react-router-dom';
 import { useData } from "../../context/DataContext";
 import { useUndoableDelete } from "../useUndoableDelete";
-import { deleteViviendaPermanently, archiveVivienda, restoreVivienda } from "../../utils/storage";
+import { deleteViviendaPermanently, archiveVivienda, restoreVivienda } from "../../services/viviendaService";
 import toast from 'react-hot-toast';
 
 const ITEMS_PER_PAGE = 9;

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useForm } from '../useForm';
 import toast from 'react-hot-toast';
 // --- INICIO DE LA CORRECCIÓN ---
-import { addAbonoAndUpdateProceso } from '../../utils/storage'; // Se importa la función con el nombre correcto
+import { addAbonoAndUpdateProceso } from "../../services/abonoService";
 // --- FIN DE LA CORRECCIÓN ---
 import { getTodayString, parseDateAsUTC, formatDisplayDate } from '../../utils/textFormatters';
 import { useData } from '../../context/DataContext';
