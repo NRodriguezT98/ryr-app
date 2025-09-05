@@ -4,12 +4,9 @@ import Modal from '../../../components/Modal';
 import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
 
 const ModalAnularAbono = ({ isOpen, onClose, onConfirm, abono }) => {
-    // 1. 'motivo' en el estado siempre debe ser un string.
     const [motivo, setMotivo] = useState('');
 
     const handleConfirm = () => {
-        // 3. Cuando se confirma, se pasa el 'motivo' (que es un string del estado)
-        // a la función onConfirm.
         if (motivo.trim()) {
             onConfirm(motivo);
         }
@@ -21,19 +18,25 @@ const ModalAnularAbono = ({ isOpen, onClose, onConfirm, abono }) => {
     };
 
     const isBotonDeshabilitado = !motivo.trim();
-    const montoFormateado = abono ? formatCurrency(abono.monto) : '';
-    const fechaFormateada = abono ? formatDisplayDate(abono.fechaPago) : '';
 
-    let nombreCliente = abono?.clienteInfo || 'No disponible';
-    let infoVivienda = abono?.viviendaInfo || 'No disponible';
+    // --- INICIO DE LA SOLUCIÓN ---
+    // Se procesan los datos del abono de forma segura, con valores por defecto.
+    const montoFormateado = abono ? formatCurrency(abono.monto) : 'No disponible';
+    const fechaFormateada = abono ? formatDisplayDate(abono.fechaPago) : 'No disponible';
+    const nombreProyecto = abono?.proyectoNombre || 'No disponible';
 
+    let nombreCliente = 'No disponible';
+    let infoVivienda = 'No disponible';
+
+    // Se parsea el string 'clienteInfo' que ya viene pre-formateado del hook.
     if (abono?.clienteInfo && abono.clienteInfo.includes(' - ')) {
         const partes = abono.clienteInfo.split(' - ');
         infoVivienda = partes[0];
         nombreCliente = partes[1];
+    } else if (abono?.clienteInfo) { // Fallback si no tiene el separador
+        nombreCliente = abono.clienteInfo;
     }
-
-    const nombreProyecto = abono?.proyectoNombre || 'No disponible';
+    // --- FIN DE LA SOLUCIÓN ---
 
     return (
         <Modal
@@ -72,8 +75,6 @@ const ModalAnularAbono = ({ isOpen, onClose, onConfirm, abono }) => {
                         rows={3}
                         className="mt-1 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-red-500 focus:border-red-500 px-3 py-2"
                         value={motivo}
-                        // 2. Aquí es el punto crítico. 'onChange' debe usar 'e.target.value'
-                        // para asegurar que solo el texto se guarde en el estado.
                         onChange={(e) => setMotivo(e.target.value)}
                         placeholder="Ej: Error al digitar el monto, pago duplicado..."
                     />

@@ -9,7 +9,7 @@ import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
 import { FUENTE_PROCESO_MAP } from '../../utils/procesoConfig.js';
 import { useData } from '../../context/DataContext.jsx'; // <-- 1. Importamos useData
 
-export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente, onAbonoRegistrado }) => {
+export const useAbonoForm = ({ fuente, titulo, saldoPendiente, montoPactado, vivienda, cliente, onAbonoRegistrado }) => {
     const { clientes } = useData(); // <-- 2. Obtenemos la lista FRESCA de clientes
 
     const initialAbonoFormState = useMemo(() => ({
@@ -29,8 +29,13 @@ export const useAbonoForm = ({ fuente, titulo, saldoPendiente, vivienda, cliente
             const clienteFresco = clientes.find(c => c.id === cliente.id);
             const fechaDeInicio = clienteFresco?.fechaInicioProceso || clienteFresco?.datosCliente?.fechaIngreso;
 
+            const resumenPago = {
+                saldoPendiente: saldoPendiente,
+                montoPactado: montoPactado // Ahora el hook tiene este dato.
+            };
+
             // Pasamos los datos frescos a la validación
-            return validateAbono(data, { saldoPendiente }, fechaDeInicio, clienteFresco?.proceso, pasoConfig);
+            return validateAbono(data, resumenPago, fechaDeInicio, clienteFresco?.proceso, pasoConfig);
         },
         onSubmit: async (data) => {
             const nuevoAbono = {

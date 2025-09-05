@@ -9,7 +9,12 @@ import { Tooltip } from 'react-tooltip';
  * @param {string} props.id - Un ID único para el tooltip, necesario si hay muchos en una página.
  */
 const HelpTooltip = ({ content, id }) => {
+    if (!content) {
+        return null;
+    }
+
     const tooltipId = `tooltip-${id || content.slice(0, 10)}`;
+
     return (
         <>
             <span data-tooltip-id={tooltipId} data-tooltip-content={content} className="ml-1.5">

@@ -131,6 +131,15 @@ const GestionarAbonos = () => {
                     </div>
                 </div>
             </div>
+            {modals.abonoAAnular && (
+                <ModalAnularAbono
+                    isOpen={!!modals.abonoAAnular}
+                    onClose={() => modals.setAbonoAAnular(null)}
+                    // Aquí conectamos la función que realmente ejecuta la anulación
+                    onAnulacionConfirmada={handlers.confirmarAnulacion}
+                    abonoAAnular={modals.abonoAAnular}
+                />
+            )}
             {modals.abonoAEditar && (<EditarAbonoModal isOpen={!!modals.abonoAEditar} onClose={() => modals.setAbonoAEditar(null)} onSave={handlers.handleGuardado} abonoAEditar={modals.abonoAEditar} />)}
             {modals.abonoAEliminar && (<ModalConfirmacion isOpen={!!modals.abonoAEliminar} onClose={() => modals.setAbonoAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Abono?" mensaje="¿Estás seguro? Esta acción recalculará los saldos de la vivienda asociada." />)}
             {modals.fuenteACondonar && (

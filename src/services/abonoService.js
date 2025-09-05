@@ -1,6 +1,6 @@
 // src/services/abonoService.js
 import { db } from '../firebase/config';
-import { collection, addDoc, doc, updateDoc, runTransaction, getDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, runTransaction, getDoc, query, where, getDocs } from "firebase/firestore";
 import { formatCurrency, toTitleCase, formatDisplayDate } from '../utils/textFormatters';
 import { FUENTE_PROCESO_MAP } from '../utils/procesoConfig.js';
 import { createAuditLog } from './auditService';
@@ -79,10 +79,48 @@ export const updateAbono = async (abonoId, datosNuevos, abonoOriginal) => {
     if (!abonoOriginal.viviendaId) throw new Error("El abono original no tiene una vivienda asociada.");
     const abonoRef = doc(db, "abonos", String(abonoId));
     const viviendaRef = doc(db, "viviendas", String(abonoOriginal.viviendaId));
+    const clienteRef = doc(db, "clientes", String(abonoOriginal.clienteId)); // Necesitamos al cliente
+    const abonosCollectionRef = collection(db, "abonos");
     await runTransaction(db, async (transaction) => {
+        const abonoDoc = await transaction.get(abonoRef);
+        if (!abonoDoc.exists()) throw "El abono que intentas editar no existe.";
+        if (abonoDoc.data().estadoProceso !== 'activo') {
+            throw new Error("No se puede editar un abono que no está activo.");
+        }
         const viviendaDoc = await transaction.get(viviendaRef);
+        const clienteDoc = await transaction.get(clienteRef);
         if (!viviendaDoc.exists()) throw "La vivienda de este abono no existe.";
         const viviendaData = viviendaDoc.data();
+        const clienteData = clienteDoc.data();
+        const fuente = abonoOriginal.fuente;
+
+        const financiero = clienteData.financiero;
+        let montoPactado = 0;
+        if (fuente === 'cuotaInicial' && financiero.aplicaCuotaInicial) {
+            montoPactado = financiero.cuotaInicial.monto;
+        }
+        else if (fuente === 'credito' && financiero.aplicaCredito) {
+            montoPactado = financiero.credito.monto;
+        }
+        // 3. Busca el monto pactado para el Subsidio de Vivienda
+        else if (fuente === 'subsidioVivienda' && financiero.aplicaSubsidioVivienda) {
+            montoPactado = financiero.subsidioVivienda.monto;
+        }
+        // 4. Busca el monto pactado para el Subsidio de Caja de Compensación
+        else if (fuente === 'subsidioCaja' && financiero.aplicaSubsidioCaja) {
+            montoPactado = financiero.subsidioCaja.monto;
+        }
+
+        const q = query(abonosCollectionRef, where("clienteId", "==", abonoOriginal.clienteId), where("fuente", "==", fuente), where("estadoProceso", "==", "activo"));
+        const abonosActivosSnap = await getDocs(q);
+        const totalAbonadoFuente = abonosActivosSnap.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
+
+        const totalOtrosAbonos = totalAbonadoFuente - abonoOriginal.monto;
+
+        if (datosNuevos.monto > (montoPactado - totalOtrosAbonos)) {
+            throw new Error(`El monto excede lo pactado para la fuente ${fuente}.`);
+        }
+
         const diferenciaMonto = datosNuevos.monto - abonoOriginal.monto;
         const nuevoTotalAbonado = (viviendaData.totalAbonado || 0) + diferenciaMonto;
         const nuevoSaldo = viviendaData.valorFinal - nuevoTotalAbonado;
@@ -104,6 +142,11 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
 
     // Ejecutamos la transacción solo con las operaciones de escritura críticas
     await runTransaction(db, async (transaction) => {
+        const abonoDoc = await transaction.get(abonoRef);
+        if (!abonoDoc.exists()) throw "El abono que intentas anular no existe.";
+        if (abonoDoc.data().estadoProceso !== 'activo') {
+            throw new Error("Este abono no se puede anular porque ya no está activo.");
+        }
         const viviendaDoc = await transaction.get(viviendaRef);
         const clienteDoc = await transaction.get(clienteRef);
         if (!viviendaDoc.exists() || !clienteDoc.exists()) {
@@ -198,6 +241,11 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
     let datosParaAuditoria = {};
 
     await runTransaction(db, async (transaction) => {
+        const abonoDoc = await transaction.get(abonoRef);
+        if (!abonoDoc.exists()) throw "El abono que intentas revertir no existe.";
+        if (abonoDoc.data().estadoProceso !== 'anulado') {
+            throw new Error("Solo se puede revertir la anulación de un abono que esté anulado.");
+        }
         const viviendaDoc = await transaction.get(viviendaRef);
         const clienteDoc = await transaction.get(clienteRef);
         if (!viviendaDoc.exists() || !clienteDoc.exists()) throw new Error("Cliente o vivienda no encontrados.");

@@ -1,29 +1,34 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { NumericFormat } from 'react-number-format';
-import { useForm } from '../../hooks/useForm.jsx';
-import { validateEditarAbono } from '../../utils/validation.js';
-import { updateAbono } from "../../services/abonoService";
-import toast from 'react-hot-toast';
 import Modal from '../../components/Modal.jsx';
-import { Pencil, User, Home, Building2, ArrowRight, FileText, XCircle, Loader } from 'lucide-react';
+import { Pencil, User, Home, Building2, ArrowRight, FileText, XCircle } from 'lucide-react';
 import FileUpload from '../../components/FileUpload.jsx';
 import { useData } from '../../context/DataContext.jsx';
-import { formatCurrency } from '../../utils/textFormatters.js';
+import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
 import { encontrarCambiosAbono } from '../../utils/diffChecker.js';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
-
-const getTodayString = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
+import { useEditarAbonoForm } from '../../hooks/abonos/useEditarAbonoForm.jsx'; // <-- 1. Importa el nuevo hook
 
 const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
-    // --- 1. TU LÓGICA DE DATOS Y FORMULARIO SE MANTIENE INTACTA ---
+    // --- 2. TODA LA LÓGICA DEL FORMULARIO AHORA VIVE EN EL HOOK ---
+    // Le pasamos el abono a editar y los callbacks que necesita.
+    const {
+        formData,
+        errors,
+        handleInputChange,
+        handleValueChange,
+        handleSubmit, // Este handleSubmit ahora abre el modal de confirmación
+        isSubmitting,
+        cambios,
+        isConfirmModalOpen,
+        setIsConfirmModalOpen,
+        handleConfirmarGuardado
+    } = useEditarAbonoForm(abonoAEditar, onSave, onClose);
+
+    // --- LÓGICA DE UI (se puede quedar en el componente) ---
     const { viviendas, clientes, proyectos } = useData();
 
+    // Este `useMemo` es para enriquecer los datos que se muestran en la UI.
     const abonoEnriquecido = useMemo(() => {
         if (!abonoAEditar) return null;
         const vivienda = viviendas.find(v => v.id === abonoAEditar.viviendaId);
@@ -32,66 +37,14 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
         return { ...abonoAEditar, vivienda, cliente, proyecto };
     }, [abonoAEditar, viviendas, clientes, proyectos]);
 
+    // Lógica para deshabilitar el botón
     const initialState = useMemo(() => ({
         monto: abonoAEditar?.monto || '',
         fechaPago: abonoAEditar?.fechaPago || getTodayString(),
         observacion: abonoAEditar?.observacion || '',
         urlComprobante: abonoAEditar?.urlComprobante || null,
-        // Añadimos metodoPago para que el diff checker funcione correctamente
         metodoPago: abonoAEditar?.metodoPago || ''
     }), [abonoAEditar]);
-
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [cambios, setCambios] = useState([]);
-    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-
-    const { formData, setFormData, handleSubmit, handleInputChange, handleValueChange, errors } = useForm({
-        initialState,
-        validate: (data) => validateEditarAbono(
-            data,                // Los datos actuales del formulario
-            abonoAEditar,        // El abono original, sin cambios
-            abonoEnriquecido.vivienda // La vivienda con valorFinal y totalAbonado
-        ),
-        onSubmit: () => {
-            const montoNumerico = parseInt(String(formData.monto).replace(/\D/g, '')) || 0;
-            const cambiosDetectados = encontrarCambiosAbono(initialState, { ...formData, monto: montoNumerico });
-            setCambios(cambiosDetectados);
-            setIsConfirmModalOpen(true);
-        },
-        options: { resetOnSuccess: false }
-    });
-
-    const handleConfirmarGuardado = async () => {
-        setIsSubmitting(true);
-        const montoNumerico = parseInt(String(formData.monto).replace(/\D/g, '')) || 0;
-        const datosParaGuardar = {
-            monto: montoNumerico,
-            fechaPago: formData.fechaPago,
-            observacion: formData.observacion.trim(),
-            urlComprobante: formData.urlComprobante,
-            // No olvides incluir metodoPago si es parte de tu modelo de datos de abono
-            metodoPago: formData.metodoPago
-        };
-
-        try {
-            await updateAbono(abonoAEditar.id, datosParaGuardar, abonoAEditar);
-            toast.success('Abono actualizado correctamente.');
-            onSave();
-            setIsConfirmModalOpen(false);
-            onClose();
-        } catch (error) {
-            toast.error(error.message || 'Error al actualizar el abono.');
-            console.error("Error al actualizar abono:", error);
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    useEffect(() => {
-        if (isOpen) {
-            setFormData(initialState);
-        }
-    }, [isOpen, initialState, setFormData]);
 
     const hayCambios = useMemo(() => {
         if (!formData) return false;
@@ -102,7 +55,8 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
 
     if (!isOpen || !abonoEnriquecido) return null;
 
-    // --- 2. APLICAMOS LA NUEVA ESTRUCTURA VISUAL ---
+
+    // --- 3. EL JSX SE MANTIENE IGUAL, SOLO CONSUME LOS DATOS DEL HOOK ---
     return (
         <>
             <Modal isOpen={isOpen} onClose={onClose} title="Editar Abono" icon={<Pencil className="text-blue-500" />}>
@@ -167,8 +121,10 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
                                     label="Subir Nuevo Comprobante"
                                     filePath={(fileName) => `comprobantes_abonos/${abonoAEditar.viviendaId}/${abonoAEditar.fuente}-${Date.now()}-${fileName}`}
                                     onUploadSuccess={(url) => handleValueChange('urlComprobante', url)}
+                                    onError={(err) => toast.error(err)}
                                 />
                             )}
+                            {errors.urlComprobante && <p className="text-red-500 text-xs mt-1">{errors.urlComprobante}</p>}
                         </div>
                     </div>
 
@@ -210,6 +166,7 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
     );
 };
 
+// Componente de UI auxiliar, se puede quedar aquí o moverlo a un archivo de componentes comunes.
 const InfoRow = ({ icon, label, value }) => (
     <div className="flex items-start">
         <div className="flex-shrink-0 w-6 mt-1">{icon}</div>

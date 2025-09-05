@@ -28,29 +28,54 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         if (!cliente) return null;
 
         const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
-
         const proyecto = vivienda ? proyectos.find(p => p.id === vivienda.proyectoId) : null;
 
         if (!vivienda) return { data: { cliente, vivienda: null, historial: [], fuentes: [], isPagada: false } };
 
+        // --- INICIO DE LA SOLUCIÓN ---
         const historial = abonos
-            .filter(a => a.clienteId === selectedClienteId && a.estadoProceso === 'activo')
+            .filter(a => a.clienteId === selectedClienteId) // Filtramos todos los abonos del cliente
             .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))
-            .map(abono => ({
-                ...abono,
-                // --- INICIO DE LA CORRECCIÓN ---
-                // Se construye el nombre usando el objeto 'cliente' principal para asegurar consistencia.
-                clienteInfo: `${vivienda.manzana}${vivienda.numeroCasa} - ${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`.trim(),
-                // --- FIN DE LA CORRECCIÓN ---
-                clienteStatus: cliente.status
-            }));
+            .map(abono => {
+                // Para cada abono, buscamos su información relacionada
+                const viviendaDelAbono = viviendas.find(v => v.id === abono.viviendaId);
+                const clienteDelAbono = clientes.find(c => c.id === abono.clienteId);
+                const proyectoDelAbono = viviendaDelAbono ? proyectos.find(p => p.id === viviendaDelAbono.proyectoId) : null;
+
+                // Construimos el objeto enriquecido que consumirán tanto el AbonoCard como el Modal
+                return {
+                    ...abono,
+                    // Creamos los strings EXACTOS que el modal necesita
+                    clienteInfo: `${viviendaDelAbono?.manzana || '?'}${viviendaDelAbono?.numeroCasa || '?'} - ${clienteDelAbono?.datosCliente?.nombres || 'N/A'} ${clienteDelAbono?.datosCliente?.apellidos || 'N/A'}`.trim(),
+                    proyectoNombre: proyectoDelAbono?.nombre || 'No disponible',
+                    // Incluimos los objetos completos por si se necesitan en otro lado
+                    cliente: clienteDelAbono,
+                    vivienda: viviendaDelAbono,
+                    proyecto: proyectoDelAbono
+                };
+            });
+        // --- FIN DE LA SOLUCIÓN ---
 
         const fuentes = [];
         if (cliente.financiero) {
             const { financiero } = cliente;
-            const crearFuente = (titulo, fuente, montoPactado) => ({
-                titulo, fuente, montoPactado, abonos: historial.filter(a => a.fuente === fuente)
-            });
+            const crearFuente = (titulo, fuente, montoPactado) => {
+                const abonosDeFuente = historial.filter(a => a.fuente === fuente && a.estadoProceso === 'activo');
+                const totalAbonado = abonosDeFuente.reduce((sum, a) => sum + a.monto, 0);
+
+                return {
+                    titulo,
+                    fuente,
+                    montoPactado,
+                    abonos: abonosDeFuente,
+                    resumenPago: {
+                        montoPactado: montoPactado,
+                        totalAbonado: totalAbonado,
+                        saldoPendiente: montoPactado - totalAbonado
+                    }
+                };
+            };
+
             if (financiero.aplicaCuotaInicial) fuentes.push(crearFuente("Cuota Inicial", "cuotaInicial", financiero.cuotaInicial.monto || 0));
             if (financiero.aplicaCredito) fuentes.push(crearFuente("Crédito Hipotecario", "credito", financiero.credito.monto || 0));
             if (financiero.aplicaSubsidioVivienda) fuentes.push(crearFuente("Subsidio Mi Casa Ya", "subsidioVivienda", financiero.subsidioVivienda.monto || 0));
@@ -73,7 +98,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         return {
             data: { cliente, vivienda, proyecto, historial, fuentes: fuentesValidas, isPagada: vivienda.saldoPendiente <= 0 }
         };
-    }, [selectedClienteId, clientes, viviendas, abonos, isDataLoading]);
+    }, [selectedClienteId, clientes, viviendas, abonos, proyectos, isDataLoading]);
 
     const clientesParaLaLista = useMemo(() =>
         clientes.filter(c => c.vivienda && c.status === 'activo')
@@ -92,10 +117,18 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         setDesembolsoARegistrar(null);
     }, [recargarDatos]);
 
-    // Lógica de Anulación (antes eliminación)
-    const iniciarAnulacion = (abono) => setAbonoAAnular(abono);
-    const confirmarAnulacion = async (motivo) => {
+    // --- INICIO DE LA SOLUCIÓN ---
+    // Ahora los handlers son más simples. El objeto `abono` ya viene listo desde `historial`.
+    const iniciarAnulacion = (abono) => {
+        setAbonoAAnular(abono);
+    };
 
+    const iniciarReversion = (abono) => {
+        setAbonoARevertir(abono);
+    };
+    // --- FIN DE LA SOLUCIÓN ---
+
+    const confirmarAnulacion = async (motivo) => {
         if (!abonoAAnular) return;
         try {
             toast.loading('Anulando abono...');
@@ -112,14 +145,10 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         }
     };
 
-
-    // Nueva Lógica de Reversión
-    const iniciarReversion = (abono) => setAbonoARevertir(abono);
     const confirmarReversion = async () => {
         if (!abonoARevertir) return;
         try {
             toast.loading('Revirtiendo anulación...');
-            // 'userName' también estará disponible aquí
             await revertirAnulacionAbono(abonoARevertir, userName);
             toast.dismiss();
             toast.success('¡Anulación revertida con éxito!');
@@ -152,9 +181,9 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         handlers: {
             recargarDatos,
             handleGuardado,
-            iniciarAnulacion, // Renombrado
-            confirmarAnulacion, // Renombrado
-            iniciarReversion, // Nuevo
+            iniciarAnulacion,
+            confirmarAnulacion,
+            iniciarReversion,
             confirmarReversion
         }
     };

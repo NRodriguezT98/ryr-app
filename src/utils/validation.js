@@ -241,8 +241,19 @@ export const validateAbono = (formData, resumenPago, fechaIngresoCliente, proces
         errors.monto = "El monto debe ser un número positivo.";
     }
 
-    if (resumenPago && montoNumerico > resumenPago.saldoPendiente && resumenPago.saldoPendiente > 0) {
-        errors.monto = `El abono no puede superar el saldo pendiente de ${formatCurrency(resumenPago.saldoPendiente)}`;
+    if (resumenPago && montoNumerico > 0) {
+        const { montoPactado, saldoPendiente } = resumenPago;
+
+        // Escenario 1: El monto es mayor que el total pactado para la fuente.
+        // Esto ocurre cuando no hay abonos previos y el primer abono ya excede el límite.
+        if (montoNumerico > montoPactado) {
+            errors.monto = `El valor no puede superar el monto total pactado para esta fuente (${formatCurrency(montoPactado)}).`;
+        }
+        // Escenario 2: El monto es mayor que el saldo pendiente (pero no necesariamente que el total pactado).
+        // Esto ocurre cuando ya existen otros abonos.
+        else if (montoNumerico > saldoPendiente) {
+            errors.monto = `El abono excede el saldo pendiente. Solo falta por pagar ${formatCurrency(saldoPendiente)}.`;
+        }
     }
 
     if (!formData.metodoPago || formData.metodoPago.trim() === "") {
@@ -275,15 +286,15 @@ export const validateProyecto = (formData, todosLosProyectos, proyectoIdAEditar 
 /**
  * Valida los datos de un abono AL SER EDITADO.
  * @param {object} formData - Los datos actuales del formulario.
- * @param {object} abonoOriginal - El objeto del abono antes de cualquier cambio.
- * @param {object} viviendaAsociada - El objeto de la vivienda que contiene los totales.
+ * @param {number} montoMaximoPermitido - El saldo pendiente real disponible para este abono.
+ * @param {number} montoPactadoFuente - El monto total pactado para la fuente de pago.
  * @returns {object} - Un objeto con los errores de validación.
  */
-export const validateEditarAbono = (formData, abonoOriginal, viviendaAsociada) => {
+export const validateEditarAbono = (formData, montoMaximoPermitido, montoPactadoFuente) => {
     const errors = {};
     const montoNuevo = parseInt(String(formData.monto || '0').replace(/\D/g, ''), 10);
 
-    // --- 1. Validaciones básicas (puedes añadir más si las necesitas) ---
+    // --- 1. Validaciones básicas (se mantienen) ---
     if (!formData.fechaPago) {
         errors.fechaPago = "La fecha del abono es obligatoria.";
     }
@@ -294,20 +305,17 @@ export const validateEditarAbono = (formData, abonoOriginal, viviendaAsociada) =
         errors.urlComprobante = "El comprobante de pago es obligatorio.";
     }
 
-
-    // --- 2. La validación CLAVE para la edición ---
-    if (viviendaAsociada && abonoOriginal) {
-        // Obtenemos el valor final de la vivienda (total pactado)
-        const valorFinalVivienda = viviendaAsociada.valorFinal || 0;
-
-        // Calculamos cuánto se ha abonado SIN CONTAR el abono que estamos editando
-        const totalAbonadoSinEsteAbono = (viviendaAsociada.totalAbonado || 0) - (abonoOriginal.monto || 0);
-
-        // El monto máximo que puede tomar este abono es la diferencia
-        const montoMaximoPermitido = valorFinalVivienda - totalAbonadoSinEsteAbono;
-
-        if (montoNuevo > montoMaximoPermitido) {
-            errors.monto = `El monto excede el saldo. Máximo permitido: ${formatCurrency(montoMaximoPermitido)}`;
+    // --- 2. Lógica de errores específicos y jerárquicos ---
+    if (montoNuevo > 0) {
+        // Escenario 1: El monto supera el total pactado para la fuente.
+        // Este error tiene prioridad.
+        if (montoNuevo > montoPactadoFuente) {
+            errors.monto = `El valor no puede superar el monto total pactado para esta fuente (${formatCurrency(montoPactadoFuente)}).`;
+        }
+        // Escenario 2: El monto es menor o igual al pactado, pero supera el saldo pendiente.
+        else if (montoNuevo > montoMaximoPermitido) {
+            // Este es el mensaje específico y corregido que querías.
+            errors.monto = `El abono excede el saldo pendiente. Solo falta por pagar ${formatCurrency(montoMaximoPermitido)}.`;
         }
     }
 
