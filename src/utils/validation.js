@@ -271,3 +271,45 @@ export const validateProyecto = (formData, todosLosProyectos, proyectoIdAEditar 
 
     return errors;
 };
+
+/**
+ * Valida los datos de un abono AL SER EDITADO.
+ * @param {object} formData - Los datos actuales del formulario.
+ * @param {object} abonoOriginal - El objeto del abono antes de cualquier cambio.
+ * @param {object} viviendaAsociada - El objeto de la vivienda que contiene los totales.
+ * @returns {object} - Un objeto con los errores de validación.
+ */
+export const validateEditarAbono = (formData, abonoOriginal, viviendaAsociada) => {
+    const errors = {};
+    const montoNuevo = parseInt(String(formData.monto || '0').replace(/\D/g, ''), 10);
+
+    // --- 1. Validaciones básicas (puedes añadir más si las necesitas) ---
+    if (!formData.fechaPago) {
+        errors.fechaPago = "La fecha del abono es obligatoria.";
+    }
+    if (!montoNuevo || montoNuevo <= 0) {
+        errors.monto = "El monto debe ser un número positivo.";
+    }
+    if (!formData.urlComprobante) {
+        errors.urlComprobante = "El comprobante de pago es obligatorio.";
+    }
+
+
+    // --- 2. La validación CLAVE para la edición ---
+    if (viviendaAsociada && abonoOriginal) {
+        // Obtenemos el valor final de la vivienda (total pactado)
+        const valorFinalVivienda = viviendaAsociada.valorFinal || 0;
+
+        // Calculamos cuánto se ha abonado SIN CONTAR el abono que estamos editando
+        const totalAbonadoSinEsteAbono = (viviendaAsociada.totalAbonado || 0) - (abonoOriginal.monto || 0);
+
+        // El monto máximo que puede tomar este abono es la diferencia
+        const montoMaximoPermitido = valorFinalVivienda - totalAbonadoSinEsteAbono;
+
+        if (montoNuevo > montoMaximoPermitido) {
+            errors.monto = `El monto excede el saldo. Máximo permitido: ${formatCurrency(montoMaximoPermitido)}`;
+        }
+    }
+
+    return errors;
+};

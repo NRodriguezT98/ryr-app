@@ -1,16 +1,17 @@
-import React from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { useGestionarAbonos } from '../../hooks/abonos/useGestionarAbonos';
 import FuenteDePagoCard from "./FuenteDePagoCard";
 import AbonoCard from "./AbonoCard";
-import { WalletCards } from "lucide-react";
+import { WalletCards, Search } from "lucide-react";
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import CondonarSaldoModal from '../viviendas/CondonarSaldoModal';
 import { formatCurrency, formatID } from "../../utils/textFormatters";
 import { User, Home, ArrowLeft } from 'lucide-react';
 import ModalRegistrarDesembolso from './components/ModalRegistrarDesembolso';
+import ModalAnularAbono from './components/ModalAnularAbono';
 
 const GestionarAbonos = () => {
     const { clienteId } = useParams();
@@ -24,11 +25,17 @@ const GestionarAbonos = () => {
         handlers
     } = useGestionarAbonos(clienteId);
 
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredFuentes = (datosClienteSeleccionado?.data?.fuentes || []).filter(fuente =>
+        fuente.titulo.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     if (isLoading && !selectedClienteId) {
         return <div className="text-center p-10 animate-pulse">Cargando datos iniciales...</div>;
     }
 
-    const historialVisible = datosClienteSeleccionado?.data.historial.filter(a => !abonosOcultos.includes(a.id)) || [];
+    const historialVisible = datosClienteSeleccionado?.data?.historial?.filter(a => a.id) || [];
 
     return (
         <AnimatedPage>
@@ -75,9 +82,8 @@ const GestionarAbonos = () => {
                                     <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Abonado</p><p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(datosClienteSeleccionado.data.vivienda.totalAbonado)}</p></div>
                                     <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Saldo Pendiente</p><p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(datosClienteSeleccionado.data.vivienda.saldoPendiente)}</p></div>
                                 </div>
-                                <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Fuentes de Pago</h3>
                                 <div className="space-y-4">
-                                    {datosClienteSeleccionado.data.fuentes.map(fuente => (
+                                    {filteredFuentes.map(fuente => (
                                         <FuenteDePagoCard
                                             key={fuente.fuente}
                                             {...fuente}

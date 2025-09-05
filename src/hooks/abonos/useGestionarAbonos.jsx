@@ -68,8 +68,10 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
             });
         }
 
+        const fuentesValidas = fuentes.filter(f => f && typeof f.titulo === 'string');
+
         return {
-            data: { cliente, vivienda, proyecto, historial, fuentes, isPagada: vivienda.saldoPendiente <= 0 }
+            data: { cliente, vivienda, proyecto, historial, fuentes: fuentesValidas, isPagada: vivienda.saldoPendiente <= 0 }
         };
     }, [selectedClienteId, clientes, viviendas, abonos, isDataLoading]);
 
