@@ -10,8 +10,15 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
     const viviendaRef = doc(db, "viviendas", abonoData.viviendaId);
     const clienteRef = doc(db, "clientes", abonoData.clienteId);
     const abonoRef = doc(collection(db, "abonos"));
+    const contadorRef = doc(db, "counters", "abonos");
 
-    const { viviendaData, clienteNombre } = await runTransaction(db, async (transaction) => {
+    const { viviendaData, clienteNombre, consecutivo } = await runTransaction(db, async (transaction) => {
+        const contadorDoc = await transaction.get(contadorRef);
+        if (!contadorDoc.exists()) {
+            throw new Error("El documento contador de abonos no existe. Por favor, créalo en Firestore.");
+        }
+        const nuevoConsecutivo = contadorDoc.data().currentNumber + 1;
+
         const viviendaDoc = await transaction.get(viviendaRef);
         const clienteDoc = await transaction.get(clienteRef);
         if (!viviendaDoc.exists() || !clienteDoc.exists()) throw new Error("El cliente o la vivienda ya no existen.");
@@ -29,8 +36,14 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
         const nuevoTotalAbonado = (transViviendaData.totalAbonado || 0) + abonoData.monto;
         const nuevoSaldo = transViviendaData.valorFinal - nuevoTotalAbonado;
 
-        const abonoParaGuardar = { ...abonoData, id: abonoRef.id, estadoProceso: 'activo', timestampCreacion: new Date() };
+        const abonoParaGuardar = {
+            ...abonoData, id: abonoRef.id,
+            consecutivo: nuevoConsecutivo,
+            estadoProceso: 'activo',
+            timestampCreacion: new Date()
+        };
 
+        transaction.update(contadorRef, { currentNumber: nuevoConsecutivo });
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         transaction.set(abonoRef, abonoParaGuardar);
 
@@ -57,7 +70,8 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
         }
         return {
             viviendaData: transViviendaData,
-            clienteNombre: toTitleCase(`${transClienteData.datosCliente.nombres} ${transClienteData.datosCliente.apellidos}`)
+            clienteNombre: toTitleCase(`${transClienteData.datosCliente.nombres} ${transClienteData.datosCliente.apellidos}`),
+            consecutivo: nuevoConsecutivo
         };
     });
     const message = `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`;
@@ -68,9 +82,14 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
         {
             action: 'REGISTER_DISBURSEMENT',
             cliente: { id: abonoData.clienteId, nombre: clienteNombre },
-            vivienda: { id: viviendaData.id, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
+            vivienda: { id: abonoData.viviendaId, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
             proyecto: { id: proyecto.id, nombre: proyecto.nombre },
-            abono: { monto: formatCurrency(abonoData.monto), fechaPago: formatDisplayDate(abonoData.fechaPago), fuente: abonoData.fuente }
+            abono: {
+                monto: formatCurrency(abonoData.monto),
+                fechaPago: formatDisplayDate(abonoData.fechaPago),
+                fuente: abonoData.fuente,
+                consecutivo: String(consecutivo).padStart(4, '0')
+            }
         }
     );
 };

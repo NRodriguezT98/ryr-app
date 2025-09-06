@@ -11,14 +11,14 @@ import { useData } from '../../context/DataContext.jsx'
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 
 const initialState = {
-    proyectoId: "", manzana: "", numero: "", matricula: "", nomenclatura: "",
+    proyectoId: "", manzana: "", numeroCasa: "", matricula: "", nomenclatura: "",
     areaLote: "", areaConstruida: "", linderoNorte: "", linderoSur: "",
     linderoOriente: "", linderoOccidente: "", urlCertificadoTradicion: null,
     valorBase: "", esEsquinera: false, recargoEsquinera: "0"
 };
 
 const inputFilters = {
-    numero: { regex: /^[0-9]*$/, message: "Este campo solo permite números." },
+    numeroCasa: { regex: /^[0-9]*$/, message: "Este campo solo permite números." },
     matricula: { regex: /^[0-9-]*$/, message: "Solo permite números y guiones." },
     areaLote: { regex: /^[0-9.,]*$/, message: "Solo permite números y separadores (, o .)" },
     areaConstruida: { regex: /^[0-9.,]*$/, message: "Solo permite números y separadores (, o .)" },
@@ -51,7 +51,7 @@ export const useCrearVivienda = () => {
             const valorTotalVivienda = valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS;
 
             const nuevaVivienda = {
-                manzana: formData.manzana, numeroCasa: parseInt(formData.numero, 10),
+                manzana: formData.manzana, numeroCasa: parseInt(formData.numeroCasa, 10),
                 matricula: formData.matricula.trim(), nomenclatura: formData.nomenclatura,
                 areaLote: formData.areaLote, areaConstruida: formData.areaConstruida,
                 linderoNorte: formData.linderoNorte, linderoSur: formData.linderoSur,
@@ -62,7 +62,7 @@ export const useCrearVivienda = () => {
                 proyectoId: formData.proyectoId,
             };
             try {
-                await addVivienda(nuevaVivienda);
+                const viviendaDocRef = await addVivienda(nuevaVivienda);
                 toast.success("¡Vivienda registrada con éxito!");
 
                 // Aquí empieza la Auditoria.
@@ -71,13 +71,17 @@ export const useCrearVivienda = () => {
 
                 const auditDetails = {
                     type: "Creación de Vivienda",
-                    details: `Creó la vivienda Mz ${formData.manzana} - Casa ${formData.numero} para el proyecto '${nombreProyecto}'.`,
+                    details: `Creó la vivienda Mz ${formData.manzana} - Casa ${formData.numeroCasa} para el proyecto '${nombreProyecto}'.`,
                     action: 'CREATE_VIVIENDA',
+                    vivienda: {
+                        id: viviendaDocRef.id, // Usamos el ID que acabamos de recibir
+                        nombre: `Mz ${formData.manzana} - Casa ${formData.numeroCasa}`
+                    },
                     // Ahora guardamos un snapshot completo de los datos de creación
                     viviendaInfo: {
                         proyectoNombre: nombreProyecto,
                         manzana: formData.manzana,
-                        numeroCasa: formData.numero,
+                        numeroCasa: formData.numeroCasa,
                         linderoNorte: formData.linderoNorte,
                         linderoSur: formData.linderoSur,
                         linderoOriente: formData.linderoOriente,
@@ -124,7 +128,7 @@ export const useCrearVivienda = () => {
     const handleNextStep = () => {
         const allErrors = validateVivienda(formData, todasLasViviendas);
         const fieldsToValidate = step === 1
-            ? ['proyectoId', 'manzana', 'numero', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente']
+            ? ['proyectoId', 'manzana', 'numeroCasa', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente']
             : ['matricula', 'nomenclatura', 'areaLote', 'areaConstruida'];
 
         const stepErrors = {};

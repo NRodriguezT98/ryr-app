@@ -21,7 +21,8 @@ export const addVivienda = async (viviendaData) => {
         saldoPendiente: valorTotalFinal,
         valorFinal: valorTotalFinal,
     };
-    await addDoc(collection(db, "viviendas"), nuevaVivienda);
+    const docRef = await addDoc(collection(db, "viviendas"), nuevaVivienda);
+    return docRef;
 };
 
 export const archiveVivienda = async (vivienda, nombreProyecto) => {

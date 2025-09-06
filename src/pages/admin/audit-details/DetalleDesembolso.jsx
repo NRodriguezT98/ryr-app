@@ -23,7 +23,8 @@ const DetalleDesembolso = ({ log }) => {
     const fechaHoraAccion = formatDisplayDateWithTime(normalizeDate(log.timestamp));
 
     const datosDelAbono = {
-        "Fuente": nombreFuente, // Usamos la variable traducida
+        "N° Consecutivo del Abono": abono.consecutivo || 'N/A', // Se muestra el consecutivo
+        "Fuente": nombreFuente,
         "Monto Registrado": abono.monto,
         "Fecha del Pago": abono.fechaPago,
         "Fecha y Hora de Registro": fechaHoraAccion,

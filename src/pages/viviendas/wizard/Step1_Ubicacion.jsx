@@ -51,7 +51,7 @@ const Step1_Ubicacion = ({ formData, errors, handleInputChange, proyectos, isPro
                             Número de casa <span className="text-red-600">*</span>
                             <HelpTooltip id="numero" content="Indique aquí el número de la vivienda a registrar" />
                         </label>
-                        <input id="numeroCasa" name="numeroCasa" type="text" value={formData.numeroCasa} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.numero ? "border-red-500" : "border-gray-300"}`} maxLength={6} />
+                        <input id="numeroCasa" name="numeroCasa" type="text" value={formData.numeroCasa} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.numeroCasa ? "border-red-500" : "border-gray-300"}`} maxLength={6} />
                         {errors.numeroCasa && <p className="text-red-600 text-sm mt-1">{errors.numeroCasa}</p>}
                     </div>
                 </div>

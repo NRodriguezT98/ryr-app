@@ -2,7 +2,7 @@ import React, { Fragment, memo } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Menu, Transition } from '@headlessui/react';
-import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertical, Pencil, Trash, AlertTriangle, Archive, HandCoins, Undo2, Info } from 'lucide-react';
+import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertical, Pencil, Trash, AlertTriangle, Archive, HandCoins, Undo2, Info, Hash } from 'lucide-react';
 import { formatCurrency, formatDisplayDate, toTitleCase } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 import { useData } from '../../context/DataContext';
@@ -86,7 +86,17 @@ const AbonoCard = ({ abono, onEdit, onAnular, onRevertir, isReadOnly = false }) 
             <div className="flex-grow">
                 <div className="flex flex-col sm:flex-row justify-between items-start">
                     <div className="flex-grow">
-                        <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{formatCurrency(abono.monto)}</p>
+                        <div className="flex items-center gap-3 mb-1">
+                            <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{formatCurrency(abono.monto)}</p>
+
+                            {/* Si el abono tiene un consecutivo, lo mostramos en un badge */}
+                            {abono.consecutivo && (
+                                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50 px-2.5 py-1 rounded-full flex items-center gap-1">
+                                    <Hash size={12} />
+                                    {String(abono.consecutivo).padStart(4, '0')}
+                                </span>
+                            )}
+                        </div>
                         <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
                             <Wallet size={14} />
                             {/* --- INICIO DE LA MODIFICACIÓN --- */}
