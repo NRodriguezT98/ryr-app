@@ -4,7 +4,7 @@ import AnimatedPage from '../../components/AnimatedPage';
 import { useGestionarAbonos } from '../../hooks/abonos/useGestionarAbonos';
 import FuenteDePagoCard from "./FuenteDePagoCard";
 import AbonoCard from "./AbonoCard";
-import { WalletCards, Search } from "lucide-react";
+import { WalletCards } from "lucide-react";
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import CondonarSaldoModal from '../viviendas/CondonarSaldoModal';
@@ -12,18 +12,38 @@ import { formatCurrency, formatID } from "../../utils/textFormatters";
 import { User, Home, ArrowLeft } from 'lucide-react';
 import ModalRegistrarDesembolso from './components/ModalRegistrarDesembolso';
 import ModalAnularAbono from './components/ModalAnularAbono';
+import { useAnularAbono } from '../../hooks/abonos/useAnularAbono';
+import { useRevertirAbono } from '../../hooks/abonos/useRevertirAbono';
 
 const GestionarAbonos = () => {
     const { clienteId } = useParams();
+    // Hook principal para los datos de la página y otros modales (edición, condonación)
     const {
         isLoading,
         clientesParaLaLista,
         selectedClienteId, setSelectedClienteId,
         datosClienteSeleccionado,
-        abonosOcultos,
         modals,
         handlers
     } = useGestionarAbonos(clienteId);
+
+    // Hook centralizado para la lógica de ANULACIÓN
+    const {
+        isAnularModalOpen,
+        abonoParaAnular,
+        iniciarAnulacion,
+        cerrarAnulacion,
+        confirmarAnulacion,
+        isAnulando
+    } = useAnularAbono(handlers.recargarDatos);
+
+    // Hook centralizado para la lógica de REVERSIÓN
+    const {
+        isRevertirModalOpen,
+        iniciarReversion,
+        cerrarReversion,
+        confirmarReversion
+    } = useRevertirAbono(handlers.recargarDatos);
 
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -35,17 +55,17 @@ const GestionarAbonos = () => {
         return <div className="text-center p-10 animate-pulse">Cargando datos iniciales...</div>;
     }
 
-    const historialVisible = datosClienteSeleccionado?.data?.historial?.filter(a => a.id) || [];
+    const historialVisible = datosClienteSeleccionado?.data?.historial || [];
 
     return (
         <AnimatedPage>
             <div className="max-w-7xl mx-auto">
                 <div className="text-center mb-10">
-                    <Link to="/abonos" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-2">
-                        <ArrowLeft size={14} /> Volver al buscador
+                    <Link to="/abonos/historial" className="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-2">
+                        <ArrowLeft size={14} /> Volver al Historial
                     </Link>
                     <h2 className="text-3xl font-bold text-[#1976d2] mb-2">Gestión de Pagos</h2>
-                    <p className="text-gray-500 dark:text-gray-400">Consulta el estado financiero y registra abonos para el cliente seleccionado.</p>
+                    <p className="text-gray-500 dark:text-gray-400">Consulta y registra abonos para el cliente seleccionado.</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -82,6 +102,7 @@ const GestionarAbonos = () => {
                                     <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Abonado</p><p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(datosClienteSeleccionado.data.vivienda.totalAbonado)}</p></div>
                                     <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Saldo Pendiente</p><p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(datosClienteSeleccionado.data.vivienda.saldoPendiente)}</p></div>
                                 </div>
+
                                 <div className="space-y-4">
                                     {filteredFuentes.map(fuente => (
                                         <FuenteDePagoCard
@@ -89,17 +110,14 @@ const GestionarAbonos = () => {
                                             {...fuente}
                                             vivienda={datosClienteSeleccionado.data.vivienda}
                                             cliente={datosClienteSeleccionado.data.cliente}
+                                            proyecto={datosClienteSeleccionado.data.proyecto}
                                             onAbonoRegistrado={handlers.recargarDatos}
                                             onCondonarSaldo={() => modals.setFuenteACondonar({ ...fuente, saldoPendiente: fuente.montoPactado - fuente.abonos.reduce((sum, a) => sum + a.monto, 0), vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente })}
-                                            onRegistrarDesembolso={() => modals.setDesembolsoARegistrar({
-                                                ...fuente,
-                                                vivienda: datosClienteSeleccionado.data.vivienda,
-                                                cliente: datosClienteSeleccionado.data.cliente,
-                                                proyecto: datosClienteSeleccionado.data.proyecto
-                                            })}
+                                            onRegistrarDesembolso={() => modals.setDesembolsoARegistrar({ ...fuente, vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente, proyecto: datosClienteSeleccionado.data.proyecto })}
                                         />
                                     ))}
                                 </div>
+
                                 <div className="mt-12 pt-6 border-t dark:border-gray-700">
                                     <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Historial de Abonos</h3>
                                     {historialVisible.length > 0 ? (
@@ -109,55 +127,51 @@ const GestionarAbonos = () => {
                                                     key={abono.id}
                                                     abono={abono}
                                                     onEdit={() => modals.setAbonoAEditar(abono)}
-                                                    onAnular={() => handlers.iniciarAnulacion(abono)} // 👈 Conectamos el nuevo handler
-                                                    onRevertir={() => handlers.iniciarReversion(abono)} // 👈 Conectamos el nuevo handler
+                                                    onAnular={() => iniciarAnulacion(abono)}
+                                                    onRevertir={() => iniciarReversion(abono)}
                                                 />
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-10">
-                                            <p className="text-gray-500 dark:text-gray-400">Este cliente aún no ha realizado abonos.</p>
-                                        </div>
+                                        <div className="text-center py-10"><p className="text-gray-500 dark:text-gray-400">Este cliente aún no ha realizado abonos.</p></div>
                                     )}
                                 </div>
                             </div>
                         ) : (
                             <div className="text-center flex flex-col justify-center items-center h-full py-16">
                                 <WalletCards size={64} className="text-gray-300 dark:text-gray-600 mb-4" />
-                                <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300">Centro de Gestión de Pagos</h3>
-                                <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-sm">Selecciona un cliente de la lista de la izquierda para ver sus detalles.</p>
+                                <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300">Centro de Gestión</h3>
+                                <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-sm">Selecciona un cliente para ver sus detalles.</p>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
-            {modals.abonoAAnular && (
+
+            {/* --- SECCIÓN DE MODALES --- */}
+            {isAnularModalOpen && (
                 <ModalAnularAbono
-                    isOpen={!!modals.abonoAAnular}
-                    onClose={() => modals.setAbonoAAnular(null)}
-                    // Aquí conectamos la función que realmente ejecuta la anulación
-                    onAnulacionConfirmada={handlers.confirmarAnulacion}
-                    abonoAAnular={modals.abonoAAnular}
+                    isOpen={isAnularModalOpen}
+                    onClose={cerrarAnulacion}
+                    onAnulacionConfirmada={confirmarAnulacion}
+                    abonoAAnular={abonoParaAnular}
+                    isSubmitting={isAnulando}
                 />
             )}
+
+            {isRevertirModalOpen && (
+                <ModalConfirmacion
+                    isOpen={isRevertirModalOpen}
+                    onClose={cerrarReversion}
+                    onConfirm={confirmarReversion}
+                    titulo="¿Revertir Anulación?"
+                    mensaje="Esto reactivará el abono y volverá a afectar los saldos de la vivienda. ¿Deseas continuar?"
+                />
+            )}
+
             {modals.abonoAEditar && (<EditarAbonoModal isOpen={!!modals.abonoAEditar} onClose={() => modals.setAbonoAEditar(null)} onSave={handlers.handleGuardado} abonoAEditar={modals.abonoAEditar} />)}
-            {modals.abonoAEliminar && (<ModalConfirmacion isOpen={!!modals.abonoAEliminar} onClose={() => modals.setAbonoAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Abono?" mensaje="¿Estás seguro? Esta acción recalculará los saldos de la vivienda asociada." />)}
-            {modals.fuenteACondonar && (
-                <CondonarSaldoModal
-                    isOpen={!!modals.fuenteACondonar}
-                    onClose={() => modals.setFuenteACondonar(null)}
-                    onSave={handlers.handleGuardado}
-                    fuenteData={modals.fuenteACondonar}
-                />
-            )}
-            {modals.desembolsoARegistrar && (
-                <ModalRegistrarDesembolso
-                    isOpen={!!modals.desembolsoARegistrar}
-                    onClose={() => modals.setDesembolsoARegistrar(null)}
-                    onSave={handlers.handleGuardado}
-                    fuenteData={modals.desembolsoARegistrar}
-                />
-            )}
+            {modals.fuenteACondonar && (<CondonarSaldoModal isOpen={!!modals.fuenteACondonar} onClose={() => modals.setFuenteACondonar(null)} onSave={handlers.handleGuardado} fuenteData={modals.fuenteACondonar} />)}
+            {modals.desembolsoARegistrar && (<ModalRegistrarDesembolso isOpen={!!modals.desembolsoARegistracao} onClose={() => modals.setDesembolsoARegistrar(null)} onSave={handlers.handleGuardado} fuenteData={modals.desembolsoARegistrar} />)}
         </AnimatedPage>
     );
 };

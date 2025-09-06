@@ -16,7 +16,7 @@ const ICONS = {
     condonacion: <HandCoins className="w-8 h-8 text-indigo-600" />
 };
 
-const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, vivienda, cliente, onAbonoRegistrado, onCondonarSaldo, onRegistrarDesembolso }) => {
+const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, vivienda, cliente, proyecto, onAbonoRegistrado, onCondonarSaldo, onRegistrarDesembolso }) => {
     const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
 
     const totalAbonado = abonos.reduce((sum, abono) => sum + abono.monto, 0);
@@ -25,7 +25,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
     const isViviendaPagada = vivienda.saldoPendiente <= 0;
 
     const { formData, errors, handleInputChange, handleValueChange, handleSubmit, isSubmitting, setFormData } = useAbonoForm({
-        fuente, titulo, saldoPendiente, montoPactado, vivienda, cliente,
+        fuente, titulo, saldoPendiente, montoPactado, vivienda, cliente, proyecto,
         onAbonoRegistrado: (cerrarFormulario) => {
             onAbonoRegistrado();
             if (cerrarFormulario) setMostrandoFormulario(false);

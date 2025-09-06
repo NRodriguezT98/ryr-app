@@ -1,20 +1,21 @@
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { useData } from '../../context/DataContext';
-import { useGestionarAbonos } from '../../hooks/abonos/useGestionarAbonos';
 import { useAbonosFilters } from '../../hooks/abonos/useAbonosFilters';
 import AbonoCard from './AbonoCard';
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import ModalAnularAbono from './components/ModalAnularAbono';
-import toast from 'react-hot-toast';
-import Select, { components } from 'react-select';
-import { Filter, Undo2 } from 'lucide-react';
+import Select from 'react-select';
+import { Filter } from 'lucide-react';
 import AbonoCardSkeleton from './AbonoCardSkeleton';
 import Pagination from '../../components/Pagination';
 import { usePermissions } from '../../hooks/auth/usePermissions';
+import { useAnularAbono } from '../../hooks/abonos/useAnularAbono';
+import { useRevertirAbono } from '../../hooks/abonos/useRevertirAbono'; // Importamos el nuevo hook de reversión
 
+// Componente interno para el estilo del Select
 const CustomOption = (props) => {
     const { innerProps, label, data } = props;
     return (
@@ -27,6 +28,7 @@ const CustomOption = (props) => {
     );
 };
 
+// Función interna para los estilos del Select
 const getSelectStyles = () => ({
     control: (base, state) => ({
         ...base,
@@ -42,27 +44,44 @@ const getSelectStyles = () => ({
 
 const ListarAbonos = () => {
     const { can } = usePermissions();
+    const { isLoading, abonos, clientes, viviendas, renuncias, recargarDatos } = useData();
+
+    // Estado local para el modal de edición
+    const [abonoAEditar, setAbonoAEditar] = useState(null);
+
+    // Hook centralizado para la lógica de ANULACIÓN
     const {
-        modals,
-        handlers,
-        isLoading,
-        abonos,
-        clientes,
-        viviendas,
-        renuncias
-    } = useGestionarAbonos();
-    const { abonoAEditar, setAbonoAEditar, abonoAAnular, setAbonoAAnular, abonoARevertir, setAbonoARevertir } = modals;
-    const { handleGuardado, iniciarAnulacion, confirmarAnulacion, iniciarReversion, confirmarReversion } = handlers;
+        isAnularModalOpen,
+        abonoParaAnular,
+        iniciarAnulacion,
+        cerrarAnulacion,
+        confirmarAnulacion,
+        isAnulando
+    } = useAnularAbono(recargarDatos);
+
+    // Hook centralizado para la lógica de REVERSIÓN
+    const {
+        isRevertirModalOpen,
+        iniciarReversion,
+        cerrarReversion,
+        confirmarReversion
+    } = useRevertirAbono(recargarDatos);
+
+    // Hook para manejar los filtros de la lista
     const {
         abonosFiltrados,
-        clienteFiltro, setClienteFiltro,
-        fechaInicioFiltro, setFechaInicioFiltro,
-        fechaFinFiltro, setFechaFinFiltro,
-        fuenteFiltro, setFuenteFiltro,
-        statusFiltro, setStatusFiltro,
+        setClienteFiltro,
+        setFechaInicioFiltro,
+        setFechaFinFiltro,
+        setFuenteFiltro,
+        setStatusFiltro,
+        statusFiltro,
+        fechaInicioFiltro,
+        fechaFinFiltro,
         pagination
     } = useAbonosFilters(abonos, clientes, viviendas, renuncias);
 
+    // Opciones para los menús de selección (filtros)
     const clienteOptions = useMemo(() => {
         const opciones = clientes.filter(c => c.vivienda).map(c => ({
             value: c.id,
@@ -81,12 +100,18 @@ const ListarAbonos = () => {
         { value: 'gastosNotariales', label: 'Gastos Notariales' }
     ], []);
 
+    // Placeholder para la función de guardado de edición
+    const handleGuardadoEdicion = () => {
+        setAbonoAEditar(null);
+        recargarDatos();
+    };
+
     return (
         <AnimatedPage>
             <style>{`
                 :root {
-                  --color-bg-form: ${document.documentElement.classList.contains('dark') ? '#374151' : '#ffffff'};
-                  --color-text-form: ${document.documentElement.classList.contains('dark') ? '#ffffff' : '#1f2937'};
+                    --color-bg-form: ${document.documentElement.classList.contains('dark') ? '#374151' : '#ffffff'};
+                    --color-text-form: ${document.documentElement.classList.contains('dark') ? '#ffffff' : '#1f2937'};
                 }
             `}</style>
             <div className="max-w-6xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-2xl mt-10 relative">
@@ -103,6 +128,8 @@ const ListarAbonos = () => {
                         </Link>
                     )}
                 </div>
+
+                {/* --- SECCIÓN DE FILTROS --- */}
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border dark:border-gray-700 mb-8">
                     <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2"><Filter size={18} /> Opciones de Filtro</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -128,33 +155,15 @@ const ListarAbonos = () => {
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Estado del Proceso</label>
                         <div className="flex-shrink-0 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg mt-1 flex max-w-md">
-                            <button
-                                onClick={() => setStatusFiltro('activo')}
-                                className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'activo' ? 'bg-white dark:bg-gray-900 shadow text-green-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-                            >
-                                Activos
-                            </button>
-                            <button
-                                onClick={() => setStatusFiltro('anulado')}
-                                className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'anulado' ? 'bg-white dark:bg-gray-900 shadow text-red-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-                            >
-                                Anulados
-                            </button>
-                            <button
-                                onClick={() => setStatusFiltro('renunciado')}
-                                className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'renunciado' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-                            >
-                                De Renuncias
-                            </button>
-                            <button
-                                onClick={() => setStatusFiltro('todos')}
-                                className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'todos' ? 'bg-white dark:bg-gray-900 shadow text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-                            >
-                                Todos
-                            </button>
+                            <button onClick={() => setStatusFiltro('activo')} className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'activo' ? 'bg-white dark:bg-gray-900 shadow text-green-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>Activos</button>
+                            <button onClick={() => setStatusFiltro('anulado')} className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'anulado' ? 'bg-white dark:bg-gray-900 shadow text-red-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>Anulados</button>
+                            <button onClick={() => setStatusFiltro('renunciado')} className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'renunciado' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>De Renuncias</button>
+                            <button onClick={() => setStatusFiltro('todos')} className={`w-1/4 px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${statusFiltro === 'todos' ? 'bg-white dark:bg-gray-900 shadow text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}>Todos</button>
                         </div>
                     </div>
                 </div>
+
+                {/* --- LISTA DE ABONOS --- */}
                 {isLoading ? (
                     <div className="space-y-4">
                         {[...Array(5)].map((_, i) => <AbonoCardSkeleton key={i} />)}
@@ -167,51 +176,52 @@ const ListarAbonos = () => {
                                     key={abono.id}
                                     abono={abono}
                                     onEdit={() => setAbonoAEditar(abono)}
-                                    onAnular={iniciarAnulacion}
-                                    onRevertir={iniciarReversion}
+                                    onAnular={() => iniciarAnulacion(abono)}
+                                    onRevertir={() => iniciarReversion(abono)}
                                 />
                             ))}
                         </div>
-                        {/* --- INICIO DE LA MODIFICACIÓN --- */}
-                        {/* 3. Renderizamos el componente de paginación */}
                         <Pagination
                             currentPage={pagination.currentPage}
                             totalPages={pagination.totalPages}
                             onPageChange={pagination.onPageChange}
                         />
-                        {/* --- FIN DE LA MODIFICACIÓN --- */}
                     </>
                 ) : (
                     <p className="text-center text-gray-500 dark:text-gray-400 py-10">No se encontraron abonos con los filtros seleccionados.</p>
                 )}
             </div>
+
+            {/* --- SECCIÓN DE MODALES --- */}
             {abonoAEditar && (
                 <EditarAbonoModal
                     isOpen={!!abonoAEditar}
                     onClose={() => setAbonoAEditar(null)}
-                    onSave={handleGuardado}
+                    onSave={handleGuardadoEdicion}
                     abonoAEditar={abonoAEditar}
                 />
             )}
-            {/* ✨ 2. Reemplaza el modal genérico por el nuevo */}
-            {abonoAAnular && (
+
+            {isAnularModalOpen && (
                 <ModalAnularAbono
-                    isOpen={!!abonoAAnular}
-                    onClose={() => setAbonoAAnular(null)}
-                    onConfirm={confirmarAnulacion} // confirmarAnulacion ya está preparada para recibir el motivo
-                    abono={abonoAAnular}
+                    isOpen={isAnularModalOpen}
+                    onClose={cerrarAnulacion}
+                    onAnulacionConfirmada={confirmarAnulacion}
+                    abonoAAnular={abonoParaAnular}
+                    isSubmitting={isAnulando}
                 />
             )}
-            {abonoARevertir && (
+
+            {isRevertirModalOpen && (
                 <ModalConfirmacion
-                    isOpen={!!abonoARevertir}
-                    onClose={() => setAbonoARevertir(null)}
+                    isOpen={isRevertirModalOpen}
+                    onClose={cerrarReversion}
                     onConfirm={confirmarReversion}
                     titulo="¿Revertir Anulación?"
                     mensaje="Esto reactivará el abono y volverá a afectar los saldos de la vivienda. ¿Deseas continuar?"
                 />
             )}
-        </AnimatedPage >
+        </AnimatedPage>
     );
 };
 

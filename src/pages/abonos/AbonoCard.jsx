@@ -3,12 +3,21 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Menu, Transition } from '@headlessui/react';
 import { Calendar, DollarSign, Wallet, MessageSquare, Download, Home, MoreVertical, Pencil, Trash, AlertTriangle, Archive, HandCoins, Undo2, Info } from 'lucide-react';
-import { formatCurrency, formatDisplayDate } from '../../utils/textFormatters';
+import { formatCurrency, formatDisplayDate, toTitleCase } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
+import { useData } from '../../context/DataContext';
 
 const AbonoCard = ({ abono, onEdit, onAnular, onRevertir, isReadOnly = false }) => {
 
     const { can } = usePermissions();
+    const { clientes, viviendas } = useData();
+
+    const cliente = clientes.find(c => c.id === abono.clienteId);
+    const vivienda = viviendas.find(v => v.id === abono.viviendaId);
+
+    const clienteInfoText = cliente ? `${toTitleCase(cliente.datosCliente.nombres)} ${toTitleCase(cliente.datosCliente.apellidos)}` : 'Cliente no encontrado';
+    const viviendaInfoText = vivienda ? `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}` : 'Vivienda no encontrada';
+    const clienteYViviendaText = `${viviendaInfoText} - ${clienteInfoText}`;
 
     const getStatusInfo = () => {
         if (abono.estadoProceso === 'archivado') {
@@ -110,7 +119,7 @@ const AbonoCard = ({ abono, onEdit, onAnular, onRevertir, isReadOnly = false }) 
                             {/* --- INICIO DE LA MODIFICACIÓN --- */}
                             {/* Se muestra el nombre del cliente y la vivienda */}
                             <div className="text-xs text-gray-500 dark:text-gray-400 font-semibold flex items-center justify-end gap-2">
-                                <Home size={14} /> {abono.clienteInfo}
+                                <Home size={14} /> {clienteYViviendaText}
                             </div>
                             {/* --- FIN DE LA MODIFICACIÓN --- */}
                             {label && (

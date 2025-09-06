@@ -8,9 +8,11 @@ import { validateAbono } from '../../utils/validation.js';
 import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
 import { FUENTE_PROCESO_MAP } from '../../utils/procesoConfig.js';
 import { useData } from '../../context/DataContext.jsx'; // <-- 1. Importamos useData
+import { useAuth } from '../../context/AuthContext.jsx';
 
-export const useAbonoForm = ({ fuente, titulo, saldoPendiente, montoPactado, vivienda, cliente, onAbonoRegistrado }) => {
+export const useAbonoForm = ({ fuente, titulo, saldoPendiente, montoPactado, vivienda, cliente, proyecto, onAbonoRegistrado }) => {
     const { clientes } = useData(); // <-- 2. Obtenemos la lista FRESCA de clientes
+    const { user } = useAuth();
 
     const initialAbonoFormState = useMemo(() => ({
         monto: '',
@@ -46,10 +48,11 @@ export const useAbonoForm = ({ fuente, titulo, saldoPendiente, montoPactado, viv
                 observacion: data.observacion.trim(),
                 urlComprobante: data.urlComprobante,
                 viviendaId: vivienda.id,
-                clienteId: vivienda.clienteId,
+                clienteId: cliente.id,
             };
             try {
-                await addAbonoAndUpdateProceso(nuevoAbono, cliente);
+                const userName = user?.displayName || 'Sistema';
+                await addAbonoAndUpdateProceso(nuevoAbono, cliente, proyecto, userName);
                 toast.success("Abono registrado y proceso actualizado con éxito.");
                 form.resetForm();
                 onAbonoRegistrado(true);
