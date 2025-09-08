@@ -6,6 +6,7 @@ import { getInitials, formatID, formatCurrency } from '../../utils/textFormatter
 import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic';
 import { Tooltip } from 'react-tooltip';
 import { usePermissions } from '../../hooks/auth/usePermissions';
+import Card from '../../components/Card';
 
 const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, nombreProyecto }) => {
     const { can } = usePermissions();
@@ -47,7 +48,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
     // --- FIN DE LA MODIFICACIÓN ---
 
     return (
-        <div className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600' : 'dark:border-gray-700'}`}>
+        <Card className={`relative ${isPagada ? 'border-green-400 dark:border-green-600' : ''}`}>
             <div className={`flex items-center p-5 border-b dark:border-gray-700 rounded-t-2xl ${isPagada ? 'bg-green-50 dark:bg-green-900/50' : ''}`}>
                 <div className={`w-14 h-14 rounded-full text-white flex items-center justify-center font-bold text-2xl mr-4 flex-shrink-0 bg-blue-500`}>
                     {getInitials(datosCliente?.nombres, datosCliente?.apellidos)}
@@ -236,7 +237,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                     </Menu>
                 )}
             </div>
-        </div>
+        </Card>
     );
 };
 

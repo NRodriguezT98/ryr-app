@@ -3,7 +3,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useListarViviendas } from "../../hooks/viviendas/useListarViviendas.jsx";
-import ResourcePageLayout from "../../layout/ResourcePageLayout";
+import ListPageLayout from '../../layout/ListPageLayout.jsx';
+import Button from '../../components/Button.jsx';
 import ViviendaCard from './ViviendaCard.jsx';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarVivienda from "./EditarVivienda.jsx";
@@ -55,9 +56,11 @@ const EmptyState = ({ filters, totalCount, canCreate }) => {
                 <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">No hay viviendas registradas</h3>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Parece que aún no has añadido ninguna vivienda al sistema.</p>
                 {canCreate && (
-                    <Link to="/viviendas/crear" className="mt-6 inline-flex items-center gap-2 bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-red-700 transition-colors">
-                        <PlusCircle size={18} />
-                        Crear la primera vivienda
+                    <Link to="/viviendas/crear" className="mt-6 inline-block">
+                        <Button variant="primary">
+                            <PlusCircle size={18} className="mr-2" />
+                            Crear la primera vivienda
+                        </Button>
                     </Link>
                 )}
             </div>
@@ -105,56 +108,67 @@ const ListarViviendas = () => {
         ...proyectos.map(p => ({ value: p.id, label: p.nombre }))
     ];
 
-    return (
-        <ResourcePageLayout
-            title="Viviendas Registradas"
-            icon={<span role="img" aria-label="viviendas">🏠</span>}
-            color="#c62828"
-            filterControls={
-                <div className="w-full space-y-4">
-                    <div className="flex justify-center">
-                        <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
-                            <button onClick={() => filters.setStatusFilter('todas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'todas' ? 'bg-white dark:bg-gray-900 shadow text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300'}`}>Todas</button>
-                            <button onClick={() => filters.setStatusFilter('disponibles')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'disponibles' ? 'bg-white dark:bg-gray-900 shadow text-yellow-600' : 'text-gray-600 dark:text-gray-300'}`}>Disponibles</button>
-                            <button onClick={() => filters.setStatusFilter('asignadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'asignadas' ? 'bg-white dark:bg-gray-900 shadow text-blue-600' : 'text-gray-600 dark:text-gray-300'}`}>Asignadas</button>
-                            <button onClick={() => filters.setStatusFilter('pagadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'pagadas' ? 'bg-white dark:bg-gray-900 shadow text-green-600' : 'text-gray-600 dark:text-gray-300'}`}>Pagadas</button>
-                            <button onClick={() => filters.setStatusFilter('archivadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'archivadas' ? 'bg-white dark:bg-gray-900 shadow text-gray-500' : 'text-gray-600 dark:text-gray-300'}`}>Archivadas</button>
-                        </div>
-                    </div>
-                    <div className="flex flex-col md:flex-row items-center gap-4">
-                        <div className="relative w-full flex-grow">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Buscar por Ubicación (ej: A1), Matrícula o Cliente..."
-                                className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-900/50 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                                value={filters.searchTerm}
-                                onChange={(e) => filters.setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div className="w-full md:w-64 flex-shrink-0">
-                            <Select
-                                options={projectOptions}
-                                value={projectOptions.find(option => option.value === filters.proyectoFilter)}
-                                onChange={(option) => filters.setProyectoFilter(option.value)}
-                                styles={getSelectStyles(isDarkMode)}
-                                isSearchable={false}
-                                placeholder="Filtrar por proyecto..."
-                            />
-                        </div>
-                        <div className="w-full md:w-64 flex-shrink-0">
-                            <Select
-                                options={sortOptions}
-                                defaultValue={sortOptions[0]}
-                                onChange={(option) => filters.setSortOrder(option.value)}
-                                styles={getSelectStyles(isDarkMode)}
-                                isSearchable={false}
-                                placeholder="Ordenar por..."
-                            />
-                        </div>
-                    </div>
+    const filterControls = (
+        <div className="w-full space-y-4">
+            <div className="flex justify-center">
+                <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
+                    <button onClick={() => filters.setStatusFilter('todas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'todas' ? 'bg-white dark:bg-gray-900 shadow text-gray-800 dark:text-gray-100' : 'text-gray-600 dark:text-gray-300'}`}>Todas</button>
+                    <button onClick={() => filters.setStatusFilter('disponibles')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'disponibles' ? 'bg-white dark:bg-gray-900 shadow text-yellow-600' : 'text-gray-600 dark:text-gray-300'}`}>Disponibles</button>
+                    <button onClick={() => filters.setStatusFilter('asignadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'asignadas' ? 'bg-white dark:bg-gray-900 shadow text-blue-600' : 'text-gray-600 dark:text-gray-300'}`}>Asignadas</button>
+                    <button onClick={() => filters.setStatusFilter('pagadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'pagadas' ? 'bg-white dark:bg-gray-900 shadow text-green-600' : 'text-gray-600 dark:text-gray-300'}`}>Pagadas</button>
+                    <button onClick={() => filters.setStatusFilter('archivadas')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${filters.statusFilter === 'archivadas' ? 'bg-white dark:bg-gray-900 shadow text-gray-500' : 'text-gray-600 dark:text-gray-300'}`}>Archivadas</button>
                 </div>
-            }
+            </div>
+            <div className="flex flex-col md:flex-row items-center gap-4">
+                <div className="relative w-full flex-grow">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="Buscar por Ubicación (ej: A1), Matrícula o Cliente..."
+                        className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-900/50 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                        value={filters.searchTerm}
+                        onChange={(e) => filters.setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <div className="w-full md:w-64 flex-shrink-0">
+                    <Select
+                        options={projectOptions}
+                        value={projectOptions.find(option => option.value === filters.proyectoFilter)}
+                        onChange={(option) => filters.setProyectoFilter(option.value)}
+                        styles={getSelectStyles(isDarkMode)}
+                        isSearchable={false}
+                        placeholder="Filtrar por proyecto..."
+                    />
+                </div>
+                <div className="w-full md:w-64 flex-shrink-0">
+                    <Select
+                        options={sortOptions}
+                        defaultValue={sortOptions[0]}
+                        onChange={(option) => filters.setSortOrder(option.value)}
+                        styles={getSelectStyles(isDarkMode)}
+                        isSearchable={false}
+                        placeholder="Ordenar por..."
+                    />
+                </div>
+            </div>
+        </div>
+    );
+
+    const actionButton = can('viviendas', 'crear') ? (
+        <Link to="/viviendas/crear">
+            <Button variant="primary">
+                <PlusCircle size={18} className="mr-2" />
+                Crear Vivienda
+            </Button>
+        </Link>
+    ) : null;
+
+    return (
+        <ListPageLayout
+            icon={<Home />}
+            title="Viviendas Registradas"
+            actionButton={actionButton}
+            filterControls={filterControls}
         >
             {isLoading ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -213,8 +227,8 @@ const ListarViviendas = () => {
                     mensaje="Esta vivienda volverá a estar disponible en la lista principal. ¿Estás seguro?"
                 />
             )}
-        </ResourcePageLayout>
+        </ListPageLayout>
     );
-};
+}
 
 export default ListarViviendas;

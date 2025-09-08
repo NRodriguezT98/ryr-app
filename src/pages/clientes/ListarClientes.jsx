@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useListarClientes } from '../../hooks/clientes/useListarClientes.jsx';
 import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic.jsx';
-import ResourcePageLayout from '../../layout/ResourcePageLayout';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
 import ModalMotivoRenuncia from "./components/ModalMotivoRenuncia";
@@ -13,6 +12,8 @@ import { useData } from "../../context/DataContext";
 import Select from 'react-select';
 import Pagination from '../../components/Pagination.jsx';
 import { usePermissions } from '../../hooks/auth/usePermissions';
+import ListPageLayout from '../../layout/ListPageLayout.jsx';
+import Button from '../../components/Button.jsx';
 
 const sortOptions = [
     { value: 'ubicacion', label: 'Ubicación (Mz/Casa)' },
@@ -79,58 +80,55 @@ const ListarClientes = () => {
         ...proyectos.map(p => ({ value: p.id, label: p.nombre }))
     ];
 
-    return (
-        <ResourcePageLayout
-            title="Clientes Registrados"
-            icon={<User size={40} />}
-            color="#1976d2"
-            filterControls={
-                <div className="w-full space-y-4">
-                    <div className="flex justify-center">
-                        <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
-                            <button onClick={() => setStatusFilter('activo')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'activo' ? 'bg-white dark:bg-gray-900 shadow text-blue-600' : 'text-gray-600 dark:text-gray-300'}`}>Activos</button>
-                            <button onClick={() => setStatusFilter('enProcesoDeRenuncia')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'enProcesoDeRenuncia' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300'}`}>En Renuncia</button>
-                            <button onClick={() => setStatusFilter('renunciado')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'renunciado' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300'}`}>Renunciaron</button>
-                            <button onClick={() => setStatusFilter('inactivo')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'inactivo' ? 'bg-white dark:bg-gray-900 shadow text-gray-500' : 'text-gray-600 dark:text-gray-300'}`}>Archivados</button>
-                            <button onClick={() => setStatusFilter('todos')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'todos' ? 'bg-white dark:bg-gray-900 shadow text-gray-800' : 'text-gray-600 dark:text-gray-300'}`}>Todos</button>
-                        </div>
-                    </div>
-                    <div className="flex flex-col md:flex-row items-center gap-4">
-                        <div className="relative w-full flex-grow">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Buscar por Nombre, Cédula o Ubicación (ej: A1)..."
-                                className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-900/50 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        {/* 👇 3. Agregamos el nuevo Select para Proyectos 👇 */}
-                        <div className="w-full md:w-64 flex-shrink-0">
-                            <Select
-                                options={projectOptions}
-                                value={projectOptions.find(option => option.value === proyectoFilter)}
-                                onChange={(option) => setProyectoFilter(option.value)}
-                                styles={getSelectStyles(isDarkMode)}
-                                isSearchable={false}
-                                placeholder="Filtrar por proyecto..."
-                            />
-                        </div>
-                        <div className="w-full md:w-64 flex-shrink-0">
-                            <Select
-                                options={sortOptions}
-                                defaultValue={sortOptions[0]}
-                                onChange={(option) => setSortOrder(option.value)}
-                                styles={getSelectStyles(isDarkMode)}
-                                isSearchable={false}
-                                placeholder="Ordenar por..."
-                            />
-                        </div>
-                    </div>
+    const actionButton = can('clientes', 'crear') ? (
+        <Link to="/clientes/crear">
+            <Button variant="primary">
+                <UserPlus size={18} className="mr-2" />
+                Registrar Cliente
+            </Button>
+        </Link>
+    ) : null;
+
+    const filterControls = (
+        <div className="w-full space-y-4">
+            <div className="flex justify-center">
+                <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
+                    <button onClick={() => setStatusFilter('activo')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'activo' ? 'bg-white dark:bg-gray-900 shadow text-blue-600' : 'text-gray-600 dark:text-gray-300'}`}>Activos</button>
+                    <button onClick={() => setStatusFilter('enProcesoDeRenuncia')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'enProcesoDeRenuncia' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300'}`}>En Renuncia</button>
+                    <button onClick={() => setStatusFilter('renunciado')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'renunciado' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300'}`}>Renunciaron</button>
+                    <button onClick={() => setStatusFilter('inactivo')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'inactivo' ? 'bg-white dark:bg-gray-900 shadow text-gray-500' : 'text-gray-600 dark:text-gray-300'}`}>Archivados</button>
+                    <button onClick={() => setStatusFilter('todos')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'todos' ? 'bg-white dark:bg-gray-900 shadow text-gray-800' : 'text-gray-600 dark:text-gray-300'}`}>Todos</button>
                 </div>
-            }
+            </div>
+            <div className="flex flex-col md:flex-row items-center gap-4">
+                <div className="relative w-full flex-grow">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="Buscar por Nombre, Cédula o Ubicación (ej: A1)..."
+                        className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-900/50 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <div className="w-full md:w-64 flex-shrink-0">
+                    <Select options={projectOptions} value={projectOptions.find(option => option.value === proyectoFilter)} onChange={(option) => setProyectoFilter(option.value)} styles={getSelectStyles(isDarkMode)} isSearchable={false} placeholder="Filtrar por proyecto..." />
+                </div>
+                <div className="w-full md:w-64 flex-shrink-0">
+                    <Select options={sortOptions} defaultValue={sortOptions[0]} onChange={(option) => setSortOrder(option.value)} styles={getSelectStyles(isDarkMode)} isSearchable={false} placeholder="Ordenar por..." />
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <ListPageLayout
+            icon={<User />}
+            title="Clientes Registrados"
+            actionButton={actionButton}
+            filterControls={filterControls}
         >
+
             {isLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">{[...Array(9)].map((_, i) => <ClienteCardSkeleton key={i} />)}</div>
             ) : clientesVisibles.length > 0 ? (
@@ -183,7 +181,7 @@ const ListarClientes = () => {
             {modals.clienteARenunciar && (<ModalMotivoRenuncia isOpen={!!modals.clienteARenunciar} onClose={() => modals.setClienteARenunciar(null)} onConfirm={handlers.handleConfirmarMotivo} cliente={modals.clienteARenunciar} />)}
             {modals.datosRenuncia && (<ModalConfirmacion isOpen={!!modals.datosRenuncia} onClose={() => modals.setDatosRenuncia(null)} onConfirm={handlers.confirmarRenunciaFinal} titulo="¿Confirmar Renuncia?" mensaje={`¿Seguro de procesar la renuncia para ${modals.datosRenuncia.cliente.datosCliente.nombres} con motivo "${modals.datosRenuncia.motivo}"?`} isSubmitting={modals.isSubmitting} />)}
             {modals.clienteARestaurar && (<ModalConfirmacion isOpen={!!modals.clienteARestaurar} onClose={() => modals.setClienteARestaurar(null)} onConfirm={handlers.confirmarRestauracion} titulo="¿Restaurar Cliente?" mensaje={`¿Estás seguro de restaurar a ${modals.clienteARestaurar.datosCliente.nombres}? Volverá a la lista de clientes con estado 'Renunció'.`} isSubmitting={modals.isSubmitting} />)}
-        </ResourcePageLayout>
+        </ListPageLayout>
     );
 };
 

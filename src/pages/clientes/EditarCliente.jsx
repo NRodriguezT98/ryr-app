@@ -1,10 +1,12 @@
+// src/pages/clientes/EditarCliente.jsx (CÓDIGO FINAL Y VERIFICADO)
 import React, { Fragment } from 'react';
 import { Tooltip } from 'react-tooltip';
 import { useClienteForm } from '../../hooks/clientes/useClienteForm';
 import Modal from '../../components/Modal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import FormularioCliente from './FormularioCliente';
-import { Home, User, CircleDollarSign, Check, UserCog, Loader } from 'lucide-react';
+import { Home, User, CircleDollarSign, Check, UserCog } from 'lucide-react';
+import Button from '../../components/Button'; // Asegúrate de que esta importación exista
 
 const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => {
 
@@ -78,19 +80,38 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
                                 handleFinancialFieldChange={handlers.handleFinancialFieldChange}
                             />
                         </div>
+
+                        {/* --- INICIO DEL CÓDIGO CORREGIDO --- */}
                         <div className="mt-10 pt-6 border-t flex justify-between">
-                            {step > 1 ? (<button type="button" onClick={handlers.handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>) : <div />}
-                            {step < 3 ? (
-                                <button type="button" onClick={handlers.handleNextStep} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">Siguiente</button>
-                            ) : (
-                                <span className="ml-auto" data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
-                                    <button onClick={handlers.handleSave} disabled={!hayCambios || isSubmitting} className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-full flex items-center justify-center gap-2">
-                                        {isSubmitting ? <Loader size={20} className="animate-spin" /> : null}
-                                        {isSubmitting ? "Guardando..." : "Guardar Cambios"}
-                                    </button>
-                                </span>
-                            )}
+                            <div>
+                                {step > 1 && (
+                                    <Button variant="secondary" onClick={handlers.handlePrevStep} className="w-auto px-6">
+                                        Anterior
+                                    </Button>
+                                )}
+                            </div>
+                            <div>
+                                {step < 3 ? (
+                                    <Button variant="primary" onClick={handlers.handleNextStep} className="w-auto px-6">
+                                        Siguiente
+                                    </Button>
+                                ) : (
+                                    <span data-tooltip-id="app-tooltip" data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}>
+                                        <Button
+                                            variant="success"
+                                            onClick={handlers.handleSave}
+                                            disabled={!hayCambios}
+                                            isLoading={isSubmitting}
+                                            loadingText="Guardando..."
+                                            className="w-auto px-6"
+                                        >
+                                            Guardar Cambios
+                                        </Button>
+                                    </span>
+                                )}
+                            </div>
                         </div>
+                        {/* --- FIN DEL CÓDIGO CORREGIDO --- */}
                     </>
                 )}
             </Modal>

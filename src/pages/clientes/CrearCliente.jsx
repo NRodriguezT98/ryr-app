@@ -3,6 +3,7 @@ import AnimatedPage from '../../components/AnimatedPage';
 import FormularioCliente from './FormularioCliente';
 import { Home, User, CircleDollarSign, Check, Loader } from 'lucide-react';
 import { useClienteForm } from '../../hooks/clientes/useClienteForm.jsx';
+import Button from '../../components/Button';
 
 const CrearCliente = () => {
     const {
@@ -54,25 +55,32 @@ const CrearCliente = () => {
                         handleInputChange={handlers.handleInputChange}
                         handleFinancialFieldChange={handlers.handleFinancialFieldChange}
                     />
-                    <div className="mt-10 flex justify-between">
-                        {step > 1 ? (
-                            <button onClick={handlers.handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">
-                                Anterior
-                            </button>
-                        ) : <div />}
-                        {step < 3 ? (
-                            <button onClick={handlers.handleNextStep} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
-                                Siguiente
-                            </button>
-                        ) : (
-                            <button
-                                onClick={handlers.handleSave}
-                                disabled={isSubmitting}
-                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto flex items-center justify-center gap-2"
-                            >
-                                {isSubmitting ? (<><Loader size={20} className="animate-spin" /><span>Guardando...</span></>) : ("Finalizar y Guardar")}
-                            </button>
-                        )}
+                    <div className="mt-10 flex justify-between items-center">
+                        <div>
+                            {step > 1 && (
+                                <Button onClick={handlers.handlePrevStep} variant="secondary" className="w-auto px-6">
+                                    Anterior
+                                </Button>
+                            )}
+                        </div>
+
+                        <div>
+                            {step < 3 ? (
+                                <Button onClick={handlers.handleNextStep} variant="primary" className="w-auto px-6">
+                                    Siguiente
+                                </Button>
+                            ) : (
+                                <Button
+                                    onClick={handlers.handleSave}
+                                    variant="success"
+                                    isLoading={isSubmitting}
+                                    loadingText="Guardando Cliente..."
+                                    className="w-auto px-6"
+                                >
+                                    Finalizar y Guardar
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

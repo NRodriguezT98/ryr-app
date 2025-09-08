@@ -4,7 +4,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useListarProyectos } from '../../hooks/admin/useListarProyectos';
 import { usePermissions } from '../../hooks/auth/usePermissions';
-import ResourcePageLayout from '../../layout/ResourcePageLayout';
+import ListPageLayout from '../../layout/ListPageLayout.jsx';
+import Button from '../../components/Button.jsx';
 import { FolderKanban, FolderPlus, Edit, Trash2, Home, Loader } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -25,23 +26,19 @@ const ListarProyectos = () => {
     };
 
     return (
-        <ResourcePageLayout
+        <ListPageLayout
+            icon={<FolderKanban />}
             title="Gestionar Proyectos"
-            icon={<FolderKanban size={40} />}
-            color="#0891b2" // Un color cyan para diferenciar
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // Añadimos el botón de "Crear Nuevo Proyecto"
             actionButton={
                 can('admin', 'crearProyectos') && (
                     <Link to="/admin/proyectos/crear">
-                        <button className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-5 rounded-lg flex items-center justify-center gap-2">
-                            <FolderPlus size={18} />
+                        <Button variant="primary">
+                            <FolderPlus size={18} className="mr-2" />
                             Crear Nuevo Proyecto
-                        </button>
+                        </Button>
                     </Link>
                 )
             }
-        // --- FIN DE LA MODIFICACIÓN ---
         >
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700">
                 <div className="overflow-x-auto">
@@ -104,7 +101,7 @@ const ListarProyectos = () => {
                     isSubmitting={isSubmitting}
                 />
             )}
-        </ResourcePageLayout>
+        </ListPageLayout>
     );
 };
 

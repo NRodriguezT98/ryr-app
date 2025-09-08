@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import FileUpload from '../../../components/FileUpload';
 import HelpTooltip from '../../../components/HelpTooltip';
 import { FileText, XCircle } from 'lucide-react';
+import InputField from '../../../components/forms/InputField';
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
@@ -11,11 +12,10 @@ const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEdi
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field, value } });
     }, [dispatch]);
 
-    // --- INICIO DE LA MODIFICACIÓN ---
     // Determinamos si los campos personales deben estar bloqueados.
     // Esto ocurre si estamos en modo 'editar' y el proceso ha avanzado, O si estamos en modo 'reactivar'.
     const isPersonalInfoLocked = isLocked || modo === 'reactivar';
-    // --- FIN DE LA MODIFICACIÓN ---
+
 
     return (
         <div className="animate-fade-in space-y-6">
@@ -26,54 +26,72 @@ const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEdi
                 </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t dark:border-gray-700">
-                <div>
-                    <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="nombres">Nombres <span className="text-red-600">*</span></label>
-                    <div data-tooltip-id="app-tooltip" data-tooltip-content={isPersonalInfoLocked ? "El nombre no se puede modificar en esta etapa." : ''}>
-                        <input id="nombres" name="nombres" type="text" value={formData.nombres} onChange={handleInputChange} disabled={isPersonalInfoLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.nombres ? 'border-red-500' : 'border-gray-300'}`} />
-                    </div>
-                    {errors.nombres && <p className="text-red-600 text-sm mt-1">{errors.nombres}</p>}
-                </div>
-                <div>
-                    <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="apellidos">Apellidos <span className="text-red-600">*</span></label>
-                    <div data-tooltip-id="app-tooltip" data-tooltip-content={isPersonalInfoLocked ? "El apellido no se puede modificar en esta etapa." : ''}>
-                        <input id="apellidos" name="apellidos" type="text" value={formData.apellidos} onChange={handleInputChange} disabled={isPersonalInfoLocked} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.apellidos ? 'border-red-500' : 'border-gray-300'}`} />
-                    </div>
-                    {errors.apellidos && <p className="text-red-600 text-sm mt-1">{errors.apellidos}</p>}
-                </div>
-                <div>
-                    <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="cedula">Cédula <span className="text-red-600">*</span></label>
-                    <div data-tooltip-id="app-tooltip" data-tooltip-content={isEditing ? "La cédula no se puede editar. Si cometiste un error, elimina el cliente y créalo de nuevo." : ''}>
-                        <input id="cedula" name="cedula" type="text" value={formData.cedula} onChange={handleInputChange} disabled={isEditing} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.cedula ? 'border-red-500' : 'border-gray-300'}`} />
-                    </div>
-                    {errors.cedula && <p className="text-red-600 text-sm mt-1">{errors.cedula}</p>}
-                </div>
-                <div>
-                    <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="telefono">Teléfono <span className="text-red-600">*</span></label>
-                    <input id="telefono" name="telefono" type="text" value={formData.telefono} onChange={handleInputChange} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.telefono ? 'border-red-500' : 'border-gray-300'}`} />
-                    {errors.telefono && <p className="text-red-600 text-sm mt-1">{errors.telefono}</p>}
+                <InputField
+                    label={<>Nombres <span className="text-red-600">*</span></>}
+                    name="nombres"
+                    value={formData.nombres}
+                    onChange={handleInputChange}
+                    disabled={isPersonalInfoLocked}
+                    error={errors.nombres}
+                    data-tooltip-content={isPersonalInfoLocked ? "El nombre no se puede modificar en esta etapa." : ''}
+                />
+                <InputField
+                    label={<>Apellidos <span className="text-red-600">*</span></>}
+                    name="apellidos"
+                    value={formData.apellidos}
+                    onChange={handleInputChange}
+                    disabled={isPersonalInfoLocked}
+                    error={errors.apellidos}
+                    data-tooltip-content={isPersonalInfoLocked ? "El apellido no se puede modificar en esta etapa." : ''}
+                />
+                <InputField
+                    label={<>Cédula <span className="text-red-600">*</span></>}
+                    name="cedula"
+                    value={formData.cedula}
+                    onChange={handleInputChange}
+                    disabled={isEditing}
+                    error={errors.cedula}
+                    data-tooltip-content={isEditing ? "La cédula no se puede editar. Si cometiste un error, elimina el cliente y créalo de nuevo." : ''}
+                />
+                <InputField
+                    label={<>Teléfono <span className="text-red-600">*</span></>}
+                    name="telefono"
+                    value={formData.telefono}
+                    onChange={handleInputChange}
+                    error={errors.telefono}
+                />
+                <div className="md:col-span-2">
+                    <InputField
+                        label={<>Correo Electrónico <span className="text-red-600">*</span></>}
+                        name="correo"
+                        type="email"
+                        value={formData.correo}
+                        onChange={handleInputChange}
+                        error={errors.correo}
+                    />
                 </div>
                 <div className="md:col-span-2">
-                    <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="correo">Correo Electrónico <span className="text-red-600">*</span></label>
-                    <input id="correo" name="correo" type="email" value={formData.correo} onChange={handleInputChange} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.correo ? 'border-red-500' : 'border-gray-300'}`} />
-                    {errors.correo && <p className="text-red-600 text-sm mt-1">{errors.correo}</p>}
-                </div>
-                <div className="md:col-span-2">
-                    <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="direccion">Dirección de Residencia <span className="text-red-600">*</span></label>
-                    <input id="direccion" name="direccion" type="text" value={formData.direccion} onChange={handleInputChange} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.direccion ? 'border-red-500' : 'border-gray-300'}`} />
-                    {errors.direccion && <p className="text-red-600 text-sm mt-1">{errors.direccion}</p>}
+                    <InputField
+                        label={<>Dirección de Residencia <span className="text-red-600">*</span></>}
+                        name="direccion"
+                        value={formData.direccion}
+                        onChange={handleInputChange}
+                        error={errors.direccion}
+                    />
                 </div>
                 <div className="md:col-span-2">
                     <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="fechaIngreso">Fecha de Ingreso al Proceso <span className="text-red-600">*</span></label>
-                    <div data-tooltip-id="app-tooltip" data-tooltip-content={isFechaIngresoLocked ? "La fecha no se puede modificar porque el cliente ya tiene abonos o ha avanzado en el proceso." : ''}>
-                        <input
-                            id="fechaIngreso"
+                    <div className="md:col-span-2">
+                        <InputField
+                            label={<> <span className="text-red-600"></span></>}
                             name="fechaIngreso"
                             type="date"
                             value={formData.fechaIngreso}
                             onChange={handleInputChange}
                             max={getTodayString()}
-                            disabled={isFechaIngresoLocked} // <-- Lógica de bloqueo
-                            className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.fechaIngreso ? 'border-red-500' : 'border-gray-300'}`}
+                            disabled={isFechaIngresoLocked}
+                            error={errors.fechaIngreso}
+                            data-tooltip-content={isFechaIngresoLocked ? "La fecha no se puede modificar porque el cliente ya tiene abonos o ha avanzado en el proceso." : ''}
                         />
                     </div>
                     {errors.fechaIngreso && <p className="text-red-600 text-sm mt-1">{errors.fechaIngreso}</p>}
@@ -86,10 +104,7 @@ const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, isEdi
                                 <FileText />
                                 <a href={formData.urlCedula} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Documento Actual</a>
                             </div>
-                            {/* --- INICIO DE LA MODIFICACIÓN --- */}
-                            {/* El botón de eliminar solo aparece si NO estamos en modo reactivación */}
                             {modo !== 'reactivar' && !isLocked && (<button type="button" onClick={() => handleValueChange('urlCedula', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar documento"><XCircle size={20} /></button>)}
-                            {/* --- FIN DE LA MODIFICACIÓN --- */}
                         </div>
                     ) : (
                         <FileUpload

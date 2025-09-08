@@ -7,7 +7,36 @@
 /* --- INICIO DE LA MODIFICACIÓN --- */
 @layer base {
     body {
-        @apply bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300;
+        /* Usamos theme() para acceder a la configuración de la fuente */
+        font-family: theme('fontFamily.sans');
+
+        /* El resto de las utilidades se pueden aplicar sin problema */
+        @apply bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300 antialiased;
+    }
+
+    /* --- Jerarquía de Títulos y Textos (se mantiene igual) --- */
+    h1 {
+        @apply text-3xl font-bold tracking-tight;
+    }
+
+    h2 {
+        @apply text-2xl font-bold tracking-tight;
+    }
+
+    h3 {
+        @apply text-xl font-semibold;
+    }
+
+    h4 {
+        @apply text-lg font-semibold;
+    }
+
+    p {
+        @apply text-base leading-relaxed;
+    }
+
+    a {
+        @apply text-blue-600 dark:text-blue-400 hover:underline;
     }
 }
 

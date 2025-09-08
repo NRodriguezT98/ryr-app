@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const defaultTheme = require('tailwindcss/defaultTheme');
+
 export default {
   // --- INICIO DE LA MODIFICACIÓN ---
   darkMode: 'class', // Habilitamos la estrategia de clase para el modo oscuro
@@ -44,9 +46,9 @@ export default {
         'ring': 'ring 0.5s ease-in-out',
         'pulse-once': 'pulse-once 1.5s ease-out',
       },
-      fontFamily: {
-        montserrat: ['Montserrat', 'sans-serif'],
-      },
+    },
+    fontFamily: {
+      montserrat: ['Montserrat', 'sans-serif'],
     },
   },
   plugins: [],

@@ -4,6 +4,7 @@ import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign, MapPin, Archive, ArchiveRestore } from 'lucide-react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
+import Card from '../../components/Card';
 
 const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto, onArchive, onRestore }) => {
     const { can } = usePermissions();
@@ -28,8 +29,7 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto, onArchive, o
     // --- FIN DE LA MODIFICACIÓN ---
 
     return (
-        <div className={`bg-white dark:bg-gray-800 rounded-2xl shadow-lg border flex flex-col transition-all duration-300 hover:shadow-xl ${isPagada ? 'border-green-400 dark:border-green-600' : 'border-gray-200 dark:border-gray-700'} overflow-hidden`}>
-
+        <Card className={`overflow-hidden ${isPagada ? 'border-green-400 dark:border-green-600' : 'border-gray-200'}`}>
             <div className={`flex items-start justify-between p-4 border-b dark:border-gray-700 rounded-t-2xl ${isDisponible ? 'bg-gray-50 dark:bg-gray-700/50' : (isPagada ? 'bg-green-50 dark:bg-green-900/50' : 'bg-blue-50 dark:bg-blue-900/50')}`}>
                 <div className="flex items-center gap-3 flex-grow min-w-0">
                     <Home className={`w-6 h-6 flex-shrink-0 ${isDisponible ? 'text-gray-500' : (isPagada ? 'text-green-700' : 'text-blue-700')}`} />
@@ -178,7 +178,7 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto, onArchive, o
                     </Menu>
                 )}
             </div>
-        </div>
+        </Card>
     );
 };
 

@@ -7,6 +7,7 @@ import { formatCurrency } from '../../../utils/textFormatters';
 import { useClienteFinanciero } from '../../../hooks/clientes/useClienteFinanciero';
 import FileUpload from '../../../components/FileUpload';
 import { FileText, XCircle, Lock, Info } from 'lucide-react';
+import Button from '../../../components/Button';
 
 const creditoOptions = [
     { value: 'Bancolombia', label: 'Bancolombia' },
@@ -135,7 +136,7 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                             <FileText />
                                             <a href={documentos.promesaEnviadaUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Promesa Cargada</a>
                                         </div>
-                                        <button type="button" onClick={() => handleDocumentUpload('promesaEnviadaUrl', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar documento"><XCircle size={20} /></button>
+                                        <Button variant="danger" onClick={() => handleDocumentUpload('promesaEnviadaUrl', null)} className="p-1 rounded-full h-auto w-auto" title="Eliminar documento"><XCircle size={20} /></Button>
                                     </div>
                                 ) : (
                                     <FileUpload
@@ -159,7 +160,7 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                             <FileText />
                                             <a href={documentos.promesaEnviadaCorreoUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Captura Cargada</a>
                                         </div>
-                                        <button type="button" onClick={() => handleDocumentUpload('promesaEnviadaCorreoUrl', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar documento"><XCircle size={20} /></button>
+                                        <Button variant="danger" onClick={() => handleDocumentUpload('promesaEnviadaCorreoUrl', null)} className="p-1 rounded-full h-auto w-auto" title="Eliminar documento"><XCircle size={20} /></Button>
                                     </div>
                                 ) : (
                                     <FileUpload
@@ -233,7 +234,7 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                                 <FileText size={16} />
                                                 <a href={financiero.credito.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
                                             </div>
-                                            {!isLocked && (<button type="button" onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar"><XCircle size={18} /></button>)}
+                                            {!isLocked && (<Button variant="danger" onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)} className="p-1 rounded-full h-auto w-auto" title="Eliminar"><XCircle size={18} /></Button>)}
                                         </div>
                                     ) : (
                                         <FileUpload
@@ -292,7 +293,7 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                                 <FileText size={16} />
                                                 <a href={financiero.subsidioCaja.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
                                             </div>
-                                            {!isLocked && (<button type="button" onClick={() => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar"><XCircle size={18} /></button>)}
+                                            {!isLocked && (<Button variant="danger" onClick={() => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', null)} className="p-1 rounded-full h-auto w-auto" title="Eliminar"><XCircle size={18} /></Button>)}
                                         </div>
                                     ) : (
                                         <FileUpload
