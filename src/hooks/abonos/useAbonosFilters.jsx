@@ -75,7 +75,7 @@ export const useAbonosFilters = () => {
             abonosProcesados = abonosProcesados.filter(a => a.fuente === fuenteFiltro.value);
         }
 
-        return abonosProcesados.sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
+        return abonosProcesados.sort((a, b) => (b.consecutivo || 0) - (a.consecutivo || 0));
     }, [abonos, clientes, viviendas, proyectos, renuncias, clienteFiltro, fechaInicioFiltro, fechaFinFiltro, fuenteFiltro, statusFiltro, isLoading]);
 
     // --- INICIO DE LA MODIFICACIÓN: Lógica de paginación ---

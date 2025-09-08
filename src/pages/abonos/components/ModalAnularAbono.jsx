@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { AlertTriangle, User, Home, Building2, DollarSign, Calendar } from 'lucide-react';
+import { AlertTriangle, User, Home, Building2, DollarSign, Calendar, Loader } from 'lucide-react';
 import Modal from '../../../components/Modal';
 import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters';
 
-const ModalAnularAbono = ({ isOpen, onClose, onAnulacionConfirmada, abonoAAnular }) => {
+const ModalAnularAbono = ({ isOpen, onClose, onAnulacionConfirmada, abonoAAnular, isSubmitting }) => {
     const [motivo, setMotivo] = useState('');
 
     const handleConfirm = () => {
@@ -17,7 +17,7 @@ const ModalAnularAbono = ({ isOpen, onClose, onAnulacionConfirmada, abonoAAnular
         onClose();
     };
 
-    const isBotonDeshabilitado = !motivo.trim();
+    const isBotonDeshabilitado = !motivo.trim() || isSubmitting;
 
     // ✨ LA SOLUCIÓN: Leemos las propiedades directamente del objeto 'abonoAAnular'
     const montoFormateado = abonoAAnular ? formatCurrency(abonoAAnular.monto) : 'No disponible';
@@ -75,9 +75,16 @@ const ModalAnularAbono = ({ isOpen, onClose, onAnulacionConfirmada, abonoAAnular
                             onClick={handleConfirm}
                             disabled={isBotonDeshabilitado}
                         >
-                            Confirmar Anulación
+                            {isSubmitting ? (
+                                <>
+                                    <Loader className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                                    Anulando...
+                                </>
+                            ) : (
+                                'Confirmar Anulación'
+                            )}
                         </button>
-                        {isBotonDeshabilitado && (
+                        {isBotonDeshabilitado && !isSubmitting && (
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max bg-gray-700 text-white text-xs rounded py-1 px-2 pointer-events-none opacity-90">
                                 Debes ingresar un motivo para anular.
                             </div>
@@ -87,6 +94,7 @@ const ModalAnularAbono = ({ isOpen, onClose, onAnulacionConfirmada, abonoAAnular
                         type="button"
                         className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600"
                         onClick={handleClose}
+                        disabled={isSubmitting} // El botón de cancelar también se deshabilita
                     >
                         Cancelar
                     </button>

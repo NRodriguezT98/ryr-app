@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import AnimatedPage from '../../components/AnimatedPage';
 import { useData } from '../../context/DataContext';
 import { useAbonosFilters } from '../../hooks/abonos/useAbonosFilters';
@@ -8,12 +10,13 @@ import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import ModalAnularAbono from './components/ModalAnularAbono';
 import Select from 'react-select';
-import { Filter } from 'lucide-react';
+import { Filter, BarChart2 } from 'lucide-react';
 import AbonoCardSkeleton from './AbonoCardSkeleton';
 import Pagination from '../../components/Pagination';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 import { useAnularAbono } from '../../hooks/abonos/useAnularAbono';
 import { useRevertirAbono } from '../../hooks/abonos/useRevertirAbono'; // Importamos el nuevo hook de reversión
+import { formatCurrency } from '../../utils/textFormatters';
 
 // Componente interno para el estilo del Select
 const CustomOption = (props) => {
@@ -69,17 +72,11 @@ const ListarAbonos = () => {
 
     // Hook para manejar los filtros de la lista
     const {
-        abonosFiltrados,
-        setClienteFiltro,
-        setFechaInicioFiltro,
-        setFechaFinFiltro,
-        setFuenteFiltro,
-        setStatusFiltro,
-        statusFiltro,
-        fechaInicioFiltro,
-        fechaFinFiltro,
-        pagination
-    } = useAbonosFilters(abonos, clientes, viviendas, renuncias);
+        abonosFiltrados, // ✨ AHORA USAMOS LA LISTA PAGINADA
+        todosLosAbonosFiltrados, // ✨ Y LA LISTA COMPLETA PARA EL SUMARIO
+        setClienteFiltro, setFechaInicioFiltro, setFechaFinFiltro, setFuenteFiltro, setStatusFiltro,
+        statusFiltro, fechaInicioFiltro, fechaFinFiltro, pagination
+    } = useAbonosFilters();
 
     // Opciones para los menús de selección (filtros)
     const clienteOptions = useMemo(() => {
@@ -106,6 +103,25 @@ const ListarAbonos = () => {
         recargarDatos();
     };
 
+    const abonosAgrupados = useMemo(() => {
+        return abonosFiltrados.reduce((acc, abono) => {
+            const month = format(new Date(abono.fechaPago), 'MMMM yyyy', { locale: es });
+            const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+            if (!acc[capitalizedMonth]) {
+                acc[capitalizedMonth] = [];
+            }
+            acc[capitalizedMonth].push(abono);
+            return acc;
+        }, {});
+    }, [abonosFiltrados]);
+
+    const sumario = useMemo(() => {
+        const totalAbonos = todosLosAbonosFiltrados.length;
+        const sumaTotal = todosLosAbonosFiltrados.reduce((sum, abono) => sum + abono.monto, 0);
+        return { totalAbonos, sumaTotal };
+    }, [todosLosAbonosFiltrados]);
+    // ✨ FIN: Lógica para el sumario dinámico
+
     return (
         <AnimatedPage>
             <style>{`
@@ -131,6 +147,16 @@ const ListarAbonos = () => {
 
                 {/* --- SECCIÓN DE FILTROS --- */}
                 <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border dark:border-gray-700 mb-8">
+                    {/* ✨ INICIO: Nuevo Sumario Dinámico */}
+                    {!isLoading && todosLosAbonosFiltrados.length > 0 && (
+                        <div className="mb-8 p-4 bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 rounded-r-lg flex items-center gap-4">
+                            <BarChart2 className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                            <p className="text-sm text-blue-800 dark:text-blue-300">
+                                Mostrando <span className="font-bold">{sumario.totalAbonos}</span> abono(s) que suman un total de <span className="font-bold">{formatCurrency(sumario.sumaTotal)}</span>.
+                            </p>
+                        </div>
+                    )}
+                    {/* ✨ FIN: Nuevo Sumario Dinámico */}
                     <h3 className="font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2"><Filter size={18} /> Opciones de Filtro</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-1">
@@ -170,15 +196,24 @@ const ListarAbonos = () => {
                     </div>
                 ) : abonosFiltrados.length > 0 ? (
                     <>
-                        <div className="space-y-4">
-                            {abonosFiltrados.map(abono => (
-                                <AbonoCard
-                                    key={abono.id}
-                                    abono={abono}
-                                    onEdit={() => setAbonoAEditar(abono)}
-                                    onAnular={() => iniciarAnulacion(abono)}
-                                    onRevertir={() => iniciarReversion(abono)}
-                                />
+                        <div className="space-y-8">
+                            {Object.entries(abonosAgrupados).map(([month, abonosDelMes]) => (
+                                <div key={month}>
+                                    <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 pb-2 mb-4 border-b border-gray-200 dark:border-gray-700">
+                                        {month}
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {abonosDelMes.map(abono => (
+                                            <AbonoCard
+                                                key={abono.id}
+                                                abono={abono}
+                                                onEdit={() => setAbonoAEditar(abono)}
+                                                onAnular={() => iniciarAnulacion(abono)}
+                                                onRevertir={() => iniciarReversion(abono)}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
                             ))}
                         </div>
                         <Pagination
