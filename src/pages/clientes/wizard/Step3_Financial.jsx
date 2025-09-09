@@ -234,7 +234,16 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                                 <FileText size={16} />
                                                 <a href={financiero.credito.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
                                             </div>
-                                            {!isLocked && (<Button variant="danger" onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)} className="p-1 rounded-full h-auto w-auto" title="Eliminar"><XCircle size={18} /></Button>)}
+                                            {!isLocked && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)}
+                                                    className="text-red-500 hover:text-red-700 transition-colors duration-200 focus:outline-none"
+                                                    title="Eliminar documento"
+                                                >
+                                                    <XCircle size={20} />
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         <FileUpload
@@ -293,7 +302,16 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                                 <FileText size={16} />
                                                 <a href={financiero.subsidioCaja.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
                                             </div>
-                                            {!isLocked && (<Button variant="danger" onClick={() => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', null)} className="p-1 rounded-full h-auto w-auto" title="Eliminar"><XCircle size={18} /></Button>)}
+                                            {!isLocked && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', null)}
+                                                    className="text-red-500 hover:text-red-700 transition-colors duration-200 focus:outline-none"
+                                                    title="Eliminar documento"
+                                                >
+                                                    <XCircle size={20} />
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         <FileUpload

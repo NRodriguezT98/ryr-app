@@ -51,6 +51,7 @@ const ListarAbonos = () => {
     // Hook centralizado para la lógica de REVERSIÓN
     const {
         isRevertirModalOpen,
+        isRevirtiendo,
         iniciarReversion,
         cerrarReversion,
         confirmarReversion
@@ -206,7 +207,7 @@ const ListarAbonos = () => {
             {/* --- SECCIÓN DE MODALES --- */}
             {abonoAEditar && (<EditarAbonoModal isOpen={!!abonoAEditar} onClose={() => setAbonoAEditar(null)} onSave={handleGuardadoEdicion} abonoAEditar={abonoAEditar} />)}
             {isAnularModalOpen && (<ModalAnularAbono isOpen={isAnularModalOpen} onClose={cerrarAnulacion} onAnulacionConfirmada={confirmarAnulacion} abonoAAnular={abonoParaAnular} isSubmitting={isAnulando} />)}
-            {isRevertirModalOpen && (<ModalConfirmacion isOpen={isRevertirModalOpen} onClose={cerrarReversion} onConfirm={confirmarReversion} titulo="¿Revertir Anulación?" mensaje="Esto reactivará el abono y volverá a afectar los saldos de la vivienda. ¿Deseas continuar?" />)}
+            {isRevertirModalOpen && (<ModalConfirmacion isOpen={isRevertirModalOpen} onClose={cerrarReversion} onConfirm={confirmarReversion} titulo="¿Revertir Anulación?" mensaje="Esto reactivará el abono y volverá a afectar los saldos de la vivienda. ¿Deseas continuar?" isSubmitting={isRevirtiendo} />)}
         </ListPageLayout>
     );
 };

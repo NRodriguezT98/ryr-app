@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { NumericFormat } from 'react-number-format';
 import { useAbonoForm } from '../../hooks/abonos/useAbonoForm.jsx';
-import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle, Loader, PlusCircle, Lock } from 'lucide-react';
+import { Banknote, Landmark, Gift, HandCoins, FilePlus2, FileText, XCircle, Loader, PlusCircle, Lock, ChevronDown, HistoryIcon, ChevronUp } from 'lucide-react';
 import FileUpload from '../../components/FileUpload';
-import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
+import { formatCurrency, getTodayString, formatDisplayDate } from '../../utils/textFormatters.js';
 import { FUENTE_PROCESO_MAP, PROCESO_CONFIG } from '../../utils/procesoConfig.js'
 import HelpTooltip from '../../components/HelpTooltip.jsx';
+import AbonoListItem from './AbonoListItem.jsx';
 
 const ICONS = {
     cuotaInicial: <HandCoins className="w-8 h-8 text-yellow-600" />,
@@ -18,6 +19,7 @@ const ICONS = {
 
 const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, vivienda, cliente, proyecto, onAbonoRegistrado, onCondonarSaldo, onRegistrarDesembolso }) => {
     const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
+    const [historialVisible, setHistorialVisible] = useState(false);
 
     const totalAbonado = abonos.reduce((sum, abono) => sum + abono.monto, 0);
     const saldoPendiente = montoPactado - totalAbonado;
@@ -42,17 +44,13 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
 
     const fechaDeInicioDelProceso = cliente?.fechaInicioProceso || cliente?.datosCliente?.fechaIngreso;
     const minDate = fechaDeInicioDelProceso ? fechaDeInicioDelProceso.split('T')[0] : null;
-
     const isCredito = fuente === 'credito';
     const creditoYaDesembolsado = isCredito && saldoPendiente <= 0;
     const isSubsidio = fuente.includes('subsidio');
     const subsidioYaDesembolsado = isSubsidio && totalAbonado > 0;
-
-    // --- NUEVO: Lógica para validar el prerrequisito del proceso ---
     const pasoConfig = FUENTE_PROCESO_MAP[fuente];
     let isPrerrequisitoCompleto = true;
     let tooltipMessage = ''; // Usaremos este nombre de variable consistentemente
-
     if (pasoConfig && cliente?.proceso) {
         const pasoSolicitud = cliente.proceso[pasoConfig.solicitudKey];
         if (!pasoSolicitud?.completado) {
@@ -62,7 +60,6 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
             tooltipMessage = `Primero debe completar el paso "${nombrePaso}" en la pestaña de Proceso.`;
         }
     }
-
     const botonDesembolsoDeshabilitado = creditoYaDesembolsado || subsidioYaDesembolsado || !isPrerrequisitoCompleto;
 
     return (
@@ -144,6 +141,26 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
                         </button>
                     </div>
                 </form>
+            )}
+
+            {abonos.length > 0 && (
+                <div className="mt-4 pt-4 border-t dark:border-gray-600">
+                    <button onClick={() => setHistorialVisible(!historialVisible)} className="flex justify-between items-center w-full text-sm font-semibold text-gray-600 dark:text-gray-300">
+                        <span className="flex items-center gap-2">
+                            <HistoryIcon size={16} />
+                            Ver Historial de Abonos ({abonos.length})
+                        </span>
+                        {historialVisible ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    </button>
+                    {historialVisible && (
+                        // --- 2. USAMOS NUESTRO NUEVO COMPONENTE AQUÍ ---
+                        <div className="mt-3 space-y-3 animate-fade-in pl-2">
+                            {abonos.map(abono => (
+                                <AbonoListItem key={abono.id} abono={abono} />
+                            ))}
+                        </div>
+                    )}
+                </div>
             )}
 
             <div className="mt-4 pt-4 border-t dark:border-gray-700 text-center">

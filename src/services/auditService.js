@@ -1,5 +1,5 @@
 import { db, auth } from '../firebase/config';
-import { collection, addDoc, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, serverTimestamp, query, where, orderBy, getDocs } from "firebase/firestore";
 import { toTitleCase } from '../utils/textFormatters';
 
 /**
@@ -34,4 +34,23 @@ export const createAuditLog = async (message, details = {}) => {
     } catch (error) {
         console.error("Error al crear el registro de auditoría:", error);
     }
+};
+
+export const getAuditLogsForCliente = async (clienteId) => {
+    // CORRECCIÓN: Usamos el nombre de tu colección: "audits"
+    const logsRef = collection(db, "audits");
+
+    const q = query(
+        logsRef,
+        where("details.clienteId", "==", clienteId),
+        orderBy("timestamp", "desc")
+    );
+
+    const querySnapshot = await getDocs(q);
+    const logs = [];
+    querySnapshot.forEach((doc) => {
+        logs.push({ id: doc.id, ...doc.data() });
+    });
+
+    return logs;
 };

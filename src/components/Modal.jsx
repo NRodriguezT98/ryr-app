@@ -20,7 +20,7 @@ const Modal = ({ isOpen, onClose, title, icon, children, footer, size = '2xl' })
             <Dialog as="div" className="relative z-50" onClose={onClose}>
                 {/* Backdrop */}
                 <Transition.Child as={Fragment} enter="ease-out duration-300" enterFrom="opacity-0" enterTo="opacity-100" leave="ease-in duration-200" leaveFrom="opacity-100" leaveTo="opacity-0">
-                    <div className="fixed inset-0 bg-black/60" />
+                    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
                 </Transition.Child>
 
                 <div className="fixed inset-0 overflow-y-auto">

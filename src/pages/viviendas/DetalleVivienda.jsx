@@ -86,6 +86,7 @@ const DetalleVivienda = () => {
                         <TabFinanciero
                             vivienda={vivienda}
                             cliente={cliente}
+                            proyecto={proyecto}
                             fuentes={fuentes}
                             historialAbonos={historialAbonos}
                             onAbonoRegistrado={recargarDatos}

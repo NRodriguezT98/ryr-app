@@ -77,10 +77,15 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
     const message = `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`;
     await createNotification('abono', message, `/viviendas/detalle/${abonoData.viviendaId}`);
 
+    const esCuotaInicial = abonoData.fuente === 'cuotaInicial';
+    const verbo = esCuotaInicial ? 'Abono' : 'Desembolso';
+    const mensajeAuditoria = `Registró ${verbo} de "${abonoData.metodoPago}" para ${clienteNombre} por valor de ${formatCurrency(abonoData.monto)}`;
+
     await createAuditLog(
-        `Registró desembolso de "${abonoData.metodoPago}" para ${clienteNombre}`,
+        mensajeAuditoria,
         {
-            action: 'REGISTER_DISBURSEMENT',
+            action: esCuotaInicial ? 'REGISTER_ABONO' : 'REGISTER_DISBURSEMENT',
+            clienteId: abonoData.clienteId, // <-- AÑADIMOS EL CAMPO CLAVE PARA EL HISTORIAL
             cliente: { id: abonoData.clienteId, nombre: clienteNombre },
             vivienda: { id: abonoData.viviendaId, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
             proyecto: { id: proyecto.id, nombre: proyecto.nombre },

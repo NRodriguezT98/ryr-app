@@ -9,8 +9,11 @@ import DetalleDatosClave from './DetalleDatosClave';
 import { NOMBRE_FUENTE_PAGO } from '../../../utils/procesoConfig';
 import { normalizeDate, formatDisplayDateWithTime } from '../../../utils/textFormatters';
 
-const DetalleDesembolso = ({ log }) => {
+const DetalleDesembolso = ({ log, action }) => {
     const details = log?.details;
+    const esAbono = action === 'REGISTER_ABONO';
+    const titulo = esAbono ? "Información del Abono" : "Información del Desembolso";
+
     if (!details) return <p className="text-sm text-gray-500">No hay detalles disponibles.</p>;
 
     const { cliente, vivienda, proyecto, abono } = details;
@@ -23,7 +26,7 @@ const DetalleDesembolso = ({ log }) => {
     const fechaHoraAccion = formatDisplayDateWithTime(normalizeDate(log.timestamp));
 
     const datosDelAbono = {
-        "N° Consecutivo del Abono": abono.consecutivo || 'N/A', // Se muestra el consecutivo
+        "N° de Consecutivo": abono.consecutivo || 'N/A', // Se muestra el consecutivo
         "Fuente": nombreFuente,
         "Monto Registrado": abono.monto,
         "Fecha del Pago": abono.fechaPago,
@@ -53,7 +56,7 @@ const DetalleDesembolso = ({ log }) => {
             />
             <DetalleDatosClave
                 icon={<Banknote size={16} />}
-                titulo="Información del Desembolso"
+                titulo={titulo}
                 datos={datosDelAbono}
             />
         </div>

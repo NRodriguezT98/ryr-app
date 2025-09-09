@@ -40,6 +40,7 @@ const GestionarAbonos = () => {
     // Hook centralizado para la lógica de REVERSIÓN
     const {
         isRevertirModalOpen,
+        isRevirtiendo,
         iniciarReversion,
         cerrarReversion,
         confirmarReversion
@@ -166,6 +167,7 @@ const GestionarAbonos = () => {
                     onConfirm={confirmarReversion}
                     titulo="¿Revertir Anulación?"
                     mensaje="Esto reactivará el abono y volverá a afectar los saldos de la vivienda. ¿Deseas continuar?"
+                    isSubmitting={isRevirtiendo}
                 />
             )}
 

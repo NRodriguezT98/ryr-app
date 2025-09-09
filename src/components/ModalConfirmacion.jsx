@@ -33,7 +33,7 @@ const ModalConfirmacion = ({
     mensaje,
     cambios = [],
     isSubmitting = false,
-    type = 'warning'
+    type = 'info'
 }) => {
     if (!isOpen) {
         return null;
@@ -65,28 +65,24 @@ const ModalConfirmacion = ({
             isOpen={isOpen}
             onClose={onClose}
             title={titulo}
-            size="lg"
+            size="md"
             footer={footerContent}
-            icon={
-                <div className={`flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full ${theme.iconBg}`}>
-                    <IconComponent className={`h-6 w-6 ${theme.iconColor}`} aria-hidden="true" />
-                </div>
-            }
+            icon={<IconComponent className={`h-6 w-6 ${theme.iconColor}`} aria-hidden="true" />}
         >
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 {hasCambios ? "Por favor, revisa y confirma los siguientes cambios:" : mensaje}
             </p>
 
             {hasCambios && (
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                <div className="mt-4 space-y-2 max-h-60 overflow-y-auto pr-2 text-left bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border dark:border-gray-200 dark:border-gray-700">
                     {cambios.map((cambio, index) => (
-                        <div key={index} className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border dark:border-gray-200 dark:border-gray-700">
-                            <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">{cambio.campo}</p>
-                            <div className="flex items-center justify-between">
+                        <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between animate-fade-in">
+                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{cambio.campo}</p>
+                            <div className="flex items-center gap-2 mt-1 sm:mt-0">
                                 <span className="text-sm text-gray-500 dark:text-gray-400 line-through truncate" title={String(cambio.anterior)}>
                                     {String(cambio.anterior) || 'Vacío'}
                                 </span>
-                                <ArrowRight className="w-4 h-4 text-gray-400 mx-3 flex-shrink-0" />
+                                <ArrowRight className="w-4 h-4 text-blue-400 flex-shrink-0" />
                                 <span className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate" title={String(cambio.actual)}>
                                     {String(cambio.actual) || 'Vacío'}
                                 </span>

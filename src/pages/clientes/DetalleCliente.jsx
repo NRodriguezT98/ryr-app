@@ -143,7 +143,7 @@ const DetalleCliente = () => {
                     )}
 
                     {/* --- 2. TARJETAS DE ESTADO (CON LA LÓGICA DE COMPLETADO) --- */}
-                    <div className={`p-4 rounded-lg flex items-center gap-3 ${estaAPazYSalvo ? 'bg-green-100 dark:bg-green-900/50' : statusInfo.bgColor}`}>
+                    <div className={`p-4 rounded-lg flex items-center gap-3 ${estaAPazYSalvo ? 'bg-green-100 dark:bg-green-900/50' : 'bg-gray-100 dark:bg-gray-700/50'}`}>
                         {estaAPazYSalvo ? <CheckCircle size={24} className="text-green-700 dark:text-green-300 flex-shrink-0" /> : statusInfo.icon}
                         <div>
                             <p className="text-sm font-medium opacity-80">Estado del Cliente</p>

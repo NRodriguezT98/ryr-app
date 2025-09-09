@@ -1,7 +1,7 @@
 import React, { Fragment, memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, Tag, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign, MapPin, Archive, ArchiveRestore } from 'lucide-react';
+import { MoreVertical, Hash, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign, MapPin, Archive, ArchiveRestore } from 'lucide-react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 import Card from '../../components/Card';
@@ -33,7 +33,7 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto, onArchive, o
             <div className={`flex items-start justify-between p-4 border-b dark:border-gray-700 rounded-t-2xl ${isDisponible ? 'bg-gray-50 dark:bg-gray-700/50' : (isPagada ? 'bg-green-50 dark:bg-green-900/50' : 'bg-blue-50 dark:bg-blue-900/50')}`}>
                 <div className="flex items-center gap-3 flex-grow min-w-0">
                     <Home className={`w-6 h-6 flex-shrink-0 ${isDisponible ? 'text-gray-500' : (isPagada ? 'text-green-700' : 'text-blue-700')}`} />
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap">
+                    <h3 className="text-base font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap">
                         {`Mz. ${manzana} - Casa ${numeroCasa}`}
                     </h3>
                 </div>
@@ -61,39 +61,51 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto, onArchive, o
             </div>
 
             <div className="p-5 space-y-4 flex-grow">
-                {/* 👇 3. Agregamos la nueva etiqueta del proyecto aquí */}
-                {nombreProyecto && (
-                    <div className="flex items-center gap-2 pb-3 border-b dark:border-gray-700">
-                        <MapPin size={16} className="text-gray-400" />
-                        <span className="text-sm font-semibold text-gray-600 dark:text-gray-300">{nombreProyecto}</span>
+                <div className='space-y-3 pb-3 border-b dark:border-gray-700'>
+                    {nombreProyecto && (
+                        <div className="flex items-start justify-between">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2"><MapPin size={14} /> Proyecto</span>
+                            <span className="text-sm font-bold text-gray-700 dark:text-gray-300 text-right">{nombreProyecto}</span>
+                        </div>
+                    )}
+                    <div className="flex items-start justify-between">
+                        {/* --- CAMBIO: Añadido ícono para Matrícula --- */}
+                        <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2"><Building size={14} /> Matrícula</span>
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{matricula}</span>
                     </div>
-                )}
-                <div className='space-y-3'>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {esEsquinera && (<span className="flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full"><Star size={14} />Esquinera</span>)}
-                        {esIrregular && (<span className="flex items-center gap-1.5 text-xs font-semibold text-red-800 bg-red-100 px-2 py-1 rounded-full"><Ruler size={14} />Irregular</span>)}
-                        {tieneDescuento && (<span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-800 bg-indigo-100 px-2 py-1 rounded-full"><Tag size={14} />Con Descuento</span>)}
+                    <div className="flex items-start justify-between">
+                        {/* --- CAMBIO: Añadido ícono para Nomenclatura --- */}
+                        <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2"><Hash size={14} /> Nomenclatura</span>
+                        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{nomenclatura}</span>
                     </div>
-                    <div className='text-sm text-gray-600 dark:text-gray-400 pt-3 border-t dark:border-gray-700'>
-                        <p><strong className='font-medium text-gray-800 dark:text-gray-200'>Matrícula:</strong> {matricula}</p>
-                        <p><strong className='font-medium text-gray-800 dark:text-gray-200'>Nomenclatura:</strong> {nomenclatura}</p>
-                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                    {esEsquinera && (<span className="flex items-center gap-1.5 text-xs font-semibold text-purple-800 bg-purple-100 px-2 py-1 rounded-full"><Star size={14} />Esquinera</span>)}
+                    {esIrregular && (<span className="flex items-center gap-1.5 text-xs font-semibold text-red-800 bg-red-100 px-2 py-1 rounded-full"><Ruler size={14} />Irregular</span>)}
+                    {tieneDescuento && (<span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-800 bg-indigo-100 px-2 py-1 rounded-full"><Tag size={14} />Con Descuento</span>)}
                 </div>
 
                 <div className="space-y-3 pt-4 border-t dark:border-gray-700">
                     <div className="flex justify-between items-center">
-                        <h4 className="font-semibold text-gray-700 dark:text-gray-300">Progreso de Pago</h4>
+                        <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Progreso de Pago</h4>
                         <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{`${Math.round(porcentajePagado)}%`}</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
                         <div className={`h-2.5 rounded-full ${isPagada ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${porcentajePagado}%` }}></div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">Abonado: <strong className="text-green-600 dark:text-green-400">{formatCurrency(totalAbonado)}</strong></span>
-                        <span className="text-gray-600 dark:text-gray-400">Valor: <strong className="text-gray-800 dark:text-gray-200">{formatCurrency(valorFinal)}</strong></span>
+                    <div className="flex justify-between items-baseline text-sm">
+                        <span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Abonado:</span>
+                            <strong className="font-semibold text-green-600 dark:text-green-400">{formatCurrency(totalAbonado)}</strong>
+                        </span>
+                        <span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Valor:</span>
+                            <strong className="font-semibold text-gray-800 dark:text-gray-200">{formatCurrency(valorFinal)}</strong>
+                        </span>
                     </div>
                     <div className={`flex justify-between text-sm font-bold pt-2 border-t dark:border-gray-700 mt-2 ${saldoPendiente > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                        <span>Saldo Pendiente:</span>
+                        <span className="font-semibold">Saldo Pendiente:</span>
                         <span>{formatCurrency(saldoPendiente)}</span>
                     </div>
                 </div>
@@ -110,6 +122,7 @@ const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto, onArchive, o
                         <p className='text-xs text-gray-500 dark:text-gray-400'>Vivienda sin asignar</p>
                     )}
                 </div>
+
 
                 {/* El menú de acciones ahora solo se renderiza si el usuario tiene permisos */}
                 {tieneAccionesDisponibles && (

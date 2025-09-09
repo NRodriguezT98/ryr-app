@@ -1,10 +1,8 @@
 import React, { Fragment, memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, User, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign, MapPin } from 'lucide-react';
-import { getInitials, formatID, formatCurrency } from '../../utils/textFormatters';
-import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic';
-import { Tooltip } from 'react-tooltip';
+import { MoreVertical, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign, MapPin } from 'lucide-react';
+import { getInitials, formatID, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 import Card from '../../components/Card';
 
@@ -12,40 +10,19 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
     const { can } = usePermissions();
 
     const {
-        id,
-        datosCliente,
-        vivienda,
-        clientStatus,
-        isPagada,
-        totalAbonado,
-        porcentajePagado,
-        puedeEditar,
-        puedeRenunciar,
-        status,
-        puedeSerEliminado,
-        tieneValorEscrituraDiferente
+        id, datosCliente, vivienda, clientStatus, isPagada,
+        totalAbonado, porcentajePagado, puedeEditar, puedeRenunciar,
+        status, puedeSerEliminado, tieneValorEscrituraDiferente
     } = cardData;
 
     const enRenunciaPendiente = status === 'enProcesoDeRenuncia';
 
-    // --- INICIO DE LA MODIFICACIÓN ---
-    // La lógica ahora es consciente del estado (status) del cliente.
     const tieneAccionesDisponibles = useMemo(() => {
-        if (status === 'activo') {
-            // Muestra el menú si se puede editar O si se puede renunciar (y las condiciones lo permiten)
-            return can('clientes', 'editar') || (vivienda && !isPagada && can('clientes', 'renunciar')) || can('clientes', 'verDetalle');
-        }
-        if (status === 'renunciado') {
-            // Muestra el menú si se puede iniciar un nuevo proceso O archivar.
-            return can('clientes', 'nuevoProceso') || can('clientes', 'archivar');
-        }
-        if (status === 'inactivo') {
-            // Muestra el menú si se puede restaurar O eliminar (y las condiciones lo permiten)
-            return can('clientes', 'restaurarCliente') || (puedeSerEliminado && can('clientes', 'eliminar'));
-        }
-        return false; // Para 'enProcesoDeRenuncia' u otros estados, no hay menú.
+        if (status === 'activo') return can('clientes', 'editar') || (vivienda && !isPagada && can('clientes', 'renunciar')) || can('clientes', 'verDetalle');
+        if (status === 'renunciado') return can('clientes', 'nuevoProceso') || can('clientes', 'archivar');
+        if (status === 'inactivo') return can('clientes', 'restaurarCliente') || (puedeSerEliminado && can('clientes', 'eliminar'));
+        return false;
     }, [status, can, vivienda, isPagada, puedeSerEliminado]);
-    // --- FIN DE LA MODIFICACIÓN ---
 
     return (
         <Card className={`relative ${isPagada ? 'border-green-400 dark:border-green-600' : ''}`}>
@@ -54,45 +31,42 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                     {getInitials(datosCliente?.nombres, datosCliente?.apellidos)}
                 </div>
                 <div className="overflow-hidden">
-                    <h3 className="font-bold text-lg text-gray-800 dark:text-gray-100 truncate" title={`${datosCliente?.nombres} ${datosCliente?.apellidos}`}>{`${datosCliente?.nombres} ${datosCliente?.apellidos}`}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate" title={datosCliente?.correo}>C.C. {formatID(datosCliente?.cedula)}</p>
+                    <h3 className="font-bold text-base text-gray-800 dark:text-gray-100 truncate" title={toTitleCase(`${datosCliente?.nombres} ${datosCliente?.apellidos}`)}>
+                        {toTitleCase(`${datosCliente?.nombres} ${datosCliente?.apellidos}`)}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate" title={datosCliente?.correo}>
+                        C.C. {formatID(datosCliente?.cedula)}
+                    </p>
                 </div>
             </div>
             <div className="p-5 space-y-4 text-sm flex-grow">
                 <div className="space-y-2">
-                    <p className="flex items-center gap-3 font-semibold">
-                        <Home size={16} className={vivienda ? 'text-gray-500 dark:text-gray-400' : 'text-gray-400'} />
+                    <div className="flex items-start gap-3">
+                        <Home size={16} className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
                         {vivienda ? (
-                            <span className="flex items-center text-gray-600 dark:text-gray-300">
-                                {status === 'enProcesoDeRenuncia' ? 'Renunció a la vivienda:' : 'Vivienda:'}
-                                <Link to={`/viviendas/detalle/${vivienda.id}`} className="font-bold text-blue-600 dark:text-blue-400 hover:underline ml-1">
+                            <div className="flex items-center">
+                                <span className="text-xs text-gray-500 dark:text-gray-400 mr-1.5">{status === 'enProcesoDeRenuncia' ? 'Renunció a:' : 'Vivienda:'}</span>
+                                <Link to={`/viviendas/detalle/${vivienda.id}`} className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">
                                     {`Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
                                 </Link>
-
-                                {/* --- INICIO DE LA CORRECCIÓN --- */}
                                 {tieneValorEscrituraDiferente && (
-                                    <span
-                                        className="ml-2 bg-purple-100 dark:bg-green-900/50 p-1 rounded-full"
-                                        data-tooltip-id="app-tooltip"
-                                        data-tooltip-content="Este cliente tiene un valor de vivienda diferente en escritura al valor comercial."
-                                    >
+                                    <span className="ml-2 bg-purple-100 dark:bg-green-900/50 p-1 rounded-full" data-tooltip-id="app-tooltip" data-tooltip-content="Este cliente tiene un valor de vivienda diferente en escritura al valor comercial.">
                                         <DollarSign className="w-4 h-4 text-purple-600 dark:text-green-400" />
                                     </span>
                                 )}
-                            </span>
+                            </div>
                         ) : (
-                            <span className="text-gray-500 dark:text-gray-400">Sin vivienda asignada</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Sin vivienda asignada</span>
                         )}
-                    </p>
-                    {/* Nueva sección para el proyecto, solo se muestra si existe */}
+                    </div>
                     {nombreProyecto && (
-                        <p className="flex items-center gap-3">
-                            <MapPin size={16} className="text-gray-500 dark:text-gray-400" />
-                            <span className="text-gray-600 dark:text-gray-300 font-semibold">
-                                Proyecto:
-                                <span className="font-bold ml-1">{nombreProyecto}</span>
-                            </span>
-                        </p>
+                        <div className="flex items-start gap-3">
+                            <MapPin size={16} className="text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 mr-1.5">Proyecto:</span>
+                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">{nombreProyecto}</span>
+                            </div>
+                        </div>
                     )}
                 </div>
 
@@ -104,15 +78,21 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                 ) : vivienda && (
                     <div className="space-y-3 pt-4 border-t dark:border-gray-700">
                         <div className="flex justify-between items-center">
-                            <h4 className="font-semibold text-gray-700 dark:text-gray-300">Progreso de Pago</h4>
+                            <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Progreso de Pago</h4>
                             <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{`${Math.round(porcentajePagado)}%`}</span>
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
                             <div className={`h-2.5 rounded-full ${isPagada ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${porcentajePagado}%` }}></div>
                         </div>
-                        <div className="flex justify-between text-sm pt-1">
-                            <span className="text-gray-600 dark:text-gray-400">Abonado: <strong className="text-green-600 dark:text-green-400">{formatCurrency(totalAbonado)}</strong></span>
-                            <span className="text-gray-600 dark:text-gray-400">Saldo: <strong className={isPagada ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{formatCurrency(vivienda.saldoPendiente)}</strong></span>
+                        <div className="flex justify-between items-baseline text-sm pt-1">
+                            <span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Abonado:</span>
+                                <strong className="text-green-600 dark:text-green-400">{formatCurrency(totalAbonado)}</strong>
+                            </span>
+                            <span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 mr-1">Saldo:</span>
+                                <strong className={isPagada ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{formatCurrency(vivienda.saldoPendiente)}</strong>
+                            </span>
                         </div>
                     </div>
                 )}
