@@ -112,6 +112,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                     titulo="Confirmar Cambios de la Vivienda"
                     cambios={cambios}
                     isSubmitting={isSubmitting}
+                    size="2xl"
                 />
             )}
             <Tooltip

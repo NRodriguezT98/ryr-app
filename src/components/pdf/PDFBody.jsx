@@ -1,170 +1,82 @@
 import React from "react";
-import { Text, View, StyleSheet } from "@react-pdf/renderer";
-import { formatCurrency, toTitleCase, formatID } from "../../utils/textFormatters";
+import { Text, View } from "@react-pdf/renderer";
+import { formatCurrency, toTitleCase, formatID, formatDisplayDate } from "../../utils/textFormatters";
+import { styles } from './PDFStyles'; // Importamos los estilos centralizados
 
-// Table Header
-const TableHeader = () => (
-    <View style={styles.tableHeader} fixed>
-        <Text style={[styles.tableCell, { flex: 1.2 }]}>Fecha</Text>
-        <Text style={[styles.tableCell, { flex: 1.2 }]}>Fuente de pago</Text>
-        <Text style={[styles.tableCell, { flex: 1 }]}>Monto</Text>
-        <Text style={[styles.tableCell, { flex: 2 }]}>Observación</Text>
+const InfoRow = ({ label, value }) => (
+    <View style={styles.infoRow}>
+        <Text style={styles.infoLabel}>{label}:</Text>
+        <Text style={styles.infoValue}>{value}</Text>
     </View>
 );
 
-const styles = StyleSheet.create({
-    section: { marginBottom: 15 },
-    header: {
-        fontSize: 12,
-        fontWeight: "bold",
-        marginBottom: 6,
-        color: "#1f2937",
-        borderBottom: "2px solid #c62529",
-        paddingBottom: 4
-    },
-    row: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 3
-    },
-    label: { fontWeight: "bold", width: "45%" },
-    value: { width: "55%" },
-    tableHeader: {
-        backgroundColor: "#c62529",
-        color: "#ffffff",
-        padding: 6,
-        flexDirection: "row",
-        fontWeight: "bold",
-        marginBottom: 4
-    },
-    tableRow: {
-        flexDirection: "row",
-        borderBottom: "1px solid #c62529",
-        paddingVertical: 4
-    },
-    tableCell: {
-        flex: 1,
-        paddingHorizontal: 4
-    },
-    financialSummary: {
-        backgroundColor: "#f3f4f6",
-        padding: 10,
-        borderRadius: 6,
-        marginTop: 12
-    },
-    summaryItem: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        marginBottom: 6
-    },
-    greenText: {
-        color: "#16a34a",
-        fontWeight: "bold"
-    },
-    redText: {
-        color: "#dc2626",
-        fontWeight: "bold"
-    },
-    bold: {
-        fontWeight: "bold"
-    }
-});
-
-const PDFBody = ({ cliente, vivienda, historialAbonos }) => {
+const PDFBody = ({ cliente, vivienda, historialAbonos, proyecto }) => {
     const fullName = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
-
-    const totalAbonadoCalculado = (historialAbonos || []).reduce((sum, abono) => sum + abono.monto, 0);
-    const saldoPendienteCalculado = vivienda.valorFinal - totalAbonadoCalculado;
+    const totalAbonado = (historialAbonos || []).reduce((sum, abono) => sum + abono.monto, 0);
+    const saldoPendiente = vivienda.valorFinal - totalAbonado;
 
     return (
         <>
-            {/* Cliente */}
-            <View style={styles.section}>
-                <Text style={styles.header}>Información del Cliente</Text>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Nombre:</Text>
-                    <Text style={styles.value}>{fullName}</Text>
+            <View style={styles.twoColumn}>
+                <View style={styles.column}>
+                    <Text style={styles.sectionTitle}>Información del Cliente</Text>
+                    <InfoRow label="Nombre" value={fullName} />
+                    <InfoRow label="Cédula" value={formatID(cliente.datosCliente.cedula)} />
+                    <InfoRow label="Correo" value={cliente.datosCliente.correo} />
+                    <InfoRow label="Teléfono" value={cliente.datosCliente.telefono} />
                 </View>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Cédula:</Text>
-                    <Text style={styles.value}>{formatID(cliente.datosCliente.cedula)}</Text>
+                <View style={styles.column}>
+                    <Text style={styles.sectionTitle}>Información de la Vivienda</Text>
+                    <InfoRow label="Vivienda Asignada" value={`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`} />
+                    <InfoRow label="Proyecto" value={proyecto?.nombre || 'N/A'} />
+                    <InfoRow label="Nomenclatura" value={vivienda.nomenclatura} />
+                    <InfoRow label="Valor Base" value={formatCurrency(vivienda.valorBase)} />
+                    <InfoRow label="Gastos Notariales" value={formatCurrency(vivienda.gastosNotariales)} />
+                    <InfoRow label="Valor Total" value={formatCurrency(vivienda.valorFinal)} />
+                    {cliente.financiero?.usaValorEscrituraDiferente && cliente.financiero?.valorEscritura > 0 && (
+                        <InfoRow
+                            label="Valor en Escritura"
+                            value={`${formatCurrency(cliente.financiero.valorEscritura)} (Info.)`}
+                        />
+                    )}
                 </View>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Correo:</Text>
-                    <Text style={styles.value}>{cliente.datosCliente.correo}</Text>
-                </View>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Teléfono:</Text>
-                    <Text style={styles.value}>{cliente.datosCliente.telefono}</Text>
-                </View>
+                {/* --- FIN DE LA SOLUCIÓN --- */}
             </View>
 
-            {/* Vivienda */}
-            <View style={styles.section}>
-                <Text style={styles.header}>Información de la Vivienda</Text>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Vivienda Asignada:</Text>
-                    <Text style={[styles.value, styles.bold]}>Mz. {vivienda.manzana} - Casa {vivienda.numeroCasa}</Text>
+            <View style={styles.table} wrap={false}>
+                <Text style={styles.sectionTitle}>Historial de Abonos</Text>
+                <View style={styles.tableHeader} fixed>
+                    <Text style={[styles.tableCell, { flex: 1.2 }]}>Fecha</Text>
+                    <Text style={[styles.tableCell, { flex: 1.5 }]}>Fuente de pago</Text>
+                    <Text style={[styles.tableCell, { flex: 1.2, textAlign: 'right' }]}>Monto</Text>
+                    <Text style={[styles.tableCell, { flex: 2.5 }]}>Observación</Text>
                 </View>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Nomenclatura:</Text>
-                    <Text style={styles.value}>{vivienda.nomenclatura}</Text>
-                </View>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Valor Base Vivienda:</Text>
-                    <Text style={styles.value}>{formatCurrency(vivienda.valorBase)}</Text>
-                </View>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Gastos Notariales:</Text>
-                    <Text style={styles.value}>{formatCurrency(vivienda.gastosNotariales)}</Text>
-                </View>
-                <View style={styles.row}>
-                    <Text style={styles.label}>Valor Total Vivienda:</Text>
-                    <Text style={[styles.value, styles.bold]}>{formatCurrency(vivienda.valorFinal)}</Text>
-                </View>
-
-                {/* --- INICIO DE LA MODIFICACIÓN --- */}
-                {cliente.financiero?.usaValorEscrituraDiferente && cliente.financiero?.valorEscritura > 0 && (
-                    <View style={styles.row}>
-                        <Text style={styles.label}>Valor Registrado en Escritura:</Text>
-                        <Text style={styles.value}>{`${formatCurrency(cliente.financiero.valorEscritura)} (Informativo)`}</Text>
-                    </View>
-                )}
-                {/* --- FIN DE LA MODIFICACIÓN --- */}
-            </View>
-
-            {/* Historial de abonos */}
-            <View style={{ marginBottom: 15, breakInside: "avoid" }}>
-                <Text style={styles.header}>Historial de Abonos</Text>
-                <TableHeader />
                 {historialAbonos.length > 0 ? (
                     historialAbonos.map((abono, idx) => (
                         <View key={idx} style={styles.tableRow}>
-                            <Text style={[styles.tableCell, { flex: 1.2 }]}>{new Date(abono.fechaPago + "T00:00:00").toLocaleDateString("es-CO")}</Text>
-                            <Text style={[styles.tableCell, { flex: 1.2 }]}>{abono.metodoPago || "N/A"}</Text>
-                            <Text style={[styles.tableCell, { flex: 1 }]}>{formatCurrency(abono.monto)}</Text>
-                            <Text style={[styles.tableCell, { flex: 2 }]}>{abono.observacion || ""}</Text>
+                            <Text style={[styles.tableCell, { flex: 1.2 }]}>{formatDisplayDate(abono.fechaPago)}</Text>
+                            <Text style={[styles.tableCell, { flex: 1.5 }]}>{abono.metodoPago || "N/A"}</Text>
+                            <Text style={[styles.tableCell, { flex: 1.2, textAlign: 'right' }]}>{formatCurrency(abono.monto)}</Text>
+                            <Text style={[styles.tableCell, { flex: 2.5 }]}>{abono.observacion || ""}</Text>
                         </View>
                     ))
                 ) : (
-                    <Text style={{ marginTop: 5 }}>No hay abonos registrados.</Text>
+                    <Text style={{ padding: 10 }}>No hay abonos registrados.</Text>
                 )}
             </View>
 
-            {/* Resumen financiero */}
-            <View style={styles.financialSummary}>
-                <Text style={styles.header}>Resumen Financiero</Text>
-                <View style={styles.summaryItem}>
-                    <Text>Valor Total Vivienda:</Text>
-                    <Text style={styles.bold}>{formatCurrency(vivienda.valorFinal)}</Text>
+            <View style={styles.summaryContainer}>
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Valor Total Vivienda:</Text>
+                    <Text style={styles.summaryValue}>{formatCurrency(vivienda.valorFinal)}</Text>
                 </View>
-                <View style={styles.summaryItem}>
-                    <Text>Total Abonado a la fecha:</Text>
-                    <Text style={styles.greenText}>{formatCurrency(totalAbonadoCalculado)}</Text>
+                <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Total Abonado:</Text>
+                    <Text style={[styles.summaryValue, { color: '#16a34a' }]}>{formatCurrency(totalAbonado)}</Text>
                 </View>
-                <View style={styles.summaryItem}>
-                    <Text>Saldo Pendiente:</Text>
-                    <Text style={styles.redText}>{formatCurrency(saldoPendienteCalculado)}</Text>
+                <View style={[styles.summaryRow, { marginTop: 5, paddingTop: 5, borderTop: '1px solid #e5e7eb' }]}>
+                    <Text style={[styles.summaryLabel, styles.summaryTotal]}>Saldo Pendiente:</Text>
+                    <Text style={[styles.summaryValue, styles.summaryTotal]}>{formatCurrency(saldoPendiente)}</Text>
                 </View>
             </View>
         </>

@@ -130,6 +130,31 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
             urlCertificadoTradicion: 'Certificado de Tradición',
         };
 
+        const urlInicial = initialState.urlCertificadoTradicion;
+        const urlActual = formData.urlCertificadoTradicion;
+
+        if (urlInicial !== urlActual) {
+            let anterior = 'No había documento';
+            let actual = 'Documento eliminado';
+
+            if (urlInicial && urlActual) {
+                anterior = 'Documento existente';
+                actual = 'Documento reemplazado';
+            } else if (!urlInicial && urlActual) {
+                anterior = 'No había documento';
+                actual = 'Nuevo documento anexado';
+            } else if (urlInicial && !urlActual) {
+                anterior = 'Documento existente';
+                actual = 'Documento eliminado';
+            }
+
+            cambiosDetectados.push({
+                campo: fieldLabels.urlCertificadoTradicion,
+                anterior: anterior,
+                actual: actual,
+            });
+        }
+
         // --- Manejo especial para el Proyecto ---
         if (initialState.proyectoId !== formData.proyectoId) {
             const oldProyecto = proyectos.find(p => p.id === initialState.proyectoId);
@@ -138,15 +163,6 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
                 campo: fieldLabels.proyectoId,
                 anterior: oldProyecto?.nombre || 'Ninguno',
                 actual: newProyecto?.nombre || 'Ninguno',
-            });
-        }
-
-        // --- Manejo especial para el Certificado de Tradición ---
-        if (initialState.urlCertificadoTradicion !== formData.urlCertificadoTradicion) {
-            cambiosDetectados.push({
-                campo: fieldLabels.urlCertificadoTradicion,
-                anterior: initialState.urlCertificadoTradicion ? 'Documento Anexado' : 'No había documento',
-                actual: formData.urlCertificadoTradicion ? 'Documento Anexado' : 'Documento Eliminado',
             });
         }
 
@@ -180,18 +196,35 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
     }, [formData]);
 
     const handleNextStep = () => {
+        // --- INICIO DE LA SOLUCIÓN ---
+        // 1. Ejecutamos la validación completa para tener todos los posibles errores.
         const allErrors = validateVivienda(formData, todasLasViviendas, vivienda);
-        const stepFields = step === 1
-            ? ['manzana', 'numero', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente']
-            : ['matricula', 'nomenclatura', 'areaLote', 'areaConstruida'];
 
+        // 2. Definimos qué campos pertenecen a cada paso.
+        const step1Fields = ['proyectoId', 'manzana', 'numeroCasa', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente'];
+        const step2Fields = ['matricula', 'nomenclatura', 'areaLote', 'areaConstruida'];
+
+        // 3. Determinamos qué campos validar según el paso actual.
+        const fieldsToValidate = step === 1 ? step1Fields : step2Fields;
+
+        // 4. Filtramos los errores para quedarnos solo con los del paso actual.
         const stepErrors = {};
-        stepFields.forEach(field => { if (allErrors[field]) stepErrors[field] = allErrors[field]; });
+        fieldsToValidate.forEach(field => {
+            if (allErrors[field]) {
+                stepErrors[field] = allErrors[field];
+            }
+        });
 
+        // 5. Actualizamos el estado de errores con los del paso actual.
         setErrors(stepErrors);
+
+        // 6. Solo si no hay errores en este paso, avanzamos.
         if (Object.keys(stepErrors).length === 0) {
             setStep(s => s + 1);
+        } else {
+            toast.error("Por favor, corrige los errores antes de continuar.");
         }
+        // --- FIN DE LA SOLUCIÓN ---
     };
 
     const handlePrevStep = () => setStep(s => s - 1);

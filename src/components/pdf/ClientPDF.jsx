@@ -26,12 +26,17 @@ const styles = StyleSheet.create({
     }
 });
 
-const ClientPDF = ({ cliente, vivienda, historialAbonos }) => {
+const ClientPDF = ({ cliente, vivienda, historialAbonos, proyecto }) => {
     return (
         <Document>
             <Page size="A4" style={styles.page} wrap>
                 <PDFHeader />
-                <PDFBody cliente={cliente} vivienda={vivienda} historialAbonos={historialAbonos} />
+                <PDFBody
+                    cliente={cliente}
+                    vivienda={vivienda}
+                    historialAbonos={historialAbonos}
+                    proyecto={proyecto}
+                />
                 <PDFFooter />
                 <Text
                     style={styles.pagination}

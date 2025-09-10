@@ -1,37 +1,21 @@
-import React from "react";
-import { Image, StyleSheet, Text } from "@react-pdf/renderer";
-import logo from "../../assets/logoRyR.png";
+import React from 'react';
+import { View, Text, Image } from '@react-pdf/renderer';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import logo from '../../assets/logoRyR.png';
+import { styles } from './PDFStyles'; // Importamos los estilos centralizados
 
-const styles = StyleSheet.create({
-    logo: {
-        width: 150,
-        alignSelf: "center",
-        marginBottom: 10
-    },
-    title: {
-        fontSize: 16,
-        fontWeight: "bold",
-        textAlign: "center",
-        marginBottom: 10
-    },
-    dateText: {
-        textAlign: "center",
-        marginBottom: 20
-    }
-});
+const PDFHeader = () => {
+    const fechaEmision = format(new Date(), "d 'de' MMMM, yyyy 'a las' h:mm:ss a", { locale: es });
 
-// --- INICIO DE LA MODIFICACIÓN ---
-// El componente ahora acepta un 'title' como prop.
-const PDFHeader = ({ title = "Estado de Cuenta" }) => {
-    // --- FIN DE LA MODIFICACIÓN ---
-    const fechaActual = new Date().toLocaleDateString("es-CO");
     return (
-        <>
-            <Image src={logo} style={styles.logo} fixed />
-            {/* Se usa el 'title' recibido */}
-            <Text style={styles.title} fixed>{title}</Text>
-            <Text style={styles.dateText} fixed>Fecha de emisión: {fechaActual}</Text>
-        </>
+        <View style={styles.header} fixed>
+            <Image src={logo} style={styles.logo} />
+            <View style={styles.headerInfo}>
+                <Text style={styles.reportTitle}>Estado de Cuenta</Text>
+                <Text style={styles.reportDate}>Emitido el: {fechaEmision}</Text>
+            </View>
+        </View>
     );
 };
 

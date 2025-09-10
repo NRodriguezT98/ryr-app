@@ -1,6 +1,6 @@
 // src/pages/viviendas/ListarViviendas.jsx
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useListarViviendas } from "../../hooks/viviendas/useListarViviendas.jsx";
 import ListPageLayout from '../../layout/ListPageLayout.jsx';
@@ -14,6 +14,7 @@ import Select from 'react-select';
 import Pagination from '../../components/Pagination.jsx';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 import { useData } from '../../context/DataContext.jsx';
+import ConfirmacionEliminarVivienda from "./components/ConfirmacionEliminarVivienda";
 
 const sortOptions = [
     { value: 'ubicacion', label: 'Ubicación (Mz/Casa)' },
@@ -91,8 +92,10 @@ const EmptyState = ({ filters, totalCount, canCreate }) => {
 const ListarViviendas = () => {
     const { can } = usePermissions();
     const { proyectos } = useData();
+    const [isConfirmDisabled, setIsConfirmDisabled] = useState(true);
     const {
         isLoading,
+        isSubmitting,
         viviendasVisibles,
         totalViviendasCount,
         todasLasViviendasFiltradas, // Obtenemos el conteo total
@@ -207,8 +210,32 @@ const ListarViviendas = () => {
                 />
             )}
 
-            {modals.viviendaAEliminar && (<ModalConfirmacion isOpen={!!modals.viviendaAEliminar} onClose={() => modals.setViviendaAEliminar(null)} onConfirm={handlers.confirmarEliminar} titulo="¿Eliminar Vivienda?" mensaje="¿Estás seguro? Tendrás 5 segundos para deshacer la acción." />)}
-            {modals.viviendaAEditar && (<EditarVivienda isOpen={!!modals.viviendaAEditar} onClose={() => modals.setViviendaAEditar(null)} onSave={handlers.handleGuardado} vivienda={modals.viviendaAEditar} todasLasViviendas={todasLasViviendasFiltradas} />)}
+            {modals.viviendaAEliminar && (
+                <ModalConfirmacion
+                    isOpen={!!modals.viviendaAEliminar}
+                    onClose={() => modals.setViviendaAEliminar(null)}
+                    onConfirm={handlers.confirmarEliminar}
+                    titulo="Confirmación de Eliminación Permanente"
+                    isSubmitting={isSubmitting}
+                    disabled={isConfirmDisabled}
+                    type="warning"
+                    size="xl"
+                    mensaje={
+                        <ConfirmacionEliminarVivienda
+                            datosParaEliminar={modals.viviendaAEliminar}
+                            onValidationChange={setIsConfirmDisabled} // El hijo le informa al padre si la validación pasa
+                        />
+                    }
+                />
+            )}
+            {modals.viviendaAEditar && (
+                <EditarVivienda
+                    isOpen={!!modals.viviendaAEditar}
+                    onClose={() => modals.setViviendaAEditar(null)}
+                    onSave={handlers.handleGuardado}
+                    vivienda={modals.viviendaAEditar}
+                    todasLasViviendas={todasLasViviendasFiltradas} />
+            )}
             {modals.viviendaAArchivar && (
                 <ModalConfirmacion
                     isOpen={!!modals.viviendaAArchivar}
@@ -216,6 +243,7 @@ const ListarViviendas = () => {
                     onConfirm={handlers.confirmarArchivado}
                     titulo="¿Archivar Vivienda?"
                     mensaje="Esta vivienda se ocultará de la vista principal. Podrás verla usando el filtro 'Archivadas'. ¿Estás seguro?"
+                    isSubmitting={isSubmitting}
                 />
             )}
             {modals.viviendaARestaurar && (
@@ -225,6 +253,7 @@ const ListarViviendas = () => {
                     onConfirm={handlers.confirmarRestauracion}
                     titulo="¿Restaurar Vivienda?"
                     mensaje="Esta vivienda volverá a estar disponible en la lista principal. ¿Estás seguro?"
+                    isSubmitting={isSubmitting}
                 />
             )}
         </ListPageLayout>

@@ -23,6 +23,7 @@ export const useListarViviendas = () => {
     const [viviendaAEliminar, setViviendaAEliminar] = useState(null);
     const [viviendaAArchivar, setViviendaAArchivar] = useState(null);
     const [viviendaARestaurar, setViviendaARestaurar] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const viviendasFiltradasYOrdenadas = useMemo(() => {
         // 1. Procesamos todas las viviendas para añadirles las propiedades calculadas
@@ -117,7 +118,20 @@ export const useListarViviendas = () => {
     }, [statusFilter, proyectoFilter, searchTerm, sortOrder]);
 
     const { hiddenItems: viviendasOcultas, initiateDelete } = useUndoableDelete(
-        async ({ vivienda, nombreProyecto }) => deleteViviendaPermanently(vivienda, nombreProyecto),
+        async ({ vivienda, nombreProyecto }) => {
+            // Modificamos la función que se pasa aquí para manejar el estado
+            setIsSubmitting(true);
+            try {
+                await deleteViviendaPermanently(vivienda, nombreProyecto);
+                recargarDatos();
+            } catch (error) {
+                // El toast de error ya lo maneja useUndoableDelete, pero podemos loggear
+                console.error("Error en borrado permanente:", error);
+                throw error; // Re-lanzamos el error para que el hook lo maneje
+            } finally {
+                setIsSubmitting(false);
+            }
+        },
         recargarDatos,
         "Vivienda"
     );
@@ -133,11 +147,11 @@ export const useListarViviendas = () => {
         setViviendaAEliminar({ vivienda, nombreProyecto });
     };
 
-    const confirmarEliminar = () => {
+    const confirmarEliminar = useCallback(() => {
         if (!viviendaAEliminar) return;
         initiateDelete(viviendaAEliminar);
         setViviendaAEliminar(null);
-    };
+    }, [viviendaAEliminar, initiateDelete]);
 
     const handleIniciarArchivado = useCallback((vivienda, nombreProyecto) => {
         setViviendaAArchivar({ vivienda, nombreProyecto });
@@ -145,6 +159,8 @@ export const useListarViviendas = () => {
 
     const confirmarArchivado = useCallback(async () => {
         if (!viviendaAArchivar) return;
+
+        setIsSubmitting(true);
         try {
             await archiveVivienda(viviendaAArchivar.vivienda, viviendaAArchivar.nombreProyecto);
             toast.success("Vivienda archivada con éxito.");
@@ -152,6 +168,7 @@ export const useListarViviendas = () => {
         } catch (error) {
             toast.error(error.message || "No se pudo archivar la vivienda.");
         } finally {
+            setIsSubmitting(false);
             setViviendaAArchivar(null);
         }
     }, [viviendaAArchivar, recargarDatos]);
@@ -162,6 +179,8 @@ export const useListarViviendas = () => {
 
     const confirmarRestauracion = useCallback(async () => {
         if (!viviendaARestaurar) return;
+
+        setIsSubmitting(true);
         try {
             await restoreVivienda(viviendaARestaurar.vivienda, viviendaARestaurar.nombreProyecto);
             toast.success("Vivienda restaurada con éxito.");
@@ -169,12 +188,14 @@ export const useListarViviendas = () => {
         } catch (error) {
             toast.error(error.message || "No se pudo restaurar la vivienda.");
         } finally {
+            setIsSubmitting(false);
             setViviendaARestaurar(null);
         }
     }, [viviendaARestaurar, recargarDatos]);
 
     return {
         isLoading,
+        isSubmitting,
         viviendasVisibles,
         todasLasViviendasFiltradas: viviendasFiltradasYOrdenadas,
         totalViviendasCount: viviendas.length,

@@ -17,7 +17,7 @@ const ICONS = {
     condonacion: <HandCoins className="w-8 h-8 text-indigo-600" />
 };
 
-const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, vivienda, cliente, proyecto, onAbonoRegistrado, onCondonarSaldo, onRegistrarDesembolso }) => {
+const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, vivienda, cliente, proyecto, onAbonoRegistrado, onCondonarSaldo, onRegistrarDesembolso, showHistory = true }) => {
     const [mostrandoFormulario, setMostrandoFormulario] = useState(false);
     const [historialVisible, setHistorialVisible] = useState(false);
 
@@ -143,7 +143,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
                 </form>
             )}
 
-            {abonos.length > 0 && (
+            {showHistory && abonos.length > 0 && (
                 <div className="mt-4 pt-4 border-t dark:border-gray-600">
                     <button onClick={() => setHistorialVisible(!historialVisible)} className="flex justify-between items-center w-full text-sm font-semibold text-gray-600 dark:text-gray-300">
                         <span className="flex items-center gap-2">
@@ -156,7 +156,13 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
                         // --- 2. USAMOS NUESTRO NUEVO COMPONENTE AQUÍ ---
                         <div className="mt-3 space-y-3 animate-fade-in pl-2">
                             {abonos.map(abono => (
-                                <AbonoListItem key={abono.id} abono={abono} />
+                                <AbonoListItem
+                                    key={abono.id}
+                                    abono={abono}
+                                    cliente={cliente}
+                                    vivienda={vivienda}
+                                    proyecto={proyecto}
+                                />
                             ))}
                         </div>
                     )}

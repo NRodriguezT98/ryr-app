@@ -38,17 +38,17 @@ const DetalleCliente = () => {
 
     const memoizedPDFLink = useMemo(() => {
         if (isLoading || !datosDetalle) return null;
-        const { cliente, vivienda, historialAbonos } = datosDetalle;
+        const { cliente, vivienda, historialAbonos, proyecto } = datosDetalle;
         const mostrarBotonPDF = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
         if (mostrarBotonPDF && cliente && vivienda && historialAbonos) {
             return (
                 <PDFDownloadLink
-                    document={<ClientPDF cliente={cliente} vivienda={vivienda} historialAbonos={historialAbonos} />}
+                    document={<ClientPDF cliente={cliente} vivienda={vivienda} historialAbonos={historialAbonos} proyecto={proyecto} />}
                     fileName={`Estado_Cuenta_${cliente.datosCliente.nombres.replace(/ /g, '_')}.pdf`}
-                    className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
+                    className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                 >
                     {({ loading }) => (
-                        <>{loading ? 'Generando...' : <><FileDown size={16} />PDF</>}</>
+                        <>{loading ? 'Generando...' : <><FileDown size={16} />Estado de Cuenta (PDF)</>}</>
                     )}
                 </PDFDownloadLink>
             );

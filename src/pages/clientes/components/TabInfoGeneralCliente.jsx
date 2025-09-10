@@ -27,7 +27,7 @@ const InfoRow = ({ icon, label, value, valueClassName = '' }) => (
     </div>
 );
 
-const FuenteFinancieraCard = ({ icon, titulo, banco, children }) => (
+const FuenteFinancieraCard = ({ icon, titulo, banco, children, montoAbonado, montoPactado }) => (
     <div className="flex items-center gap-3 py-1.5">
         <div className="flex-shrink-0 text-blue-500">{icon}</div>
         <div className="flex-grow">
@@ -135,19 +135,58 @@ const TabInfoGeneralCliente = ({ cliente, renuncia, vivienda, historialAbonos, p
                                 <div className="bg-green-500 h-2 rounded-full" style={{ width: `${progresoPago}%` }}></div>
                             </div>
                         </div>
+
                         <div className="divide-y dark:divide-gray-600 -my-3">
-                            {cliente.financiero.aplicaCuotaInicial && <FuenteFinancieraCard icon={<Banknote size={20} />} titulo="Cuota Inicial">
-                                <p className="font-bold text-gray-800 dark:text-gray-100">{formatCurrency((historialAbonos || []).filter(a => a.fuente === 'cuotaInicial').reduce((s, a) => s + a.monto, 0))}</p>
-                            </FuenteFinancieraCard>}
-                            {cliente.financiero.aplicaCredito && <FuenteFinancieraCard icon={<Landmark size={20} />} titulo="Crédito Hipotecario" banco={cliente.financiero.credito.banco}>
-                                <p className="font-bold text-gray-800 dark:text-gray-100">{formatCurrency((historialAbonos || []).filter(a => a.fuente === 'credito').reduce((s, a) => s + a.monto, 0))}</p>
-                            </FuenteFinancieraCard>}
-                            {cliente.financiero.aplicaSubsidioVivienda && <FuenteFinancieraCard icon={<Award size={20} />} titulo="Subsidio Mi Casa Ya">
-                                <p className="font-bold text-gray-800 dark:text-gray-100">{formatCurrency((historialAbonos || []).filter(a => a.fuente === 'subsidioVivienda').reduce((s, a) => s + a.monto, 0))}</p>
-                            </FuenteFinancieraCard>}
-                            {cliente.financiero.aplicaSubsidioCaja && <FuenteFinancieraCard icon={<Briefcase size={20} />} titulo="Subsidio Caja Comp.">
-                                <p className="font-bold text-gray-800 dark:text-gray-100">{formatCurrency((historialAbonos || []).filter(a => a.fuente === 'subsidioCaja').reduce((s, a) => s + a.monto, 0))}</p>
-                            </FuenteFinancieraCard>}
+                            {cliente.financiero.aplicaCuotaInicial && (
+                                <FuenteFinancieraCard icon={<Banknote size={20} />} titulo="Cuota Inicial">
+                                    <p className="text-sm">
+                                        <span className="font-bold text-green-600 dark:text-green-400">
+                                            {formatCurrency((historialAbonos || []).filter(a => a.fuente === 'cuotaInicial').reduce((s, a) => s + a.monto, 0))}
+                                        </span>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                            {' / ' + formatCurrency(cliente.financiero.cuotaInicial.monto)}
+                                        </span>
+                                    </p>
+                                </FuenteFinancieraCard>
+                            )}
+                            {cliente.financiero.aplicaCredito && (
+                                <FuenteFinancieraCard icon={<Landmark size={20} />} titulo="Crédito Hipotecario" banco={cliente.financiero.credito.banco}>
+                                    <p className="text-sm">
+                                        <span className="font-bold text-green-600 dark:text-green-400">
+                                            {formatCurrency((historialAbonos || []).filter(a => a.fuente === 'credito').reduce((s, a) => s + a.monto, 0))}
+                                        </span>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                            {' / ' + formatCurrency(cliente.financiero.credito.monto)}
+                                        </span>
+                                    </p>
+                                </FuenteFinancieraCard>
+                            )}
+                            {/* --- CÓDIGO AÑADIDO --- */}
+                            {cliente.financiero.aplicaSubsidioVivienda && (
+                                <FuenteFinancieraCard icon={<Award size={20} />} titulo="Subsidio Mi Casa Ya">
+                                    <p className="text-sm">
+                                        <span className="font-bold text-green-600 dark:text-green-400">
+                                            {formatCurrency((historialAbonos || []).filter(a => a.fuente === 'subsidioVivienda').reduce((s, a) => s + a.monto, 0))}
+                                        </span>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                            {' / ' + formatCurrency(cliente.financiero.subsidioVivienda.monto)}
+                                        </span>
+                                    </p>
+                                </FuenteFinancieraCard>
+                            )}
+                            {cliente.financiero.aplicaSubsidioCaja && (
+                                <FuenteFinancieraCard icon={<Briefcase size={20} />} titulo="Subsidio Caja Comp.">
+                                    <p className="text-sm">
+                                        <span className="font-bold text-green-600 dark:text-green-400">
+                                            {formatCurrency((historialAbonos || []).filter(a => a.fuente === 'subsidioCaja').reduce((s, a) => s + a.monto, 0))}
+                                        </span>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                                            {' / ' + formatCurrency(cliente.financiero.subsidioCaja.monto)}
+                                        </span>
+                                    </p>
+                                </FuenteFinancieraCard>
+                            )}
+                            {/* --- FIN DEL CÓDIGO AÑADIDO --- */}
                         </div>
 
                         <div className="pt-3 mt-3 border-t border-dashed dark:border-gray-600 space-y-3">

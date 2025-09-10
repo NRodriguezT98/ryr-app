@@ -1,10 +1,18 @@
 // src/pages/abonos/components/AbonoListItem.jsx
 
 import React from 'react';
-import { formatCurrency, formatDisplayDate } from '../../utils/textFormatters';
-import { Calendar, FileText, Hash } from 'lucide-react';
+import { formatCurrency, formatDisplayDate, toTitleCase } from '../../utils/textFormatters';
+import { Calendar, FileText, Hash, User, Home, Building2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const AbonoListItem = ({ abono }) => {
+const InfoRow = ({ icon, children }) => (
+    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+        {icon}
+        <span className="truncate">{children}</span>
+    </div>
+);
+
+const AbonoListItem = ({ abono, cliente, vivienda, proyecto }) => {
     return (
         <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border dark:border-gray-600">
             <div className="flex justify-between items-start">
@@ -27,9 +35,23 @@ const AbonoListItem = ({ abono }) => {
                     Ver Soporte
                 </a>
             </div>
-            <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                <Calendar size={12} />
-                <span>Pagado el: {formatDisplayDate(abono.fechaPago)}</span>
+            <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-600 space-y-1.5">
+                <InfoRow icon={<Calendar size={12} />}>
+                    Pagado el: <span className="font-semibold text-gray-700 dark:text-gray-300">{formatDisplayDate(abono.fechaPago)}</span>
+                </InfoRow>
+                <InfoRow icon={<User size={12} />}>
+                    <Link to={`/clientes/detalle/${cliente.id}`} className="hover:underline font-semibold text-gray-700 dark:text-gray-300" title={toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`)}>
+                        {toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`)}
+                    </Link>
+                </InfoRow>
+                <InfoRow icon={<Home size={12} />}>
+                    <Link to={`/viviendas/detalle/${vivienda.id}`} className="hover:underline font-semibold text-gray-700 dark:text-gray-300">
+                        {`Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
+                    </Link>
+                </InfoRow>
+                <InfoRow icon={<Building2 size={12} />}>
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">{proyecto.nombre}</span>
+                </InfoRow>
             </div>
         </div>
     );

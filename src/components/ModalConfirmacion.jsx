@@ -33,7 +33,9 @@ const ModalConfirmacion = ({
     mensaje,
     cambios = [],
     isSubmitting = false,
-    type = 'info'
+    type = 'info',
+    size = 'lg',
+    disabled = false
 }) => {
     if (!isOpen) {
         return null;
@@ -52,6 +54,7 @@ const ModalConfirmacion = ({
                 variant={theme.buttonVariant}
                 onClick={onConfirm}
                 isLoading={isSubmitting}
+                disabled={disabled || isSubmitting}
                 loadingText="Procesando..."
                 className="w-auto px-6"
             >
@@ -65,32 +68,36 @@ const ModalConfirmacion = ({
             isOpen={isOpen}
             onClose={onClose}
             title={titulo}
-            size="md"
+            size={size}
             footer={footerContent}
             icon={<IconComponent className={`h-6 w-6 ${theme.iconColor}`} aria-hidden="true" />}
         >
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                {hasCambios ? "Por favor, revisa y confirma los siguientes cambios:" : mensaje}
-            </p>
-
-            {hasCambios && (
-                <div className="mt-4 space-y-2 max-h-60 overflow-y-auto pr-2 text-left bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border dark:border-gray-200 dark:border-gray-700">
-                    {cambios.map((cambio, index) => (
-                        <div key={index} className="flex flex-col sm:flex-row sm:items-center sm:justify-between animate-fade-in">
-                            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{cambio.campo}</p>
-                            <div className="flex items-center gap-2 mt-1 sm:mt-0">
-                                <span className="text-sm text-gray-500 dark:text-gray-400 line-through truncate" title={String(cambio.anterior)}>
-                                    {String(cambio.anterior) || 'Vacío'}
-                                </span>
-                                <ArrowRight className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                                <span className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate" title={String(cambio.actual)}>
-                                    {String(cambio.actual) || 'Vacío'}
-                                </span>
-                            </div>
-                        </div>
-                    ))}
+            <div className="text-left">
+                {/* Cambiamos la etiqueta <p> por <div> para permitir contenido complejo */}
+                <div className="text-base text-gray-600 dark:text-gray-300">
+                    {hasCambios ? <p>Por favor, revisa y confirma los siguientes cambios:</p> : mensaje}
                 </div>
-            )}
+
+                {hasCambios && (
+                    <div className="mt-4 space-y-3 max-h-72 overflow-y-auto pr-2 text-left bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border dark:border-gray-200 dark:border-gray-700">
+                        {cambios.map((cambio, index) => (
+                            <div key={index} className="p-2 border-b border-gray-200 dark:border-gray-600 last:border-b-0 animate-fade-in">
+                                <p className="text-sm font-bold text-gray-800 dark:text-gray-100">{cambio.campo}</p>
+                                <div className="mt-1 flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-red-600 dark:text-red-400">ANTES:</span>
+                                        <span className="text-sm text-gray-500 dark:text-gray-400 line-through">{String(cambio.anterior) || 'Vacío'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-green-600 dark:text-green-400">AHORA:</span>
+                                        <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{String(cambio.actual) || 'Vacío'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </Modal>
     );
 };

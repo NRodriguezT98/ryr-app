@@ -78,6 +78,19 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         };
     }, [selectedClienteId, clientes, viviendas, abonos, proyectos, isDataLoading]);
 
+    // Añadimos el cálculo para los abonos activos, que depende de los datos ya calculados
+    const abonosActivos = useMemo(() =>
+        (datosClienteSeleccionado?.data?.historial || []).filter(abono => abono.estadoProceso === 'activo'),
+        [datosClienteSeleccionado]
+    );
+
+    // Añadimos el cálculo del sumario, que depende de la lista de abonos activos
+    const sumarioAbonosActivos = useMemo(() => {
+        const totalAbonos = abonosActivos.length;
+        const sumaTotal = abonosActivos.reduce((sum, abono) => sum + abono.monto, 0);
+        return { totalAbonos, sumaTotal };
+    }, [abonosActivos]);
+
     const clientesParaLaLista = useMemo(() =>
         clientes.filter(c => c.vivienda && c.status === 'activo')
             .sort((a, b) => {
@@ -102,11 +115,12 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         selectedClienteId,
         setSelectedClienteId,
         datosClienteSeleccionado,
+        abonosActivos,
+        sumarioAbonosActivos,
         modals: {
             abonoAEditar, setAbonoAEditar,
             fuenteACondonar, setFuenteACondonar,
             desembolsoARegistrar, setDesembolsoARegistrar
-            // ✨ SE ELIMINÓ: abonoAAnular, setAbonoAAnular,
         },
         handlers: {
             recargarDatos,

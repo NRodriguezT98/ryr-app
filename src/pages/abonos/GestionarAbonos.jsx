@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { useGestionarAbonos } from '../../hooks/abonos/useGestionarAbonos';
 import FuenteDePagoCard from "./FuenteDePagoCard";
 import AbonoCard from "./AbonoCard";
-import { WalletCards } from "lucide-react";
+import { WalletCards, BarChart2 } from "lucide-react"
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import CondonarSaldoModal from '../viviendas/CondonarSaldoModal';
@@ -23,6 +23,8 @@ const GestionarAbonos = () => {
         clientesParaLaLista,
         selectedClienteId, setSelectedClienteId,
         datosClienteSeleccionado,
+        abonosActivos,
+        sumarioAbonosActivos,
         modals,
         handlers
     } = useGestionarAbonos(clienteId);
@@ -115,15 +117,27 @@ const GestionarAbonos = () => {
                                             onAbonoRegistrado={handlers.recargarDatos}
                                             onCondonarSaldo={() => modals.setFuenteACondonar({ ...fuente, saldoPendiente: fuente.montoPactado - fuente.abonos.reduce((sum, a) => sum + a.monto, 0), vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente })}
                                             onRegistrarDesembolso={() => modals.setDesembolsoARegistrar({ ...fuente, vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente, proyecto: datosClienteSeleccionado.data.proyecto })}
+                                            showHistory={false}
                                         />
                                     ))}
                                 </div>
 
                                 <div className="mt-12 pt-6 border-t dark:border-gray-700">
                                     <h3 className="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Historial de Abonos</h3>
-                                    {historialVisible.length > 0 ? (
+
+                                    {/* Mostramos el sumario */}
+                                    {abonosActivos.length > 0 && (
+                                        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 rounded-r-lg flex items-center gap-4">
+                                            <BarChart2 className="w-6 h-6 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                            <p className="text-sm text-blue-800 dark:text-blue-300">
+                                                Mostrando <span className="font-bold">{sumarioAbonosActivos.totalAbonos}</span> abono(s) que suman un total de <span className="font-bold">{formatCurrency(sumarioAbonosActivos.sumaTotal)}</span>.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {abonosActivos.length > 0 ? (
                                         <div className="space-y-4">
-                                            {historialVisible.map(abono => (
+                                            {abonosActivos.map(abono => (
                                                 <AbonoCard
                                                     key={abono.id}
                                                     abono={abono}
