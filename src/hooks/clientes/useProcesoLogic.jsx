@@ -219,6 +219,7 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
 
     const [procesoState, setProcesoState] = useState(cliente.proceso || {});
     const [initialProcesoState, setInitialProcesoState] = useState(cliente.proceso || {});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         setProcesoState(cliente.proceso || {});
@@ -434,6 +435,7 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
             toast.error(tooltipMessage);
             return;
         }
+        setIsSubmitting(true);
         try {
             // 1. Validación de Concurrencia (datos obsoletos)
             const procesoActualEnDB = await getClienteProceso(cliente.id);
@@ -442,6 +444,7 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
                     "⚠️ ¡Conflicto de datos! Alguien más ha guardado cambios. Por favor, recarga la página.",
                     { duration: 6000 }
                 );
+                setIsSubmitting(false);
                 return; // Detenemos el guardado
             }
 
@@ -513,6 +516,8 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
                 toast.error("No se pudo guardar los cambios en el proceso.");
             }
             console.error("Error al guardar proceso:", error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -530,6 +535,7 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
         justSaved,
         isSaveDisabled,
         tooltipMessage,
+        isSubmitting,
         hayCambiosSinGuardar,
         handlers: {
             handleUpdateEvidencia,

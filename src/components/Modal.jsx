@@ -3,16 +3,17 @@ import React, { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, icon, children, footer, size = '2xl' }) => {
+const Modal = ({ isOpen, onClose, title, icon, children, footer, size = 'md' }) => {
     const sizeClasses = {
-        sm: 'max-w-sm',
-        md: 'max-w-md',
-        lg: 'max-w-lg',
-        xl: 'max-w-xl',
+        'sm': 'max-w-sm',
+        'md': 'max-w-md',
+        'lg': 'max-w-lg',
+        'xl': 'max-w-xl',
         '2xl': 'max-w-2xl',
         '3xl': 'max-w-3xl',
         '4xl': 'max-w-4xl',
         '5xl': 'max-w-5xl',
+        'full': 'max-w-full w-full' // Para un modal que ocupe todo el ancho
     };
 
     return (

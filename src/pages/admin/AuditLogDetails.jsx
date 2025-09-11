@@ -19,6 +19,7 @@ const AuditLogDetails = ({ log }) => {
 
     // 2. El "Arquitecto" decide qué bloques específicos mostrar
     let contenidoEspecifico;
+    let modalSize = "md";
 
     switch (action) {
         case 'REGISTER_ABONO':
@@ -76,6 +77,12 @@ const AuditLogDetails = ({ log }) => {
         case 'UPDATE_PROCESO': {
             // Para una actualización de proceso, usamos nuestro nuevo componente especializado
             contenidoEspecifico = <ResumenCambiosProceso cambios={cambios} />;
+            break;
+        }
+
+        case 'EDIT_NOTE': {
+            contenidoEspecifico = <ResumenDeCambios titulo="Cambios en la Nota" cambios={cambios} />;
+            modalSize = "xl";
             break;
         }
 

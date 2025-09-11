@@ -4,7 +4,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import AuditLogDetails from './AuditLogDetails'; // La importación ya era correcta
 
-const ModalAuditDetails = ({ log, onClose }) => {
+const ModalAuditDetails = ({ log, onClose, size = '2xl' }) => {
     if (!log) return null;
 
     // --- INICIO DE LA SOLUCIÓN ---
@@ -17,7 +17,7 @@ const ModalAuditDetails = ({ log, onClose }) => {
     return (
         // Usamos nuestro componente Modal estandarizado para consistencia
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl flex flex-col m-4 max-h-[90vh]">
+            <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-${size} p-6 m-4`}>
                 <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
                     <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100">Detalles de la Acción</h3>
                     <button

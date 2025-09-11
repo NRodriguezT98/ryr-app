@@ -43,6 +43,25 @@ const AuditLogPage = () => {
 
     const [logSeleccionado, setLogSeleccionado] = useState(null);
 
+    // Añadimos un estado para el tamaño del modal
+    const [modalSize, setModalSize] = useState('2xl'); // Un tamaño por defecto
+
+    // Creamos un nuevo manejador para el clic
+    const handleVerDetalles = (log) => {
+        const action = log.details?.action;
+
+        // Decidimos el tamaño basado en la acción
+        if (action === 'EDIT_NOTE' || action === 'UPDATE_CLIENT' || action === 'CREATE_CLIENT') {
+            setModalSize('4xl'); // Tamaño grande para vistas con muchos datos
+        } else if (action === 'UPDATE_PROCESO') {
+            setModalSize('xl');
+        } else {
+            setModalSize('2xl'); // Tamaño estándar para el resto
+        }
+
+        setLogSeleccionado(log);
+    };
+
     return (
         <AnimatedPage>
             <div className="max-w-7xl mx-auto">
@@ -74,7 +93,7 @@ const AuditLogPage = () => {
                                 ) : (
                                     // 2. Renderizamos directamente los logs de la página actual que nos da el hook.
                                     currentLogs.map(log => (
-                                        <AuditLogRow key={log.id} log={log} onVerDetalles={setLogSeleccionado} />
+                                        <AuditLogRow key={log.id} log={log} onVerDetalles={handleVerDetalles} />
                                     ))
                                 )}
                             </tbody>
@@ -96,7 +115,11 @@ const AuditLogPage = () => {
 
             {/* 6. Renderizar el modal si hay un log seleccionado */}
             {logSeleccionado && (
-                <ModalAuditDetails log={logSeleccionado} onClose={() => setLogSeleccionado(null)} />
+                <ModalAuditDetails
+                    log={logSeleccionado}
+                    onClose={() => setLogSeleccionado(null)}
+                    size={modalSize}
+                />
             )}
         </AnimatedPage>
     );

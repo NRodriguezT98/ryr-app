@@ -1,5 +1,5 @@
 import { db } from '../firebase/config';
-import { collection, doc, updateDoc, deleteDoc, getDoc, writeBatch, setDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, doc, updateDoc, deleteDoc, getDoc, writeBatch, setDoc, query, where, getDocs, addDoc } from "firebase/firestore";
 import { toTitleCase, formatDisplayDate } from '../utils/textFormatters';
 import { PROCESO_CONFIG } from '../utils/procesoConfig.js';
 import { createAuditLog } from './auditService';
@@ -490,4 +490,59 @@ export const updateClienteProceso = async (clienteId, nuevoProceso, auditMessage
 
     // 2. Creamos el registro de auditoría detallado que construimos en el hook
     await createAuditLog(auditMessage, auditDetails);
+};
+
+export const addNotaToHistorial = async (clienteId, nota, userName) => {
+    if (!nota || !nota.trim()) {
+        throw new Error("La nota no puede estar vacía.");
+    }
+
+    // Obtenemos los datos del cliente para el mensaje de auditoría
+    const clienteRef = doc(db, "clientes", clienteId);
+    const clienteSnap = await getDoc(clienteRef);
+    const clienteNombre = clienteSnap.exists() ? toTitleCase(`${clienteSnap.data().datosCliente.nombres} ${clienteSnap.data().datosCliente.apellidos}`) : '';
+
+    // 1. Creamos un mensaje CORTO para el log general
+    const auditMessage = `Añadió una nota al historial del cliente ${clienteNombre}`;
+
+    // 2. Guardamos la NOTA COMPLETA dentro de los detalles
+    await createAuditLog(
+        auditMessage,
+        {
+            action: 'ADD_NOTE',
+            clienteId: clienteId,
+            clienteNombre: clienteNombre,
+            nota: nota, // <-- Aquí guardamos el contenido de la nota
+        }
+    );
+};
+
+export const updateNotaHistorial = async (notaOriginal, nuevoTexto, userName) => {
+    // La 'notaOriginal' es el objeto 'log' completo
+    const notaRef = doc(db, "audits", notaOriginal.id);
+
+    // 1. Actualizamos el mensaje de la nota original y añadimos la marca de edición
+    await updateDoc(notaRef, {
+        message: nuevoTexto,
+        editado: true,
+        fechaEdicion: new Date(),
+        editadoPor: userName
+    });
+
+    const clienteNombre = notaOriginal.details.clienteNombre || '[Cliente no encontrado]';
+
+    // Creamos el nuevo registro de auditoría para la acción de editar.
+    await createAuditLog(
+        `Editó una nota en el historial del cliente ${clienteNombre}`,
+        {
+            action: 'EDIT_NOTE',
+            clienteId: notaOriginal.details.clienteId,
+            notaId: notaOriginal.id,
+            cambios: [{
+                campo: "Contenido de la Nota",
+                anterior: notaOriginal.message,
+                actual: nuevoTexto
+            }]
+        }
+    );
 };

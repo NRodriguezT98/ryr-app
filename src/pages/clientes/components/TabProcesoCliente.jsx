@@ -11,6 +11,7 @@ import Timeline from './Timeline';
 import TimelineSkeleton from './TimelineSkeleton';
 import ModalMotivoReapertura from './ModalMotivoReapertura';
 import { usePermissions } from '../../../hooks/auth/usePermissions';
+import Button from '../../../components/Button';
 
 const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange }) => {
 
@@ -28,6 +29,7 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
     };
 
     const {
+        isSubmitting,
         isLoadingProceso,
         pasosRenderizables,
         progreso,
@@ -65,13 +67,14 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                 <h3 className="font-bold text-lg dark:text-gray-200">Línea de Tiempo del Proceso</h3>
                 {hayCambiosSinGuardar && (
                     <span data-tooltip-id="app-tooltip" data-tooltip-content={tooltipMessage}>
-                        <button
+                        <Button
                             onClick={handlers.handleSaveChanges}
                             disabled={isSaveDisabled}
-                            className="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            isLoading={isSubmitting}
+                            loadingText="Guardando Cambios..."
                         >
                             Guardar Cambios
-                        </button>
+                        </Button>
                     </span>
                 )}
             </div>
