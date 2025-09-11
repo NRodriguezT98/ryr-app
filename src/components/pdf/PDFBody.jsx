@@ -17,55 +17,56 @@ const PDFBody = ({ cliente, vivienda, historialAbonos, proyecto }) => {
 
     return (
         <>
-            <View style={styles.twoColumn}>
-                <View style={styles.column}>
-                    <Text style={styles.sectionTitle}>Información del Cliente</Text>
-                    <InfoRow label="Nombre" value={fullName} />
-                    <InfoRow label="Cédula" value={formatID(cliente.datosCliente.cedula)} />
-                    <InfoRow label="Correo" value={cliente.datosCliente.correo} />
-                    <InfoRow label="Teléfono" value={cliente.datosCliente.telefono} />
-                </View>
-                <View style={styles.column}>
-                    <Text style={styles.sectionTitle}>Información de la Vivienda</Text>
-                    <InfoRow label="Vivienda Asignada" value={`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`} />
-                    <InfoRow label="Proyecto" value={proyecto?.nombre || 'N/A'} />
-                    <InfoRow label="Nomenclatura" value={vivienda.nomenclatura} />
-                    <InfoRow label="Valor Base" value={formatCurrency(vivienda.valorBase)} />
-                    <InfoRow label="Gastos Notariales" value={formatCurrency(vivienda.gastosNotariales)} />
-                    <InfoRow label="Valor Total" value={formatCurrency(vivienda.valorFinal)} />
-                    {cliente.financiero?.usaValorEscrituraDiferente && cliente.financiero?.valorEscritura > 0 && (
-                        <InfoRow
-                            label="Valor en Escritura"
-                            value={`${formatCurrency(cliente.financiero.valorEscritura)} (Info.)`}
-                        />
-                    )}
-                </View>
-                {/* --- FIN DE LA SOLUCIÓN --- */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Información del Cliente</Text>
+                <InfoRow label="Nombre" value={fullName} />
+                <InfoRow label="Cédula" value={formatID(cliente.datosCliente.cedula)} />
+                <InfoRow label="Correo" value={cliente.datosCliente.correo} />
+                <InfoRow label="Teléfono" value={cliente.datosCliente.telefono} />
             </View>
 
-            <View style={styles.table} wrap={false}>
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Información de la Vivienda</Text>
+                <InfoRow label="Vivienda Asignada" value={`Mz. ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`} />
+                <InfoRow label="Proyecto" value={proyecto?.nombre || 'N/A'} />
+                <InfoRow label="Nomenclatura" value={vivienda.nomenclatura} />
+                <InfoRow label="Valor Base" value={formatCurrency(vivienda.valorBase)} />
+                <InfoRow label="Gastos Notariales" value={formatCurrency(vivienda.gastosNotariales)} />
+                <InfoRow label="Valor Total" value={formatCurrency(vivienda.valorFinal)} />
+                {cliente.financiero?.usaValorEscrituraDiferente && cliente.financiero?.valorEscritura > 0 && (
+                    <InfoRow
+                        label="Valor en Escritura"
+                        value={`${formatCurrency(cliente.financiero.valorEscritura)} (Info.)`}
+                    />
+                )}
+            </View>
+
+
+            {/* 2. La tabla de Historial de Abonos ahora va después. */}
+            <View style={styles.table}>
                 <Text style={styles.sectionTitle}>Historial de Abonos</Text>
                 <View style={styles.tableHeader} fixed>
-                    <Text style={[styles.tableCell, { flex: 1.2 }]}>Fecha</Text>
-                    <Text style={[styles.tableCell, { flex: 1.5 }]}>Fuente de pago</Text>
-                    <Text style={[styles.tableCell, { flex: 1.2, textAlign: 'right' }]}>Monto</Text>
-                    <Text style={[styles.tableCell, { flex: 2.5 }]}>Observación</Text>
+                    <Text style={[styles.tableCell, { flex: 1 }]}>N° Recibo</Text>
+                    <Text style={[styles.tableCell, { flex: 1.5 }]}>Fecha</Text>
+                    <Text style={[styles.tableCell, { flex: 2.5 }]}>Fuente de pago</Text>
+                    <Text style={[styles.tableCell, styles.textRight, { flex: 1.5 }]}>Monto</Text>
                 </View>
+
                 {historialAbonos.length > 0 ? (
                     historialAbonos.map((abono, idx) => (
-                        <View key={idx} style={styles.tableRow}>
-                            <Text style={[styles.tableCell, { flex: 1.2 }]}>{formatDisplayDate(abono.fechaPago)}</Text>
-                            <Text style={[styles.tableCell, { flex: 1.5 }]}>{abono.metodoPago || "N/A"}</Text>
-                            <Text style={[styles.tableCell, { flex: 1.2, textAlign: 'right' }]}>{formatCurrency(abono.monto)}</Text>
-                            <Text style={[styles.tableCell, { flex: 2.5 }]}>{abono.observacion || ""}</Text>
+                        <View key={idx} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : {}]}>
+                            <Text style={[styles.tableCell, { flex: 1 }]}>{String(abono.consecutivo).padStart(4, '0')}</Text>
+                            <Text style={[styles.tableCell, { flex: 1.5 }]}>{formatDisplayDate(abono.fechaPago)}</Text>
+                            <Text style={[styles.tableCell, { flex: 2.5 }]}>{abono.metodoPago || "N/A"}</Text>
+                            <Text style={[styles.tableCell, styles.textRight, { flex: 1.5 }]}>{formatCurrency(abono.monto)}</Text>
                         </View>
                     ))
                 ) : (
                     <Text style={{ padding: 10 }}>No hay abonos registrados.</Text>
                 )}
             </View>
-
-            <View style={styles.summaryContainer}>
+            <View style={styles.summaryContainer} wrap={false}>
+                <Text style={styles.sectionTitle}>Resumen Financiero</Text>
                 <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Valor Total Vivienda:</Text>
                     <Text style={styles.summaryValue}>{formatCurrency(vivienda.valorFinal)}</Text>

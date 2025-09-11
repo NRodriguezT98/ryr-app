@@ -10,16 +10,18 @@ const styles = StyleSheet.create({
     page: {
         fontFamily: "Helvetica",
         paddingTop: 40,
-        paddingBottom: 80,
+        // --- INICIO DE LA SOLUCIÓN ---
+        // Aumentamos el padding inferior para dejar espacio al footer
+        paddingBottom: 100, // <-- AUMENTAMOS ESTE VALOR (ej: de 80 a 100)
+        // --- FIN DE LA SOLUCIÓN ---
         paddingHorizontal: 40,
         fontSize: 10,
         lineHeight: 1.5,
         color: "#111827",
-        position: "relative"
     },
     pagination: {
         position: "absolute",
-        bottom: 30,
+        bottom: 30, // Este valor se mide desde el borde de la página
         right: 40,
         fontSize: 9,
         color: "#6b7280"
@@ -37,7 +39,10 @@ const ClientPDF = ({ cliente, vivienda, historialAbonos, proyecto }) => {
                     historialAbonos={historialAbonos}
                     proyecto={proyecto}
                 />
-                <PDFFooter />
+                <PDFFooter
+                    vivienda={vivienda}
+                    historialAbonos={historialAbonos}
+                />
                 <Text
                     style={styles.pagination}
                     render={({ pageNumber, totalPages }) =>

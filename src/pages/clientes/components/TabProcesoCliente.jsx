@@ -1,15 +1,14 @@
 // src/pages/clientes/components/TabProcesoCliente.jsx
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useProcesoLogic } from '../../../hooks/clientes/useProcesoLogic';
 import { useAuth } from '../../../context/AuthContext';
-import { updateCliente } from "../../../services/clienteService";
 import { Tooltip } from 'react-tooltip';
 import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import ModalEditarFechaProceso from './ModalEditarFechaProceso';
 import { PartyPopper, Unlock } from 'lucide-react';
 import ClienteEstadoView from './ClienteEstadoView';
 import Timeline from './Timeline';
+import TimelineSkeleton from './TimelineSkeleton';
 import ModalMotivoReapertura from './ModalMotivoReapertura';
 import { usePermissions } from '../../../hooks/auth/usePermissions';
 
@@ -18,19 +17,18 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
     const { userData } = useAuth();
     const { can } = usePermissions();
     const isReadOnly = !can('clientes', 'actualizarPasos');
+    const [isLoading, setIsLoading] = useState(true);
 
     if (cliente.status === 'renunciado' || cliente.status === 'inactivo' || cliente.status === 'enProcesoDeRenuncia') {
         return <ClienteEstadoView cliente={cliente} renuncia={renuncia} contexto="proceso" />;
     }
 
-    const handleSave = async (procesoConActividad, userName) => {
-        const clienteActualizado = { ...cliente, proceso: procesoConActividad };
-        const { vivienda, ...datosParaGuardar } = clienteActualizado;
-        await updateCliente(cliente.id, datosParaGuardar, cliente.viviendaId, { userName });
+    const handleSave = async () => {
         onDatosRecargados();
     };
 
     const {
+        isLoadingProceso,
         pasosRenderizables,
         progreso,
         hayPasoEnReapertura,
@@ -48,6 +46,12 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
     useEffect(() => {
         onHayCambiosChange(hayCambiosSinGuardar);
     }, [hayCambiosSinGuardar, onHayCambiosChange]);
+
+    useEffect(() => {
+        if (pasosRenderizables && pasosRenderizables.length > 0) {
+            setIsLoading(false);
+        }
+    }, [pasosRenderizables]);
 
     const pasoAReabrirInfo = reaperturaInfo ? pasosRenderizables.find(p => p.key === reaperturaInfo.key) : null;
     const nombrePasoAReabrir = pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '';
@@ -109,21 +113,23 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
             )}
 
             <div className="mt-6">
-                <Timeline
-                    pasos={pasosRenderizables}
-                    justSaved={justSaved}
-                    onUpdateEvidencia={handlers.handleUpdateEvidencia}
-                    onCompletarPaso={handlers.handleCompletarPaso}
-                    onIniciarReapertura={handlers.iniciarReapertura}
-                    onDescartarCambios={handlers.descartarCambiosEnPaso}
-                    onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
-                    clienteId={cliente.id}
-                    isReadOnly={isReadOnly}
-                />
+                {isLoadingProceso ? (
+                    <TimelineSkeleton />
+                ) : (
+                    <Timeline
+                        pasos={pasosRenderizables}
+                        justSaved={justSaved}
+                        onUpdateEvidencia={handlers.handleUpdateEvidencia}
+                        onCompletarPaso={handlers.handleCompletarPaso}
+                        onIniciarReapertura={handlers.iniciarReapertura}
+                        onDescartarCambios={handlers.descartarCambiosEnPaso}
+                        onIniciarEdicionFecha={handlers.iniciarEdicionFecha}
+                        clienteId={cliente.id}
+                        isReadOnly={isReadOnly}
+                    />
+                )}
             </div>
-            {/* 🔼 FIN DE LA CORRECCIÓN 🔼 */}
 
-            {/* ... Modales sin cambios ... */}
             <ModalMotivoReapertura isOpen={!!reaperturaInfo} onClose={handlers.cancelarReapertura} onConfirm={handlers.confirmarReapertura} titulo="Justificar Reapertura de Paso" nombrePaso={nombrePasoAReabrir} />
             <ModalConfirmacion isOpen={cierreAAnular} onClose={handlers.cancelarAnulacionCierre} onConfirm={handlers.confirmarAnulacionCierre} titulo="¿Anular Cierre de Proceso?" mensaje="Esta acción reabrirá únicamente el último paso ('Factura de Venta') para permitir correcciones." />
             <ModalEditarFechaProceso isOpen={!!pasoAEditarFecha} onClose={handlers.cancelarEdicionFecha} onConfirm={handlers.confirmarEdicionFecha} pasoInfo={pasoAEditarFecha ? { ...pasoAEditarFecha, ...pasosRenderizables.find(p => p.key === pasoAEditarFecha.key) } : null} />

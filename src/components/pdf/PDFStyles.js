@@ -16,6 +16,30 @@ export const styles = StyleSheet.create({
         color: "#374151",
     },
     // --- HEADER ---
+    headerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start', // Alinea los items al inicio
+        marginBottom: 25,
+        paddingBottom: 10,
+        borderBottom: '2px solid #c62529',
+    },
+    logo: {
+        width: 140, // Un poco más pequeño para dar espacio
+    },
+    headerTextContainer: {
+        textAlign: 'right', // Alinea el texto a la derecha
+    },
+    reportTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#111827',
+    },
+    reportDate: {
+        fontSize: 9,
+        color: '#6b7280',
+        marginTop: 4,
+    },
     header: {
         marginBottom: 20,
         flexDirection: 'row',
@@ -24,18 +48,6 @@ export const styles = StyleSheet.create({
     },
     headerInfo: {
         textAlign: 'right',
-    },
-    logo: {
-        width: 120,
-    },
-    reportTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#111827',
-    },
-    reportDate: {
-        fontSize: 9,
-        color: '#6b7280',
     },
     // --- BODY ---
     twoColumn: {
@@ -79,13 +91,14 @@ export const styles = StyleSheet.create({
         padding: 5,
         fontWeight: 'bold',
         fontSize: 9,
+        textAlign: 'center',
     },
     tableRow: {
         flexDirection: 'row',
         borderBottom: '1px solid #e5e7eb',
         padding: 5,
-        // Añadimos esto para que las filas impares tengan un fondo sutil
         backgroundColor: '#f9fafb',
+        textAlign: 'center',
     },
     // Estilo para filas pares, para crear el efecto de "cebra"
     tableRowEven: {
@@ -95,9 +108,6 @@ export const styles = StyleSheet.create({
         padding: 2, // Añadimos un poco de padding
     },
     // Nuevo estilo para alinear texto a la derecha
-    textRight: {
-        textAlign: 'right',
-    },
     // --- RESUMEN ---
     summaryContainer: {
         marginTop: 20,
@@ -126,14 +136,14 @@ export const styles = StyleSheet.create({
     // --- FOOTER ---
     footer: {
         position: 'absolute',
-        bottom: 0,
+        bottom: 20,
         left: 0,
         right: 0,
         width: '100%',
     },
     pagination: {
         position: "absolute",
-        bottom: 30,
+        bottom: 40,
         right: 35,
         fontSize: 8,
         color: "#6b7280"

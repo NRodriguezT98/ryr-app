@@ -6,6 +6,7 @@ import { User, Home, Building2, Banknote, DollarSign } from 'lucide-react';
 import DetalleSujeto from './audit-details/components/DetalleSujeto';
 import DetalleDatosClave from './audit-details/components/DetalleDatosClave';
 import ResumenDeCambios from './audit-details/components/ResumenDeCambios';
+import ResumenCambiosProceso from './audit-details/components/ResumenCambiosProceso';
 import { NOMBRE_FUENTE_PAGO } from '../../utils/procesoConfig';
 import { formatDisplayDateWithTime, normalizeDate, formatDisplayDate, formatCurrency } from '../../utils/textFormatters';
 
@@ -70,6 +71,11 @@ const AuditLogDetails = ({ log }) => {
                     <DetalleDatosClave icon={<DollarSign size={16} />} titulo="Información Financiera" datos={datosFinancieros} />
                 </>
             );
+            break;
+        }
+        case 'UPDATE_PROCESO': {
+            // Para una actualización de proceso, usamos nuestro nuevo componente especializado
+            contenidoEspecifico = <ResumenCambiosProceso cambios={cambios} />;
             break;
         }
 

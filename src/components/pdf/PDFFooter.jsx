@@ -1,18 +1,22 @@
+// src/components/pdf/PDFFooter.jsx (VERSIÓN REDISEÑADA)
 import React from "react";
-import { Image, StyleSheet } from "@react-pdf/renderer";
+import { Image, Text, View } from "@react-pdf/renderer";
 import pieDePagina from "../../assets/pieDePagina.png";
+import { styles } from "./PDFStyles"; // Importamos los estilos
+import { formatCurrency } from "../../utils/textFormatters";
 
-const styles = StyleSheet.create({
-    footerImage: {
-        position: "absolute",
-        bottom: 0,
-        left: 0,
-        width: "100%"
-    }
-});
+const PDFFooter = ({ vivienda, historialAbonos }) => {
+    // 1. Calculamos los totales aquí, igual que antes en el Body
+    const totalAbonado = (historialAbonos || []).reduce((sum, abono) => sum + abono.monto, 0);
+    const saldoPendiente = vivienda.valorFinal - totalAbonado;
 
-const PDFFooter = () => (
-    <Image src={pieDePagina} style={styles.footerImage} fixed />
-);
+    return (
+        // Usamos la prop 'fixed' para anclarlo al final de cada página
+        <View style={styles.footer} fixed>
+            {/* La imagen del pie de página se mantiene */}
+            <Image src={pieDePagina} style={{ width: '100%' }} />
+        </View>
+    );
+};
 
 export default PDFFooter;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
-import { generarActividadProceso, updateCliente, anularCierreProceso, getClienteProceso } from "../../services/clienteService";
+import { generarActividadProceso, updateClienteProceso, anularCierreProceso, getClienteProceso } from "../../services/clienteService";
 import { createNotification } from "../../services/notificationService";
 import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { useAuth } from '../../context/AuthContext';
@@ -213,22 +213,61 @@ const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationEr
     });
 };
 
-export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
+export const useProcesoLogic = (cliente, onSaveSuccess) => {
     const { userData } = useAuth();
     const userName = userData ? toTitleCase(`${userData.nombres} ${userData.apellidos}`) : 'Usuario Desconocido';
 
     const [procesoState, setProcesoState] = useState(cliente.proceso || {});
     const [initialProcesoState, setInitialProcesoState] = useState(cliente.proceso || {});
 
+    useEffect(() => {
+        setProcesoState(cliente.proceso || {});
+        setInitialProcesoState(cliente.proceso || {});
+    }, [cliente.id]);
+
     const [reaperturaInfo, setReaperturaInfo] = useState(null);
     const [pasoAEditarFecha, setPasoAEditarFecha] = useState(null);
     const [cierreAAnular, setCierreAAnular] = useState(false);
     const [justSaved, setJustSaved] = useState(false);
 
+    // 1. Añadimos estados internos para la carga y los datos procesados
+    const [isLoading, setIsLoading] = useState(true);
+    const [datosProcesados, setDatosProcesados] = useState({
+        pasosRenderizables: [],
+        progreso: { completados: 0, total: 0 },
+        hayPasoEnReapertura: false,
+        procesoCompletado: false,
+        validationErrors: {}
+    });
+
     useEffect(() => {
-        setProcesoState(cliente.proceso || {});
-        setInitialProcesoState(cliente.proceso || {});
-    }, [cliente.proceso]);
+        // 2. Realizamos el cálculo pesado DENTRO de un useEffect
+        const pasosAplicables = getPasosAplicables(cliente);
+        const errores = validarPasos(procesoState, pasosAplicables, cliente);
+        const resultado = calcularEstadoYDependencias(procesoState, pasosAplicables, errores, cliente);
+
+        const pasosCompletados = resultado.filter(p => p.data?.completado && !p.error).length;
+        const procesoEstaCompleto = pasosCompletados === resultado.length && resultado.length > 0;
+
+        const algunPasoEnReapertura = pasosAplicables.some(pasoConfig => {
+            const estadoInicial = initialProcesoState[pasoConfig.key];
+            const estadoActual = procesoState[pasoConfig.key];
+            return estadoInicial?.completado === true && estadoActual?.completado === false;
+        });
+
+        // 3. Actualizamos el estado con los datos ya procesados
+        setDatosProcesados({
+            pasosRenderizables: resultado,
+            validationErrors: errores,
+            progreso: { completados: pasosCompletados, total: resultado.length },
+            hayPasoEnReapertura: algunPasoEnReapertura,
+            procesoCompletado: procesoEstaCompleto,
+        });
+
+        setIsLoading(false); // 4. Marcamos la carga como finalizada
+
+    }, [cliente, procesoState, initialProcesoState]);
+
 
     const handleUpdateEvidencia = useCallback((pasoKey, evidenciaId, url) => {
         setProcesoState(prev => {
@@ -310,14 +349,14 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
         try {
             await anularCierreProceso(cliente.id);
             toast.success("¡Cierre anulado! El último paso ha sido reabierto.");
-            onDatosRecargados();
+            if (onSaveSuccess) onSaveSuccess();
         } catch (error) {
             console.error("Error al anular el cierre:", error);
             toast.error("No se pudo anular el cierre del proceso.");
         } finally {
             setCierreAAnular(false);
         }
-    }, [cliente.id, onDatosRecargados]);
+    }, [cliente.id, onSaveSuccess]);
 
     // 🔽 REEMPLAZA EL useMemo ANTIGUO CON ESTE 🔽
     const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura, procesoCompletado } = useMemo(() => {
@@ -413,10 +452,38 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
                 userName
             );
 
-            // 3. Guardamos la versión final y correcta
-            await onSave(procesoConActividad, userName);
+            const cambiosParaAuditoria = [];
+            PROCESO_CONFIG
+                .filter(p => p.aplicaA(cliente.financiero || {}))
+                .forEach(pasoConfig => {
+                    const key = pasoConfig.key;
+                    const estadoInicial = initialProcesoState[key] || { completado: false };
+                    const estadoActual = procesoState[key] || { completado: false };
 
-            // 4. Creamos notificaciones si se alcanzó un hito
+                    if (estadoInicial.completado !== estadoActual.completado) {
+                        const accion = estadoActual.completado ? 'completó' : 'reabrió';
+                        const nombrePaso = pasoConfig.label.substring(pasoConfig.label.indexOf('.') + 1).trim();
+                        cambiosParaAuditoria.push({
+                            paso: nombrePaso,
+                            accion: accion,
+                            fecha: estadoActual.fecha
+                        });
+                    }
+                });
+
+            // 2. Creamos un mensaje de auditoría CORTO y un objeto de detalles RICO
+            const clienteNombre = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
+            const auditMessage = `Actualizó el proceso del cliente ${clienteNombre}.`; // <-- MENSAJE CORTO
+
+            const auditDetails = {
+                action: 'UPDATE_PROCESO',
+                clienteId: cliente.id,
+                clienteNombre: clienteNombre,
+                cambios: cambiosParaAuditoria // <-- DETALLES COMPLETOS
+            };
+
+            await updateClienteProceso(cliente.id, procesoConActividad, auditMessage, auditDetails);
+
             PROCESO_CONFIG.forEach(paso => {
                 const estadoAnterior = initialProcesoState[paso.key];
                 const estadoNuevo = procesoConActividad[paso.key];
@@ -428,12 +495,15 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
 
             toast.success("Proceso del cliente actualizado con éxito.");
 
-            // 5. Sincronizamos ambos estados locales para evitar bugs visuales
-            setInitialProcesoState(procesoConActividad);
-            setProcesoState(procesoConActividad);
+            const procesoRefrescado = await getClienteProceso(cliente.id);
 
+            setInitialProcesoState(procesoRefrescado);
+            setProcesoState(procesoRefrescado);
             setJustSaved(true);
             setTimeout(() => setJustSaved(false), 2000);
+
+            // Llamamos a onDatosRecargados para refrescar la vista principal
+            if (onSaveSuccess) onSaveSuccess();
 
         } catch (error) {
             // Manejo de errores (ej. cliente no encontrado en la validación)
@@ -448,9 +518,12 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
 
 
     return {
-        pasosRenderizables,
-        progreso,
-        hayPasoEnReapertura,
+        isLoadingProceso: isLoading,
+        pasosRenderizables: datosProcesados.pasosRenderizables,
+        progreso: datosProcesados.progreso,
+        hayPasoEnReapertura: datosProcesados.hayPasoEnReapertura,
+        procesoCompletado: datosProcesados.procesoCompletado,
+        validationErrors: datosProcesados.validationErrors,
         reaperturaInfo,
         pasoAEditarFecha,
         cierreAAnular,
@@ -458,7 +531,6 @@ export const useProcesoLogic = (cliente, onSave, onDatosRecargados) => {
         isSaveDisabled,
         tooltipMessage,
         hayCambiosSinGuardar,
-        procesoCompletado,
         handlers: {
             handleUpdateEvidencia,
             handleCompletarPaso,

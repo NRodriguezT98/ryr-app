@@ -12,6 +12,7 @@ import TabHistorial from './components/TabHistorial';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import ClientPDF from '../../components/pdf/ClientPDF';
 import { usePermissions } from '../../hooks/auth/usePermissions';
+import Button from '../../components/Button';
 
 const TabButton = ({ activeTab, tabName, label, icon, onClick }) => {
     const isActive = activeTab === tabName;
@@ -30,31 +31,48 @@ const TabButton = ({ activeTab, tabName, label, icon, onClick }) => {
     );
 };
 
+const PDFGeneratorButton = ({ datosDetalle }) => {
+    // 1. Creamos un estado local para este botón
+    const [isTriggered, setIsTriggered] = useState(false);
+
+    if (!datosDetalle) return null;
+
+    const { cliente, vivienda, historialAbonos, proyecto } = datosDetalle;
+    const mostrarBotonPDF = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
+
+    if (!mostrarBotonPDF) return null;
+
+    // Si el usuario aún no ha hecho clic, mostramos el botón para iniciar
+    if (!isTriggered) {
+        return (
+            <Button variant="success" onClick={() => setIsTriggered(true)}>
+                <FileDown size={16} />
+                Generar Estado de Cuenta
+            </Button>
+        );
+    }
+    // Si el usuario ya hizo clic, renderizamos el componente de descarga
+    return (
+        <PDFDownloadLink
+            document={<ClientPDF cliente={cliente} vivienda={vivienda} historialAbonos={historialAbonos} proyecto={proyecto} />}
+            fileName={`Estado_Cuenta_${cliente.datosCliente.nombres.replace(/ /g, '_')}.pdf`}
+        >
+            {({ loading }) => (
+                <Button variant="success" disabled={loading} isLoading={loading} loadingText="Generando...">
+                    <FileDown size={16} />
+                    {loading ? 'Generando...' : 'Descargar Estado de Cuenta'}
+                </Button>
+            )}
+        </PDFDownloadLink>
+    );
+};
+
 const DetalleCliente = () => {
     const { can } = usePermissions();
     const { isLoading, data: datosDetalle, activeTab, setActiveTab, recargarDatos, navigate } = useDetalleCliente();
     const [procesoTieneCambios, setProcesoTieneCambios] = useState(false);
     const [navegacionBloqueada, setNavegacionBloqueada] = useState(null);
 
-    const memoizedPDFLink = useMemo(() => {
-        if (isLoading || !datosDetalle) return null;
-        const { cliente, vivienda, historialAbonos, proyecto } = datosDetalle;
-        const mostrarBotonPDF = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
-        if (mostrarBotonPDF && cliente && vivienda && historialAbonos) {
-            return (
-                <PDFDownloadLink
-                    document={<ClientPDF cliente={cliente} vivienda={vivienda} historialAbonos={historialAbonos} proyecto={proyecto} />}
-                    fileName={`Estado_Cuenta_${cliente.datosCliente.nombres.replace(/ /g, '_')}.pdf`}
-                    className="bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800 text-white dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                >
-                    {({ loading }) => (
-                        <>{loading ? 'Generando...' : <><FileDown size={16} />Estado de Cuenta (PDF)</>}</>
-                    )}
-                </PDFDownloadLink>
-            );
-        }
-        return null;
-    }, [isLoading, datosDetalle]);
 
     const blocker = useBlocker(({ currentLocation, nextLocation }) => procesoTieneCambios && currentLocation.pathname !== nextLocation.pathname);
 
@@ -122,7 +140,7 @@ const DetalleCliente = () => {
                         <button onClick={() => navigate('/clientes/listar')} className="bg-gray-200 dark:bg-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600">
                             <ArrowLeft size={16} /> Volver
                         </button>
-                        {memoizedPDFLink}
+                        <PDFGeneratorButton datosDetalle={datosDetalle} />
                     </div>
                 </div>
 

@@ -479,3 +479,15 @@ export const getClienteProceso = async (clienteId) => {
     // Devolvemos solo el objeto 'proceso' o un objeto vacío si no existe
     return clienteSnap.data().proceso || {};
 };
+
+export const updateClienteProceso = async (clienteId, nuevoProceso, auditMessage, auditDetails) => {
+    const clienteRef = doc(db, "clientes", String(clienteId));
+
+    // 1. Actualizamos solo el campo 'proceso' del cliente
+    await updateDoc(clienteRef, {
+        proceso: nuevoProceso
+    });
+
+    // 2. Creamos el registro de auditoría detallado que construimos en el hook
+    await createAuditLog(auditMessage, auditDetails);
+};
