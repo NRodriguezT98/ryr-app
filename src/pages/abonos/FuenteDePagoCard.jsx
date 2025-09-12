@@ -178,7 +178,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
                             onRegistrarDesembolso && (
                                 <div className="flex items-center gap-1"> {/* Un div para agrupar botón y tooltip */}
                                     <button
-                                        onClick={onRegistrarDesembolso}
+                                        onClick={() => onRegistrarDesembolso({ titulo, fuente, montoPactado, abonos, vivienda, cliente, proyecto })}
                                         disabled={botonDesembolsoDeshabilitado}
                                         className="text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed disabled:opacity-50 flex items-center gap-2"
                                     >

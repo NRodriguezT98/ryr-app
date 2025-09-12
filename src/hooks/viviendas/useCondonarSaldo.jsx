@@ -1,14 +1,14 @@
+// src/hooks/viviendas/useCondonarSaldo.jsx (VERSIÓN FINAL)
 import { useMemo } from 'react';
 import { useForm } from '../useForm';
 import toast from 'react-hot-toast';
-// --- INICIO DE LA CORRECCIÓN ---
-import { addAbonoAndUpdateProceso } from "../../services/abonoService";
-// --- FIN DE LA CORRECCIÓN ---
+import { condonarSaldo } from "../../services/abonoService";
+import { useAuth } from '../../context/AuthContext';
 import { getTodayString, parseDateAsUTC, formatDisplayDate } from '../../utils/textFormatters';
-import { useData } from '../../context/DataContext';
 
 export const useCondonarSaldo = (fuenteData, onSave, onClose) => {
-    const { abonos } = useData();
+    const { user } = useAuth();
+    const userName = user?.displayName || 'Sistema';
 
     const initialState = useMemo(() => ({
         motivo: '',
@@ -33,8 +33,8 @@ export const useCondonarSaldo = (fuenteData, onSave, onClose) => {
         initialState,
         validate: (data) => {
             const newErrors = {};
-            if (!data.motivo.trim()) {
-                newErrors.motivo = "El motivo de la condonación es obligatorio.";
+            if (!data.motivo.trim() || data.motivo.trim().length < 10) {
+                newErrors.motivo = "El motivo debe tener al menos 10 caracteres.";
             }
             if (!data.urlSoporte) {
                 newErrors.urlSoporte = "El soporte de aprobación es obligatorio.";
@@ -48,29 +48,25 @@ export const useCondonarSaldo = (fuenteData, onSave, onClose) => {
         },
         onSubmit: async (data) => {
             if (!fuenteData || fuenteData.saldoPendiente <= 0) {
-                toast.error("No hay saldo pendiente en esta fuente para condonar.");
+                toast.error("No hay saldo pendiente para condonar.");
                 return;
             }
 
-            const condonacionAbono = {
-                fechaPago: data.fechaCondonacion,
+            const datosCondonacion = {
+                vivienda: fuenteData.vivienda,
+                cliente: fuenteData.cliente,
+                proyecto: fuenteData.proyecto,
                 monto: fuenteData.saldoPendiente,
-                metodoPago: 'Condonación de Saldo',
-                fuente: fuenteData.fuente,
-                observacion: data.motivo.trim(),
-                urlComprobante: data.urlSoporte,
-                viviendaId: fuenteData.vivienda.id,
-                clienteId: fuenteData.cliente.id,
-                clienteNombre: `${fuenteData.cliente.datosCliente.nombres} ${fuenteData.cliente.datosCliente.apellidos}`.trim(),
-                estadoProceso: 'activo'
+                motivo: data.motivo.trim(),
+                fechaCondonacion: data.fechaCondonacion,
+                urlSoporte: data.urlSoporte,
+                fuenteOriginal: fuenteData.fuente,         // ej: 'cuotaInicial'
+                tituloFuenteOriginal: fuenteData.titulo // Guardamos el nombre legible de la fuente
             };
 
             try {
-                // --- INICIO DE LA CORRECCIÓN ---
-                // Se llama a la función con el nombre correcto 'addAbonoAndUpdateProceso'
-                await addAbonoAndUpdateProceso(condonacionAbono, fuenteData.cliente);
-                // --- FIN DE LA CORRECCIÓN ---
-                toast.success('Saldo condonado y registrado como abono con éxito.');
+                await condonarSaldo(datosCondonacion, userName);
+                toast.success('Saldo condonado con éxito.');
                 onSave();
                 onClose();
             } catch (error) {

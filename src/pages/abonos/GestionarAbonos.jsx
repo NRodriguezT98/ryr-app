@@ -115,7 +115,7 @@ const GestionarAbonos = () => {
                                             cliente={datosClienteSeleccionado.data.cliente}
                                             proyecto={datosClienteSeleccionado.data.proyecto}
                                             onAbonoRegistrado={handlers.recargarDatos}
-                                            onCondonarSaldo={() => modals.setFuenteACondonar({ ...fuente, saldoPendiente: fuente.montoPactado - fuente.abonos.reduce((sum, a) => sum + a.monto, 0), vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente })}
+                                            onCondonarSaldo={() => modals.setFuenteACondonar({ ...fuente, saldoPendiente: fuente.montoPactado - fuente.abonos.reduce((sum, a) => sum + a.monto, 0), vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente, proyecto: datosClienteSeleccionado.data.proyecto })}
                                             onRegistrarDesembolso={() => modals.setDesembolsoARegistrar({ ...fuente, vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente, proyecto: datosClienteSeleccionado.data.proyecto })}
                                             showHistory={false}
                                         />
@@ -187,7 +187,15 @@ const GestionarAbonos = () => {
 
             {modals.abonoAEditar && (<EditarAbonoModal isOpen={!!modals.abonoAEditar} onClose={() => modals.setAbonoAEditar(null)} onSave={handlers.handleGuardado} abonoAEditar={modals.abonoAEditar} />)}
             {modals.fuenteACondonar && (<CondonarSaldoModal isOpen={!!modals.fuenteACondonar} onClose={() => modals.setFuenteACondonar(null)} onSave={handlers.handleGuardado} fuenteData={modals.fuenteACondonar} />)}
-            {modals.desembolsoARegistrar && (<ModalRegistrarDesembolso isOpen={!!modals.desembolsoARegistracao} onClose={() => modals.setDesembolsoARegistrar(null)} onSave={handlers.handleGuardado} fuenteData={modals.desembolsoARegistrar} />)}
+            {modals.desembolsoARegistrar && (
+                <ModalRegistrarDesembolso
+                    // Corregimos el nombre de la variable aquí
+                    isOpen={!!modals.desembolsoARegistrar}
+                    onClose={() => modals.setDesembolsoARegistrar(null)}
+                    onSave={handlers.handleGuardado}
+                    fuenteData={modals.desembolsoARegistrar}
+                />
+            )}
         </AnimatedPage>
     );
 };

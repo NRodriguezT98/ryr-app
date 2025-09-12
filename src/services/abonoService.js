@@ -2,7 +2,7 @@
 import { db } from '../firebase/config';
 import { collection, addDoc, doc, updateDoc, runTransaction, getDoc, query, where, getDocs } from "firebase/firestore";
 import { formatCurrency, toTitleCase, formatDisplayDate } from '../utils/textFormatters';
-import { FUENTE_PROCESO_MAP } from '../utils/procesoConfig.js';
+import { FUENTE_PROCESO_MAP, PROCESO_CONFIG } from '../utils/procesoConfig.js';
 import { createAuditLog } from './auditService';
 import { createNotification } from './notificationService';
 
@@ -71,7 +71,8 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
         return {
             viviendaData: transViviendaData,
             clienteNombre: toTitleCase(`${transClienteData.datosCliente.nombres} ${transClienteData.datosCliente.apellidos}`),
-            consecutivo: nuevoConsecutivo
+            consecutivo: nuevoConsecutivo,
+            pasoCompletadoNombre: nombrePasoCompletado
         };
     });
     const message = `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`;
@@ -81,11 +82,13 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
     const verbo = esCuotaInicial ? 'Abono' : 'Desembolso';
     const mensajeAuditoria = `Registró ${verbo} de "${abonoData.metodoPago}" para ${clienteNombre} por valor de ${formatCurrency(abonoData.monto)}`;
 
+
     await createAuditLog(
         mensajeAuditoria,
         {
             action: esCuotaInicial ? 'REGISTER_ABONO' : 'REGISTER_DISBURSEMENT',
-            clienteId: abonoData.clienteId, // <-- AÑADIMOS EL CAMPO CLAVE PARA EL HISTORIAL
+            clienteId: abonoData.clienteId,
+            pasoCompletado: pasoCompletadoNombre,
             cliente: { id: abonoData.clienteId, nombre: clienteNombre },
             vivienda: { id: abonoData.viviendaId, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
             proyecto: { id: proyecto.id, nombre: proyecto.nombre },
@@ -163,6 +166,7 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
     const clienteRef = doc(db, "clientes", String(abonoAAnular.clienteId));
 
     const motivoFinal = String(motivo || '');
+    let pasoReabierto = null;
 
     // Ejecutamos la transacción solo con las operaciones de escritura críticas
     await runTransaction(db, async (transaction) => {
@@ -206,6 +210,10 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
                 if (!nuevoProceso[pasoKey].actividad) nuevoProceso[pasoKey].actividad = [];
                 nuevoProceso[pasoKey].actividad.push(entradaHistorial);
                 transaction.update(clienteRef, { proceso: nuevoProceso });
+                const configDelPaso = PROCESO_CONFIG.find(p => p.key === pasoKey);
+                if (configDelPaso) {
+                    pasoReabierto = configDelPaso.label.substring(configDelPaso.label.indexOf('.') + 1).trim();
+                }
             }
         }
 
@@ -251,7 +259,9 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
         `Anuló un abono de ${datosParaAuditoria.abono.monto} para ${datosParaAuditoria.cliente.nombre}`,
         {
             action: 'VOID_ABONO',
-            ...datosParaAuditoria
+            clienteId: abonoAAnular.clienteId,
+            ...datosParaAuditoria,
+            pasoReabierto: pasoReabierto
         }
     );
 };
@@ -352,11 +362,18 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
 };
 
 export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData, proyecto, userName) => {
+
+    const contadorDoc = await transaction.get(contadorRef);
+    if (!contadorDoc.exists()) throw new Error("El contador de abonos no existe.");
+    const nuevoConsecutivo = contadorDoc.data().currentNumber + 1;
+
     const viviendaRef = doc(db, "viviendas", viviendaId);
     const clienteRef = doc(db, "clientes", clienteId);
     const abonoRef = doc(collection(db, "abonos"));
+    const contadorRef = doc(db, "counters", "abonos");
 
-    const { clienteNombre, viviendaData, montoADesembolsar } = await runTransaction(db, async (transaction) => {
+    const { clienteNombre, viviendaData, montoADesembolsar, pasoCompletadoNombre } = await runTransaction(db, async (transaction) => {
+        let nombrePasoCompletado = null;
         const clienteDoc = await transaction.get(clienteRef);
         const viviendaDoc = await transaction.get(viviendaRef);
         if (!clienteDoc.exists() || !viviendaDoc.exists()) throw new Error("El cliente o la vivienda no existen.");
@@ -365,23 +382,35 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
         const transViviendaData = viviendaDoc.data();
         const transClienteNombre = toTitleCase(`${transClienteData.datosCliente.nombres} ${transClienteData.datosCliente.apellidos}`);
 
+
         const pasoConfig = FUENTE_PROCESO_MAP['credito'];
+
         if (pasoConfig) {
             const pasoSolicitud = transClienteData.proceso?.[pasoConfig.solicitudKey];
             if (!pasoSolicitud?.completado) throw new Error("Debe completar la solicitud de desembolso del crédito.");
         }
 
         const montoCreditoPactado = transClienteData.financiero?.credito?.monto || 0;
-        const abonosPreviosSnapshot = await getDocs(query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("fuente", "==", "credito")));
+
+        // Validamos si el crédito ya ha sido completamente desembolsado teniendo en cuenta unicamente abonos activos
+        const abonosPreviosQuery = query(
+            collection(db, "abonos"),
+            where("clienteId", "==", clienteId),
+            where("fuente", "==", "credito"),
+            where("estadoProceso", "==", "activo") // <-- ¡LA LÍNEA CLAVE!
+        );
+        const abonosPreviosSnapshot = await getDocs(abonosPreviosQuery);
+
         const totalAbonadoCredito = abonosPreviosSnapshot.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
         const transMontoADesembolsar = montoCreditoPactado - totalAbonadoCredito;
         if (transMontoADesembolsar <= 0) throw new Error("El crédito para este cliente ya ha sido completamente desembolsado.");
 
-        const abonoParaGuardar = { ...desembolsoData, monto: transMontoADesembolsar, fuente: 'credito', metodoPago: 'Desembolso Bancario', clienteId, viviendaId, id: abonoRef.id, estadoProceso: 'activo', timestampCreacion: new Date() };
+        const abonoParaGuardar = { ...desembolsoData, consecutivo: nuevoConsecutivo, monto: transMontoADesembolsar, fuente: 'credito', metodoPago: 'Desembolso Bancario', clienteId, viviendaId, id: abonoRef.id, estadoProceso: 'activo', timestampCreacion: new Date() };
 
         const nuevoTotalAbonado = (transViviendaData.totalAbonado || 0) + transMontoADesembolsar;
         const nuevoSaldo = transViviendaData.valorFinal - nuevoTotalAbonado;
 
+        transaction.update(contadorRef, { currentNumber: nuevoConsecutivo });
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         transaction.set(abonoRef, abonoParaGuardar);
 
@@ -400,21 +429,99 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
             };
             nuevoProceso[desembolsoKey].actividad.push(entradaHistorial);
             transaction.update(clienteRef, { proceso: nuevoProceso });
+
+            const configDelPaso = PROCESO_CONFIG.find(p => p.key === desembolsoKey);
+            if (configDelPaso) {
+                nombrePasoCompletado = configDelPaso.label.substring(configDelPaso.label.indexOf('.') + 1).trim();
+            }
         }
-        return { clienteNombre: transClienteNombre, viviendaData: transViviendaData, montoADesembolsar: transMontoADesembolsar };
+        return { clienteNombre: transClienteNombre, viviendaData: transViviendaData, montoADesembolsar: transMontoADesembolsar, pasoCompletadoNombre: nombrePasoCompletado };
     });
 
     const message = `Se registró el desembolso del crédito hipotecario para ${clienteNombre}`;
     await createNotification('abono', message, `/clientes/detalle/${clienteId}`);
 
+    const mensajeAuditoria = `Registró desembolso de Crédito Hipotecario para ${clienteNombre} por valor de ${formatCurrency(montoADesembolsar)}`;
+
+
     await createAuditLog(
-        `Registró desembolso de Crédito Hipotecario para ${clienteNombre}`,
+        mensajeAuditoria,
         {
             action: 'REGISTER_CREDIT_DISBURSEMENT',
+            clienteId: clienteId,
+            pasoCompletado: pasoCompletadoNombre,
             cliente: { id: clienteId, nombre: clienteNombre },
             vivienda: { id: viviendaId, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
             proyecto: { id: proyecto.id, nombre: proyecto.nombre },
             abono: { monto: formatCurrency(montoADesembolsar), fechaPago: formatDisplayDate(desembolsoData.fechaPago), fuente: 'credito' }
+        }
+    );
+};
+
+export const condonarSaldo = async (datosCondonacion, userName) => {
+    const { vivienda, cliente, proyecto, monto, motivo, fechaCondonacion, urlSoporte, fuenteOriginal } = datosCondonacion;
+
+    const viviendaRef = doc(db, "viviendas", vivienda.id);
+    const abonoRef = doc(collection(db, "abonos"));
+    const contadorRef = doc(db, "counters", "abonos");
+
+    // runTransaction asegura que todas las operaciones se completen o ninguna lo haga
+    const { clienteNombre, consecutivo } = await runTransaction(db, async (transaction) => {
+        const contadorDoc = await transaction.get(contadorRef);
+        if (!contadorDoc.exists()) throw new Error("El contador de abonos no existe.");
+        const nuevoConsecutivo = contadorDoc.data().currentNumber + 1;
+
+        const viviendaDoc = await transaction.get(viviendaRef);
+        if (!viviendaDoc.exists()) throw new Error("La vivienda no existe.");
+        const viviendaData = viviendaDoc.data();
+
+        // --- INICIO DE LA LÓGICA CRÍTICA ---
+        // 1. Calculamos los nuevos totales para la vivienda
+        const nuevoTotalAbonado = (viviendaData.totalAbonado || 0) + monto;
+        const nuevoSaldo = viviendaData.valorFinal - nuevoTotalAbonado;
+
+        // 2. Preparamos el nuevo abono de tipo "condonación"
+        const abonoParaGuardar = {
+            id: abonoRef.id,
+            consecutivo: nuevoConsecutivo,
+            clienteId: cliente.id,
+            viviendaId: vivienda.id,
+            monto: monto,
+            fechaPago: fechaCondonacion,
+            metodoPago: 'Condonación de Saldo',
+            fuente: fuenteOriginal,
+            observacion: `Condonación de saldo. Motivo: ${motivo}`,
+            urlComprobante: urlSoporte,
+            estadoProceso: 'activo',
+            timestampCreacion: new Date()
+        };
+
+        // 3. Ejecutamos TODAS las escrituras dentro de la transacción
+        transaction.update(contadorRef, { currentNumber: nuevoConsecutivo });
+        // --- ESTA ES LA LÍNEA QUE FALTABA O ESTABA INCORRECTA ---
+        transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
+        transaction.set(abonoRef, abonoParaGuardar);
+        // --- FIN DE LA LÓGICA CRÍTICA ---
+
+        return {
+            clienteNombre: toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`),
+            consecutivo: nuevoConsecutivo
+        };
+    });
+    await createAuditLog(
+        `Condonó un saldo de ${formatCurrency(monto)} para el cliente ${clienteNombre} (fuente: ${fuenteOriginal})`,
+        {
+            action: 'CONDONAR_SALDO',
+            clienteId: cliente.id,
+            cliente: { id: cliente.id, nombre: clienteNombre },
+            vivienda: { id: vivienda.id, display: `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}` },
+            proyecto: { id: proyecto.id, nombre: proyecto.nombre },
+            abono: {
+                monto: formatCurrency(monto),
+                motivo: motivo,
+                fuenteOriginal: fuenteOriginal,
+                consecutivo: String(consecutivo).padStart(4, '0')
+            }
         }
     );
 };

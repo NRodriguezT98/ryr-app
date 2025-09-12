@@ -38,13 +38,30 @@ const getActionIcon = (action, type) => {
 const LogItem = ({ log, onEdit }) => {
     const { userData } = useAuth();
     const isNota = log.details?.action === 'ADD_NOTE';
+    const isAnulacion = log.details?.action === 'VOID_ABONO';
     const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
     const formattedDate = format(timestamp, "d 'de' MMMM, yyyy 'a las' h:mm a", { locale: es });
     const icon = getActionIcon(log.details?.action, log.type);
+    const puedeEditar = isNota && log.userName === `${userData.nombres} ${userData.apellidos}`;
+    const pasoCompletado = log.details?.pasoCompletado;
+    const pasoReabierto = log.details?.pasoReabierto;
     const cambiosProceso = log.details?.action === 'UPDATE_PROCESO' ? log.details.cambios : [];
+    // --- FIN DE LA SOLUCIÓN ---
+
+    let mainMessage = log.message;
+    let consequenceMessage = null;
+    const separator = ". Esto completó automáticamente el paso del proceso: ";
+
+    if (log.message.includes(separator)) {
+        const parts = log.message.split(separator);
+        mainMessage = parts[0];
+        consequenceMessage = parts[1];
+    }
 
     // Una nota solo la puede editar quien la creó.
-    const puedeEditar = isNota && log.userName === `${userData.nombres} ${userData.apellidos}`;
+
+
+
 
     return (
         <li className="mb-10 ms-6">
@@ -67,10 +84,28 @@ const LogItem = ({ log, onEdit }) => {
                             <Edit size={14} className="text-gray-500 dark:text-gray-400" />
                         </button>
                     )}
-                    {/* Si es una nota, mostramos el contenido de la nota (log.details.nota). Si no, el mensaje genérico. */}
-                    <p className="italic whitespace-pre-wrap pr-6">
-                        {log.message}
-                    </p>
+                    <p className="italic whitespace-pre-wrap pr-6">{log.message}</p>
+                    {/* Si hay un paso completado (por un desembolso), lo mostramos */}
+                    {pasoCompletado && (
+                        <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-500 flex items-center gap-2">
+                            <CheckCircle size={14} className="text-green-500 flex-shrink-0" />
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                                Se completó: <span className="font-bold">'{pasoCompletado}'</span>
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Si hay un paso reabierto (por una anulación), lo mostramos */}
+                    {pasoReabierto && (
+                        <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-500 flex items-center gap-2">
+                            <RefreshCw size={14} className="text-yellow-500 flex-shrink-0" />
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                                Consecuencia: Se reabrió el paso <span className="font-bold">'{pasoReabierto}'</span>
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Si es una actualización manual de proceso, mostramos los cambios */}
                     {cambiosProceso.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-500 space-y-1">
                             {cambiosProceso.map((cambio, index) => (

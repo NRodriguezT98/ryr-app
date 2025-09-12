@@ -72,6 +72,7 @@ export const useDetalleVivienda = () => {
     const handleGuardado = useCallback(() => {
         recargarDatos();
         setFuenteACondonar(null);
+        setDesembolsoACrear(null);
     }, [recargarDatos]);
 
     const handleRegistrarDesembolso = useCallback(() => {
