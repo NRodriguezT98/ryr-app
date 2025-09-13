@@ -246,93 +246,74 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
 
     PROCESO_CONFIG.forEach(pasoConfig => {
         const key = pasoConfig.key;
-        const pasoOriginal = procesoOriginal[key] || {};
-        const pasoActual = nuevoProcesoConActividad[key];
+        const pasoOriginalData = procesoOriginal[key] || {};
+        const pasoActualData = nuevoProcesoConActividad[key];
 
-        if (!pasoActual) return;
-        if (!pasoActual.actividad) {
-            pasoActual.actividad = pasoOriginal.actividad || [];
+        if (!pasoActualData) return;
+
+        // Aseguramos que el array de actividad exista
+        if (!pasoActualData.actividad) {
+            pasoActualData.actividad = pasoOriginalData.actividad || [];
         }
 
-        const crearEntrada = (mensaje) => ({
-            mensaje,
-            userName,
-            fecha: new Date()
-        });
+        const crearEntrada = (mensaje) => ({ mensaje, userName, fecha: new Date() });
 
-        // 1. Manejo del "Super-Caso": Reabrir, modificar y volver a completar
-        if (pasoOriginal.completado && pasoActual.completado) {
-            let accionDeFecha = null;
-            let accionesDeEvidencia = [];
+        const seCompletoEnEsteCambio = !pasoOriginalData.completado && pasoActualData.completado;
+        const fueReabiertoEnEsteCambio = pasoOriginalData.completado && !pasoActualData.completado;
 
-            if (pasoOriginal.fecha !== pasoActual.fecha) {
-                accionDeFecha = `modificó la fecha de completado a ${formatDisplayDate(pasoActual.fecha)}`;
-            }
-
-            pasoConfig.evidenciasRequeridas.forEach(ev => {
-                const idEvidencia = ev.id;
-                const urlOriginal = pasoOriginal.evidencias?.[idEvidencia]?.url;
-                const urlActual = pasoActual.evidencias?.[idEvidencia]?.url;
-                if (urlOriginal !== urlActual) {
-                    accionesDeEvidencia.push(urlActual ? `se reemplazó la evidencia '${ev.label}'` : `eliminó la evidencia '${ev.label}'`);
-                }
-            });
-
-            // Si hay un motivo de reapertura, o algún cambio, generamos un log unificado.
-            if (pasoActual.motivoReapertura || accionDeFecha || accionesDeEvidencia.length > 0) {
-                const partesDelMensaje = [];
-                if (accionesDeEvidencia.length > 0) {
-                    partesDelMensaje.push(accionesDeEvidencia.join(', '));
-                }
-                if (accionDeFecha) {
-                    partesDelMensaje.push(accionDeFecha);
-                }
-
-                let mensajeInicial = 'Se actualizó el paso:';
-                if (pasoActual.motivoReapertura) {
-                    mensajeInicial = `Se reabrió el paso por el motivo: "${pasoActual.motivoReapertura}". Posteriormente,`;
-                }
-
-                const mensajeCompleto = `${mensajeInicial} ${partesDelMensaje.join(' y ')}.`;
-                pasoActual.actividad.push(crearEntrada(mensajeCompleto.trim()));
-
-                // Solución Bug #1: Limpiamos la propiedad temporal para evitar el doble guardado.
-                delete pasoActual.motivoReapertura;
-                return;
-            }
-        }
-
-        // 2. Lógica para los demás casos (se mantiene igual)
-        let seCompletoEnEsteCambio = !pasoOriginal.completado && pasoActual.completado;
-        // ... (el resto de la función se mantiene exactamente igual que antes)
-
-        let evidenciasSubidasMsg = [];
-
+        let evidenciasCambiadas = [];
         pasoConfig.evidenciasRequeridas.forEach(ev => {
             const idEvidencia = ev.id;
-            const urlOriginal = pasoOriginal.evidencias?.[idEvidencia]?.url;
-            const urlActual = pasoActual.evidencias?.[idEvidencia]?.url;
-            if (urlActual && !urlOriginal) {
-                evidenciasSubidasMsg.push(`'${ev.label}'`);
+            const urlOriginal = pasoOriginalData.evidencias?.[idEvidencia]?.url;
+            const urlActual = pasoActualData.evidencias?.[idEvidencia]?.url;
+            if (urlActual !== urlOriginal) {
+                evidenciasCambiadas.push({
+                    label: ev.label,
+                    accion: urlActual ? (urlOriginal ? 'reemplazó' : 'subió') : 'eliminó'
+                });
             }
         });
 
+        // --- INICIO DE LA SOLUCIÓN ---
         if (seCompletoEnEsteCambio) {
-            let msg = `Paso completado con fecha ${formatDisplayDate(pasoActual.fecha)}.`;
-            if (evidenciasSubidasMsg.length > 0) {
-                msg = `Se subió la evidencia ${evidenciasSubidasMsg.join(', ')} y se completó el paso con fecha ${formatDisplayDate(pasoActual.fecha)}.`;
+            let mensajeInicial = '';
+            const partesDelMensaje = [];
+
+            // Verificamos si el paso tiene un motivo de reapertura reciente
+            if (pasoActualData.motivoUltimoCambio === 'Cierre anulado por administrador' || pasoActualData.motivoReapertura) {
+                const motivo = pasoActualData.motivoReapertura || "Anulación de cierre por administrador";
+                mensajeInicial = `Se reabrió el paso por el motivo: "${motivo}". Posteriormente, `;
             }
-            pasoActual.actividad.push(crearEntrada(msg));
-        } else if (evidenciasSubidasMsg.length > 0) {
-            pasoActual.actividad.push(crearEntrada(`Se subió la evidencia ${evidenciasSubidasMsg.join(', ')}.`));
-        } else if (pasoOriginal.completado && !pasoActual.completado) {
+
+            // Agregamos las acciones de evidencia si existen
+            if (evidenciasCambiadas.length > 0) {
+                const accionesEvidenciaTexto = evidenciasCambiadas.map(ev => `se ${ev.accion} la evidencia '${ev.label}'`).join(' y ');
+                partesDelMensaje.push(accionesEvidenciaTexto);
+            }
+
+            // Agregamos el mensaje de completado final
+            partesDelMensaje.push(`se completó el paso con fecha ${formatDisplayDate(pasoActualData.fecha)}`);
+
+            // Unimos todo para formar un mensaje narrativo
+            const mensajeCompleto = mensajeInicial + partesDelMensaje.join(' y ') + '.';
+            pasoActualData.actividad.push(crearEntrada(mensajeCompleto.charAt(0).toUpperCase() + mensajeCompleto.slice(1)));
+
+            // Limpiamos los motivos temporales para que no se repitan en futuros guardados
+            delete pasoActualData.motivoReapertura;
+            delete pasoActualData.motivoUltimoCambio;
+
+        } else if (fueReabiertoEnEsteCambio) {
             let mensaje = 'Paso reabierto.';
-            if (pasoActual.motivoReapertura) {
-                mensaje += ` Motivo: "${pasoActual.motivoReapertura}"`;
-                delete pasoActual.motivoReapertura; // Limpiamos también aquí por consistencia
+            if (pasoActualData.motivoReapertura) {
+                mensaje += ` Motivo: "${pasoActualData.motivoReapertura}"`;
+                delete pasoActualData.motivoReapertura;
             }
-            pasoActual.actividad.push(crearEntrada(mensaje));
+            pasoActualData.actividad.push(crearEntrada(mensaje));
+        } else if (evidenciasCambiadas.length > 0) {
+            const accionesEvidenciaTexto = evidenciasCambiadas.map(ev => `Se ${ev.accion} la evidencia '${ev.label}'`).join(', ');
+            pasoActualData.actividad.push(crearEntrada(accionesEvidenciaTexto + '.'));
         }
+        // --- FIN DE LA SOLUCIÓN ---
     });
 
     return nuevoProcesoConActividad;
@@ -437,36 +418,65 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
     return { renunciaId: renunciaIdParaNotificacion, clienteNombre };
 };
 
-export const anularCierreProceso = async (clienteId) => {
+export const anularCierreProceso = async (clienteId, userName) => {
     const clienteRef = doc(db, "clientes", clienteId);
+
+    const clienteDocInicial = await getDoc(clienteRef);
+    if (!clienteDocInicial.exists()) {
+        throw new Error("El cliente no existe.");
+    }
+    const clienteDataInicial = clienteDocInicial.data();
+    const clienteNombre = toTitleCase(`${clienteDataInicial.datosCliente.nombres} ${clienteDataInicial.datosCliente.apellidos}`);
 
     await runTransaction(db, async (transaction) => {
         const clienteDoc = await transaction.get(clienteRef);
-        if (!clienteDoc.exists()) {
-            throw new Error("El cliente no existe.");
-        }
-
         const clienteData = clienteDoc.data();
         const procesoActual = clienteData.proceso || {};
 
-        // Verificamos si el paso 'facturaVenta' existe y está completado
         if (procesoActual.facturaVenta && procesoActual.facturaVenta.completado) {
+            const pasoFacturaVenta = procesoActual.facturaVenta;
+
+            // --- INICIO DE LA SOLUCIÓN ---
+            // 1. Preparamos la nueva entrada para el historial del paso
+            const nuevaEntradaHistorial = {
+                mensaje: `Cierre anulado por el Administrador → ${userName}. El paso fue reabierto.`,
+                userName: userName,
+                fecha: new Date()
+            };
+
+            // 2. Nos aseguramos de que el array de actividad exista
+            const actividadExistente = pasoFacturaVenta.actividad || [];
+            // --- FIN DE LA SOLUCIÓN ---
+
             const nuevoProceso = {
                 ...procesoActual,
                 facturaVenta: {
-                    ...procesoActual.facturaVenta,
+                    ...pasoFacturaVenta,
                     completado: false,
                     fecha: null,
                     motivoUltimoCambio: 'Cierre anulado por administrador',
-                    fechaUltimaModificacion: getTodayString()
+                    fechaUltimaModificacion: getTodayString(),
+                    // --- INICIO DE LA SOLUCIÓN ---
+                    // 3. Añadimos la nueva entrada al historial
+                    actividad: [...actividadExistente, nuevaEntradaHistorial]
+                    // --- FIN DE LA SOLUCIÓN ---
                 }
             };
             transaction.update(clienteRef, { proceso: nuevoProceso });
         } else {
-            // Esto es una salvaguarda por si se intenta anular un proceso que no está cerrado.
             throw new Error("El proceso no se puede anular porque no está completado.");
         }
     });
+
+    // La lógica de la auditoría general se mantiene
+    await createAuditLog(
+        `Anuló el cierre del proceso para el cliente ${clienteNombre}`,
+        {
+            action: 'ANULAR_CIERRE_PROCESO',
+            clienteId: clienteId,
+            clienteNombre: clienteNombre,
+        }
+    );
 };
 
 export const getClienteProceso = async (clienteId) => {

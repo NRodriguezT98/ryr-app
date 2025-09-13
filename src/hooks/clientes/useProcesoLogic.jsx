@@ -348,8 +348,13 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
 
     const confirmarAnulacionCierre = useCallback(async () => {
         try {
-            await anularCierreProceso(cliente.id);
+            await anularCierreProceso(cliente.id, userName);
             toast.success("¡Cierre anulado! El último paso ha sido reabierto.");
+
+            const procesoRefrescado = await getClienteProceso(cliente.id);
+            setProcesoState(procesoRefrescado);
+            setInitialProcesoState(procesoRefrescado);
+
             if (onSaveSuccess) onSaveSuccess();
         } catch (error) {
             console.error("Error al anular el cierre:", error);
@@ -357,7 +362,7 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
         } finally {
             setCierreAAnular(false);
         }
-    }, [cliente.id, onSaveSuccess]);
+    }, [cliente.id, onSaveSuccess, userName]);
 
     // 🔽 REEMPLAZA EL useMemo ANTIGUO CON ESTE 🔽
     const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura, procesoCompletado } = useMemo(() => {
