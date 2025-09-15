@@ -228,8 +228,9 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
 
     const [reaperturaInfo, setReaperturaInfo] = useState(null);
     const [pasoAEditarFecha, setPasoAEditarFecha] = useState(null);
-    const [cierreAAnular, setCierreAAnular] = useState(false);
+    const [cierreAAnular, setCierreAAnular] = useState(null);
     const [justSaved, setJustSaved] = useState(false);
+    const [anulacionCierreInfo, setAnulacionCierreInfo] = useState(null);
 
     // 1. Añadimos estados internos para la carga y los datos procesados
     const [isLoading, setIsLoading] = useState(true);
@@ -339,16 +340,20 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
     const cancelarEdicionFecha = useCallback(() => setPasoAEditarFecha(null), []);
 
     const iniciarAnulacionCierre = useCallback(() => {
-        setCierreAAnular(true);
+        setCierreAAnular({ type: 'anulacion' });
     }, []);
 
     const cancelarAnulacionCierre = useCallback(() => {
-        setCierreAAnular(false);
+        setCierreAAnular(null);
     }, []);
 
-    const confirmarAnulacionCierre = useCallback(async () => {
+    const confirmarAnulacionCierre = useCallback(async (motivo) => {
+        if (!motivo || !motivo.trim()) {
+            toast.error("El motivo es obligatorio.");
+            return;
+        }
         try {
-            await anularCierreProceso(cliente.id, userName);
+            await anularCierreProceso(cliente.id, userName, motivo);
             toast.success("¡Cierre anulado! El último paso ha sido reabierto.");
 
             const procesoRefrescado = await getClienteProceso(cliente.id);
@@ -360,9 +365,9 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
             console.error("Error al anular el cierre:", error);
             toast.error("No se pudo anular el cierre del proceso.");
         } finally {
-            setCierreAAnular(false);
+            setCierreAAnular(null);
         }
-    }, [cliente.id, onSaveSuccess, userName]);
+    }, [cliente.id, onSaveSuccess, userName, procesoState]);
 
     // 🔽 REEMPLAZA EL useMemo ANTIGUO CON ESTE 🔽
     const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura, procesoCompletado } = useMemo(() => {

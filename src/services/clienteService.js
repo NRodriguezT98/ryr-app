@@ -250,8 +250,6 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
         const pasoActualData = nuevoProcesoConActividad[key];
 
         if (!pasoActualData) return;
-
-        // Aseguramos que el array de actividad exista
         if (!pasoActualData.actividad) {
             pasoActualData.actividad = pasoOriginalData.actividad || [];
         }
@@ -260,8 +258,9 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
 
         const seCompletoEnEsteCambio = !pasoOriginalData.completado && pasoActualData.completado;
         const fueReabiertoEnEsteCambio = pasoOriginalData.completado && !pasoActualData.completado;
+        const fechaCambio = pasoOriginalData.fecha !== pasoActualData.fecha;
 
-        let evidenciasCambiadas = [];
+        const evidenciasCambiadas = [];
         pasoConfig.evidenciasRequeridas.forEach(ev => {
             const idEvidencia = ev.id;
             const urlOriginal = pasoOriginalData.evidencias?.[idEvidencia]?.url;
@@ -274,46 +273,57 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
             }
         });
 
-        // --- INICIO DE LA SOLUCIÓN ---
-        if (seCompletoEnEsteCambio) {
-            let mensajeInicial = '';
-            const partesDelMensaje = [];
+        // --- INICIO DE LA LÓGICA CORREGIDA ---
 
-            // Verificamos si el paso tiene un motivo de reapertura reciente
-            if (pasoActualData.motivoUltimoCambio === 'Cierre anulado por administrador' || pasoActualData.motivoReapertura) {
-                const motivo = pasoActualData.motivoReapertura || "Anulación de cierre por administrador";
-                mensajeInicial = `Se reabrió el paso por el motivo: "${motivo}". Posteriormente, `;
+        // CASO 1: El evento principal es que el paso FUE REABIERTO y luego se guardan más cambios.
+        if (pasoActualData.motivoReapertura) {
+            let mensaje = `Se reabrió el paso indicando el siguiente Motivo: "${pasoActualData.motivoReapertura}".`;
+            const accionesPosteriores = [];
+
+            if (evidenciasCambiadas.length > 0) {
+                const textoEvidencia = evidenciasCambiadas.map(ev => `se ${ev.accion} la evidencia '${ev.label}'`).join(' y ');
+                accionesPosteriores.push(textoEvidencia);
+            }
+            if (fechaCambio) {
+                accionesPosteriores.push(`se modificó la fecha de completado de ${formatDisplayDate(pasoOriginalData.fecha)} a ${formatDisplayDate(pasoActualData.fecha)}`);
             }
 
-            // Agregamos las acciones de evidencia si existen
+            if (accionesPosteriores.length > 0) {
+                mensaje += ` Posteriormente, ${accionesPosteriores.join(' y ')}.`;
+            }
+
+            if (seCompletoEnEsteCambio) {
+                mensaje += ` Finalmente, el paso fue marcado como completado.`
+            }
+
+            pasoActualData.actividad.push(crearEntrada(mensaje));
+            delete pasoActualData.motivoReapertura;
+
+        }
+        // Si no fue una reapertura, evaluamos los casos simples:
+        else if (seCompletoEnEsteCambio) {
+            let msg = `Paso completado con fecha ${formatDisplayDate(pasoActualData.fecha)}.`;
             if (evidenciasCambiadas.length > 0) {
                 const accionesEvidenciaTexto = evidenciasCambiadas.map(ev => `se ${ev.accion} la evidencia '${ev.label}'`).join(' y ');
-                partesDelMensaje.push(accionesEvidenciaTexto);
+                msg = `${accionesEvidenciaTexto.charAt(0).toUpperCase() + accionesEvidenciaTexto.slice(1)} y se completó el paso con fecha ${formatDisplayDate(pasoActualData.fecha)}.`;
             }
-
-            // Agregamos el mensaje de completado final
-            partesDelMensaje.push(`se completó el paso con fecha ${formatDisplayDate(pasoActualData.fecha)}`);
-
-            // Unimos todo para formar un mensaje narrativo
-            const mensajeCompleto = mensajeInicial + partesDelMensaje.join(' y ') + '.';
-            pasoActualData.actividad.push(crearEntrada(mensajeCompleto.charAt(0).toUpperCase() + mensajeCompleto.slice(1)));
-
-            // Limpiamos los motivos temporales para que no se repitan en futuros guardados
-            delete pasoActualData.motivoReapertura;
+            pasoActualData.actividad.push(crearEntrada(msg));
+        }
+        else if (fueReabiertoEnEsteCambio) {
+            // Este caso ahora solo se usa si la única acción es reabrir
+            pasoActualData.actividad.push(crearEntrada('Paso reabierto.'));
+        }
+        else if (pasoOriginalData.completado && pasoActualData.completado && fechaCambio) {
+            const motivo = pasoActualData.motivoUltimoCambio || 'No se especificó motivo.';
+            const msg = `Se modificó la fecha de completado de ${formatDisplayDate(pasoOriginalData.fecha)} a ${formatDisplayDate(pasoActualData.fecha)}. Motivo: "${motivo}"`;
+            pasoActualData.actividad.push(crearEntrada(msg));
             delete pasoActualData.motivoUltimoCambio;
-
-        } else if (fueReabiertoEnEsteCambio) {
-            let mensaje = 'Paso reabierto.';
-            if (pasoActualData.motivoReapertura) {
-                mensaje += ` Motivo: "${pasoActualData.motivoReapertura}"`;
-                delete pasoActualData.motivoReapertura;
-            }
-            pasoActualData.actividad.push(crearEntrada(mensaje));
-        } else if (evidenciasCambiadas.length > 0) {
+        }
+        else if (evidenciasCambiadas.length > 0) {
             const accionesEvidenciaTexto = evidenciasCambiadas.map(ev => `Se ${ev.accion} la evidencia '${ev.label}'`).join(', ');
             pasoActualData.actividad.push(crearEntrada(accionesEvidenciaTexto + '.'));
         }
-        // --- FIN DE LA SOLUCIÓN ---
+        // --- FIN DE LA LÓGICA CORREGIDA ---
     });
 
     return nuevoProcesoConActividad;
@@ -418,7 +428,7 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
     return { renunciaId: renunciaIdParaNotificacion, clienteNombre };
 };
 
-export const anularCierreProceso = async (clienteId, userName) => {
+export const anularCierreProceso = async (clienteId, userName, motivo) => {
     const clienteRef = doc(db, "clientes", clienteId);
 
     const clienteDocInicial = await getDoc(clienteRef);
@@ -439,7 +449,7 @@ export const anularCierreProceso = async (clienteId, userName) => {
             // --- INICIO DE LA SOLUCIÓN ---
             // 1. Preparamos la nueva entrada para el historial del paso
             const nuevaEntradaHistorial = {
-                mensaje: `Cierre anulado por el Administrador → ${userName}. El paso fue reabierto.`,
+                mensaje: `Cierre anulado por el Administrador → ${userName}. Motivo: "${motivo}"`,
                 userName: userName,
                 fecha: new Date()
             };
@@ -454,12 +464,8 @@ export const anularCierreProceso = async (clienteId, userName) => {
                     ...pasoFacturaVenta,
                     completado: false,
                     fecha: null,
-                    motivoUltimoCambio: 'Cierre anulado por administrador',
                     fechaUltimaModificacion: getTodayString(),
-                    // --- INICIO DE LA SOLUCIÓN ---
-                    // 3. Añadimos la nueva entrada al historial
                     actividad: [...actividadExistente, nuevaEntradaHistorial]
-                    // --- FIN DE LA SOLUCIÓN ---
                 }
             };
             transaction.update(clienteRef, { proceso: nuevoProceso });

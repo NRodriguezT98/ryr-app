@@ -45,6 +45,19 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
         handlers,
     } = useProcesoLogic(cliente, handleSave, onDatosRecargados);
 
+    const isMotivoModalOpen = !!reaperturaInfo || !!cierreAAnular;
+    const motivoModalData = reaperturaInfo || cierreAAnular;
+
+    const handleCloseMotivoModal = () => {
+        if (reaperturaInfo) handlers.cancelarReapertura();
+        if (cierreAAnular) handlers.cancelarAnulacionCierre();
+    };
+
+    const handleConfirmMotivoModal = (motivo) => {
+        if (reaperturaInfo) handlers.confirmarReapertura(motivo);
+        if (cierreAAnular) handlers.confirmarAnulacionCierre(motivo);
+    };
+
     useEffect(() => {
         onHayCambiosChange(hayCambiosSinGuardar);
     }, [hayCambiosSinGuardar, onHayCambiosChange]);
@@ -56,7 +69,7 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
     }, [pasosRenderizables]);
 
     const pasoAReabrirInfo = reaperturaInfo ? pasosRenderizables.find(p => p.key === reaperturaInfo.key) : null;
-    const nombrePasoAReabrir = pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '';
+    const nombrePaso = cierreAAnular ? "Factura de Venta" : (pasoAReabrirInfo ? `"${pasoAReabrirInfo.label.substring(pasoAReabrirInfo.label.indexOf('.') + 1).trim()}"` : '');
     const porcentajeProgreso = progreso.total > 0 ? (progreso.completados / progreso.total) * 100 : 0;
 
     return (
@@ -133,8 +146,13 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                 )}
             </div>
 
-            <ModalMotivoReapertura isOpen={!!reaperturaInfo} onClose={handlers.cancelarReapertura} onConfirm={handlers.confirmarReapertura} titulo="Justificar Reapertura de Paso" nombrePaso={nombrePasoAReabrir} />
-            <ModalConfirmacion isOpen={cierreAAnular} onClose={handlers.cancelarAnulacionCierre} onConfirm={handlers.confirmarAnulacionCierre} titulo="¿Anular Cierre de Proceso?" mensaje="Esta acción reabrirá únicamente el último paso ('Factura de Venta') para permitir correcciones." />
+            <ModalMotivoReapertura
+                isOpen={isMotivoModalOpen}
+                onClose={handleCloseMotivoModal}
+                onConfirm={handleConfirmMotivoModal}
+                titulo={cierreAAnular ? "Justificar Anulación de Cierre" : "Justificar Reapertura de Paso"}
+                nombrePaso={nombrePaso}
+            />
             <ModalEditarFechaProceso isOpen={!!pasoAEditarFecha} onClose={handlers.cancelarEdicionFecha} onConfirm={handlers.confirmarEdicionFecha} pasoInfo={pasoAEditarFecha ? { ...pasoAEditarFecha, ...pasosRenderizables.find(p => p.key === pasoAEditarFecha.key) } : null} />
         </div>
     );

@@ -17,18 +17,24 @@ export const PERMISSIONS_CONFIG = [
         module: 'clientes',
         displayName: 'Clientes',
         actions: [
-            { key: 'ver', displayName: 'Ver' },
-            { key: 'crear', displayName: 'Crear' },
-            { key: 'editar', displayName: 'Editar' },
-            { key: 'eliminar', displayName: 'Eliminar' },
-            { key: 'renunciar', displayName: 'Gestionar Renuncias' },
-            { key: 'archivar', displayName: 'Archivar' },
-            { key: 'restaurarCliente', displayName: 'Restaurar Cliente' },
-            { key: 'nuevoProceso', displayName: 'Iniciar Nuevo Proceso' },
-            { key: 'verDetalle', displayName: 'Ver Detalle' },
-            { key: 'verProceso', displayName: 'Ver Proceso' },
             { key: 'actualizarPasos', displayName: 'Actualizar Pasos del Proceso' },
             { key: 'anularCierre', displayName: 'Anular Cierre del Proceso (Admin)' },
+            { key: 'archivar', displayName: 'Archivar' },
+            { key: 'crear', displayName: 'Crear' },
+            { key: 'editar', displayName: 'Editar' },
+            { key: 'editarFechaProceso', displayName: 'Editar Fecha del Proceso' },
+            { key: 'eliminar', displayName: 'Eliminar' },
+            { key: 'nuevoProceso', displayName: 'Iniciar Nuevo Proceso' },
+            { key: 'reabrirProceso', displayName: 'Reabrir Proceso' },
+            { key: 'renunciar', displayName: 'Gestionar Renuncias' },
+            { key: 'restaurarCliente', displayName: 'Restaurar Cliente' },
+            { key: 'ver', displayName: 'Ver' },
+            { key: 'verDetalle', displayName: 'Ver Detalle' },
+            { key: 'verDocumentos', displayName: 'Ver Documentos' },
+            { key: 'verFinanciero', displayName: 'Ver Financiero' },
+            { key: 'verHistorial', displayName: 'Ver Historial' },
+            { key: 'verHistorialProceso', displayName: 'Ver Historial Proceso' },
+            { key: 'verProceso', displayName: 'Ver Proceso' },
         ]
     },
     {
@@ -38,7 +44,8 @@ export const PERMISSIONS_CONFIG = [
             { key: 'ver', displayName: 'Ver' },
             { key: 'crear', displayName: 'Crear' },
             { key: 'editar', displayName: 'Editar' },
-            { key: 'eliminar', displayName: 'Eliminar' },
+            { key: 'anular', displayName: 'Anular' },
+            { key: 'revertirAnulacion', displayName: 'Revertir Anulación' },
         ]
     },
     {
@@ -67,6 +74,8 @@ export const PERMISSIONS_CONFIG = [
             { key: 'gestionarUsuarios', displayName: 'Gestionar Usuarios' },
             { key: 'gestionarRoles', displayName: 'Gestionar Roles' },
             { key: 'crearProyectos', displayName: 'Crear Proyectos' },
+            { key: 'editarProyecto', displayName: 'Editar Proyectos' },
+            { key: 'eliminarProyecto', displayName: 'Eliminar Proyectos' },
             { key: 'listarProyectos', displayName: 'Listar Proyectos' },
         ]
     }
