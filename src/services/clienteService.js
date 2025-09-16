@@ -302,7 +302,7 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
         }
         // Si no fue una reapertura, evaluamos los casos simples:
         else if (seCompletoEnEsteCambio) {
-            let msg = `Paso completado con fecha ${formatDisplayDate(pasoActualData.fecha)}.`;
+            let msg = `Se completó el paso con fecha ${formatDisplayDate(pasoActualData.fecha)}.`;
             if (evidenciasCambiadas.length > 0) {
                 const accionesEvidenciaTexto = evidenciasCambiadas.map(ev => `se ${ev.accion} la evidencia '${ev.label}'`).join(' y ');
                 msg = `${accionesEvidenciaTexto.charAt(0).toUpperCase() + accionesEvidenciaTexto.slice(1)} y se completó el paso con fecha ${formatDisplayDate(pasoActualData.fecha)}.`;
@@ -449,7 +449,7 @@ export const anularCierreProceso = async (clienteId, userName, motivo) => {
             // --- INICIO DE LA SOLUCIÓN ---
             // 1. Preparamos la nueva entrada para el historial del paso
             const nuevaEntradaHistorial = {
-                mensaje: `Cierre anulado por el Administrador → ${userName}. Motivo: "${motivo}"`,
+                mensaje: `Cierre anulado por el Administrador → ${userName}, se reabre el ultimo paso 'Factura de Venta' por el siguiente Motivo: "${motivo}"`,
                 userName: userName,
                 fecha: new Date()
             };
