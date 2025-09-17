@@ -441,96 +441,117 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
     }, [isSaveDisabled, validationErrors, hayPasoEnReapertura, hayCambiosPendientesPorCompletar]);
 
     const handleSaveChanges = async () => {
-        if (isSaveDisabled) {
+        if (isSaveDisabled || isSubmitting) {
             toast.error(tooltipMessage);
             return;
         }
+
         setIsSubmitting(true);
         try {
-            // 1. Validación de Concurrencia (datos obsoletos)
             const procesoActualEnDB = await getClienteProceso(cliente.id);
             if (JSON.stringify(initialProcesoState) !== JSON.stringify(procesoActualEnDB)) {
-                toast.error(
-                    "⚠️ ¡Conflicto de datos! Alguien más ha guardado cambios. Por favor, recarga la página.",
-                    { duration: 6000 }
-                );
+                toast.error("⚠️ ¡Conflicto de datos! Alguien más ha guardado cambios. Por favor, recarga la página.", { duration: 6000 });
                 setIsSubmitting(false);
-                return; // Detenemos el guardado
+                return;
             }
 
-            // 2. Generamos el estado final con el historial de actividad
-            const procesoConActividad = generarActividadProceso(
-                initialProcesoState,
-                procesoState,
-                userName
-            );
+            const procesoConActividad = generarActividadProceso(initialProcesoState, procesoState, userName);
 
-            const cambiosParaAuditoria = [];
+            const cambiosDetectados = [];
+            let motivoReaperturaParaLog = null;
+
             PROCESO_CONFIG
                 .filter(p => p.aplicaA(cliente.financiero || {}))
                 .forEach(pasoConfig => {
                     const key = pasoConfig.key;
-                    const estadoInicial = initialProcesoState[key] || { completado: false };
-                    const estadoActual = procesoState[key] || { completado: false };
+                    const estadoInicial = initialProcesoState[key] || {};
+                    const estadoActual = procesoState[key] || {};
 
-                    if (estadoInicial.completado !== estadoActual.completado) {
-                        const accion = estadoActual.completado ? 'completó' : 'reabrió';
+                    if (JSON.stringify(estadoInicial) !== JSON.stringify(estadoActual)) {
                         const nombrePaso = pasoConfig.label.substring(pasoConfig.label.indexOf('.') + 1).trim();
-                        cambiosParaAuditoria.push({
+                        cambiosDetectados.push({
                             paso: nombrePaso,
-                            accion: accion,
-                            fecha: estadoActual.fecha
+                            key: key,
+                            estadoInicial: estadoInicial,
+                            estadoActual: estadoActual
                         });
+
+                        if (estadoActual.motivoReapertura) {
+                            motivoReaperturaParaLog = estadoActual.motivoReapertura;
+                        }
                     }
                 });
 
-            // 2. Creamos un mensaje de auditoría CORTO y un objeto de detalles RICO
             const clienteNombre = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
-            const auditMessage = `Actualizó el proceso del cliente ${clienteNombre}.`; // <-- MENSAJE CORTO
+            let auditMessage;
+
+            // --- INICIO DE LA SOLUCIÓN ---
+            if (motivoReaperturaParaLog && cambiosDetectados.length > 0) {
+                const cambio = cambiosDetectados[0];
+                let accionesPosteriores = [];
+
+                // Comprobamos si la fecha cambió
+                if (cambio.estadoInicial.fecha !== cambio.estadoActual.fecha) {
+                    accionesPosteriores.push(`se modificó la fecha de completado de ${formatDisplayDate(cambio.estadoInicial.fecha)} a ${formatDisplayDate(cambio.estadoActual.fecha)}`);
+                }
+
+                // Comprobamos si las evidencias cambiaron
+                const evidenciasConfig = PROCESO_CONFIG.find(p => p.key === cambio.key)?.evidenciasRequeridas || [];
+                const evidenciasCambiadas = [];
+                evidenciasConfig.forEach(ev => {
+                    const urlOriginal = cambio.estadoInicial.evidencias?.[ev.id]?.url;
+                    const urlActual = cambio.estadoActual.evidencias?.[ev.id]?.url;
+                    if (urlActual !== urlOriginal) {
+                        evidenciasCambiadas.push(`se ${urlActual ? (urlOriginal ? 'reemplazó' : 'subió') : 'eliminó'} la evidencia '${ev.label}'`);
+                    }
+                });
+                if (evidenciasCambiadas.length > 0) {
+                    accionesPosteriores.push(evidenciasCambiadas.join(' y '));
+                }
+
+                // Construimos el mensaje final al pie de la letra
+                auditMessage = `Se reabrió el paso y ${accionesPosteriores.join(' y ')}. El Motivo de la reapertura fue: "${motivoReaperturaParaLog}".`;
+
+                // Si además de todo, se recompletó el paso, lo añadimos
+                if (!cambio.estadoInicial.completado && cambio.estadoActual.completado) {
+                    auditMessage += " Finalmente, se completó el paso.";
+                }
+
+            } else if (cambiosDetectados.length > 0) {
+                const cambiosTexto = cambiosDetectados.map(c =>
+                    `${c.estadoActual.completado ? 'Completó' : 'Reabrió'} el paso '${c.paso}'`
+                ).join(', ');
+                auditMessage = `Actualizó el proceso del cliente ${clienteNombre}. Cambios: ${cambiosTexto}.`;
+            }
+            // --- FIN DE LA SOLUCIÓN ---
 
             const auditDetails = {
                 action: 'UPDATE_PROCESO',
                 clienteId: cliente.id,
                 clienteNombre: clienteNombre,
-                cambios: cambiosParaAuditoria // <-- DETALLES COMPLETOS
+                cambios: cambiosDetectados.map(c => ({ paso: c.paso, accion: c.estadoActual.completado ? 'completó' : 'reabrió' })),
+                motivo: motivoReaperturaParaLog
             };
 
-            await updateClienteProceso(cliente.id, procesoConActividad, auditMessage, auditDetails);
-
-            PROCESO_CONFIG.forEach(paso => {
-                const estadoAnterior = initialProcesoState[paso.key];
-                const estadoNuevo = procesoConActividad[paso.key];
-                if (paso.esHito && !estadoAnterior?.completado && estadoNuevo?.completado) {
-                    const nombreCliente = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
-                    createNotification('hito', `¡Hito alcanzado! ${paso.label} para ${nombreCliente}.`, `/clientes/detalle/${cliente.id}`);
-                }
-            });
+            if (cambiosDetectados.length > 0) {
+                await updateClienteProceso(cliente.id, procesoConActividad, auditMessage, auditDetails);
+            }
 
             toast.success("Proceso del cliente actualizado con éxito.");
 
             const procesoRefrescado = await getClienteProceso(cliente.id);
-
             setInitialProcesoState(procesoRefrescado);
             setProcesoState(procesoRefrescado);
-            setJustSaved(true);
-            setTimeout(() => setJustSaved(false), 2000);
 
-            // Llamamos a onDatosRecargados para refrescar la vista principal
             if (onSaveSuccess) onSaveSuccess();
 
         } catch (error) {
-            // Manejo de errores (ej. cliente no encontrado en la validación)
-            if (error.message === 'CLIENT_NOT_FOUND') {
-                toast.error("Error: No se pudo encontrar el cliente en la base de datos. Pudo haber sido eliminado.");
-            } else {
-                toast.error("No se pudo guardar los cambios en el proceso.");
-            }
             console.error("Error al guardar proceso:", error);
+            toast.error("No se pudo guardar los cambios en el proceso.");
         } finally {
             setIsSubmitting(false);
         }
     };
-
 
     return {
         isLoadingProceso: isLoading,

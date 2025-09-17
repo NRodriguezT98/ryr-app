@@ -1,4 +1,4 @@
-import { formatCurrency, formatDisplayDate } from './textFormatters';
+import { formatCurrency, formatDisplayDate, getTodayString, parseDateAsUTC } from './textFormatters';
 
 // --- VALIDACIONES DE VIVIENDA ---
 // --- VALIDACIONES DE VIVIENDA ---
@@ -112,7 +112,16 @@ export const validateCliente = (formData, todosLosClientes, clienteIdActual = nu
         errors.correo = "El formato del correo no es válido.";
     }
     if (!formData.direccion?.trim()) errors.direccion = "La dirección es requerida.";
-    if (!formData.fechaIngreso) errors.fechaIngreso = "La fecha de ingreso es requerida.";
+    if (!fechaIngreso) {
+        errors.fechaIngreso = "La fecha de ingreso es obligatoria.";
+    } else {
+        const fechaIngresoParseada = parseDateAsUTC(fechaIngreso);
+        const hoyParseado = parseDateAsUTC(getTodayString());
+
+        if (fechaIngresoParseada > hoyParseado) {
+            errors.fechaIngreso = "La fecha de ingreso no puede ser una fecha futura.";
+        }
+    }
     if (!formData.urlCedula) {
         errors.urlCedula = "Adjuntar la cédula es obligatorio.";
     }

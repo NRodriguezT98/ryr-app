@@ -55,7 +55,7 @@ const getSelectStyles = (hasError) => ({
     input: (base) => ({ ...base, color: 'var(--color-text-form)' }),
 });
 
-const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente }) => {
+const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente, size = '2xl' }) => {
     const { formData, errors, calculos, handlers } = useMotivoRenuncia(cliente, onConfirm);
     const { motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo, aplicaPenalidad } = formData;
     const { totalAbonadoReal, totalCondonado, montoPenalidadNum, totalADevolver, minDate } = calculos;
@@ -67,6 +67,7 @@ const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente }) => {
             onClose={onClose}
             title="Registrar Motivo de Renuncia"
             icon={<UserX size={28} className="text-orange-500" />}
+            size={size}
         >
             <style>{`
                 :root {

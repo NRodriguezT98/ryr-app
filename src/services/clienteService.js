@@ -1,7 +1,8 @@
 import { db } from '../firebase/config';
-import { collection, doc, updateDoc, deleteDoc, getDoc, writeBatch, setDoc, query, where, getDocs, addDoc, runTransaction } from "firebase/firestore";
+import { collection, doc, updateDoc, deleteDoc, getDoc, writeBatch, setDoc, query, where, getDocs, addDoc, runTransaction, serverTimestamp } from "firebase/firestore";
 import { toTitleCase, formatDisplayDate, getTodayString } from '../utils/textFormatters';
 import { PROCESO_CONFIG } from '../utils/procesoConfig.js';
+import { DOCUMENTACION_CONFIG } from '../utils/documentacionConfig.js';
 import { createAuditLog } from './auditService';
 import { deleteFile } from './fileService';
 

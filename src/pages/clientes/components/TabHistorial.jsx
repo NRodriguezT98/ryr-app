@@ -2,35 +2,36 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getAuditLogsForCliente } from '../../../services/auditService';
 import { updateNotaHistorial } from '../../../services/clienteService';
 import { useAuth } from '../../../context/AuthContext';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Loader, Edit, UserPlus, FileText, UserX, RefreshCw, Archive, ArchiveRestore, CheckCircle, MessageSquareText, GitCommit, DollarSign } from 'lucide-react';
+import { Loader, Edit, UserPlus, FileText, UserX, RefreshCw, Archive, ArchiveRestore, CheckCircle, MessageSquareText, GitCommit, DollarSign, Unlock } from 'lucide-react';
 import AnimatedPage from '../../../components/AnimatedPage';
 import FormularioNuevaNota from './FormularioNuevaNota';
 import ModalEditarNota from './ModalEditarNota';
 import ModalConfirmacion from '../../../components/ModalConfirmacion';
 import toast from 'react-hot-toast';
+import { formatDisplayDate } from '../../../utils/textFormatters'; // Asegúrate de importar esto
 
 // Helper para asignar un ícono a cada tipo de acción
-const getActionIcon = (action, type) => {
-    if (type === 'nota_manual' || action === 'ADD_NOTE') return <MessageSquareText className="w-4 h-4 text-white" />;
-
+const getActionIcon = (action) => {
     const iconMap = {
+        'ADD_NOTE': <MessageSquareText className="w-4 h-4 text-white" />,
         'CREATE_CLIENT': <UserPlus className="w-4 h-4 text-white" />,
         'UPDATE_CLIENT': <Edit className="w-4 h-4 text-white" />,
         'EDIT_NOTE': <Edit className="w-4 h-4 text-white" />,
         'UPDATE_PROCESO': <GitCommit className="w-4 h-4 text-white" />,
         'REGISTER_ABONO': <DollarSign className="w-4 h-4 text-white" />,
         'REGISTER_DISBURSEMENT': <DollarSign className="w-4 h-4 text-white" />,
+        'REGISTER_CREDIT_DISBURSEMENT': <DollarSign className="w-4 h-4 text-white" />,
+        'VOID_ABONO': <UserX className="w-4 h-4 text-white" />,
         'CLIENT_RENOUNCE': <UserX className="w-4 h-4 text-white" />,
         'RESTART_CLIENT_PROCESS': <RefreshCw className="w-4 h-4 text-white" />,
         'ARCHIVE_CLIENT': <Archive className="w-4 h-4 text-white" />,
         'RESTORE_CLIENT': <ArchiveRestore className="w-4 h-4 text-white" />,
+        'ANULAR_CIERRE_PROCESO': <Unlock className="w-4 h-4 text-white" />,
         'DEFAULT': <FileText className="w-4 h-4 text-white" />,
     };
     if (!action) return iconMap['DEFAULT'];
-    if (action.includes('UPDATE')) return iconMap['UPDATE_CLIENT'];
-    if (action.includes('CREATE')) return iconMap['CREATE_CLIENT'];
     return iconMap[action] || iconMap['DEFAULT'];
 };
 
@@ -38,30 +39,15 @@ const getActionIcon = (action, type) => {
 const LogItem = ({ log, onEdit }) => {
     const { userData } = useAuth();
     const isNota = log.details?.action === 'ADD_NOTE';
-    const isAnulacion = log.details?.action === 'VOID_ABONO';
     const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
     const formattedDate = format(timestamp, "d 'de' MMMM, yyyy 'a las' h:mm a", { locale: es });
-    const icon = getActionIcon(log.details?.action, log.type);
+    const icon = getActionIcon(log.details?.action);
     const puedeEditar = isNota && log.userName === `${userData.nombres} ${userData.apellidos}`;
+
+    // Extraemos los detalles relevantes de forma segura
+    const cambiosProceso = log.details?.action === 'UPDATE_PROCESO' ? log.details.cambios : [];
     const pasoCompletado = log.details?.pasoCompletado;
     const pasoReabierto = log.details?.pasoReabierto;
-    const cambiosProceso = log.details?.action === 'UPDATE_PROCESO' ? log.details.cambios : [];
-    // --- FIN DE LA SOLUCIÓN ---
-
-    let mainMessage = log.message;
-    let consequenceMessage = null;
-    const separator = ". Esto completó automáticamente el paso del proceso: ";
-
-    if (log.message.includes(separator)) {
-        const parts = log.message.split(separator);
-        mainMessage = parts[0];
-        consequenceMessage = parts[1];
-    }
-
-    // Una nota solo la puede editar quien la creó.
-
-
-
 
     return (
         <li className="mb-10 ms-6">
@@ -84,30 +70,23 @@ const LogItem = ({ log, onEdit }) => {
                             <Edit size={14} className="text-gray-500 dark:text-gray-400" />
                         </button>
                     )}
+
                     <p className="italic whitespace-pre-wrap pr-6">{log.message}</p>
-                    {/* Si hay un paso completado (por un desembolso), lo mostramos */}
-                    {pasoCompletado && (
-                        <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-500 flex items-center gap-2">
-                            <CheckCircle size={14} className="text-green-500 flex-shrink-0" />
-                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                                Se completó: <span className="font-bold">'{pasoCompletado}'</span>
-                            </p>
-                        </div>
-                    )}
 
-                    {/* Si hay un paso reabierto (por una anulación), lo mostramos */}
-                    {pasoReabierto && (
-                        <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-500 flex items-center gap-2">
-                            <RefreshCw size={14} className="text-yellow-500 flex-shrink-0" />
-                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                                Consecuencia: Se reabrió el paso <span className="font-bold">'{pasoReabierto}'</span>
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Si es una actualización manual de proceso, mostramos los cambios */}
-                    {cambiosProceso.length > 0 && (
+                    {(pasoCompletado || pasoReabierto || cambiosProceso.length > 0) && (
                         <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-500 space-y-1">
+                            {pasoCompletado && (
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle size={14} className="text-green-500 flex-shrink-0" />
+                                    <span className="text-xs">Se completó el paso: <span className="font-semibold text-gray-700 dark:text-gray-100">'{pasoCompletado}'</span></span>
+                                </div>
+                            )}
+                            {pasoReabierto && (
+                                <div className="flex items-center gap-2">
+                                    <RefreshCw size={14} className="text-yellow-500 flex-shrink-0" />
+                                    <span className="text-xs">Consecuencia: Se reabrió el paso <span className="font-semibold text-gray-700 dark:text-gray-100">'{pasoReabierto}'</span></span>
+                                </div>
+                            )}
                             {cambiosProceso.map((cambio, index) => (
                                 <div key={index} className="flex items-center gap-2">
                                     {cambio.accion === 'completó' ? <CheckCircle size={14} className="text-green-500" /> : <RefreshCw size={14} className="text-yellow-500" />}
@@ -160,7 +139,7 @@ const TabHistorial = ({ clienteId }) => {
     const handleGuardarEdicion = (nuevoTexto) => {
         const cambios = [{
             campo: "Contenido de la Nota",
-            anterior: notaAEditar.details.nota,
+            anterior: notaAEditar.message,
             actual: nuevoTexto
         }];
         setConfirmacionCambios({
