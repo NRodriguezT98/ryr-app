@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 // Asegúrate que la ruta a tu componente Modal genérico sea correcta
 import Modal from '../../../components/Modal';
+import Button from '../../../components/Button';
 
 const ModalMotivoReapertura = ({ isOpen, onClose, onConfirm, titulo, nombrePaso }) => {
     const [motivo, setMotivo] = useState('');
@@ -76,19 +77,16 @@ const ModalMotivoReapertura = ({ isOpen, onClose, onConfirm, titulo, nombrePaso 
 
                 {/* 3. Pie de Página con Acciones */}
                 <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg flex justify-end gap-3 border-t dark:border-gray-700">
-                    <button
-                        onClick={onClose}
-                        className="px-5 py-2 text-sm font-semibold text-gray-700 bg-white dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition"
-                    >
+                    <Button variant="secondary" onClick={onClose}>
                         Cancelar
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant="primary"
                         onClick={handleConfirm}
                         disabled={isConfirmDisabled}
-                        className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
                     >
                         Confirmar Reapertura
-                    </button>
+                    </Button>
                 </div>
 
             </div>

@@ -6,6 +6,7 @@ import { NumericFormat } from 'react-number-format';
 import { formatCurrency, getTodayString } from '../../../utils/textFormatters';
 import { useMotivoRenuncia } from '../../../hooks/clientes/useMotivoRenuncia';
 import { AnimatePresence, motion } from 'framer-motion';
+import Button from '../../../components/Button.jsx';
 
 const motivosOptions = [
     {
@@ -179,10 +180,16 @@ const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente, size = '2xl'
                 </div>
 
                 <div className="flex justify-end gap-4 pt-6 border-t dark:border-gray-700">
-                    <button onClick={onClose} type="button" className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>
-                    <button onClick={handleConfirmar} disabled={!motivo} className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg disabled:bg-gray-300">
+                    <Button variant="secondary" onClick={onClose}>
+                        Cancelar
+                    </Button>
+                    <Button
+                        variant="danger"
+                        onClick={handleConfirmar}
+                        disabled={!motivo}
+                    >
                         Continuar
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>

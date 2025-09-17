@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import toast from 'react-hot-toast';
@@ -21,33 +21,19 @@ export const useDetalleCliente = () => {
         const cliente = clientes.find(c => c.id === clienteId);
         if (!cliente) return { isLoading: false, data: null };
 
-        const viviendaAsignada = viviendas.find(v => v.id === cliente.viviendaId) || null;
-        const proyectoAsignado = viviendaAsignada
-            ? proyectos.find(p => p.id === viviendaAsignada.proyectoId)
-            : null;
-
-        // --- INICIO DE LA MODIFICACIÓN ---
-        // Buscamos la renuncia más reciente y determinamos si está pendiente.
-        const renunciaAsociada = renuncias
-            .filter(r => r.clienteId === cliente.id)
-            .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0))[0] || null;
-
-        const tieneRenunciaPendiente = renunciaAsociada?.estadoDevolucion === 'Pendiente';
-        // --- FIN DE LA MODIFICACIÓN ---
-
-        const historialAbonos = abonos
-            .filter(a => a.clienteId === clienteId && a.estadoProceso === 'activo')
-            .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
-
-        //Obtenemos la información de status con colores
-        const statusInfo = determineClientStatus(cliente);
-
-        // Buscamos el nombre del paso actual en el proceso
+        // --- INICIO DE LA SOLUCIÓN ---
+        // 1. Unificamos toda la lógica del proceso en una sola sección
         let pasoActualLabel = 'No iniciado';
+        let progresoProceso = { completados: 0, total: 0 }; // Objeto para el progreso
+
         if (cliente.proceso && Object.keys(cliente.proceso).length > 0) {
             const pasosAplicables = PROCESO_CONFIG.filter(p => p.aplicaA(cliente.financiero || {}));
-            const primerPasoIncompleto = pasosAplicables.find(p => !cliente.proceso[p.key]?.completado);
 
+            // Contamos los pasos completados y el total
+            const pasosCompletados = pasosAplicables.filter(p => cliente.proceso[p.key]?.completado).length;
+            progresoProceso = { completados: pasosCompletados, total: pasosAplicables.length };
+
+            const primerPasoIncompleto = pasosAplicables.find(p => !cliente.proceso[p.key]?.completado);
             if (primerPasoIncompleto) {
                 pasoActualLabel = primerPasoIncompleto.label;
             } else if (pasosAplicables.length > 0) {
@@ -55,21 +41,27 @@ export const useDetalleCliente = () => {
             }
         }
 
-        // Comprobamos si el valor de escritura es diferente al valor final
-        const mostrarAvisoValorEscritura = cliente.financiero?.usaValorEscrituraDiferente === true &&
-            cliente.financiero?.valorEscritura > 0;
+        const viviendaAsignada = viviendas.find(v => v.id === cliente.viviendaId) || null;
+        const proyectoAsignado = viviendaAsignada ? proyectos.find(p => p.id === viviendaAsignada.proyectoId) : null;
+        const renunciaAsociada = renuncias.filter(r => r.clienteId === cliente.id).sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0))[0] || null;
+        const historialAbonos = abonos.filter(a => a.clienteId === clienteId && a.estadoProceso === 'activo').sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago));
 
+        const statusInfo = determineClientStatus(cliente);
+        const mostrarAvisoValorEscritura = cliente.financiero?.usaValorEscrituraDiferente === true && cliente.financiero?.valorEscritura > 0;
+        const progresoFinanciero = viviendaAsignada?.valorFinal > 0 ? (viviendaAsignada.totalAbonado / viviendaAsignada.valorFinal) * 100 : 0;
 
         return {
             isLoading: false,
             data: {
-                cliente: { ...cliente, tieneRenunciaPendiente },
-                vivienda: viviendaAsignada, // <-- Usamos la vivienda completa que encontramos
+                cliente,
+                vivienda: viviendaAsignada,
                 proyecto: proyectoAsignado,
                 historialAbonos,
                 renuncia: renunciaAsociada,
                 statusInfo,
                 pasoActualLabel,
+                progresoProceso,
+                progresoFinanciero,
                 mostrarAvisoValorEscritura
             }
         };

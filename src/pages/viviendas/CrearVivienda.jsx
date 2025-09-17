@@ -3,6 +3,7 @@ import AnimatedPage from "../../components/AnimatedPage";
 import { useCrearVivienda } from "../../hooks/viviendas/useCrearVivienda.jsx";
 import { MapPin, FileText, CircleDollarSign, Check, Loader } from 'lucide-react';
 import FormularioVivienda from "./FormularioVivienda";
+import Button from "../../components/Button";
 
 const CrearVivienda = () => {
     const {
@@ -53,21 +54,21 @@ const CrearVivienda = () => {
                     />
                     <div className="mt-10 flex justify-between">
                         {step > 1 ? (
-                            <button type="button" onClick={handlers.handlePrevStep} className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
+                            <Button variant="secondary" onClick={handlers.handlePrevStep}>Anterior</Button>
                         ) : <div />}
                         {step < 3 ? (
-                            <button type="button" onClick={handlers.handleNextStep} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
+                            <Button variant="danger" onClick={handlers.handleNextStep} className="ml-auto">
                                 Siguiente
-                            </button>
+                            </Button>
                         ) : (
-                            <button
-                                type="button"
+                            <Button
+                                variant="success"
                                 onClick={handlers.handleSubmit}
-                                disabled={isSubmitting}
-                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-400 ml-auto flex items-center justify-center gap-2"
+                                isLoading={isSubmitting}
+                                className="ml-auto"
                             >
-                                {isSubmitting ? (<><Loader size={20} className="animate-spin" /><span>Guardando...</span></>) : ("Finalizar y Guardar")}
-                            </button>
+                                Finalizar y Guardar
+                            </Button>
                         )}
                     </div>
                 </div>

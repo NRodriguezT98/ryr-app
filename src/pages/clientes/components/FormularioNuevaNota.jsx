@@ -4,6 +4,7 @@ import { MessageSquarePlus, Loader } from 'lucide-react';
 import { addNotaToHistorial } from '../../../services/clienteService';
 import { useAuth } from '../../../context/AuthContext';
 import toast from 'react-hot-toast';
+import Button from '../../../components/Button';
 
 const FormularioNuevaNota = ({ clienteId, onNotaAgregada }) => {
     const [nota, setNota] = useState('');
@@ -46,10 +47,16 @@ const FormularioNuevaNota = ({ clienteId, onNotaAgregada }) => {
                 disabled={isSubmitting}
             />
             <div className="text-right mt-2">
-                <button type="submit" disabled={!nota.trim() || isSubmitting} className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2">
-                    {isSubmitting ? <Loader size={16} className="animate-spin" /> : <MessageSquarePlus size={16} />}
-                    {isSubmitting ? "Guardando..." : "Guardar Nota"}
-                </button>
+                <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={!nota.trim()}
+                    isLoading={isSubmitting}
+                    loadingText="Guardando..."
+                    icon={!isSubmitting && <MessageSquarePlus size={16} />}
+                >
+                    {!isSubmitting && "Guardar Nota"}
+                </Button>
             </div>
         </form>
     );

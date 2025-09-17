@@ -104,13 +104,15 @@ const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosC
                     </div>
                     {userData?.role === 'admin' && (
                         <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
-                            <button
+                            <Button
+                                variant="danger"
                                 onClick={handlers.iniciarAnulacionCierre}
-                                className="w-full md:w-auto bg-yellow-500 hover:bg-yellow-600 text-white font-semibold text-xs py-2 px-4 rounded-lg flex items-center justify-center gap-2"
+                                icon={<Unlock size={14} />}
+                                className="w-full md:w-auto"
+                                size="sm"
                             >
-                                <Unlock size={14} />
                                 Anular Cierre de Proceso (Admin)
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </div>

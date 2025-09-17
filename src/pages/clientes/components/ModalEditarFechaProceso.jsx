@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import { Pencil, AlertCircle } from 'lucide-react';
 import { parseDateAsUTC, formatDisplayDate } from '../../../utils/textFormatters';
+import Button from '../../../components/Button';
 
 const ModalEditarFechaProceso = ({ isOpen, onClose, onConfirm, pasoInfo }) => {
     const [nuevaFecha, setNuevaFecha] = useState('');
@@ -103,10 +104,12 @@ const ModalEditarFechaProceso = ({ isOpen, onClose, onConfirm, pasoInfo }) => {
                 )}
 
                 <div className="flex justify-end gap-4 pt-6 border-t dark:border-gray-700">
-                    <button onClick={onClose} type="button" className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-semibold px-6 py-2 rounded-lg transition">Cancelar</button>
-                    <button onClick={handleConfirmar} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg">
+                    <Button variant="secondary" onClick={onClose}>
+                        Cancelar
+                    </Button>
+                    <Button variant="primary" onClick={handleConfirmar}>
                         Guardar Cambios
-                    </button>
+                    </Button>
                 </div>
             </div>
         </Modal>

@@ -4,6 +4,7 @@ import { usePermissions } from '../../../hooks/auth/usePermissions';
 import { User, Phone, Mail, MapPin, Home, Wallet, Calendar, AlertTriangle, Building, Building2, Banknote, Landmark, Award, Briefcase, PlusCircle } from 'lucide-react';
 import { formatID, formatDisplayDate, formatCurrency } from '../../../utils/textFormatters';
 import ClienteEstadoView from './ClienteEstadoView';
+import Button from '../../../components/Button';
 
 // --- Sub-componentes para un código más limpio ---
 
@@ -114,13 +115,15 @@ const TabInfoGeneralCliente = ({ cliente, renuncia, vivienda, historialAbonos, p
                 icon={<Wallet size={20} />}
                 headerActions={
                     can('abonos', 'crear') && vivienda && (
-                        <button
+                        <Button
+                            variant="primary"
                             onClick={handleGoToAbonos}
-                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-full hover:bg-blue-700 transition"
+                            icon={<PlusCircle size={14} />}
+                            size="sm"
+                            className="rounded-full"
                         >
-                            <PlusCircle size={14} />
                             Agregar Abono
-                        </button>
+                        </Button>
                     )
                 }
             >
