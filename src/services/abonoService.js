@@ -12,7 +12,8 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
     const abonoRef = doc(collection(db, "abonos"));
     const contadorRef = doc(db, "counters", "abonos");
 
-    const { viviendaData, clienteNombre, consecutivo } = await runTransaction(db, async (transaction) => {
+    const { viviendaData, clienteNombre, consecutivo, pasoCompletadoNombre } = await runTransaction(db, async (transaction) => {
+        let nombrePasoCompletado = null;
         const contadorDoc = await transaction.get(contadorRef);
         if (!contadorDoc.exists()) {
             throw new Error("El documento contador de abonos no existe. Por favor, créalo en Firestore.");
@@ -66,6 +67,11 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
                 fecha: new Date()
             };
             nuevoProceso[desembolsoKey].actividad.push(entradaHistorial);
+            const configDelPaso = PROCESO_CONFIG.find(p => p.key === desembolsoKey);
+            if (configDelPaso) {
+                // Aquí llenamos la variable que antes se quedaba vacía (null)
+                nombrePasoCompletado = configDelPaso.label.substring(configDelPaso.label.indexOf('.') + 1).trim();
+            }
             transaction.update(clienteRef, { proceso: nuevoProceso });
         }
         return {
@@ -363,9 +369,7 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
 
 export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData, proyecto, userName) => {
 
-    const contadorDoc = await transaction.get(contadorRef);
-    if (!contadorDoc.exists()) throw new Error("El contador de abonos no existe.");
-    const nuevoConsecutivo = contadorDoc.data().currentNumber + 1;
+
 
     const viviendaRef = doc(db, "viviendas", viviendaId);
     const clienteRef = doc(db, "clientes", clienteId);
@@ -373,6 +377,10 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
     const contadorRef = doc(db, "counters", "abonos");
 
     const { clienteNombre, viviendaData, montoADesembolsar, pasoCompletadoNombre } = await runTransaction(db, async (transaction) => {
+        const contadorDoc = await transaction.get(contadorRef);
+        if (!contadorDoc.exists()) throw new Error("El contador de abonos no existe.");
+        const nuevoConsecutivo = contadorDoc.data().currentNumber + 1;
+
         let nombrePasoCompletado = null;
         const clienteDoc = await transaction.get(clienteRef);
         const viviendaDoc = await transaction.get(viviendaRef);
