@@ -206,7 +206,7 @@ const ListarAbonos = () => {
 
             {/* --- SECCIÓN DE MODALES --- */}
             {abonoAEditar && (<EditarAbonoModal isOpen={!!abonoAEditar} onClose={() => setAbonoAEditar(null)} onSave={handleGuardadoEdicion} abonoAEditar={abonoAEditar} />)}
-            {isAnularModalOpen && (<ModalAnularAbono isOpen={isAnularModalOpen} onClose={cerrarAnulacion} onAnulacionConfirmada={confirmarAnulacion} abonoAAnular={abonoParaAnular} isSubmitting={isAnulando} />)}
+            {isAnularModalOpen && (<ModalAnularAbono isOpen={isAnularModalOpen} onClose={cerrarAnulacion} onAnulacionConfirmada={confirmarAnulacion} abonoAAnular={abonoParaAnular} isSubmitting={isAnulando} size="2xl" />)}
             {isRevertirModalOpen && (<ModalConfirmacion isOpen={isRevertirModalOpen} onClose={cerrarReversion} onConfirm={confirmarReversion} titulo="¿Revertir Anulación?" mensaje="Esto reactivará el abono y volverá a afectar los saldos de la vivienda. ¿Deseas continuar?" isSubmitting={isRevirtiendo} />)}
         </ListPageLayout>
     );

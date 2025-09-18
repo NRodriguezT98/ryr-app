@@ -12,8 +12,10 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
     const abonoRef = doc(collection(db, "abonos"));
     const contadorRef = doc(db, "counters", "abonos");
 
-    const { viviendaData, clienteNombre, consecutivo, pasoCompletadoNombre } = await runTransaction(db, async (transaction) => {
+    const { viviendaData, clienteNombre, consecutivo, pasoCompletadoNombre, cuotaInicialCompletada } = await runTransaction(db, async (transaction) => {
         let nombrePasoCompletado = null;
+        let isCuotaInicialCompletada = false;
+
         const contadorDoc = await transaction.get(contadorRef);
         if (!contadorDoc.exists()) {
             throw new Error("El documento contador de abonos no existe. Por favor, créalo en Firestore.");
@@ -26,6 +28,33 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
 
         const transViviendaData = viviendaDoc.data();
         const transClienteData = clienteDoc.data();
+
+        if (abonoData.fuente === 'cuotaInicial') {
+            const montoPactado = transClienteData.financiero?.cuotaInicial?.monto || 0;
+
+            // Si no hay un monto pactado, no tiene sentido hacer la comprobación.
+            if (montoPactado > 0) {
+                // Buscamos todos los abonos ACTIVOS anteriores de la cuota inicial del cliente.
+                const abonosPreviosQuery = query(
+                    collection(db, "abonos"),
+                    where("clienteId", "==", abonoData.clienteId),
+                    where("fuente", "==", "cuotaInicial"),
+                    where("estadoProceso", "==", "activo")
+                );
+
+                // Firestore permite este tipo de consultas de lectura dentro de una transacción.
+                const abonosPreviosSnapshot = await getDocs(abonosPreviosQuery);
+                const totalAbonadoPrevio = abonosPreviosSnapshot.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
+
+                const totalConAbonoActual = totalAbonadoPrevio + abonoData.monto;
+
+                // Comparamos si el nuevo total cubre o excede lo pactado.
+                // Se resta 0.01 para manejar posibles imprecisiones con números decimales.
+                if (totalConAbonoActual >= montoPactado - 0.01) {
+                    isCuotaInicialCompletada = true;
+                }
+            }
+        }
 
         const pasoConfig = FUENTE_PROCESO_MAP[abonoData.fuente];
         if (pasoConfig) {
@@ -78,7 +107,8 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
             viviendaData: transViviendaData,
             clienteNombre: toTitleCase(`${transClienteData.datosCliente.nombres} ${transClienteData.datosCliente.apellidos}`),
             consecutivo: nuevoConsecutivo,
-            pasoCompletadoNombre: nombrePasoCompletado
+            pasoCompletadoNombre: nombrePasoCompletado,
+            cuotaInicialCompletada: isCuotaInicialCompletada
         };
     });
     const message = `Nuevo abono de ${formatCurrency(abonoData.monto)} para la vivienda Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`;
@@ -86,8 +116,13 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
 
     const esCuotaInicial = abonoData.fuente === 'cuotaInicial';
     const verbo = esCuotaInicial ? 'Abono' : 'Desembolso';
-    const mensajeAuditoria = `Registró ${verbo} de "${abonoData.metodoPago}" para ${clienteNombre} por valor de ${formatCurrency(abonoData.monto)}`;
+    const consecutivoStr = String(consecutivo).padStart(4, '0');
 
+    let mensajeAuditoria = `Registró ${verbo} de "${abonoData.metodoPago}" con el consecutivo N°${consecutivoStr} para el cliente: ${clienteNombre} por valor de ${formatCurrency(abonoData.monto)}`;
+
+    if (esCuotaInicial && cuotaInicialCompletada) {
+        mensajeAuditoria += ". Con este pago se completó el saldo de la Cuota Inicial.";
+    }
 
     await createAuditLog(
         mensajeAuditoria,
@@ -240,33 +275,27 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
     const proyectoSnap = await getDoc(proyectoRef);
     const proyectoData = proyectoSnap.exists() ? proyectoSnap.data() : { nombre: 'No encontrado' };
 
-    const datosParaAuditoria = {
-        cliente: {
-            id: clienteSnap.id,
-            nombre: toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`)
-        },
-        vivienda: {
-            id: viviendaSnap.id,
-            display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`
-        },
-        proyecto: {
-            id: viviendaData.proyectoId,
-            nombre: proyectoData.nombre
-        },
-        abono: {
-            monto: formatCurrency(abonoAAnular.monto),
-            fechaPago: formatDisplayDate(abonoAAnular.fechaPago),
-            fuente: abonoAAnular.fuente,
-            motivo: motivoFinal
-        }
-    };
+    const clienteNombreCompleto = toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`);
+    const consecutivoStr = String(abonoAAnular.consecutivo).padStart(4, '0');
+
+    // ▼▼▼ MENSAJE MODIFICADO ▼▼▼
+    const mensajeAuditoria = `Anuló el abono N°${consecutivoStr} del cliente: ${clienteNombreCompleto} por valor de ${formatCurrency(abonoAAnular.monto)}`;
 
     await createAuditLog(
-        `Anuló un abono de ${datosParaAuditoria.abono.monto} para ${datosParaAuditoria.cliente.nombre}`,
+        mensajeAuditoria,
         {
             action: 'VOID_ABONO',
             clienteId: abonoAAnular.clienteId,
-            ...datosParaAuditoria,
+            cliente: { id: clienteSnap.id, nombre: clienteNombreCompleto },
+            vivienda: { id: viviendaSnap.id, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
+            proyecto: { id: viviendaData.proyectoId, nombre: proyectoData.nombre },
+            abono: {
+                monto: formatCurrency(abonoAAnular.monto),
+                fechaPago: formatDisplayDate(abonoAAnular.fechaPago),
+                fuente: abonoAAnular.fuente,
+                motivo: motivoFinal,
+                consecutivo: consecutivoStr
+            },
             pasoReabierto: pasoReabierto
         }
     );
@@ -282,7 +311,7 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
 
     await runTransaction(db, async (transaction) => {
         const abonoDoc = await transaction.get(abonoRef);
-        if (!abonoDoc.exists()) throw "El abono que intentas revertir no existe.";
+        if (!abonoDoc.exists()) throw new Error("El abono que intentas revertir no existe.");
         if (abonoDoc.data().estadoProceso !== 'anulado') {
             throw new Error("Solo se puede revertir la anulación de un abono que esté anulado.");
         }
@@ -302,7 +331,7 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
         const pasoConfig = FUENTE_PROCESO_MAP[abonoARevertir.fuente];
         if (pasoConfig) {
             const q = query(abonosCollectionRef, where("clienteId", "==", abonoARevertir.clienteId), where("fuente", "==", abonoARevertir.fuente), where("estadoProceso", "==", "activo"));
-            const abonosActivosExistentes = await transaction.get(q);
+            const abonosActivosExistentes = await getDocs(q); // getDocs es correcto aquí dentro de la transacción para queries
             if (!abonosActivosExistentes.empty) {
                 throw new Error(`No se puede revertir. Ya existe otro desembolso activo para la fuente "${abonoARevertir.fuente}".`);
             }
@@ -312,7 +341,7 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
         const nuevoTotalAbonado = viviendaData.totalAbonado + abonoARevertir.monto;
         const nuevoSaldo = viviendaData.saldoPendiente - abonoARevertir.monto;
 
-        transaction.update(abonoRef, { estadoProceso: 'activo' });
+        transaction.update(abonoRef, { estadoProceso: 'activo', motivoAnulacion: null }); // Limpiamos el motivo de anulación
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
 
         if (pasoConfig) {
@@ -335,14 +364,15 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
         const proyectoDoc = await getDoc(proyectoRef);
         const proyectoData = proyectoDoc.exists() ? proyectoDoc.data() : { nombre: 'No encontrado' };
 
+        // Aquí preparamos los datos, incluyendo el consecutivo.
+        const consecutivoStr = String(abonoARevertir.consecutivo).padStart(4, '0');
+
         datosParaAuditoria = {
             cliente: {
-                // ✅ Se usa `clienteDoc.id` en lugar de `clienteData.id`
                 id: clienteDoc.id,
                 nombre: toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`)
             },
             vivienda: {
-                // ✅ Se usa `viviendaDoc.id` en lugar de `viviendaData.id`
                 id: viviendaDoc.id,
                 display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}`
             },
@@ -353,23 +383,26 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
             abono: {
                 monto: formatCurrency(abonoARevertir.monto),
                 fechaPago: formatDisplayDate(abonoARevertir.fechaPago),
-                fuente: abonoARevertir.fuente
+                fuente: abonoARevertir.fuente,
+                consecutivo: consecutivoStr // <-- Se añade el consecutivo aquí
             }
         };
     });
 
+    // ▼▼▼ MENSAJE MODIFICADO ▼▼▼
+    const mensajeAuditoria = `Revirtió la anulación del abono N°${datosParaAuditoria.abono.consecutivo} del cliente: ${datosParaAuditoria.cliente.nombre} por valor de ${datosParaAuditoria.abono.monto}`;
+
     await createAuditLog(
-        `Revirtió la anulación de un abono de ${datosParaAuditoria.abono.monto} para ${datosParaAuditoria.cliente.nombre}`,
+        mensajeAuditoria,
         {
             action: 'REVERT_VOID_ABONO',
+            clienteId: abonoARevertir.clienteId,
             ...datosParaAuditoria
         }
     );
 };
 
-export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData, proyecto, userName) => {
-
-
+export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData, proyecto, userName, consecutivo) => {
 
     const viviendaRef = doc(db, "viviendas", viviendaId);
     const clienteRef = doc(db, "clientes", clienteId);
@@ -443,11 +476,19 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
                 nombrePasoCompletado = configDelPaso.label.substring(configDelPaso.label.indexOf('.') + 1).trim();
             }
         }
-        return { clienteNombre: transClienteNombre, viviendaData: transViviendaData, montoADesembolsar: transMontoADesembolsar, pasoCompletadoNombre: nombrePasoCompletado };
+        return {
+            clienteNombre: transClienteNombre,
+            viviendaData: transViviendaData,
+            montoADesembolsar: transMontoADesembolsar,
+            pasoCompletadoNombre: nombrePasoCompletado,
+            consecutivo: nuevoConsecutivo
+        };
     });
 
     const message = `Se registró el desembolso del crédito hipotecario para ${clienteNombre}`;
     await createNotification('abono', message, `/clientes/detalle/${clienteId}`);
+
+    const consecutivoStr = String(consecutivo).padStart(4, '0');
 
     const mensajeAuditoria = `Registró desembolso de Crédito Hipotecario para ${clienteNombre} por valor de ${formatCurrency(montoADesembolsar)}`;
 
@@ -461,7 +502,12 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
             cliente: { id: clienteId, nombre: clienteNombre },
             vivienda: { id: viviendaId, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
             proyecto: { id: proyecto.id, nombre: proyecto.nombre },
-            abono: { monto: formatCurrency(montoADesembolsar), fechaPago: formatDisplayDate(desembolsoData.fechaPago), fuente: 'credito' }
+            abono: {
+                monto: formatCurrency(montoADesembolsar),
+                fechaPago: formatDisplayDate(desembolsoData.fechaPago),
+                fuente: 'credito',
+                consecutivo: consecutivoStr
+            }
         }
     );
 };
@@ -516,8 +562,12 @@ export const condonarSaldo = async (datosCondonacion, userName) => {
             consecutivo: nuevoConsecutivo
         };
     });
+
+    const consecutivoStr = String(consecutivo).padStart(4, '0');
+    const mensajeAuditoria = `Condonó el saldo restante de ${toTitleCase(fuenteOriginal)} con el consecutivo N°${consecutivoStr} para el cliente ${clienteNombre} por un valor de ${formatCurrency(monto)}`;
+
     await createAuditLog(
-        `Condonó un saldo de ${formatCurrency(monto)} para el cliente ${clienteNombre} (fuente: ${fuenteOriginal})`,
+        mensajeAuditoria,
         {
             action: 'CONDONAR_SALDO',
             clienteId: cliente.id,
@@ -528,7 +578,7 @@ export const condonarSaldo = async (datosCondonacion, userName) => {
                 monto: formatCurrency(monto),
                 motivo: motivo,
                 fuenteOriginal: fuenteOriginal,
-                consecutivo: String(consecutivo).padStart(4, '0')
+                consecutivo: consecutivoStr
             }
         }
     );
