@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useBlocker } from 'react-router-dom';
+import React, { useState } from 'react';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ArrowLeft, FileDown, Info, GitCommit, Home, Building2, Wallet, Briefcase, Clock, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useDetalleCliente } from '../../hooks/clientes/useDetalleCliente.jsx';
@@ -79,50 +78,28 @@ const PDFGeneratorButton = ({ datosDetalle }) => {
 
 const DetalleCliente = () => {
     const { can } = usePermissions();
-    const { isLoading, data: datosDetalle, activeTab, setActiveTab, recargarDatos, navigate } = useDetalleCliente();
-    const [procesoTieneCambios, setProcesoTieneCambios] = useState(false);
-    const [navegacionBloqueada, setNavegacionBloqueada] = useState(null);
-
-
-    const blocker = useBlocker(({ currentLocation, nextLocation }) => procesoTieneCambios && currentLocation.pathname !== nextLocation.pathname);
-
-    const handleTabClick = (tabName) => {
-        if (procesoTieneCambios && activeTab === 'proceso' && tabName !== 'proceso') {
-            setNavegacionBloqueada({ proximaTab: tabName });
-        } else {
-            setActiveTab(tabName);
-        }
-    };
-
-    const handleConfirmarSalida = () => {
-        if (navegacionBloqueada) {
-            setProcesoTieneCambios(false);
-            setActiveTab(navegacionBloqueada.proximaTab);
-            setNavegacionBloqueada(null);
-        } else if (blocker.state === 'blocked') {
-            blocker.proceed();
-        }
-    };
-
-    const handleCancelarSalida = () => {
-        setNavegacionBloqueada(null);
-        if (blocker.state === 'blocked') {
-            blocker.reset();
-        }
-    };
-
-    useEffect(() => {
-        if (blocker.state === 'blocked' && !procesoTieneCambios) {
-            blocker.proceed();
-        }
-    }, [blocker, procesoTieneCambios]);
+    const {
+        isLoading,
+        data: datosDetalle,
+        activeTab,
+        blocker,
+        navegacionBloqueada,
+        setProcesoTieneCambios,
+        recargarDatos,
+        handlers,
+        setActiveTab,
+        navigate
+    } = useDetalleCliente();
 
     if (isLoading || !datosDetalle) {
         return <div className="text-center p-10 animate-pulse">Cargando perfil del cliente...</div>;
     }
 
-    // 👇 AJUSTE #1: Añadimos un fallback y desestructuramos las nuevas variables
-    const { cliente, renuncia, historialAbonos, vivienda, proyecto, statusInfo, mostrarAvisoValorEscritura, pasoActualLabel, progresoProceso } = datosDetalle || {};
+    const { cliente, renuncia, historialAbonos, vivienda, proyecto, mostrarAvisoValorEscritura, pasoActualLabel, progresoProceso } = datosDetalle || {};
+
+    if (!cliente) {
+        return <div className="text-center p-10 animate-pulse">Cargando datos del cliente...</div>;
+    }
 
     const estaAPazYSalvo = cliente.status === 'activo' && vivienda && vivienda.saldoPendiente <= 0;
 
@@ -199,10 +176,10 @@ const DetalleCliente = () => {
 
                 <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                     <nav className="flex flex-wrap gap-2">
-                        <TabButton activeTab={activeTab} tabName="info" label="Información" icon={<Info size={16} />} onClick={handleTabClick} />
-                        {can('clientes', 'verProceso') && <TabButton activeTab={activeTab} tabName="proceso" label="Proceso" icon={<GitCommit size={16} />} onClick={handleTabClick} />}
-                        {can('clientes', 'verDocumentos') && <TabButton activeTab={activeTab} tabName="documentacion" label="Documentación" icon={<Briefcase size={16} />} onClick={handleTabClick} />}
-                        {can('clientes', 'verHistorial') && <TabButton activeTab={activeTab} tabName="historial" label="Historial" icon={<Clock size={16} />} onClick={handleTabClick} />}
+                        <TabButton activeTab={activeTab} tabName="info" label="Información" icon={<Info size={16} />} onClick={handlers.handleTabClick} />
+                        {can('clientes', 'verProceso') && <TabButton activeTab={activeTab} tabName="proceso" label="Proceso" icon={<GitCommit size={16} />} onClick={handlers.handleTabClick} />}
+                        {can('clientes', 'verDocumentos') && <TabButton activeTab={activeTab} tabName="documentacion" label="Documentación" icon={<Briefcase size={16} />} onClick={handlers.handleTabClick} />}
+                        {can('clientes', 'verHistorial') && <TabButton activeTab={activeTab} tabName="historial" label="Historial" icon={<Clock size={16} />} onClick={handlers.handleTabClick} />}
                     </nav>
                 </div>
 
@@ -210,12 +187,12 @@ const DetalleCliente = () => {
                     {activeTab === 'info' && <TabInfoGeneralCliente cliente={cliente} renuncia={renuncia} vivienda={vivienda} historialAbonos={historialAbonos} proyecto={proyecto} />}
                     {activeTab === 'proceso' && <TabProcesoCliente cliente={cliente} renuncia={renuncia} onDatosRecargados={recargarDatos} onHayCambiosChange={setProcesoTieneCambios} />}
                     {activeTab === 'documentacion' && <TabDocumentacionCliente cliente={cliente} renuncia={renuncia} />}
-                    {activeTab === 'historial' && <TabHistorial clienteId={cliente.id} />}
+                    {activeTab === 'historial' && cliente && <TabHistorial cliente={cliente} />}
                 </div>
             </div>
 
-            <ModalConfirmacion isOpen={!!navegacionBloqueada} onClose={handleCancelarSalida} onConfirm={handleConfirmarSalida} titulo="Cambios sin Guardar" mensaje="Tienes cambios pendientes en el proceso. ¿Estás seguro de que quieres salir sin guardar? Se perderán los cambios." />
-            <ModalConfirmacion isOpen={blocker.state === 'blocked'} onClose={handleCancelarSalida} onConfirm={handleConfirmarSalida} titulo="Cambios sin Guardar" mensaje="Tienes cambios pendientes en el proceso. ¿Estás seguro de que quieres abandonar la página? Se perderán los cambios." />
+            <ModalConfirmacion isOpen={!!navegacionBloqueada} onClose={handlers.handleCancelarSalida} onConfirm={handlers.handleConfirmarSalida} titulo="Cambios sin Guardar" mensaje="Tienes cambios pendientes en el proceso. ¿Estás seguro de que quieres salir sin guardar? Se perderán los cambios." />
+            <ModalConfirmacion isOpen={blocker.state === 'blocked'} onClose={handlers.handleCancelarSalida} onConfirm={handlers.handleConfirmarSalida} titulo="Cambios sin Guardar" mensaje="Tienes cambios pendientes en el proceso. ¿Estás seguro de que quieres abandonar la página? Se perderán los cambios." />
         </AnimatedPage>
     );
 };

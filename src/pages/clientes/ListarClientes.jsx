@@ -82,8 +82,10 @@ const ListarClientes = () => {
 
     const actionButton = can('clientes', 'crear') ? (
         <Link to="/clientes/crear">
-            <Button variant="primary">
-                <UserPlus size={18} className="mr-2" />
+            <Button
+                variant="primary"
+                icon={<UserPlus size={18} />}
+            >
                 Registrar Cliente
             </Button>
         </Link>

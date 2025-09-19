@@ -1,28 +1,21 @@
-import React, { Fragment, memo, useMemo } from 'react';
+import React, { Fragment, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign, MapPin } from 'lucide-react';
 import { getInitials, formatID, formatCurrency, toTitleCase } from '../../utils/textFormatters';
-import { usePermissions } from '../../hooks/auth/usePermissions';
 import Card from '../../components/Card';
 
 const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, nombreProyecto }) => {
-    const { can } = usePermissions();
 
     const {
         id, datosCliente, vivienda, clientStatus, isPagada,
         totalAbonado, porcentajePagado, puedeEditar, puedeRenunciar,
-        status, puedeSerEliminado, tieneValorEscrituraDiferente
+        status, puedeSerEliminado, tieneValorEscrituraDiferente,
+        acciones, // <-- El objeto con la lógica de acciones
+        tieneAccionesDisponibles
     } = cardData;
 
     const enRenunciaPendiente = status === 'enProcesoDeRenuncia';
-
-    const tieneAccionesDisponibles = useMemo(() => {
-        if (status === 'activo') return can('clientes', 'editar') || (vivienda && !isPagada && can('clientes', 'renunciar')) || can('clientes', 'verDetalle');
-        if (status === 'renunciado') return can('clientes', 'nuevoProceso') || can('clientes', 'archivar');
-        if (status === 'inactivo') return can('clientes', 'restaurarCliente') || (puedeSerEliminado && can('clientes', 'eliminar'));
-        return false;
-    }, [status, can, vivienda, isPagada, puedeSerEliminado]);
 
     return (
         <Card className={`relative ${isPagada ? 'border-green-400 dark:border-green-600' : ''}`}>
@@ -113,7 +106,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                         <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
                             <Menu.Items className="absolute bottom-full right-0 mb-2 w-56 origin-bottom-right bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700 rounded-md shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 z-10 focus:outline-none">
 
-                                {can('clientes', 'verDetalle') && (
+                                {acciones.verDetalle.visible && (
                                     <div className="px-1 py-1">
                                         <Menu.Item>
                                             {({ active }) => (
@@ -125,92 +118,82 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                     </div>
                                 )}
 
-                                {status === 'activo' && (
-                                    <>
-                                        {can('clientes', 'editar') && (
-                                            <div className="px-1 py-1">
-                                                <Menu.Item disabled={!puedeEditar}>
-                                                    {({ active, disabled }) => (
-                                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={!puedeEditar ? "No se puede editar un cliente con el proceso finalizado." : ''}>
-                                                            <button onClick={() => onEdit(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeEditar}>
-                                                                <Pencil className="w-5 h-5 mr-2" /> Editar
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </Menu.Item>
-                                            </div>
-                                        )}
-
-                                        {vivienda && !isPagada && can('clientes', 'renunciar') && (
-                                            <div className="px-1 py-1">
-                                                <Menu.Item disabled={!puedeRenunciar}>
-                                                    {({ active, disabled }) => (
-                                                        <div data-tooltip-id="app-tooltip" data-tooltip-content={!puedeRenunciar ? "No se puede renunciar: el cliente ha superado un hito clave." : ''}>
-                                                            <button onClick={() => onRenunciar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={!puedeRenunciar}>
-                                                                <UserX className="w-5 h-5 mr-2" /> Renunciar
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </Menu.Item>
-                                            </div>
-                                        )}
-                                    </>
+                                {acciones.editar.visible && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item disabled={!acciones.editar.enabled}>
+                                            {({ active, disabled }) => (
+                                                <div data-tooltip-id="app-tooltip" data-tooltip-content={acciones.editar.tooltip}>
+                                                    <button onClick={() => onEdit(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={disabled}>
+                                                        <Pencil className="w-5 h-5 mr-2" /> Editar
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
                                 )}
 
-                                {status === 'renunciado' && (
-                                    <>
-                                        {can('clientes', 'nuevoProceso') && (
-                                            <div className="px-1 py-1">
-                                                <Menu.Item>
-                                                    {({ active }) => (
-                                                        <button onClick={() => onReactivar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
-                                                            <RefreshCw className="w-5 h-5 mr-2" /> Iniciar Nuevo Proceso
-                                                        </button>
-                                                    )}
-                                                </Menu.Item>
-                                            </div>
-                                        )}
-
-                                        {can('clientes', 'archivar') && (
-                                            <div className="px-1 py-1">
-                                                <Menu.Item>
-                                                    {({ active }) => (
-                                                        <button onClick={() => onArchive(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
-                                                            <Archive className="w-5 h-5 mr-2" /> Archivar
-                                                        </button>
-                                                    )}
-                                                </Menu.Item>
-                                            </div>
-                                        )}
-                                    </>
+                                {acciones.renunciar.visible && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item disabled={!acciones.renunciar.enabled}>
+                                            {({ active, disabled }) => (
+                                                <div data-tooltip-id="app-tooltip" data-tooltip-content={acciones.renunciar.tooltip}>
+                                                    <button onClick={() => onRenunciar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={disabled}>
+                                                        <UserX className="w-5 h-5 mr-2" /> Renunciar
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
                                 )}
 
-                                {status === 'inactivo' && (
-                                    <>
-                                        {can('clientes', 'restaurarCliente') && (
-                                            <div className="px-1 py-1">
-                                                <Menu.Item>
-                                                    {({ active }) => (
-                                                        <button onClick={() => onRestaurar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
-                                                            <ArchiveRestore className="w-5 h-5 mr-2" /> Restaurar Cliente
-                                                        </button>
-                                                    )}
-                                                </Menu.Item>
-                                            </div>
-                                        )}
+                                {acciones.iniciarNuevoProceso.visible && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button onClick={() => onReactivar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
+                                                    <RefreshCw className="w-5 h-5 mr-2" /> Iniciar Nuevo Proceso
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
+                                )}
 
-                                        {puedeSerEliminado && can('clientes', 'eliminar') && (
-                                            <div className="px-1 py-1">
-                                                <Menu.Item>
-                                                    {({ active }) => (
-                                                        <button onClick={() => onDelete(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
-                                                            <Trash className="w-5 h-5 mr-2" /> Eliminar Permanentemente
-                                                        </button>
-                                                    )}
-                                                </Menu.Item>
-                                            </div>
-                                        )}
-                                    </>
+                                {acciones.archivar.visible && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button onClick={() => onArchive(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
+                                                    <Archive className="w-5 h-5 mr-2" /> Archivar
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
+                                )}
+
+                                {acciones.restaurar.visible && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item>
+                                            {({ active }) => (
+                                                <button onClick={() => onRestaurar(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`}>
+                                                    <ArchiveRestore className="w-5 h-5 mr-2" /> Restaurar Cliente
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
+                                )}
+
+                                {acciones.eliminar.visible && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item disabled={!acciones.eliminar.enabled}>
+                                            {({ active, disabled }) => (
+                                                <div data-tooltip-id="app-tooltip" data-tooltip-content={acciones.eliminar.tooltip}>
+                                                    <button onClick={() => onDelete(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={disabled}>
+                                                        <Trash className="w-5 h-5 mr-2" /> Eliminar Permanentemente
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
                                 )}
                             </Menu.Items>
                         </Transition>

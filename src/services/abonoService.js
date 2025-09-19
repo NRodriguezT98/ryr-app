@@ -322,16 +322,47 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
         const viviendaData = viviendaDoc.data();
         const clienteData = clienteDoc.data();
 
-        // VALIDACIÓN 1: ANTI-SOBREPAGO
-        if (abonoARevertir.monto > viviendaData.saldoPendiente) {
-            throw new Error(`No se puede revertir. El monto (${formatCurrency(abonoARevertir.monto)}) es mayor al saldo pendiente (${formatCurrency(viviendaData.saldoPendiente)}).`);
+        // --- INICIO DE LA LÓGICA DE VALIDACIÓN CORREGIDA ---
+
+        // 1. Obtenemos el monto total pactado para la fuente específica del abono.
+        const fuente = abonoARevertir.fuente;
+        const financiero = clienteData.financiero;
+        let montoPactadoFuente = 0;
+
+        if (fuente === 'cuotaInicial' && financiero?.aplicaCuotaInicial) {
+            montoPactadoFuente = financiero.cuotaInicial?.monto || 0;
+        } else if (fuente === 'credito' && financiero?.aplicaCredito) {
+            montoPactadoFuente = financiero.credito?.monto || 0;
+        } else if (fuente === 'subsidioVivienda' && financiero?.aplicaSubsidioVivienda) {
+            montoPactadoFuente = financiero.subsidioVivienda?.monto || 0;
+        } else if (fuente === 'subsidioCaja' && financiero?.aplicaSubsidioCaja) {
+            montoPactadoFuente = financiero.subsidioCaja?.monto || 0;
         }
 
-        // VALIDACIÓN 2: UNICIDAD DE DESEMBOLSO (solo para desembolsos)
+        // 2. Calculamos cuánto se ha pagado a esa fuente con abonos activos.
+        const qFuente = query(abonosCollectionRef,
+            where("clienteId", "==", abonoARevertir.clienteId),
+            where("fuente", "==", fuente),
+            where("estadoProceso", "==", "activo")
+        );
+        const abonosActivosFuenteSnap = await getDocs(qFuente);
+        const totalAbonadoFuente = abonosActivosFuenteSnap.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
+
+        // 3. Calculamos el saldo pendiente REAL de esa fuente.
+        const saldoPendienteDeLaFuente = montoPactadoFuente - totalAbonadoFuente;
+
+        // 4. Realizamos la validación CORRECTA.
+        if (abonoARevertir.monto > saldoPendienteDeLaFuente) {
+            throw new Error(`No se puede revertir. El monto del abono (${formatCurrency(abonoARevertir.monto)}) es mayor al saldo pendiente de la fuente "${fuente}" (${formatCurrency(saldoPendienteDeLaFuente)}).`);
+        }
+
+        // --- FIN DE LA LÓGICA DE VALIDACIÓN CORREGIDA ---
+
+        // VALIDACIÓN 2: UNICIDAD DE DESEMBOLSO (esta se mantiene igual)
         const pasoConfig = FUENTE_PROCESO_MAP[abonoARevertir.fuente];
         if (pasoConfig) {
-            const q = query(abonosCollectionRef, where("clienteId", "==", abonoARevertir.clienteId), where("fuente", "==", abonoARevertir.fuente), where("estadoProceso", "==", "activo"));
-            const abonosActivosExistentes = await getDocs(q); // getDocs es correcto aquí dentro de la transacción para queries
+            const qUnicidad = query(abonosCollectionRef, where("clienteId", "==", abonoARevertir.clienteId), where("fuente", "==", abonoARevertir.fuente), where("estadoProceso", "==", "activo"));
+            const abonosActivosExistentes = await getDocs(qUnicidad);
             if (!abonosActivosExistentes.empty) {
                 throw new Error(`No se puede revertir. Ya existe otro desembolso activo para la fuente "${abonoARevertir.fuente}".`);
             }
@@ -341,7 +372,7 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
         const nuevoTotalAbonado = viviendaData.totalAbonado + abonoARevertir.monto;
         const nuevoSaldo = viviendaData.saldoPendiente - abonoARevertir.monto;
 
-        transaction.update(abonoRef, { estadoProceso: 'activo', motivoAnulacion: null }); // Limpiamos el motivo de anulación
+        transaction.update(abonoRef, { estadoProceso: 'activo', motivoAnulacion: null });
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
 
         if (pasoConfig) {
@@ -364,7 +395,6 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
         const proyectoDoc = await getDoc(proyectoRef);
         const proyectoData = proyectoDoc.exists() ? proyectoDoc.data() : { nombre: 'No encontrado' };
 
-        // Aquí preparamos los datos, incluyendo el consecutivo.
         const consecutivoStr = String(abonoARevertir.consecutivo).padStart(4, '0');
 
         datosParaAuditoria = {
@@ -384,13 +414,12 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
                 monto: formatCurrency(abonoARevertir.monto),
                 fechaPago: formatDisplayDate(abonoARevertir.fechaPago),
                 fuente: abonoARevertir.fuente,
-                consecutivo: consecutivoStr // <-- Se añade el consecutivo aquí
+                consecutivo: consecutivoStr
             }
         };
     });
 
-    // ▼▼▼ MENSAJE MODIFICADO ▼▼▼
-    const mensajeAuditoria = `Revirtió la anulación del abono N°${datosParaAuditoria.abono.consecutivo} del cliente: ${datosParaAuditoria.cliente.nombre} por valor de ${datosParaAuditoria.abono.monto}`;
+    const mensajeAuditoria = `Revirtió la anulación del abono N°${datosParaAuditoria.abono.consecutivo} para ${datosParaAuditoria.cliente.nombre} por un valor de ${datosParaAuditoria.abono.monto}`;
 
     await createAuditLog(
         mensajeAuditoria,

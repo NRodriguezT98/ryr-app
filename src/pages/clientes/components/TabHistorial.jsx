@@ -36,13 +36,14 @@ const getActionIcon = (action) => {
 };
 
 // Sub-componente para renderizar cada item del historial
-const LogItem = ({ log, onEdit }) => {
+const LogItem = ({ log, onEdit, isReadOnly }) => {
     const { userData } = useAuth();
     const isNota = log.details?.action === 'ADD_NOTE';
     const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
     const formattedDate = format(timestamp, "d 'de' MMMM, yyyy 'a las' h:mm a", { locale: es });
     const icon = getActionIcon(log.details?.action);
-    const puedeEditar = isNota && log.userName === `${userData.nombres} ${userData.apellidos}`;
+
+    const puedeEditar = !isReadOnly && isNota && log.userName === `${userData.nombres} ${userData.apellidos}`;
 
     // Extraemos los detalles relevantes de forma segura
     const cambiosProceso = log.details?.action === 'UPDATE_PROCESO' ? log.details.cambios : [];
@@ -102,7 +103,7 @@ const LogItem = ({ log, onEdit }) => {
 };
 
 // Componente principal de la pestaña
-const TabHistorial = ({ clienteId }) => {
+const TabHistorial = ({ cliente }) => {
     const { userData } = useAuth();
     const userName = `${userData.nombres} ${userData.apellidos}`;
     const [historial, setHistorial] = useState([]);
@@ -110,6 +111,13 @@ const TabHistorial = ({ clienteId }) => {
     const [notaAEditar, setNotaAEditar] = useState(null);
     const [confirmacionCambios, setConfirmacionCambios] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    if (!cliente) {
+        // Esto previene el error y muestra un estado de carga o nulo si los datos no han llegado.
+        return <div className="p-10 text-center">Cargando datos del cliente...</div>;
+    }
+
+    const clienteId = cliente.id;
 
     const fetchHistorial = useCallback(async () => {
         if (!clienteId) {
@@ -175,13 +183,26 @@ const TabHistorial = ({ clienteId }) => {
         );
     }
 
+    const puedeAnadirNotas = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
+    const esSoloLectura = cliente.status === 'renunciado' || cliente.status === 'enProcesoDeRenuncia';
+
     return (
         <AnimatedPage>
-            <FormularioNuevaNota clienteId={clienteId} onNotaAgregada={fetchHistorial} />
+            {/* El formulario para añadir notas solo aparece si el cliente no ha renunciado */}
+            {puedeAnadirNotas && (
+                <FormularioNuevaNota clienteId={clienteId} onNotaAgregada={fetchHistorial} />
+            )}
 
             {historial.length > 0 ? (
                 <ol className="relative border-s border-gray-200 dark:border-gray-600">
-                    {historial.map(item => <LogItem key={item.id} log={item} onEdit={handleIniciarEdicion} />)}
+                    {historial.map(item =>
+                        <LogItem
+                            key={item.id}
+                            log={item}
+                            onEdit={handleIniciarEdicion}
+                            isReadOnly={esSoloLectura} // Pasamos el prop de solo lectura
+                        />
+                    )}
                 </ol>
             ) : (
                 <div className="text-center py-10">
