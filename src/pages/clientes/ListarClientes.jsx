@@ -41,7 +41,7 @@ const getSelectStyles = (isDarkMode) => ({
     input: (base) => ({ ...base, color: isDarkMode ? '#d1d5db' : '#111827' }),
 });
 
-const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, nombreProyecto }) => {
+const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar }) => {
     const cardData = useClienteCardLogic(cliente);
     return <ClienteCard
         cardData={cardData}
@@ -51,7 +51,7 @@ const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar,
         onRenunciar={onRenunciar}
         onReactivar={onReactivar}
         onRestaurar={onRestaurar}
-        nombreProyecto={nombreProyecto}
+        nombreProyecto={cliente.nombreProyecto}
     />;
 };
 
@@ -69,16 +69,11 @@ const ListarClientes = () => {
         sortOrder, setSortOrder,
         pagination,
         modals,
-        handlers
+        handlers,
+        projectOptions
     } = useListarClientes();
 
-    const { clientes: todosLosClientes } = useData();
     const isDarkMode = document.documentElement.classList.contains('dark');
-
-    const projectOptions = [
-        { value: 'todos', label: 'Todos los Proyectos' },
-        ...proyectos.map(p => ({ value: p.id, label: p.nombre }))
-    ];
 
     const actionButton = can('clientes', 'crear') ? (
         <Link to="/clientes/crear">
@@ -136,32 +131,20 @@ const ListarClientes = () => {
             ) : clientesVisibles.length > 0 ? (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {clientesVisibles.map(cliente => {
-                            // Hacemos el "doble salto" para encontrar el nombre del proyecto
-                            const viviendaAsignada = viviendas.find(v => v.id === cliente.viviendaId);
-                            const proyectoAsignado = viviendaAsignada ? proyectos.find(p => p.id === viviendaAsignada.proyectoId) : null;
-                            const nombreProyecto = proyectoAsignado ? proyectoAsignado.nombre : null;
-
-                            return (
-                                <ClienteCardWrapper
-                                    key={cliente.id}
-                                    cliente={cliente}
-                                    nombreProyecto={nombreProyecto}
-                                    onEdit={handlers.iniciarEdicion}
-                                    onArchive={handlers.iniciarArchivado}
-                                    onDelete={handlers.iniciarEliminacionPermanente}
-                                    onRenunciar={handlers.iniciarRenuncia}
-                                    onReactivar={handlers.iniciarReactivacion}
-                                    onRestaurar={handlers.iniciarRestauracion}
-                                />
-                            );
-                        })}
+                        {clientesVisibles.map(cliente => (
+                            <ClienteCardWrapper
+                                key={cliente.id}
+                                cliente={cliente}
+                                onEdit={handlers.iniciarEdicion}
+                                onArchive={handlers.iniciarArchivado}
+                                onDelete={handlers.iniciarEliminacionPermanente}
+                                onRenunciar={handlers.iniciarRenuncia}
+                                onReactivar={handlers.iniciarReactivacion}
+                                onRestaurar={handlers.iniciarRestauracion}
+                            />
+                        ))}
                     </div>
-                    <Pagination
-                        currentPage={pagination.currentPage}
-                        totalPages={pagination.totalPages}
-                        onPageChange={pagination.onPageChange}
-                    />
+                    <Pagination {...pagination} />
                 </>
             ) : todosLosClientesFiltrados.length === 0 && searchTerm === '' ? (
                 <div className="text-center py-16 border-2 border-dashed rounded-xl dark:border-gray-700">
@@ -176,13 +159,58 @@ const ListarClientes = () => {
                 <div className="text-center py-16"><p className="text-gray-500 dark:text-gray-400">No se encontraron clientes con los filtros actuales.</p></div>
             )}
 
-            {modals.clienteAArchivar && (<ModalConfirmacion isOpen={!!modals.clienteAArchivar} onClose={() => modals.setClienteAArchivar(null)} onConfirm={handlers.confirmarArchivado} titulo="¿Archivar Cliente?" mensaje="Este cliente tiene historial, por lo que será archivado y ocultado de las listas. ¿Estás seguro?" />)}
-            {modals.clienteAEliminar && (<ModalConfirmacion isOpen={!!modals.clienteAEliminar} onClose={() => modals.setClienteAEliminar(null)} onConfirm={handlers.confirmarEliminacionPermanente} titulo="¿Eliminar Cliente Permanentemente?" mensaje="¡Atención! Esta acción es irreversible. Se eliminará al cliente y todo su historial de renuncias y documentos. ¿Estás seguro?" />)}
-
-            {modals.clienteEnModal.cliente && (<EditarCliente isOpen={!!modals.clienteEnModal.cliente} onClose={() => modals.setClienteEnModal({ cliente: null, modo: null })} onGuardar={handlers.handleGuardado} clienteAEditar={modals.clienteEnModal.cliente} modo={modals.clienteEnModal.modo} />)}
-            {modals.clienteARenunciar && (<ModalMotivoRenuncia isOpen={!!modals.clienteARenunciar} onClose={() => modals.setClienteARenunciar(null)} onConfirm={handlers.handleConfirmarMotivo} cliente={modals.clienteARenunciar} size="3xl" />)}
-            {modals.datosRenuncia && (<ModalConfirmacion isOpen={!!modals.datosRenuncia} onClose={() => modals.setDatosRenuncia(null)} onConfirm={handlers.confirmarRenunciaFinal} titulo="¿Confirmar Renuncia?" mensaje={`¿Seguro de procesar la renuncia para ${modals.datosRenuncia.cliente.datosCliente.nombres} con motivo "${modals.datosRenuncia.motivo}"?`} isSubmitting={modals.isSubmitting} />)}
-            {modals.clienteARestaurar && (<ModalConfirmacion isOpen={!!modals.clienteARestaurar} onClose={() => modals.setClienteARestaurar(null)} onConfirm={handlers.confirmarRestauracion} titulo="¿Restaurar Cliente?" mensaje={`¿Estás seguro de restaurar a ${modals.clienteARestaurar.datosCliente.nombres}? Volverá a la lista de clientes con estado 'Renunció'.`} isSubmitting={modals.isSubmitting} />)}
+            <ModalConfirmacion
+                isOpen={!!modals.clienteAArchivar}
+                onClose={() => handlers.setModals(prev => ({ ...prev, clienteAArchivar: null }))}
+                onConfirm={handlers.confirmarArchivado}
+                titulo="¿Archivar Cliente?"
+                mensaje="Este cliente tiene historial, por lo que será archivado y ocultado de las listas. ¿Estás seguro?"
+            />
+            <ModalConfirmacion
+                isOpen={!!modals.clienteAEliminar}
+                onClose={() => handlers.setModals(prev => ({ ...prev, clienteAEliminar: null }))}
+                onConfirm={handlers.confirmarEliminacionPermanente}
+                titulo="¿Eliminar Cliente Permanentemente?"
+                mensaje="¡Atención! Esta acción es irreversible. Se eliminará al cliente y todo su historial de renuncias y documentos. ¿Estás seguro?"
+            />
+            {modals.clienteEnModal.cliente && (
+                <EditarCliente
+                    isOpen={!!modals.clienteEnModal.cliente}
+                    onClose={() => handlers.setModals(prev => ({ ...prev, clienteEnModal: { cliente: null, modo: null } }))}
+                    onGuardar={handlers.handleGuardado}
+                    clienteAEditar={modals.clienteEnModal.cliente}
+                    modo={modals.clienteEnModal.modo}
+                />
+            )}
+            {modals.clienteARenunciar && (
+                <ModalMotivoRenuncia
+                    isOpen={!!modals.clienteARenunciar}
+                    onClose={() => handlers.setModals(prev => ({ ...prev, clienteARenunciar: null }))}
+                    onConfirm={handlers.handleConfirmarMotivo}
+                    cliente={modals.clienteARenunciar}
+                    size="3xl"
+                />
+            )}
+            {modals.datosRenuncia && (
+                <ModalConfirmacion
+                    isOpen={!!modals.datosRenuncia}
+                    onClose={() => handlers.setModals(prev => ({ ...prev, datosRenuncia: null }))}
+                    onConfirm={handlers.confirmarRenunciaFinal}
+                    titulo="¿Confirmar Renuncia?"
+                    mensaje={`¿Seguro de procesar la renuncia para ${modals.datosRenuncia.cliente.datosCliente.nombres} con motivo "${modals.datosRenuncia.motivo}"?`}
+                    isSubmitting={modals.isSubmitting}
+                />
+            )}
+            {modals.clienteARestaurar && (
+                <ModalConfirmacion
+                    isOpen={!!modals.clienteARestaurar}
+                    onClose={() => handlers.setModals(prev => ({ ...prev, clienteARestaurar: null }))}
+                    onConfirm={handlers.confirmarRestauracion}
+                    titulo="¿Restaurar Cliente?"
+                    mensaje={`¿Estás seguro de restaurar a ${modals.clienteARestaurar.datosCliente.nombres}? Volverá a la lista de clientes con estado 'Renunció'.`}
+                    isSubmitting={modals.isSubmitting}
+                />
+            )}
         </ListPageLayout>
     );
 };

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
+import { useClienteCardLogic } from './useClienteCardLogic';
 import { deleteClientePermanently, inactivarCliente, renunciarAVivienda, restaurarCliente } from "../../services/clienteService";
 import { createNotification } from "../../services/notificationService";
 import toast from 'react-hot-toast';
@@ -10,28 +11,35 @@ const ITEMS_PER_PAGE = 10;
 export const useListarClientes = () => {
     const { isLoading, clientes, abonos, viviendas, proyectos, recargarDatos } = useData();
 
-    const [clienteAArchivar, setClienteAArchivar] = useState(null);
-    const [clienteAEliminar, setClienteAEliminar] = useState(null);
-    const [clienteARenunciar, setClienteARenunciar] = useState(null);
-    const [clienteARestaurar, setClienteARestaurar] = useState(null);
-    const [datosRenuncia, setDatosRenuncia] = useState(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [clienteEnModal, setClienteEnModal] = useState({ cliente: null, modo: null });
-
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('activo');
     const [proyectoFilter, setProyectoFilter] = useState('todos');
     const [sortOrder, setSortOrder] = useState('ubicacion');
     const [currentPage, setCurrentPage] = useState(1);
 
+    const [modals, setModals] = useState({
+        clienteAArchivar: null,
+        clienteAEliminar: null,
+        clienteARenunciar: null,
+        clienteARestaurar: null,
+        datosRenuncia: null,
+        isSubmitting: false,
+        clienteEnModal: { cliente: null, modo: null },
+    });
+
     const clientesFiltrados = useMemo(() => {
+        // Enriquecemos cada cliente con los datos que la Card necesitará.
+        // Este cálculo se hace una sola vez, en lugar de en cada render del componente.
         let itemsProcesados = clientes.map(cliente => {
             const viviendaAsignada = viviendas.find(v => v.id === cliente.viviendaId);
+            const proyectoAsignado = viviendaAsignada ? proyectos.find(p => p.id === viviendaAsignada.proyectoId) : null;
             const procesoFinalizado = cliente.proceso?.facturaVenta?.completado === true;
             const tieneAbonos = abonos.some(a => a.clienteId === cliente.id);
+
             return {
                 ...cliente,
                 vivienda: viviendaAsignada,
+                nombreProyecto: proyectoAsignado ? proyectoAsignado.nombre : null, // <-- Lógica movida aquí
                 puedeRenunciar: !procesoFinalizado,
                 puedeEditar: !procesoFinalizado,
                 puedeSerEliminado: !tieneAbonos
@@ -55,6 +63,7 @@ export const useListarClientes = () => {
                 return nombreCompleto.includes(searchTerm.toLowerCase()) || cedula.includes(lowerCaseSearchTerm) || (ubicacion && ubicacion.includes(lowerCaseSearchTerm));
             });
         }
+
 
         switch (sortOrder) {
             case 'fecha_reciente':
@@ -93,7 +102,7 @@ export const useListarClientes = () => {
         }
 
         return itemsProcesados;
-    }, [clientes, abonos, viviendas, searchTerm, statusFilter, proyectoFilter, sortOrder]);
+    }, [clientes, abonos, viviendas, proyectos, searchTerm, statusFilter, proyectoFilter, sortOrder]);
 
     const totalPages = useMemo(() => Math.ceil(clientesFiltrados.length / ITEMS_PER_PAGE), [clientesFiltrados]);
 
@@ -106,9 +115,14 @@ export const useListarClientes = () => {
         setCurrentPage(1);
     }, [statusFilter, searchTerm, sortOrder, proyectoFilter]);
 
+    const projectOptions = useMemo(() => [
+        { value: 'todos', label: 'Todos los Proyectos' },
+        ...proyectos.map(p => ({ value: p.id, label: p.nombre }))
+    ], [proyectos]);
+
     const handleGuardado = useCallback(() => {
         recargarDatos();
-        setClienteEnModal({ cliente: null, modo: null });
+        setModals(prev => ({ ...prev, clienteEnModal: { cliente: null, modo: null } }));
     }, [recargarDatos]);
 
     const iniciarRenuncia = (cliente) => {
@@ -116,96 +130,68 @@ export const useListarClientes = () => {
             toast.error("No se puede iniciar la renuncia: el cliente ya ha superado un hito clave en el proceso.");
             return;
         }
-        setClienteARenunciar(cliente);
+        setModals(prev => ({ ...prev, clienteARenunciar: cliente }));
     };
 
-    const iniciarEdicion = (cliente) => setClienteEnModal({ cliente, modo: 'editar' });
-    const iniciarReactivacion = (cliente) => setClienteEnModal({ cliente, modo: 'reactivar' });
-
-    const iniciarArchivado = (cliente) => {
-        setClienteAArchivar(cliente);
-    };
+    const iniciarEdicion = (cliente) => setModals(prev => ({ ...prev, clienteEnModal: { cliente, modo: 'editar' } }));
+    const iniciarReactivacion = (cliente) => setModals(prev => ({ ...prev, clienteEnModal: { cliente, modo: 'reactivar' } }));
+    const iniciarArchivado = (cliente) => setModals(prev => ({ ...prev, clienteAArchivar: cliente }));
+    const iniciarEliminacionPermanente = (cliente) => setModals(prev => ({ ...prev, clienteAEliminar: cliente }));
+    const iniciarRestauracion = (cliente) => setModals(prev => ({ ...prev, clienteARestaurar: cliente }));
 
     const confirmarArchivado = useCallback(async () => {
-        if (!clienteAArchivar) return;
+        if (!modals.clienteAArchivar) return;
         try {
-            // --- INICIO DE LA CORRECCIÓN ---
-            // 1. Construimos el nombre completo a partir del objeto del cliente.
-            const nombreCompleto = `${clienteAArchivar.datosCliente.nombres} ${clienteAArchivar.datosCliente.apellidos}`;
-
-            // 2. Pasamos el ID y el nombre completo a la función.
-            await inactivarCliente(clienteAArchivar.id, nombreCompleto);
-            // --- FIN DE LA CORRECCIÓN ---
-
+            const nombreCompleto = `${modals.clienteAArchivar.datosCliente.nombres} ${modals.clienteAArchivar.datosCliente.apellidos}`;
+            await inactivarCliente(modals.clienteAArchivar.id, nombreCompleto);
             toast.success("Cliente archivado con éxito.");
             recargarDatos();
         } catch (error) {
-            console.error("Error al archivar cliente:", error); // Es bueno loguear el error real.
             toast.error("No se pudo archivar el cliente.");
         } finally {
-            setClienteAArchivar(null);
+            setModals(prev => ({ ...prev, clienteAArchivar: null }));
         }
-    }, [clienteAArchivar, recargarDatos]);
-
-    const iniciarEliminacionPermanente = (cliente) => {
-        setClienteAEliminar(cliente);
-    };
+    }, [modals.clienteAArchivar, recargarDatos]);
 
     const confirmarEliminacionPermanente = useCallback(async () => {
-        if (!clienteAEliminar) return;
+        if (!modals.clienteAEliminar) return;
         try {
-            await deleteClientePermanently(clienteAEliminar.id);
+            await deleteClientePermanently(modals.clienteAEliminar.id);
             toast.success("Cliente y su historial han sido eliminados permanentemente.");
             recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo eliminar el cliente.");
-        } finally {
-            setClienteAEliminar(null);
-        }
-    }, [clienteAEliminar, recargarDatos]);
+        } catch (error) { toast.error("No se pudo eliminar el cliente."); }
+        finally { setModals(prev => ({ ...prev, clienteAEliminar: null })); }
+    }, [modals.clienteAEliminar, recargarDatos]);
 
     const handleConfirmarMotivo = (motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo) => {
-        setDatosRenuncia({ cliente: clienteARenunciar, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo });
-        setClienteARenunciar(null);
+        setModals(prev => ({ ...prev, datosRenuncia: { cliente: prev.clienteARenunciar, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo }, clienteARenunciar: null }));
     };
 
     const confirmarRenunciaFinal = useCallback(async () => {
-        if (!datosRenuncia || !datosRenuncia.cliente) return;
-        setIsSubmitting(true);
-        const { cliente, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo } = datosRenuncia;
+        // CORRECCIÓN: Usamos modals.datosRenuncia en lugar de datosRenuncia
+        if (!modals.datosRenuncia || !modals.datosRenuncia.cliente) return;
+        setModals(prev => ({ ...prev, isSubmitting: true }));
+        const { cliente, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo } = modals.datosRenuncia;
         try {
-            const { renunciaId, clienteNombre } = await renunciarAVivienda(
-                cliente.id, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo
-            );
+            const { renunciaId, clienteNombre } = await renunciarAVivienda(cliente.id, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo);
             toast.success("La renuncia se ha procesado correctamente.");
             await createNotification('renuncia', `Se registró una renuncia del cliente ${clienteNombre}.`, `/renuncias/detalle/${renunciaId}`);
             recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo procesar la renuncia.");
-        } finally {
-            setDatosRenuncia(null);
-            setIsSubmitting(false);
-        }
-    }, [datosRenuncia, recargarDatos]);
-
-    const iniciarRestauracion = (cliente) => {
-        setClienteARestaurar(cliente);
-    };
+        } catch (error) { toast.error("No se pudo procesar la renuncia."); }
+        finally { setModals(prev => ({ ...prev, datosRenuncia: null, isSubmitting: false })); }
+    }, [modals.datosRenuncia, recargarDatos]);
 
     const confirmarRestauracion = useCallback(async () => {
-        if (!clienteARestaurar) return;
-        setIsSubmitting(true);
+        // CORRECCIÓN: Usamos modals.clienteARestaurar en lugar de clienteARestaurar
+        if (!modals.clienteARestaurar) return;
+        setModals(prev => ({ ...prev, isSubmitting: true }));
         try {
-            await restaurarCliente(clienteARestaurar.id);
+            await restaurarCliente(modals.clienteARestaurar.id);
             toast.success("El cliente ha sido restaurado con éxito.");
             recargarDatos();
-        } catch (error) {
-            toast.error("No se pudo restaurar el cliente.");
-        } finally {
-            setClienteARestaurar(null);
-            setIsSubmitting(false);
-        }
-    }, [clienteARestaurar, recargarDatos]);
+        } catch (error) { toast.error("No se pudo restaurar el cliente."); }
+        finally { setModals(prev => ({ ...prev, clienteARestaurar: null, isSubmitting: false })); }
+    }, [modals.clienteARestaurar, recargarDatos]);
 
     return {
         isLoading,
@@ -220,15 +206,8 @@ export const useListarClientes = () => {
             totalPages,
             onPageChange: setCurrentPage
         },
-        modals: {
-            clienteAArchivar, setClienteAArchivar,
-            clienteAEliminar, setClienteAEliminar,
-            clienteARenunciar, setClienteARenunciar,
-            datosRenuncia, setDatosRenuncia,
-            isSubmitting,
-            clienteEnModal, setClienteEnModal,
-            clienteARestaurar, setClienteARestaurar
-        },
+        modals,
+        projectOptions,
         handlers: {
             handleGuardado,
             iniciarArchivado,
@@ -241,7 +220,8 @@ export const useListarClientes = () => {
             iniciarEdicion,
             iniciarReactivacion,
             iniciarRestauracion,
-            confirmarRestauracion
+            confirmarRestauracion,
+            setModals
         }
     };
 };
