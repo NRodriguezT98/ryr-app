@@ -28,6 +28,7 @@ export const PERMISSIONS_CONFIG = [
             { key: 'reabrirProceso', displayName: 'Reabrir Proceso' },
             { key: 'renunciar', displayName: 'Gestionar Renuncias' },
             { key: 'restaurarCliente', displayName: 'Restaurar Cliente' },
+            { key: 'trasnferirVivienda', displayName: 'Transferir Vivienda' },
             { key: 'ver', displayName: 'Ver' },
             { key: 'verDetalle', displayName: 'Ver Detalle' },
             { key: 'verDocumentos', displayName: 'Ver Documentos' },

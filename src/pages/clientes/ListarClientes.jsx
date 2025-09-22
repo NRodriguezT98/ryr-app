@@ -14,6 +14,7 @@ import Pagination from '../../components/Pagination.jsx';
 import { usePermissions } from '../../hooks/auth/usePermissions';
 import ListPageLayout from '../../layout/ListPageLayout.jsx';
 import Button from '../../components/Button.jsx';
+import TransferirViviendaModal from './components/TransferirViviendaModal';
 
 const sortOptions = [
     { value: 'ubicacion', label: 'Ubicación (Mz/Casa)' },
@@ -41,7 +42,7 @@ const getSelectStyles = (isDarkMode) => ({
     input: (base) => ({ ...base, color: isDarkMode ? '#d1d5db' : '#111827' }),
 });
 
-const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar }) => {
+const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, onTransferir }) => {
     const cardData = useClienteCardLogic(cliente);
     return <ClienteCard
         cardData={cardData}
@@ -51,6 +52,7 @@ const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar,
         onRenunciar={onRenunciar}
         onReactivar={onReactivar}
         onRestaurar={onRestaurar}
+        onTransferir={onTransferir}
         nombreProyecto={cliente.nombreProyecto}
     />;
 };
@@ -141,6 +143,7 @@ const ListarClientes = () => {
                                 onRenunciar={handlers.iniciarRenuncia}
                                 onReactivar={handlers.iniciarReactivacion}
                                 onRestaurar={handlers.iniciarRestauracion}
+                                onTransferir={handlers.iniciarTransferencia}
                             />
                         ))}
                     </div>
@@ -209,6 +212,15 @@ const ListarClientes = () => {
                     titulo="¿Restaurar Cliente?"
                     mensaje={`¿Estás seguro de restaurar a ${modals.clienteARestaurar.datosCliente.nombres}? Volverá a la lista de clientes con estado 'Renunció'.`}
                     isSubmitting={modals.isSubmitting}
+                />
+            )}
+
+            {modals.clienteParaTransferir && (
+                <TransferirViviendaModal
+                    cliente={modals.clienteParaTransferir}
+                    isOpen={!!modals.clienteParaTransferir}
+                    onClose={handlers.cerrarModalTransferencia}
+                    size="3xl"
                 />
             )}
         </ListPageLayout>

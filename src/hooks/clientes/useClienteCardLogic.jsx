@@ -4,12 +4,14 @@ import { determineClientStatus } from '../../utils/statusHelper';
 import { usePermissions } from '../auth/usePermissions';
 
 export const useClienteCardLogic = (cliente) => {
-    const { viviendas } = useData();
+    const { viviendas, abonos } = useData();
     const { can } = usePermissions();
 
     return useMemo(() => {
         const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
-        const totalAbonado = vivienda?.totalAbonado || 0;
+        const totalAbonado = abonos
+            .filter(abono => abono.clienteId === cliente.id && abono.viviendaId === vivienda?.id && abono.estado !== 'anulado')
+            .reduce((sum, abono) => sum + abono.monto, 0);
         const valorFinal = vivienda?.valorFinal || 0;
         const porcentajePagado = valorFinal > 0 ? (totalAbonado / valorFinal) * 100 : 0;
 
@@ -32,6 +34,11 @@ export const useClienteCardLogic = (cliente) => {
                 visible: cliente.status === 'activo' && can('clientes', 'editar'),
                 enabled: cliente.puedeEditar,
                 tooltip: !cliente.puedeEditar ? "No se puede editar un cliente con el proceso finalizado." : ''
+            },
+            transferir: {
+                visible: cliente.status === 'activo' && can('clientes', 'transferirVivienda') && vivienda && !isPagada,
+                enabled: !!vivienda, // Solo se puede transferir si tiene una vivienda actualmente
+                tooltip: !vivienda ? "El cliente debe tener una vivienda asignada para poder ser transferido." : 'Transferir cliente a una nueva vivienda.'
             },
             renunciar: {
                 visible: cliente.status === 'activo' && can('clientes', 'renunciar') && vivienda && !isPagada,
@@ -73,5 +80,5 @@ export const useClienteCardLogic = (cliente) => {
             acciones,
             tieneAccionesDisponibles
         };
-    }, [cliente, viviendas]);
+    }, [cliente, viviendas, abonos, can]);
 };

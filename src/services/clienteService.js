@@ -565,3 +565,102 @@ export const updateNotaHistorial = async (notaOriginal, nuevoTexto, userName) =>
         }
     );
 };
+
+/**
+ * Transfiere un cliente de una vivienda a otra, actualizando todos los registros implicados.
+ * @param {object} params - Parámetros para la transferencia.
+ * @param {string} params.clienteId - ID del cliente a transferir.
+ * @param {string} params.viviendaOriginalId - ID de la vivienda que el cliente deja.
+ * @param {string} params.nuevaViviendaId - ID de la nueva vivienda que ocupará el cliente.
+ * @param {string} params.motivo - Razón de negocio para la transferencia.
+ * @param {object} params.nuevoPlanFinanciero - El nuevo objeto financiero para el cliente.
+ * @param {string} params.nombreCliente - Nombre completo del cliente para el log.
+ */
+export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId, nuevaViviendaId, motivo, nuevoPlanFinanciero, nombreCliente }) => {
+    console.log("--- INICIANDO TRANSFERENCIA (MODO DEBUG) ---");
+    console.log("Cliente ID:", clienteId);
+    console.log("Vivienda Original ID:", viviendaOriginalId);
+    console.log("Nueva Vivienda ID:", nuevaViviendaId);
+
+    try {
+        // --- PASO 1: Validaciones previas (fuera del lote) ---
+        const nuevaViviendaRef = doc(db, 'viviendas', nuevaViviendaId);
+        const nuevaViviendaSnap = await getDoc(nuevaViviendaRef);
+
+        if (!nuevaViviendaSnap.exists()) {
+            throw new Error("La nueva vivienda seleccionada no existe.");
+        }
+        if (nuevaViviendaSnap.data().clienteId) {
+            throw new Error("Esta vivienda ya fue ocupada por otro cliente. Por favor, refresque y seleccione otra.");
+        }
+        const nuevaViviendaData = nuevaViviendaSnap.data();
+
+        // --- PASO 2: BUSCAR los abonos que se deben actualizar ---
+        const abonosQuery = query(
+            collection(db, "abonos"),
+            where("clienteId", "==", clienteId),
+            where("estadoProceso", "!=", "anulado")
+        );
+        const abonosASincronizar = await getDocs(abonosQuery);
+
+
+        // --- PASO 3: Preparar todas las escrituras en un LOTE (BATCH) ---
+        const batch = writeBatch(db);
+
+        // 3.1: Actualizar el cliente
+        const clienteRef = doc(db, 'clientes', clienteId);
+        batch.update(clienteRef, {
+            viviendaId: nuevaViviendaId,
+            financiero: nuevoPlanFinanciero
+        });
+
+        // 3.2: Liberar la vivienda original
+        if (viviendaOriginalId) {
+            const viviendaOriginalRef = doc(db, 'viviendas', viviendaOriginalId);
+            batch.update(viviendaOriginalRef, { clienteId: null, clienteNombre: "" });
+        }
+
+        // 3.3: Ocupar la nueva vivienda
+        batch.update(nuevaViviendaRef, {
+            clienteId: clienteId,
+            clienteNombre: nombreCliente
+        });
+
+        // 3.4: Actualizar CADA abono encontrado
+        if (abonosASincronizar.empty) {
+            // --- INICIO DE LA DEPUREACIÓN ---
+            console.warn("ADVERTENCIA: No se encontraron abonos activos para este cliente. No se actualizará ningún abono.");
+            // --- FIN DE LA DEPUREACIÓN ---
+        } else {
+            abonosASincronizar.forEach((abonoDoc) => {
+                // --- INICIO DE LA DEPUREACIÓN ---
+                console.log(` -> Añadiendo actualización para el abono con ID: ${abonoDoc.id}`);
+                // --- FIN DE LA DEPUREACIÓN ---
+                batch.update(abonoDoc.ref, { viviendaId: nuevaViviendaId });
+            });
+        }
+
+        // --- PASO 4: Ejecutar todas las operaciones de forma atómica ---
+        await batch.commit();
+
+        // --- PASO 5: Auditoría (después de que todo fue exitoso) ---
+        const auditMessage = `Transfirió al cliente ${nombreCliente} a una nueva vivienda.`;
+        const auditDetails = {
+            action: 'TRANSFER_CLIENT',
+            clienteId: clienteId,
+            clienteNombre: nombreCliente,
+            motivo,
+            viviendaAnterior: viviendaOriginalId || 'Ninguna',
+            viviendaNueva: {
+                id: nuevaViviendaId,
+                ubicacion: `Mz ${nuevaViviendaData.manzana} - Casa ${nuevaViviendaData.numeroCasa}`,
+            },
+            snapshotNuevoPlanFinanciero: nuevoPlanFinanciero
+        };
+        await createAuditLog(auditMessage, auditDetails);
+
+    } catch (error) {
+        console.error("Error en la operación de transferencia de vivienda: ", error);
+        throw error; // Lanza el error para que sea capturado por el hook y mostrado al usuario.
+    }
+};

@@ -22,6 +22,7 @@ export const useListarClientes = () => {
         clienteAEliminar: null,
         clienteARenunciar: null,
         clienteARestaurar: null,
+        clienteParaTransferir: null,
         datosRenuncia: null,
         isSubmitting: false,
         clienteEnModal: { cliente: null, modo: null },
@@ -139,6 +140,14 @@ export const useListarClientes = () => {
     const iniciarEliminacionPermanente = (cliente) => setModals(prev => ({ ...prev, clienteAEliminar: cliente }));
     const iniciarRestauracion = (cliente) => setModals(prev => ({ ...prev, clienteARestaurar: cliente }));
 
+    const iniciarTransferencia = (cliente) => {
+        setModals(prev => ({ ...prev, clienteParaTransferir: cliente }));
+    };
+
+    const cerrarModalTransferencia = () => {
+        setModals(prev => ({ ...prev, clienteParaTransferir: null }));
+    };
+
     const confirmarArchivado = useCallback(async () => {
         if (!modals.clienteAArchivar) return;
         try {
@@ -221,7 +230,9 @@ export const useListarClientes = () => {
             iniciarReactivacion,
             iniciarRestauracion,
             confirmarRestauracion,
-            setModals
+            setModals,
+            iniciarTransferencia,
+            cerrarModalTransferencia
         }
     };
 };

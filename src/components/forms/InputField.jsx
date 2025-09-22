@@ -1,11 +1,12 @@
 // src/components/forms/InputField.jsx (Versión mejorada)
 import React from 'react';
 
-const InputField = ({ label, name, type = 'text', error, ...props }) => {
+const InputField = ({ label, name, type = 'text', error, isRequired, ...props }) => {
     return (
         <div>
             <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor={name}>
                 {label}
+                {isRequired && <span className="text-red-500 ml-1">*</span>}
             </label>
             <div data-tooltip-id="app-tooltip" data-tooltip-content={props.disabled ? props['data-tooltip-content'] : ''}>
                 <input
@@ -13,6 +14,7 @@ const InputField = ({ label, name, type = 'text', error, ...props }) => {
                     name={name}
                     type={type}
                     {...props} // Aquí pasamos value, onChange, disabled, max, etc.
+                    required={isRequired}
                     className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${error ? 'border-red-500' : 'border-gray-300'}`}
                 />
             </div>

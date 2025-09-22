@@ -1,17 +1,17 @@
 import React, { Fragment, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign, MapPin } from 'lucide-react';
+import { MoreVertical, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign, MapPin, ArrowRightLeft } from 'lucide-react';
 import { getInitials, formatID, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import Card from '../../components/Card';
 
-const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, nombreProyecto }) => {
+const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, onTransferir, nombreProyecto }) => {
 
     const {
         id, datosCliente, vivienda, clientStatus, isPagada,
         totalAbonado, porcentajePagado, puedeEditar, puedeRenunciar,
         status, puedeSerEliminado, tieneValorEscrituraDiferente,
-        acciones, // <-- El objeto con la lógica de acciones
+        acciones,
         tieneAccionesDisponibles
     } = cardData;
 
@@ -125,6 +125,20 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                                 <div data-tooltip-id="app-tooltip" data-tooltip-content={acciones.editar.tooltip}>
                                                     <button onClick={() => onEdit(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={disabled}>
                                                         <Pencil className="w-5 h-5 mr-2" /> Editar
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </Menu.Item>
+                                    </div>
+                                )}
+
+                                {acciones.transferir.visible && (
+                                    <div className="px-1 py-1">
+                                        <Menu.Item disabled={!acciones.transferir.enabled}>
+                                            {({ active, disabled }) => (
+                                                <div data-tooltip-id="app-tooltip" data-tooltip-content={acciones.transferir.tooltip}>
+                                                    <button onClick={() => onTransferir(cardData)} className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} group flex rounded-md items-center w-full px-2 py-2 text-sm text-gray-900 dark:text-gray-200`} disabled={disabled}>
+                                                        <ArrowRightLeft className="w-5 h-5 mr-2" /> Transferir Vivienda
                                                     </button>
                                                 </div>
                                             )}
