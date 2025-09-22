@@ -411,8 +411,10 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
         }
     });
 
+    const auditMessage = `Registró la renuncia del cliente ${toTitleCase(clienteNombre)} a la vivienda ${viviendaInfoParaLog}, indicando el motivo '${motivo}'`;
+
     await createAuditLog(
-        `Registró la renuncia del cliente ${toTitleCase(clienteNombre)} a la vivienda ${viviendaInfoParaLog}`,
+        auditMessage,
         {
             action: 'CLIENT_RENOUNCE',
             clienteId: clienteId,

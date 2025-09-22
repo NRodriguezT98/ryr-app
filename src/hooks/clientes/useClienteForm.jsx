@@ -378,6 +378,10 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         return JSON.stringify(formData) !== JSON.stringify(initialData);
     }, [formData, initialData]);
 
+    const escrituraFirmada = useMemo(() => {
+        return clienteAEditar?.proceso?.minutaFirmada?.completado === true;
+    }, [clienteAEditar]);
+
     const handleSave = useCallback(() => {
         const valorTotalVivienda = formData.viviendaSeleccionada?.valorTotal || 0;
         const clientErrors = isEditing
@@ -459,6 +463,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         hayCambios,
         proyectos,
         isFechaIngresoLocked,
+        escrituraFirmada,
         handlers: {
             handleNextStep,
             handlePrevStep,

@@ -86,8 +86,8 @@ const ListarRenuncias = () => {
                         <RenunciaCard
                             key={renuncia.id}
                             renuncia={renuncia}
-                            onMarcarPagada={modals.setRenunciaADevolver}
-                            onCancelar={modals.setRenunciaACancelar}
+                            onMarcarPagada={() => handlers.setModals(prev => ({ ...prev, renunciaADevolver: renuncia }))}
+                            onCancelar={handlers.iniciarCancelacion}
                         />
                     ))}
                 </div>
@@ -103,6 +103,7 @@ const ListarRenuncias = () => {
                     onConfirm={handlers.confirmarCancelacion}
                     titulo="¿Cancelar Proceso de Renuncia?"
                     mensaje="¿Estás seguro? Esta acción restaurará la asignación de la vivienda al cliente y reactivará sus abonos. Úsese solo para corregir un error."
+                    isSubmitting={modals.isSubmitting}
                 />
             )}
         </ListPageLayout>

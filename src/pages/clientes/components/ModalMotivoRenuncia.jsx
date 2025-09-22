@@ -12,14 +12,14 @@ const motivosOptions = [
     {
         label: "Motivos Financieros",
         options: [
-            { value: 'Crédito Negado', label: 'Crédito Negado por el Banco' },
-            { value: 'Subsidio Insuficiente', label: 'Subsidio Insuficiente o No Aprobado' }
+            { value: 'Crédito Negado por el Banco', label: 'Crédito Negado por el Banco' },
+            { value: 'Subsidio Insuficiente o No Aprobado', label: 'Subsidio Insuficiente o No Aprobado' }
         ]
     },
     {
         label: "Decisión del Cliente",
         options: [
-            { value: 'Desistimiento Voluntario', label: 'Desistimiento Voluntario del Cliente' },
+            { value: 'Desistimiento Voluntario del Cliente', label: 'Desistimiento Voluntario del Cliente' },
             { value: 'Cambio de Circunstancias Personales', label: 'Cambio en Circunstancias Personales' },
             { value: 'Encontró otra Propiedad', label: 'Encontró otra Propiedad' }
         ]
@@ -27,8 +27,8 @@ const motivosOptions = [
     {
         label: "Motivos Operativos (Constructora)",
         options: [
-            { value: 'Incumplimiento de Pagos', label: 'Incumplimiento en el Plan de Pagos' },
-            { value: 'Retrasos en la Entrega', label: 'Retrasos en la Entrega de la Vivienda' },
+            { value: 'Incumplimiento en el Plan de Pagos', label: 'Incumplimiento en el Plan de Pagos' },
+            { value: 'Retrasos en la Entrega de la Vivienda', label: 'Retrasos en la Entrega de la Vivienda' },
             { value: 'Inconformidad con el Inmueble', label: 'Inconformidad con el Inmueble' }
         ]
     },

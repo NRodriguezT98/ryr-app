@@ -24,9 +24,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
         proyectos,
         isFechaIngresoLocked,
         handlers,
+        escrituraFirmada
     } = useClienteForm(true, clienteAEditar, onGuardar, modo);
-
-    const escrituraFirmada = clienteAEditar?.proceso?.minutaFirmada?.completado === true;
 
     const STEPS_CONFIG = [
         { number: 1, title: 'Vivienda', icon: Home },

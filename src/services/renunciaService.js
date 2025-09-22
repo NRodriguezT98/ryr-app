@@ -31,12 +31,15 @@ export const cancelarRenuncia = async (renuncia) => {
     const clienteRef = doc(db, "clientes", renuncia.clienteId);
     const viviendaRef = doc(db, "viviendas", renuncia.viviendaId);
     const renunciaRef = doc(db, "renuncias", renuncia.id);
+
     await runTransaction(db, async (transaction) => {
         const viviendaDoc = await transaction.get(viviendaRef);
         if (!viviendaDoc.exists()) throw new Error("La vivienda original ya no existe.");
         if (viviendaDoc.data().clienteId) {
             throw new Error("VIVIENDA_NO_DISPONIBLE");
         }
+
+        // --- Toda tu lógica de transacción se mantiene igual ---
         transaction.update(viviendaRef, {
             clienteId: renuncia.clienteId,
             clienteNombre: renuncia.clienteNombre,
@@ -54,6 +57,28 @@ export const cancelarRenuncia = async (renuncia) => {
         });
         transaction.delete(renunciaRef);
     });
+
+    // ===============================================================
+    // ▼▼▼ LÓGICA DE AUDITORÍA AÑADIDA ▼▼▼
+    // ===============================================================
+    // Creamos el mensaje que se mostrará en el TabHistorial.
+    const mensajeAuditoria = `Canceló la renuncia del cliente ${toTitleCase(renuncia.clienteNombre)} a la vivienda ${renuncia.viviendaInfo} revirtiendo su estado a "Activo".`;
+
+    // Registramos la acción en el log de auditoría.
+    await createAuditLog(
+        mensajeAuditoria,
+        {
+            action: 'CANCEL_RENOUNCE', // Acción para identificar este evento
+            clienteId: renuncia.clienteId,
+            clienteNombre: toTitleCase(renuncia.clienteNombre),
+            renunciaId: renuncia.id, // Guardamos el ID de la renuncia que se eliminó
+            viviendaRestaurada: {
+                id: renuncia.viviendaId,
+                info: renuncia.viviendaInfo,
+            },
+        }
+    );
+    // ===============================================================
 };
 
 export const updateRenuncia = async (renunciaId, datosParaActualizar) => {
