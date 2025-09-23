@@ -144,7 +144,7 @@ export const validateEditarCliente = (formData, todosLosClientes, clienteIdActua
     return baseErrors;
 };
 
-export const validateFinancialStep = (financiero, valorVivienda, documentos, isEditing = false) => {
+export const validateFinancialStep = (financiero, valorVivienda, documentos, isEditing = false, totalAbonadoCuotaInicial = 0) => {
     const errors = {};
     const { aplicaCuotaInicial, cuotaInicial, aplicaCredito, credito, aplicaSubsidioVivienda, subsidioVivienda, aplicaSubsidioCaja, subsidioCaja, usaValorEscrituraDiferente, valorEscritura } = financiero;
 
@@ -153,8 +153,14 @@ export const validateFinancialStep = (financiero, valorVivienda, documentos, isE
     }
 
     let totalRecursos = 0;
+
     if (aplicaCuotaInicial) {
-        if (!cuotaInicial.monto || cuotaInicial.monto <= 0) errors.cuotaInicial_monto = "El monto debe ser > 0.";
+        if (!cuotaInicial.monto || cuotaInicial.monto <= 0) {
+            errors.cuotaInicial_monto = "El monto debe ser > 0.";
+        }
+        else if (isEditing && totalAbonadoCuotaInicial > 0 && cuotaInicial.monto < totalAbonadoCuotaInicial) {
+            errors.cuotaInicial_monto = `El monto no puede ser menor a lo ya abonado: ${formatCurrency(totalAbonadoCuotaInicial)}.`;
+        }
         totalRecursos += cuotaInicial.monto || 0;
     }
     if (aplicaCredito) {

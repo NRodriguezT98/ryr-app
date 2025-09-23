@@ -384,10 +384,16 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
     const handleSave = useCallback(() => {
         const valorTotalVivienda = formData.viviendaSeleccionada?.valorTotal || 0;
+
+        const totalAbonadoCuotaInicial = abonosDelCliente
+            .filter(abono => abono.fuente === 'cuotaInicial' && abono.estadoProceso === 'activo')
+            .reduce((sum, abono) => sum + abono.monto, 0);
+
         const clientErrors = isEditing
             ? validateEditarCliente(formData.datosCliente, todosLosClientes, clienteAEditar?.id, abonosDelCliente)
             : validateCliente(formData.datosCliente, todosLosClientes);
-        const financialErrors = validateFinancialStep(formData.financiero, valorTotalVivienda, formData.documentos, isEditing);
+
+        const financialErrors = validateFinancialStep(formData.financiero, valorTotalVivienda, formData.documentos, isEditing, totalAbonadoCuotaInicial);
         const totalErrors = { ...clientErrors, ...financialErrors };
         if (Object.keys(totalErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: totalErrors });

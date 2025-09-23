@@ -20,12 +20,6 @@ export const useDetalleCliente = () => {
             procesoTieneCambios && currentLocation.pathname !== nextLocation.pathname
     );
 
-    useEffect(() => {
-        if (blocker.state === 'blocked' && !procesoTieneCambios) {
-            blocker.proceed();
-        }
-    }, [blocker, procesoTieneCambios]);
-
     const memoizedData = useMemo(() => {
         if (isDataContextLoading || !clienteId) {
             return { isLoading: true, data: null };

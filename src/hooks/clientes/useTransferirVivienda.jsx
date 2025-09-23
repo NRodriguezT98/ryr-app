@@ -81,8 +81,10 @@ const useTransferirVivienda = (cliente, onTransferSuccess) => {
 
     const validateStep2 = () => {
         const newErrors = {};
+
         if (totalAbonadoCliente > 0 && nuevoPlanFinanciero.cuotaInicial.monto < totalAbonadoCliente) {
-            newErrors.cuotaInicial_monto = `El monto no puede ser menor a ${formatCurrency(totalAbonadoCliente)}.`;
+            // Se cambia la clave del error para que sea más fácil de conectar en la UI
+            newErrors.cuotaInicial = `El monto de la cuota inicial debe ser mayor o igual al total de abonos realizados por el cliente (${formatCurrency(totalAbonadoCliente)}.)`;
         }
         if (resumenNuevoPlan.diferencia !== 0) {
             newErrors.financiero = 'El plan financiero debe cuadrar a cero.';
@@ -141,7 +143,7 @@ const useTransferirVivienda = (cliente, onTransferSuccess) => {
         // Limpiamos el error al cambiar el campo
         setErrors(prev => {
             const newErrors = { ...prev };
-            delete newErrors[`${section}_${field}`];
+            delete newErrors[section];
             return newErrors;
         });
         dispatchFinanciero({ type: 'UPDATE_FIELD', payload: { section, field, value } });
@@ -170,7 +172,8 @@ const useTransferirVivienda = (cliente, onTransferSuccess) => {
         errors,
         handleTransfer,
         totalAbonadoCliente,
-        cliente // Exponemos el total abonado para la UI
+        cliente,
+        nuevaViviendaSeleccionada
     };
 };
 

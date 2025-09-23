@@ -16,7 +16,20 @@ const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false }) => 
         setProgress(0);
 
         try {
-            const downloadURL = await uploadFile(file, filePath(file.name), (p) => setProgress(p));
+            let finalPath;
+            if (typeof filePath === 'function') {
+                // CASO 1: Si nos pasan una función, la ejecutamos para obtener la ruta completa.
+                // Esto es lo que necesita PasoProcesoCard.
+                finalPath = filePath(file.name);
+            } else {
+                // CASO 2: Si nos pasan una cadena de texto, la tratamos como un directorio.
+                // Esto da flexibilidad para otros usos en tu app.
+                const timestamp = Date.now();
+                const uniqueFileName = `${timestamp}-${file.name}`;
+                finalPath = `${filePath}${uniqueFileName}`;
+            }
+            console.log("🚀 RUTA DE SUBIDA FINAL:", finalPath);
+            const downloadURL = await uploadFile(file, finalPath, (p) => setProgress(p));
             onUploadSuccess(downloadURL);
             toast.success('¡Archivo subido con éxito!');
         } catch (error) {

@@ -13,6 +13,11 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
     const evidenciaData = evidencia.data || {};
     const fileInputRef = useRef(null);
 
+    const generateUniqueFilePath = (fileName) => {
+        const timestamp = Date.now();
+        return `documentos_proceso/${clienteId}/${evidencia.id}-${timestamp}-${fileName}`;
+    };
+
     const handleUploadSuccess = (url) => {
         onUpdateEvidencia(pasoKey, evidencia.id, url);
     };
@@ -30,7 +35,9 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
         if (!file) return;
         toast.loading('Reemplazando archivo...');
         try {
-            const downloadURL = await uploadFile(file, `documentos_proceso/${clienteId}/${pasoKey}-${evidencia.id}-${file.name}`);
+            const filePath = generateUniqueFilePath(file.name);
+            const downloadURL = await uploadFile(file, filePath);
+
             onUpdateEvidencia(pasoKey, evidencia.id, downloadURL);
             toast.dismiss();
             toast.success('¡Archivo reemplazado con éxito!');
@@ -75,7 +82,7 @@ const EvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId, isPer
                 ) : (
                     <FileUpload
                         label="Subir"
-                        filePath={(fileName) => `documentos_proceso/${clienteId}/${pasoKey}-${evidencia.id}-${fileName}`}
+                        filePath={generateUniqueFilePath}
                         onUploadSuccess={handleUploadSuccess}
                         isCompact={true}
                         disabled={isReadOnly}

@@ -13,43 +13,38 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
     const contadorRef = doc(db, "counters", "abonos");
 
     const { viviendaData, clienteNombre, consecutivo, pasoCompletadoNombre, cuotaInicialCompletada } = await runTransaction(db, async (transaction) => {
-        let nombrePasoCompletado = null;
-        let isCuotaInicialCompletada = false;
-
         const contadorDoc = await transaction.get(contadorRef);
-        if (!contadorDoc.exists()) {
-            throw new Error("El documento contador de abonos no existe. Por favor, créalo en Firestore.");
-        }
-        const nuevoConsecutivo = contadorDoc.data().currentNumber + 1;
-
         const viviendaDoc = await transaction.get(viviendaRef);
         const clienteDoc = await transaction.get(clienteRef);
+
         if (!viviendaDoc.exists() || !clienteDoc.exists()) throw new Error("El cliente o la vivienda ya no existen.");
 
         const transViviendaData = viviendaDoc.data();
         const transClienteData = clienteDoc.data();
+        let nombrePasoCompletado = null;
+        let isCuotaInicialCompletada = false;
+
+
+        let nuevoConsecutivo;
+        if (!contadorDoc.exists()) {
+            nuevoConsecutivo = 1;
+        } else {
+            nuevoConsecutivo = contadorDoc.data().consecutivo + 1;
+        }
 
         if (abonoData.fuente === 'cuotaInicial') {
             const montoPactado = transClienteData.financiero?.cuotaInicial?.monto || 0;
-
-            // Si no hay un monto pactado, no tiene sentido hacer la comprobación.
             if (montoPactado > 0) {
-                // Buscamos todos los abonos ACTIVOS anteriores de la cuota inicial del cliente.
                 const abonosPreviosQuery = query(
                     collection(db, "abonos"),
                     where("clienteId", "==", abonoData.clienteId),
                     where("fuente", "==", "cuotaInicial"),
                     where("estadoProceso", "==", "activo")
                 );
-
-                // Firestore permite este tipo de consultas de lectura dentro de una transacción.
                 const abonosPreviosSnapshot = await getDocs(abonosPreviosQuery);
                 const totalAbonadoPrevio = abonosPreviosSnapshot.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
-
                 const totalConAbonoActual = totalAbonadoPrevio + abonoData.monto;
 
-                // Comparamos si el nuevo total cubre o excede lo pactado.
-                // Se resta 0.01 para manejar posibles imprecisiones con números decimales.
                 if (totalConAbonoActual >= montoPactado - 0.01) {
                     isCuotaInicialCompletada = true;
                 }
@@ -73,7 +68,6 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
             timestampCreacion: new Date()
         };
 
-        transaction.update(contadorRef, { currentNumber: nuevoConsecutivo });
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         transaction.set(abonoRef, abonoParaGuardar);
 
@@ -116,7 +110,7 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
 
     const esCuotaInicial = abonoData.fuente === 'cuotaInicial';
     const verbo = esCuotaInicial ? 'Abono' : 'Desembolso';
-    const consecutivoStr = String(consecutivo).padStart(4, '0');
+    const consecutivoStr = `#${String(consecutivo).padStart(4, '0')}`;
 
     let mensajeAuditoria = `Registró ${verbo} de "${abonoData.metodoPago}" con el consecutivo N°${consecutivoStr} para el cliente: ${clienteNombre} por valor de ${formatCurrency(abonoData.monto)}`;
 
@@ -137,7 +131,7 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
                 monto: formatCurrency(abonoData.monto),
                 fechaPago: formatDisplayDate(abonoData.fechaPago),
                 fuente: abonoData.fuente,
-                consecutivo: String(consecutivo).padStart(4, '0')
+                consecutivo: consecutivoStr
             }
         }
     );

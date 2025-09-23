@@ -58,8 +58,10 @@ const EmptyState = ({ filters, totalCount, canCreate }) => {
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Parece que aún no has añadido ninguna vivienda al sistema.</p>
                 {canCreate && (
                     <Link to="/viviendas/crear" className="mt-6 inline-block">
-                        <Button variant="primary">
-                            <PlusCircle size={18} className="mr-2" />
+                        <Button
+                            variant="primary"
+                            icon={<PlusCircle size={18} />}
+                        >
                             Crear la primera vivienda
                         </Button>
                     </Link>
@@ -159,8 +161,10 @@ const ListarViviendas = () => {
 
     const actionButton = can('viviendas', 'crear') ? (
         <Link to="/viviendas/crear">
-            <Button variant="primary">
-                <PlusCircle size={18} className="mr-2" />
+            <Button
+                variant="primary"
+                icon={<PlusCircle size={18} />}
+            >
                 Crear Vivienda
             </Button>
         </Link>

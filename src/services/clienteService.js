@@ -577,13 +577,8 @@ export const updateNotaHistorial = async (notaOriginal, nuevoTexto, userName) =>
  * @param {string} params.nombreCliente - Nombre completo del cliente para el log.
  */
 export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId, nuevaViviendaId, motivo, nuevoPlanFinanciero, nombreCliente }) => {
-    console.log("--- INICIANDO TRANSFERENCIA (MODO DEBUG) ---");
-    console.log("Cliente ID:", clienteId);
-    console.log("Vivienda Original ID:", viviendaOriginalId);
-    console.log("Nueva Vivienda ID:", nuevaViviendaId);
-
     try {
-        // --- PASO 1: Validaciones previas (fuera del lote) ---
+        // --- PASO 1: Validaciones previas ---
         const nuevaViviendaRef = doc(db, 'viviendas', nuevaViviendaId);
         const nuevaViviendaSnap = await getDoc(nuevaViviendaRef);
 
@@ -599,51 +594,57 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
         const abonosQuery = query(
             collection(db, "abonos"),
             where("clienteId", "==", clienteId),
-            where("estadoProceso", "!=", "anulado")
+            where("estadoProceso", "==", "activo")
         );
         const abonosASincronizar = await getDocs(abonosQuery);
+
+        // --- INICIO DE LA LÓGICA DE REINICIO DE PROCESO (la que faltaba) ---
+        const nuevoProceso = {};
+        PROCESO_CONFIG.forEach(paso => {
+            // Verificamos qué pasos aplican al NUEVO plan financiero
+            if (paso.aplicaA(nuevoPlanFinanciero)) {
+                const evidencias = {};
+                paso.evidenciasRequeridas.forEach(ev => {
+                    evidencias[ev.id] = { url: null, estado: 'pendiente' };
+                });
+                nuevoProceso[paso.key] = { completado: false, fecha: null, evidencias, archivado: false };
+            }
+        });
+        // --- FIN DE LA LÓGICA DE REINICIO DE PROCESO ---
 
 
         // --- PASO 3: Preparar todas las escrituras en un LOTE (BATCH) ---
         const batch = writeBatch(db);
-
-        // 3.1: Actualizar el cliente
         const clienteRef = doc(db, 'clientes', clienteId);
+
+        // Actualizamos el cliente con TODOS los datos necesarios
         batch.update(clienteRef, {
             viviendaId: nuevaViviendaId,
-            financiero: nuevoPlanFinanciero
+            financiero: nuevoPlanFinanciero,
+            proceso: nuevoProceso // <-- SE AÑADE EL PROCESO REINICIADO
         });
 
-        // 3.2: Liberar la vivienda original
+        // Liberamos la vivienda original
         if (viviendaOriginalId) {
             const viviendaOriginalRef = doc(db, 'viviendas', viviendaOriginalId);
             batch.update(viviendaOriginalRef, { clienteId: null, clienteNombre: "" });
         }
 
-        // 3.3: Ocupar la nueva vivienda
+        // Ocupamos la nueva vivienda
         batch.update(nuevaViviendaRef, {
             clienteId: clienteId,
             clienteNombre: nombreCliente
         });
 
-        // 3.4: Actualizar CADA abono encontrado
-        if (abonosASincronizar.empty) {
-            // --- INICIO DE LA DEPUREACIÓN ---
-            console.warn("ADVERTENCIA: No se encontraron abonos activos para este cliente. No se actualizará ningún abono.");
-            // --- FIN DE LA DEPUREACIÓN ---
-        } else {
-            abonosASincronizar.forEach((abonoDoc) => {
-                // --- INICIO DE LA DEPUREACIÓN ---
-                console.log(` -> Añadiendo actualización para el abono con ID: ${abonoDoc.id}`);
-                // --- FIN DE LA DEPUREACIÓN ---
-                batch.update(abonoDoc.ref, { viviendaId: nuevaViviendaId });
-            });
-        }
+        // Actualizamos CADA abono encontrado
+        abonosASincronizar.forEach((abonoDoc) => {
+            batch.update(abonoDoc.ref, { viviendaId: nuevaViviendaId });
+        });
 
         // --- PASO 4: Ejecutar todas las operaciones de forma atómica ---
         await batch.commit();
 
-        // --- PASO 5: Auditoría (después de que todo fue exitoso) ---
+        // --- PASO 5: Auditoría ---
         const auditMessage = `Transfirió al cliente ${nombreCliente} a una nueva vivienda.`;
         const auditDetails = {
             action: 'TRANSFER_CLIENT',
@@ -661,6 +662,6 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
 
     } catch (error) {
         console.error("Error en la operación de transferencia de vivienda: ", error);
-        throw error; // Lanza el error para que sea capturado por el hook y mostrado al usuario.
+        throw error;
     }
 };
