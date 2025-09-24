@@ -139,17 +139,63 @@ const Paso2_NuevoPlanFinanciero = ({ hook }) => {
                         {nuevoPlanFinanciero.aplicaCredito && (
                             <div className="space-y-4 mt-4 pt-4 border-t border-dashed dark:border-gray-600">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className='space-y-1'><label className="text-xs font-medium text-gray-500 dark:text-gray-400">Banco</label><Select options={creditoOptions} value={creditoOptions.find(o => o.value === nuevoPlanFinanciero.credito.banco)} onChange={(opt) => handleFinancialFieldChange('credito', 'banco', opt ? opt.value : '')} styles={getSelectStyles(!!errors.credito_banco)} /></div>
-                                    <div className='space-y-1'><label className="text-xs font-medium text-gray-500 dark:text-gray-400">Monto</label><NumericFormat value={nuevoPlanFinanciero.credito.monto} onValueChange={(values) => handleFinancialFieldChange('credito', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white`} thousandSeparator="." decimalSeparator="," prefix="$ " /></div>
+                                    <div className='space-y-1'>
+                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Banco</label>
+                                        <Select options={creditoOptions} value={creditoOptions.find(o => o.value === nuevoPlanFinanciero.credito.banco)} onChange={(opt) => handleFinancialFieldChange('credito', 'banco', opt ? opt.value : '')} styles={getSelectStyles(!!errors.credito_banco)} />
+                                    </div>
+                                    <div className='space-y-1'>
+                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Monto</label>
+                                        <NumericFormat value={nuevoPlanFinanciero.credito.monto} onValueChange={(values) => handleFinancialFieldChange('credito', 'monto', values.floatValue)} className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white`} thousandSeparator="." decimalSeparator="," prefix="$ " />
+                                    </div>
                                 </div>
+
+                                {/* --- CAMPO DE REFERENCIA --- */}
+                                <div className='space-y-1 animate-fade-in'>
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">
+                                        Referencia del Crédito (Opcional)
+                                        <HelpTooltip
+                                            id="ref-credito-transferencia"
+                                            content="ID o código único de la solicitud. Ej: Número de caso SIB de Bancolombia, número de radicado, etc. Si el banco no lo provee, déjelo vacío."
+                                        />
+                                    </label>
+                                    <input
+                                        name="caso"
+                                        type="text"
+                                        value={nuevoPlanFinanciero.credito.caso || ''}
+                                        onChange={(e) => handleFinancialFieldChange('credito', 'caso', e.target.value)}
+                                        className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.credito_caso ? 'border-red-500' : 'dark:border-gray-600'}`}
+                                    />
+                                    {errors.credito_caso && <p className="text-red-600 text-sm mt-1">{errors.credito_caso}</p>}
+                                </div>
+
+                                {/* --- CAMPO DE CARTA DE APROBACIÓN --- */}
                                 <div className="space-y-1">
-                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Carta Aprobación Crédito <span className="text-red-500 ml-1">*</span></label>
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">
+                                        Carta Aprobación Crédito <span className="text-red-500 ml-1">*</span>
+                                    </label>
                                     {nuevoPlanFinanciero.credito.urlCartaAprobacion ? (
                                         <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
-                                            <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'><FileText size={16} /><a href={nuevoPlanFinanciero.credito.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a></div>
-                                            <button type="button" onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar documento"><XCircle size={20} /></button>
+                                            <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'>
+                                                <FileText size={16} />
+                                                <a href={nuevoPlanFinanciero.credito.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)}
+                                                className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
+                                                title="Eliminar documento"
+                                            >
+                                                <XCircle size={20} />
+                                            </button>
                                         </div>
-                                    ) : (<FileUpload label="Subir Carta" filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/transferencia-carta-credito-${fileName}`} onUploadSuccess={(url) => handleFinancialFieldChange('credito', 'urlCartaAprobacion', url)} disabled={!datosCliente.cedula} />)}
+                                    ) : (
+                                        <FileUpload
+                                            label="Subir Carta"
+                                            filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/transferencia-carta-credito-${fileName}`}
+                                            onUploadSuccess={(url) => handleFinancialFieldChange('credito', 'urlCartaAprobacion', url)}
+                                            disabled={!datosCliente.cedula}
+                                        />
+                                    )}
                                     {errors.credito_urlCartaAprobacion && <p className="text-red-600 text-sm mt-1">{errors.credito_urlCartaAprobacion}</p>}
                                 </div>
                             </div>

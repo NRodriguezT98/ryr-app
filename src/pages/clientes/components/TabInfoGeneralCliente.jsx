@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePermissions } from '../../../hooks/auth/usePermissions';
-import { User, Phone, Mail, MapPin, Home, Wallet, Calendar, AlertTriangle, Building, Building2, Banknote, Landmark, Award, Briefcase, PlusCircle } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Home, Wallet, Calendar, AlertTriangle, Building, Building2, Banknote, Landmark, Award, Briefcase, PlusCircle, FileKey } from 'lucide-react';
 import { formatID, formatDisplayDate, formatCurrency } from '../../../utils/textFormatters';
 import ClienteEstadoView from './ClienteEstadoView';
 import Button from '../../../components/Button';
@@ -33,7 +33,7 @@ const FuenteFinancieraCard = ({ icon, titulo, banco, children, montoAbonado, mon
         <div className="flex-shrink-0 text-blue-500">{icon}</div>
         <div className="flex-grow">
             <p className="font-semibold text-gray-700 dark:text-gray-200">{titulo}</p>
-            {banco && <p className="text-xs text-gray-500 dark:text-gray-400">{banco}</p>}
+            {banco && <div className="text-xs text-gray-500 dark:text-gray-400">{banco}</div>}
         </div>
         <div className="text-right">
             {children}
@@ -153,15 +153,32 @@ const TabInfoGeneralCliente = ({ cliente, renuncia, vivienda, historialAbonos, p
                                 </FuenteFinancieraCard>
                             )}
                             {cliente.financiero.aplicaCredito && (
-                                <FuenteFinancieraCard icon={<Landmark size={20} />} titulo="Crédito Hipotecario" banco={cliente.financiero.credito.banco}>
-                                    <p className="text-sm">
-                                        <span className="font-bold text-green-600 dark:text-green-400">
-                                            {formatCurrency((historialAbonos || []).filter(a => a.fuente === 'credito').reduce((s, a) => s + a.monto, 0))}
-                                        </span>
-                                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                                            {' / ' + formatCurrency(cliente.financiero.credito.monto)}
-                                        </span>
-                                    </p>
+                                <FuenteFinancieraCard
+                                    icon={<Landmark size={20} />}
+                                    titulo="Crédito Hipotecario"
+                                    banco={
+                                        <>
+                                            <span>{cliente.financiero.credito.banco}</span>
+                                            {cliente.financiero.credito.caso && (
+                                                <div className="mt-1">
+                                                    <span className="font-semibold text-gray-600 dark:text-gray-300">Referencia del Crédito: </span>
+                                                    <span>{cliente.financiero.credito.caso}</span>
+                                                </div>
+                                            )}
+                                        </>
+                                    }
+                                >
+                                    {/* Usamos un Fragmento para pasar múltiples elementos */}
+                                    <>
+                                        <p className="text-sm">
+                                            <span className="font-bold text-green-600 dark:text-green-400">
+                                                {formatCurrency((historialAbonos || []).filter(a => a.fuente === 'credito').reduce((s, a) => s + a.monto, 0))}
+                                            </span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                {' / ' + formatCurrency(cliente.financiero.credito.monto)}
+                                            </span>
+                                        </p>
+                                    </>
                                 </FuenteFinancieraCard>
                             )}
                             {/* --- CÓDIGO AÑADIDO --- */}

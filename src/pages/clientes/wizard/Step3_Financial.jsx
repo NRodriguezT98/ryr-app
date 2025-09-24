@@ -222,20 +222,24 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                     </div>
                                 </div>
 
-                                {financiero.credito.banco === 'Bancolombia' && (
-                                    <div className='space-y-1 animate-fade-in'>
-                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">Número de Caso<HelpTooltip id="caso" content="Número de caso SIB asignado por Bancolombia." /></label>
-                                        <input
-                                            name="caso"
-                                            type="text"
-                                            value={financiero.credito.caso || ''}
-                                            onChange={(e) => handleFinancialFieldChange('credito', 'caso', e.target.value)}
-                                            className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.credito_caso ? 'border-red-500' : 'border-gray-300'}`}
-                                            disabled={isLocked}
+                                <div className='space-y-1 animate-fade-in'>
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">
+                                        Referencia del Crédito (Opcional)
+                                        <HelpTooltip
+                                            id="ref-credito"
+                                            content="ID o código único de la solicitud. Ej: Número de caso SIB de Bancolombia, número de radicado, etc. Si el banco no lo provee, déjelo vacío."
                                         />
-                                        {errors.credito_caso && <p className="text-red-600 text-sm mt-1">{errors.credito_caso}</p>}
-                                    </div>
-                                )}
+                                    </label>
+                                    <input
+                                        name="caso"
+                                        type="text"
+                                        value={financiero.credito.caso || ''}
+                                        onChange={(e) => handleFinancialFieldChange('credito', 'caso', e.target.value)}
+                                        className={`w-full border p-2 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white disabled:bg-gray-200 disabled:dark:bg-gray-600 disabled:cursor-not-allowed ${errors.credito_caso ? 'border-red-500' : 'border-gray-300'}`}
+                                        disabled={isLocked}
+                                    />
+                                    {errors.credito_caso && <p className="text-red-600 text-sm mt-1">{errors.credito_caso}</p>}
+                                </div>
 
                                 <div className="space-y-1">
                                     <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">

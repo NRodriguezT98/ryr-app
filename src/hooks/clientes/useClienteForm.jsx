@@ -93,6 +93,11 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
     const [isConfirming, setIsConfirming] = useState(false);
     const [cambios, setCambios] = useState([]);
 
+    const isViviendaLocked = useMemo(() => {
+        const resultado = isEditing && abonosDelCliente.length > 0;
+        return resultado;
+    }, [isEditing, abonosDelCliente]);
+
     const handleInputChange = useCallback((e) => {
         const { name, value } = e.target;
         const inputFilters = {
@@ -126,7 +131,10 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         if (isEditing && clienteAEditar) {
             const viviendaAsignada = viviendas.find(v => v.id === clienteAEditar.viviendaId);
             setViviendaOriginalId(clienteAEditar.viviendaId);
-            getAbonos().then(abonos => setAbonosDelCliente(abonos.filter(a => a.clienteId === clienteAEditar.id)));
+            getAbonos().then(abonos => {
+                const abonosFiltrados = abonos.filter(a => a.clienteId === clienteAEditar.id);
+                setAbonosDelCliente(abonosFiltrados);
+            });
             let initialStateForEdit;
             if (modo === 'reactivar') {
                 initialStateForEdit = {
@@ -470,6 +478,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         proyectos,
         isFechaIngresoLocked,
         escrituraFirmada,
+        isViviendaLocked,
         handlers: {
             handleNextStep,
             handlePrevStep,

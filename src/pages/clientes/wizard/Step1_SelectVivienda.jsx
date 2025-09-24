@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import Select, { components } from 'react-select';
 import AnimatedPage from '../../../components/AnimatedPage';
-import { Home, Search, MapPin } from 'lucide-react';
+import { Home, Search, MapPin, Lock } from 'lucide-react';
 import { formatCurrency } from '../../../utils/textFormatters';
 import CustomSelect from '../../../components/forms/CustomSelect';
 
@@ -74,6 +74,13 @@ const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked, proyectos
                         isDisabled={isLocked}
                         filterOption={filterOption}
                     />
+                    {/* Mostramos un mensaje de ayuda cuando el campo está bloqueado */}
+                    {isLocked && (
+                        <div className="mt-2 flex items-center gap-2 text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded-md">
+                            <Lock size={16} />
+                            <span>La vivienda no se puede modificar porque el cliente ya tiene abonos registrados. Sí necesita asignar una nueva vivienda, comuniquese con un administrador para que hago uso de "Transferir Vivienda", una función unicamente disponible para usuarios con rol de administrador.</span>
+                        </div>
+                    )}
                 </div>
 
                 {formData.viviendaSeleccionada && (

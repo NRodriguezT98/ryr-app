@@ -44,6 +44,20 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
     }
     const clienteOriginal = clienteOriginalSnap.data();
 
+    const viviendaIdOriginal = clienteOriginal.viviendaId;
+    const viviendaIdNueva = clienteActualizado.viviendaId;
+
+    if (viviendaIdOriginal !== viviendaIdNueva) {
+        const abonosQuery = query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("estadoProceso", "==", "activo"));
+        const abonosSnap = await getDocs(abonosQuery);
+
+        if (abonosSnap.size > 0) {
+            // Si hay un intento de cambio y existen abonos, lanzamos el error.
+            // La variable 'isEditing' fue eliminada porque es redundante en esta función.
+            throw new Error("No se puede cambiar la vivienda de un cliente con abonos. Use la opción 'Transferir Vivienda'.");
+        }
+    }
+
     // Lógica de seguridad para la fecha de ingreso
     const fechaOriginal = clienteOriginal.datosCliente.fechaIngreso;
     const fechaNueva = clienteActualizado.datosCliente.fechaIngreso;
@@ -578,8 +592,18 @@ export const updateNotaHistorial = async (notaOriginal, nuevoTexto, userName) =>
  */
 export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId, nuevaViviendaId, motivo, nuevoPlanFinanciero, nombreCliente }) => {
     try {
-        // --- PASO 1: Validaciones previas ---
+        const clienteRef = doc(db, 'clientes', clienteId);
         const nuevaViviendaRef = doc(db, 'viviendas', nuevaViviendaId);
+
+        // --- INICIO DE LA MODIFICACIÓN 1: Leer datos originales del cliente ---
+        // Necesitamos el estado del cliente ANTES de hacer cualquier cambio.
+        const clienteOriginalSnap = await getDoc(clienteRef);
+        if (!clienteOriginalSnap.exists()) {
+            throw new Error("El cliente a transferir no existe.");
+        }
+        const clienteOriginal = clienteOriginalSnap.data();
+        // --- FIN DE LA MODIFICACIÓN 1 ---
+
         const nuevaViviendaSnap = await getDoc(nuevaViviendaRef);
 
         if (!nuevaViviendaSnap.exists()) {
@@ -590,7 +614,6 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
         }
         const nuevaViviendaData = nuevaViviendaSnap.data();
 
-        // --- PASO 2: BUSCAR los abonos que se deben actualizar ---
         const abonosQuery = query(
             collection(db, "abonos"),
             where("clienteId", "==", clienteId),
@@ -598,10 +621,8 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
         );
         const abonosASincronizar = await getDocs(abonosQuery);
 
-        // --- INICIO DE LA LÓGICA DE REINICIO DE PROCESO (la que faltaba) ---
         const nuevoProceso = {};
         PROCESO_CONFIG.forEach(paso => {
-            // Verificamos qué pasos aplican al NUEVO plan financiero
             if (paso.aplicaA(nuevoPlanFinanciero)) {
                 const evidencias = {};
                 paso.evidenciasRequeridas.forEach(ev => {
@@ -610,41 +631,31 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
                 nuevoProceso[paso.key] = { completado: false, fecha: null, evidencias, archivado: false };
             }
         });
-        // --- FIN DE LA LÓGICA DE REINICIO DE PROCESO ---
 
-
-        // --- PASO 3: Preparar todas las escrituras en un LOTE (BATCH) ---
         const batch = writeBatch(db);
-        const clienteRef = doc(db, 'clientes', clienteId);
 
-        // Actualizamos el cliente con TODOS los datos necesarios
         batch.update(clienteRef, {
             viviendaId: nuevaViviendaId,
             financiero: nuevoPlanFinanciero,
-            proceso: nuevoProceso // <-- SE AÑADE EL PROCESO REINICIADO
+            proceso: nuevoProceso
         });
 
-        // Liberamos la vivienda original
         if (viviendaOriginalId) {
             const viviendaOriginalRef = doc(db, 'viviendas', viviendaOriginalId);
             batch.update(viviendaOriginalRef, { clienteId: null, clienteNombre: "" });
         }
 
-        // Ocupamos la nueva vivienda
         batch.update(nuevaViviendaRef, {
             clienteId: clienteId,
             clienteNombre: nombreCliente
         });
 
-        // Actualizamos CADA abono encontrado
         abonosASincronizar.forEach((abonoDoc) => {
             batch.update(abonoDoc.ref, { viviendaId: nuevaViviendaId });
         });
 
-        // --- PASO 4: Ejecutar todas las operaciones de forma atómica ---
         await batch.commit();
 
-        // --- PASO 5: Auditoría ---
         const auditMessage = `Transfirió al cliente ${nombreCliente} a una nueva vivienda.`;
         const auditDetails = {
             action: 'TRANSFER_CLIENT',
@@ -656,7 +667,10 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
                 id: nuevaViviendaId,
                 ubicacion: `Mz ${nuevaViviendaData.manzana} - Casa ${nuevaViviendaData.numeroCasa}`,
             },
+            // --- INICIO DE LA MODIFICACIÓN 2: Guardar ambos planes financieros ---
+            snapshotAntiguoPlanFinanciero: clienteOriginal.financiero || {},
             snapshotNuevoPlanFinanciero: nuevoPlanFinanciero
+            // --- FIN DE LA MODIFICACIÓN 2 ---
         };
         await createAuditLog(auditMessage, auditDetails);
 

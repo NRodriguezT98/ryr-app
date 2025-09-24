@@ -24,7 +24,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
         proyectos,
         isFechaIngresoLocked,
         handlers,
-        escrituraFirmada
+        escrituraFirmada,
+        isViviendaLocked
     } = useClienteForm(true, clienteAEditar, onGuardar, modo);
 
     const STEPS_CONFIG = [
@@ -70,6 +71,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
                                 viviendaOptions={viviendasOptions}
                                 proyectos={proyectos}
                                 isEditing={true}
+                                isViviendaLocked={isViviendaLocked}
                                 isFinancialLocked={modo === 'editar' && escrituraFirmada}
                                 isPersonalInfoLocked={modo === 'editar' && escrituraFirmada}
                                 isFechaIngresoLocked={isFechaIngresoLocked}

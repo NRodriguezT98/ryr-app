@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAuditLogsForCliente } from '../../../services/auditService';
 import { updateNotaHistorial } from '../../../services/clienteService';
+import { useHistorialCliente } from '../../../hooks/clientes/useHistorialCliente';
 import { useAuth } from '../../../context/AuthContext';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -72,7 +73,8 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
                         </button>
                     )}
 
-                    <p className="italic whitespace-pre-wrap pr-6">{log.message}</p>
+                    <p className="italic whitespace-pre-wrap pr-6">{log.displayMessage}</p>
+
 
                     {(pasoCompletado || pasoReabierto || cambiosProceso.length > 0) && (
                         <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-500 space-y-1">
@@ -106,8 +108,9 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
 const TabHistorial = ({ cliente }) => {
     const { userData } = useAuth();
     const userName = `${userData.nombres} ${userData.apellidos}`;
-    const [historial, setHistorial] = useState([]);
-    const [loading, setLoading] = useState(true);
+
+    const { historial, loading, fetchHistorial } = useHistorialCliente(cliente?.id);
+
     const [notaAEditar, setNotaAEditar] = useState(null);
     const [confirmacionCambios, setConfirmacionCambios] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,27 +121,6 @@ const TabHistorial = ({ cliente }) => {
     }
 
     const clienteId = cliente.id;
-
-    const fetchHistorial = useCallback(async () => {
-        if (!clienteId) {
-            setLoading(false);
-            return;
-        }
-        try {
-            setLoading(true);
-            const logs = await getAuditLogsForCliente(clienteId);
-            const historialFiltrado = logs.filter(log => log.details.action !== 'EDIT_NOTE');
-            setHistorial(historialFiltrado);
-        } catch (err) {
-            console.error("Error al cargar el historial:", err);
-        } finally {
-            setLoading(false);
-        }
-    }, [clienteId]);
-
-    useEffect(() => {
-        fetchHistorial();
-    }, [fetchHistorial]);
 
     const handleIniciarEdicion = (nota) => {
         setNotaAEditar(nota);

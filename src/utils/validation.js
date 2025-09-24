@@ -166,9 +166,6 @@ export const validateFinancialStep = (financiero, valorVivienda, documentos, isE
     if (aplicaCredito) {
         if (!credito.banco) errors.credito_banco = "Selecciona un banco.";
         if (!credito.monto || credito.monto <= 0) errors.credito_monto = "El monto debe ser > 0.";
-        if (credito.banco === 'Bancolombia' && !credito.caso?.trim()) {
-            errors.credito_caso = "El número de caso es obligatorio para Bancolombia.";
-        }
         if (!credito.urlCartaAprobacion) {
             errors.credito_urlCartaAprobacion = "La carta de aprobación es obligatoria.";
         }
