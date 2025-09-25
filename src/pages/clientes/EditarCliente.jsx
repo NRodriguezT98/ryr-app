@@ -45,7 +45,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
                 icon={<UserCog size={32} className="text-[#1976d2]" />}
                 size="5xl"
             >
-                {!formData.datosCliente.nombres ? (
+                {!formData.datosCliente.cedula ? (
                     <div className="text-center py-10 text-gray-500 animate-pulse">Cargando datos...</div>
                 ) : (
                     <>
@@ -77,8 +77,10 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
                                 isFechaIngresoLocked={isFechaIngresoLocked}
                                 modo={modo}
                                 clienteAEditar={clienteAEditar}
+                                handleFileReplace={handlers.handleFileReplace}
                                 handleInputChange={handlers.handleInputChange}
                                 handleFinancialFieldChange={handlers.handleFinancialFieldChange}
+                                handleFinancialFileReplace={handlers.handleFinancialFileReplace}
                             />
                         </div>
 

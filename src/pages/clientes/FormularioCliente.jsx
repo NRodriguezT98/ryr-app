@@ -3,7 +3,7 @@ import Step1_SelectVivienda from './wizard/Step1_SelectVivienda';
 import Step2_ClientInfo from './wizard/Step2_ClientInfo';
 import Step3_Financial from './wizard/Step3_Financial';
 
-const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, proyectos, handleInputChange, handleFinancialFieldChange, isEditing = false, isViviendaLocked = false, isFinancialLocked = false, isPersonalInfoLocked = false, isFechaIngresoLocked = false, modo = 'editar' }) => {
+const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, proyectos, handleInputChange, handleFinancialFieldChange, handleFileReplace, handleFinancialFileReplace, isEditing = false, isViviendaLocked = false, isFinancialLocked = false, isPersonalInfoLocked = false, isFechaIngresoLocked = false, modo = 'editar' }) => {
     const stepsComponents = [
         <Step1_SelectVivienda
             key="step1"
@@ -19,6 +19,7 @@ const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, 
             dispatch={dispatch}
             errors={errors}
             handleInputChange={handleInputChange}
+            handleFileReplace={handleFileReplace}
             isEditing={isEditing}
             isLocked={isPersonalInfoLocked}
             isFechaIngresoLocked={isFechaIngresoLocked}
@@ -30,6 +31,7 @@ const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, 
             dispatch={dispatch}
             errors={errors}
             handleFinancialFieldChange={handleFinancialFieldChange}
+            handleFinancialFileReplace={handleFinancialFileReplace}
             isEditing={isEditing}
             isLocked={isFinancialLocked}
             modo={modo}

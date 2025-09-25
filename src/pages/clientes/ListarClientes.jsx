@@ -5,7 +5,7 @@ import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic.js
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
 import ModalMotivoRenuncia from "./components/ModalMotivoRenuncia";
-import { User, Search, UserPlus } from "lucide-react";
+import { User, Search, UserPlus, FilterX } from "lucide-react";
 import ClienteCard from "./ClienteCard.jsx";
 import ClienteCardSkeleton from "./ClienteCardSkeleton.jsx";
 import { useData } from "../../context/DataContext";
@@ -65,6 +65,7 @@ const ListarClientes = () => {
         isLoading,
         clientesVisibles,
         todosLosClientesFiltrados,
+        totalClientesEnSistema,
         statusFilter, setStatusFilter,
         proyectoFilter, setProyectoFilter,
         searchTerm, setSearchTerm,
@@ -130,7 +131,23 @@ const ListarClientes = () => {
 
             {isLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">{[...Array(9)].map((_, i) => <ClienteCardSkeleton key={i} />)}</div>
+
+                // --- INICIO DE LA LÓGICA DE RENDERIZADO CORREGIDA ---
+            ) : totalClientesEnSistema === 0 ? (
+                // 1. Si NO hay clientes en toda la base de datos, muestra el mensaje de bienvenida.
+                <div className="text-center py-16 border-2 border-dashed rounded-xl dark:border-gray-700">
+                    <User size={48} className="mx-auto text-gray-300 dark:text-gray-600" />
+                    <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">Aún no hay clientes</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Registra a tu primer cliente para empezar a gestionar sus pagos y procesos.</p>
+                    {can('clientes', 'crear') && (
+                        <Link to="/clientes/crear" className="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors">
+                            <UserPlus size={18} />Registrar primer cliente
+                        </Link>
+                    )}
+                </div>
+
             ) : clientesVisibles.length > 0 ? (
+                // 2. Si SÍ hay clientes y la vista filtrada tiene resultados, muéstralos.
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {clientesVisibles.map(cliente => (
@@ -149,17 +166,24 @@ const ListarClientes = () => {
                     </div>
                     <Pagination {...pagination} />
                 </>
-            ) : todosLosClientesFiltrados.length === 0 && searchTerm === '' ? (
-                <div className="text-center py-16 border-2 border-dashed rounded-xl dark:border-gray-700">
-                    <User size={48} className="mx-auto text-gray-300 dark:text-gray-600" />
-                    <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">Aún no hay clientes</h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Registra a tu primer cliente para empezar a gestionar sus pagos y procesos.</p>
-                    {can('clientes', 'crear') && (
-                        <Link to="/clientes/crear" className="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors"><UserPlus size={18} />Registrar primer cliente</Link>
-                    )}
-                </div>
+
             ) : (
-                <div className="text-center py-16"><p className="text-gray-500 dark:text-gray-400">No se encontraron clientes con los filtros actuales.</p></div>
+                // 3. Si SÍ hay clientes, pero la vista filtrada está vacía, muestra este mensaje.
+                <div className="text-center py-16">
+                    <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-700">
+                        <FilterX size={32} className="text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">No se encontraron clientes con los filtros actuales</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Intenta ajustar o eliminar los filtros de búsqueda actuales para ver más resultados.</p>
+                    <div className="mt-6">
+                        <Button
+                            variant="secondary"
+                            onClick={handlers.limpiarFiltros} // <-- Usamos la nueva función
+                        >
+                            Limpiar Filtros
+                        </Button>
+                    </div>
+                </div>
             )}
 
             <ModalConfirmacion

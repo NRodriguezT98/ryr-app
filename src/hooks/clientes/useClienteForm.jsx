@@ -9,6 +9,7 @@ import { createNotification } from "../../services/notificationService";
 import { useData } from '../../context/DataContext.jsx';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig.js';
 import { formatCurrency, toTitleCase, formatDisplayDate, getTodayString } from '../../utils/textFormatters.js';
+import { uploadFile } from '../../services/fileService'
 
 const blankInitialState = {
     viviendaSeleccionada: null,
@@ -126,6 +127,57 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         }
         dispatch({ type: 'UPDATE_FINANCIAL_FIELD', payload: { section, field, value } });
     }, [dispatch]);
+
+    const handleFileReplace = useCallback(async (event, field) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const cedula = formData.datosCliente.cedula;
+        if (!cedula) {
+            toast.error("Se requiere un número de cédula para subir el archivo.");
+            return;
+        }
+
+        const filePath = `documentos_clientes/${cedula}/${field}-${file.name}`;
+
+        toast.loading('Reemplazando archivo...');
+        try {
+            const downloadURL = await uploadFile(file, filePath);
+            dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field, value: downloadURL } });
+            toast.dismiss();
+            toast.success('¡Archivo reemplazado con éxito!');
+        } catch (error) {
+            toast.dismiss();
+            toast.error('No se pudo reemplazar el archivo.');
+            console.error(error);
+        }
+    }, [formData.datosCliente.cedula, dispatch]);
+
+    const handleFinancialFileReplace = useCallback(async (event, section, field) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const cedula = formData.datosCliente.cedula;
+        if (!cedula) {
+            toast.error("Se requiere un número de cédula para subir el archivo.");
+            return;
+        }
+
+        const filePath = `documentos_clientes/${cedula}/${field}-${file.name}`;
+
+        toast.loading('Reemplazando archivo...');
+        try {
+            const downloadURL = await uploadFile(file, filePath);
+            // Usamos el handler que ya existe para campos financieros
+            handleFinancialFieldChange(section, field, downloadURL);
+            toast.dismiss();
+            toast.success('¡Archivo reemplazado con éxito!');
+        } catch (error) {
+            toast.dismiss();
+            toast.error('No se pudo reemplazar el archivo.');
+            console.error(error);
+        }
+    }, [formData.datosCliente.cedula, handleFinancialFieldChange]);
 
     useEffect(() => {
         if (isEditing && clienteAEditar) {
@@ -412,11 +464,14 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             const cambiosDetectados = [];
             const initial = initialData;
             const current = formData;
+
             const formatValue = (value, type = 'text') => {
-                if (value === null || value === undefined) return 'Vacío';
+                if (value === null || value === undefined || value === '') return 'Vacío';
                 if (type === 'date') return formatDisplayDate(value);
                 if (type === 'currency') return formatCurrency(value || 0);
                 if (type === 'boolean') return value ? 'Sí' : 'No';
+                // Nuevo tipo para manejar URLs de archivos
+                if (type === 'file') return 'Archivo adjunto';
                 return String(value) || 'Vacío';
             };
             const compareAndPush = (label, initialVal, currentVal, type = 'text') => {
@@ -428,6 +483,29 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     });
                 }
             };
+
+            const compareAndPushFileChange = (label, initialUrl, currentUrl) => {
+                if (initialUrl !== currentUrl) {
+                    let anterior = initialUrl ? 'Archivo adjunto' : 'Vacío';
+                    let actual = currentUrl ? 'Archivo adjunto' : 'Vacío';
+
+                    // Si se elimina un archivo
+                    if (initialUrl && !currentUrl) {
+                        actual = 'Archivo eliminado';
+                    }
+                    // Si se reemplaza un archivo
+                    if (initialUrl && currentUrl) {
+                        actual = 'Nuevo archivo adjunto';
+                    }
+
+                    cambiosDetectados.push({
+                        campo: label,
+                        anterior: anterior,
+                        actual: actual
+                    });
+                }
+            };
+
             if (initial.viviendaSeleccionada?.id !== current.viviendaSeleccionada?.id) {
                 const viviendaInicial = viviendas.find(v => v.id === initial.viviendaSeleccionada?.id);
                 const viviendaActual = viviendas.find(v => v.id === current.viviendaSeleccionada?.id);
@@ -436,6 +514,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     viviendaActual ? `Mz ${viviendaActual.manzana} - C ${viviendaActual.numeroCasa}` : 'Ninguna'
                 );
             }
+
             compareAndPush('Nombres', initial.datosCliente.nombres, current.datosCliente.nombres);
             compareAndPush('Apellidos', initial.datosCliente.apellidos, current.datosCliente.apellidos);
             compareAndPush('Teléfono', initial.datosCliente.telefono, current.datosCliente.telefono);
@@ -456,6 +535,22 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
             compareAndPush('Usa Valor Escritura Diferente', initial.financiero.usaValorEscrituraDiferente, current.financiero.usaValorEscrituraDiferente, 'boolean');
             compareAndPush('Valor Escritura', initial.financiero.valorEscritura, current.financiero.valorEscritura, 'currency');
+
+            compareAndPushFileChange(
+                'Cédula (Archivo)',
+                initial.datosCliente.urlCedula,
+                current.datosCliente.urlCedula
+            );
+            compareAndPushFileChange(
+                'Carta Aprob. Crédito',
+                initial.financiero.credito.urlCartaAprobacion,
+                current.financiero.credito.urlCartaAprobacion
+            );
+            compareAndPushFileChange(
+                'Carta Aprob. Subsidio',
+                initial.financiero.subsidioCaja.urlCartaAprobacion,
+                current.financiero.subsidioCaja.urlCartaAprobacion
+            );
 
             setCambios(cambiosDetectados);
             setIsConfirming(true);
@@ -485,7 +580,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             handleSave,
             executeSave,
             handleInputChange,
-            handleFinancialFieldChange
+            handleFinancialFieldChange,
+            handleFileReplace,
+            handleFinancialFileReplace
         }
     };
 };

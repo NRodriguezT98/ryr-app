@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { NumericFormat } from 'react-number-format';
 import Select from 'react-select';
 import AnimatedPage from '../../../components/AnimatedPage';
@@ -6,7 +6,8 @@ import HelpTooltip from '../../../components/HelpTooltip';
 import { formatCurrency } from '../../../utils/textFormatters';
 import { useClienteFinanciero } from '../../../hooks/clientes/useClienteFinanciero';
 import FileUpload from '../../../components/FileUpload';
-import { FileText, XCircle, Lock, Info } from 'lucide-react';
+import { FileText, XCircle, Lock, Info, Eye, Trash2, Replace } from 'lucide-react';
+import { uploadFile } from '../../../services/fileService';
 
 const creditoOptions = [
     { value: 'Bancolombia', label: 'Bancolombia' },
@@ -48,7 +49,32 @@ const getSelectStyles = (hasError) => ({
     input: (base) => ({ ...base, color: 'var(--color-text-form)' }),
 });
 
-const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange, isEditing, isLocked, modo }) => {
+const FileDisplayActions = ({ url, onReplace, onDelete, isLocked }) => {
+    const replaceInputRef = useRef(null);
+    const handleReplaceClick = () => replaceInputRef.current?.click();
+
+    return (
+        <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
+            <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'>
+                <FileText size={16} />
+                <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Archivo</a>
+            </div>
+            {!isLocked && (
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={handleReplaceClick} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-yellow-800 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-700/50 hover:bg-yellow-200 dark:hover:bg-yellow-600/70 transition-colors duration-200 text-sm font-medium" title="Reemplazar documento">
+                        <Replace size={16} /> Reemplazar
+                    </button>
+                    <button type="button" onClick={onDelete} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-700/50 hover:bg-red-200 dark:hover:bg-red-600/70 transition-colors duration-200 text-sm font-medium" title="Eliminar documento">
+                        <Trash2 size={16} /> Eliminar
+                    </button>
+                    <input type="file" ref={replaceInputRef} onChange={onReplace} className="hidden" accept=".pdf,.png,.jpg,.jpeg" />
+                </div>
+            )}
+        </div>
+    );
+};
+
+const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange, handleFinancialFileReplace, isEditing, isLocked, modo }) => {
     const { financiero, viviendaSeleccionada, documentos, datosCliente } = formData;
     const resumenFinanciero = useClienteFinanciero(financiero, viviendaSeleccionada?.valorTotal);
 
@@ -246,22 +272,13 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                         Carta Aprobación Crédito <span className="text-red-600 ml-1">*</span>
                                     </label>
                                     {financiero.credito.urlCartaAprobacion ? (
-                                        <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
-                                            <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'>
-                                                <FileText size={16} />
-                                                <a href={financiero.credito.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
-                                            </div>
-                                            {!isLocked && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)}
-                                                    className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
-                                                    title="Eliminar documento"
-                                                >
-                                                    <XCircle size={20} />
-                                                </button>
-                                            )}
-                                        </div>
+                                        <FileDisplayActions
+                                            url={financiero.credito.urlCartaAprobacion}
+                                            onDelete={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)}
+                                            // 2. Usamos la nueva función pasada por props
+                                            onReplace={(e) => handleFinancialFileReplace(e, 'credito', 'urlCartaAprobacion')}
+                                            isLocked={isLocked}
+                                        />
                                     ) : (
                                         <FileUpload
                                             label="Subir Carta"

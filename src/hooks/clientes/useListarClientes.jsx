@@ -17,6 +17,14 @@ export const useListarClientes = () => {
     const [sortOrder, setSortOrder] = useState('ubicacion');
     const [currentPage, setCurrentPage] = useState(1);
 
+    const limpiarFiltros = useCallback(() => {
+        setSearchTerm('');
+        setStatusFilter('activo'); // Vuelve al filtro por defecto
+        setProyectoFilter('todos');
+        setSortOrder('ubicacion');
+        toast.success('Filtros limpiados.');
+    }, []);
+
     const [modals, setModals] = useState({
         clienteAArchivar: null,
         clienteAEliminar: null,
@@ -28,10 +36,8 @@ export const useListarClientes = () => {
         clienteEnModal: { cliente: null, modo: null },
     });
 
-    const clientesFiltrados = useMemo(() => {
-        // Enriquecemos cada cliente con los datos que la Card necesitará.
-        // Este cálculo se hace una sola vez, en lugar de en cada render del componente.
-        let itemsProcesados = clientes.map(cliente => {
+    const todosLosClientes = useMemo(() => {
+        return clientes.map(cliente => {
             const viviendaAsignada = viviendas.find(v => v.id === cliente.viviendaId);
             const proyectoAsignado = viviendaAsignada ? proyectos.find(p => p.id === viviendaAsignada.proyectoId) : null;
             const procesoFinalizado = cliente.proceso?.facturaVenta?.completado === true;
@@ -40,12 +46,18 @@ export const useListarClientes = () => {
             return {
                 ...cliente,
                 vivienda: viviendaAsignada,
-                nombreProyecto: proyectoAsignado ? proyectoAsignado.nombre : null, // <-- Lógica movida aquí
+                nombreProyecto: proyectoAsignado ? proyectoAsignado.nombre : null,
                 puedeRenunciar: !procesoFinalizado,
                 puedeEditar: !procesoFinalizado,
                 puedeSerEliminado: !tieneAbonos
             };
         });
+    }, [clientes, abonos, viviendas, proyectos]);
+
+    const clientesFiltrados = useMemo(() => {
+        // Enriquecemos cada cliente con los datos que la Card necesitará.
+        // Este cálculo se hace una sola vez, en lugar de en cada render del componente.
+        let itemsProcesados = [...todosLosClientes];
 
         if (proyectoFilter !== 'todos') {
             itemsProcesados = itemsProcesados.filter(c => c.vivienda?.proyectoId === proyectoFilter);
@@ -103,7 +115,7 @@ export const useListarClientes = () => {
         }
 
         return itemsProcesados;
-    }, [clientes, abonos, viviendas, proyectos, searchTerm, statusFilter, proyectoFilter, sortOrder]);
+    }, [todosLosClientes, searchTerm, statusFilter, proyectoFilter, sortOrder]);
 
     const totalPages = useMemo(() => Math.ceil(clientesFiltrados.length / ITEMS_PER_PAGE), [clientesFiltrados]);
 
@@ -206,6 +218,7 @@ export const useListarClientes = () => {
         isLoading,
         clientesVisibles: clientesPaginados,
         todosLosClientesFiltrados: clientesFiltrados,
+        totalClientesEnSistema: todosLosClientes.length,
         statusFilter, setStatusFilter,
         proyectoFilter, setProyectoFilter,
         searchTerm, setSearchTerm,
@@ -232,6 +245,7 @@ export const useListarClientes = () => {
             confirmarRestauracion,
             setModals,
             iniciarTransferencia,
+            limpiarFiltros,
             cerrarModalTransferencia
         }
     };
