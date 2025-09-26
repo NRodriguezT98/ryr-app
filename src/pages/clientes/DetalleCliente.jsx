@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ArrowLeft, FileDown, Info, GitCommit, Home, Building2, Wallet, Briefcase, Clock, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useDetalleCliente } from '../../hooks/clientes/useDetalleCliente.jsx';
@@ -88,6 +89,7 @@ const DetalleCliente = () => {
         recargarDatos,
         handlers,
         setActiveTab,
+        isReadOnly,
         navigate
     } = useDetalleCliente();
 
@@ -133,6 +135,16 @@ const DetalleCliente = () => {
                         <PDFGeneratorButton datosDetalle={datosDetalle} />
                     </div>
                 </div>
+                {isReadOnly && (
+                    <div className="p-4 mb-6 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-r-lg flex items-center gap-4">
+                        <AlertTriangle size={32} className="text-orange-500 flex-shrink-0" />
+                        <div>
+                            <h4 className="font-bold text-orange-800 dark:text-orange-200">Renuncia en Proceso, Cliente en Estado de Solo Lectura </h4>
+                            <p className="text-sm text-orange-700 dark:text-orange-300">Este cliente se encuentra en estado '{datosDetalle.statusInfo.text}', por lo que la mayoría de las acciones están deshabilitadas.</p>
+                            <Link to={`/renuncias/detalle/${renuncia.id}`} className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-1 block">Ir a Gestionar Renuncia</Link>
+                        </div>
+                    </div>
+                )}
 
                 {/* --- 1. AVISO DE VALOR DE ESCRITURA (REINTEGRADO) --- */}
                 {mostrarAvisoValorEscritura && (
@@ -184,8 +196,8 @@ const DetalleCliente = () => {
                 </div>
 
                 <div>
-                    {activeTab === 'info' && <TabInfoGeneralCliente cliente={cliente} renuncia={renuncia} vivienda={vivienda} historialAbonos={historialAbonos} proyecto={proyecto} />}
-                    {activeTab === 'proceso' && <TabProcesoCliente cliente={cliente} renuncia={renuncia} onDatosRecargados={recargarDatos} onHayCambiosChange={setProcesoTieneCambios} />}
+                    {activeTab === 'info' && <TabInfoGeneralCliente cliente={cliente} renuncia={renuncia} vivienda={vivienda} historialAbonos={historialAbonos} proyecto={proyecto} isReadOnly={isReadOnly} />}
+                    {activeTab === 'proceso' && <TabProcesoCliente cliente={cliente} renuncia={renuncia} onDatosRecargados={recargarDatos} onHayCambiosChange={setProcesoTieneCambios} isReadOnly={isReadOnly} />}
                     {activeTab === 'documentacion' && <TabDocumentacionCliente cliente={cliente} renuncia={renuncia} />}
                     {activeTab === 'historial' && cliente && <TabHistorial cliente={cliente} />}
                 </div>

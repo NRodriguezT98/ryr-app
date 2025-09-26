@@ -166,7 +166,6 @@ const useTransferirVivienda = (cliente, onTransferSuccess) => {
         resumenNuevoPlan,
         viviendaActual: cliente.vivienda,
         opcionesViviendaParaSelector: useMemo(() => viviendas.filter(v => !v.clienteId).map(v => ({ value: v.id, label: `Mz ${v.manzana} - Casa ${v.numeroCasa}`, vivienda: v, nombreProyecto: proyectos.find(p => p.id === v.proyectoId)?.nombre || 'N/A' })), [viviendas, proyectos]),
-        nuevaViviendaSeleccionada,
         isSubmitting,
         isLoading,
         errors,

@@ -13,16 +13,12 @@ import ModalMotivoReapertura from './ModalMotivoReapertura';
 import { usePermissions } from '../../../hooks/auth/usePermissions';
 import Button from '../../../components/Button';
 
-const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange }) => {
+const TabProcesoCliente = ({ cliente, renuncia, onDatosRecargados, onHayCambiosChange, isReadOnly: isReadOnlyFromStatus }) => {
 
     const { userData } = useAuth();
     const { can } = usePermissions();
-    const isReadOnly = !can('clientes', 'actualizarPasos');
+    const isReadOnly = isReadOnlyFromStatus || !can('clientes', 'actualizarPasos');
     const [isLoading, setIsLoading] = useState(true);
-
-    if (cliente.status === 'renunciado' || cliente.status === 'inactivo' || cliente.status === 'enProcesoDeRenuncia') {
-        return <ClienteEstadoView cliente={cliente} renuncia={renuncia} contexto="proceso" />;
-    }
 
     const handleSave = async () => {
         onDatosRecargados();

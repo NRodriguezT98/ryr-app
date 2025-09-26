@@ -75,6 +75,7 @@ const validarPasos = (procesoState, pasosAplicables, cliente) => {
 };
 
 const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationErrors, cliente) => {
+    const isProcesoReadOnly = cliente.status === 'enProcesoDeRenuncia' || cliente.status === 'renunciado' || cliente.status === 'inactivo';
     let previousStepCompleted = true;
     let primerPasoIncompletoEncontrado = false;
     const fechaDeInicio = cliente.fechaInicioProceso || cliente.datosCliente.fechaIngreso;
@@ -199,7 +200,7 @@ const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationEr
         return {
             ...pasoConfig,
             data: pasoData,
-            isLocked: isLocked || isPermanentlyLocked,
+            isLocked: isProcesoReadOnly || isLocked || isPermanentlyLocked,
             isPermanentlyLocked,
             puedeCompletarse,
             esSiguientePaso,

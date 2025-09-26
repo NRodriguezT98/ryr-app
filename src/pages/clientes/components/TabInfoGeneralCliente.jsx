@@ -43,7 +43,7 @@ const FuenteFinancieraCard = ({ icon, titulo, banco, children, montoAbonado, mon
 
 // --- Componente Principal Reestructurado ---
 
-const TabInfoGeneralCliente = ({ cliente, renuncia, vivienda, historialAbonos, proyecto }) => {
+const TabInfoGeneralCliente = ({ cliente, renuncia, vivienda, historialAbonos, proyecto, isReadOnly }) => {
     const { can } = usePermissions();
     const navigate = useNavigate();
 
@@ -74,16 +74,6 @@ const TabInfoGeneralCliente = ({ cliente, renuncia, vivienda, historialAbonos, p
     return (
         <div className="animate-fade-in grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            {cliente.status === 'enProcesoDeRenuncia' && renuncia && (
-                <div className="lg:col-span-2 p-4 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-r-lg flex items-center gap-4">
-                    <AlertTriangle size={32} className="text-orange-500 flex-shrink-0" />
-                    <div>
-                        <h4 className="font-bold text-orange-800 dark:text-orange-200">Renuncia en Proceso</h4>
-                        <p className="text-sm text-orange-700 dark:text-orange-300">Este cliente tiene una renuncia pendiente.</p>
-                        <Link to={`/renuncias/detalle/${renuncia.id}`} className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-1 block">Ir a Gestionar Renuncia</Link>
-                    </div>
-                </div>
-            )}
 
             {/* 1. Datos de Contacto */}
             <InfoCard title="Datos de Contacto" icon={<User size={20} />}>
@@ -115,15 +105,21 @@ const TabInfoGeneralCliente = ({ cliente, renuncia, vivienda, historialAbonos, p
                 icon={<Wallet size={20} />}
                 headerActions={
                     can('abonos', 'crear') && vivienda && (
-                        <Button
-                            variant="primary"
-                            onClick={handleGoToAbonos}
-                            icon={<PlusCircle size={14} />}
-                            size="sm"
-                            className="rounded-full"
+                        <div
+                            data-tooltip-id="app-tooltip"
+                            data-tooltip-content={isReadOnly ? "No se pueden agregar abonos a un cliente con renuncia en proceso." : "Agregar un nuevo abono"}
                         >
-                            Agregar Abono
-                        </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleGoToAbonos}
+                                icon={<PlusCircle size={14} />}
+                                size="sm"
+                                className="rounded-full"
+                                disabled={isReadOnly}
+                            >
+                                Agregar Abono
+                            </Button>
+                        </div>
                     )
                 }
             >

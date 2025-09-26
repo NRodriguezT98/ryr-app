@@ -70,6 +70,10 @@ export const useDetalleCliente = () => {
         };
     }, [clienteId, clientes, viviendas, proyectos, abonos, renuncias, isDataContextLoading]);
 
+    const isReadOnly = useMemo(() => {
+        const status = memoizedData.data?.cliente?.status;
+        return status === 'enProcesoDeRenuncia' || status === 'renunciado' || status === 'inactivo';
+    }, [memoizedData.data?.cliente?.status]);
 
     useEffect(() => {
         if (!memoizedData.isLoading && !memoizedData.data) {
@@ -108,6 +112,7 @@ export const useDetalleCliente = () => {
         data: memoizedData.data,
         activeTab,
         setActiveTab,
+        isReadOnly,
         blocker,
         navegacionBloqueada,
         setProcesoTieneCambios,
