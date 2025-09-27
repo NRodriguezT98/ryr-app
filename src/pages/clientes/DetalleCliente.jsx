@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
-import { ArrowLeft, FileDown, Info, GitCommit, Home, Building2, Wallet, Briefcase, Clock, DollarSign, AlertTriangle, CheckCircle } from 'lucide-react';
+import { ArrowLeft, FileDown, Info, GitCommit, Home, Building2, Wallet, Briefcase, Clock, DollarSign, AlertTriangle, CheckCircle, Archive } from 'lucide-react';
 import { useDetalleCliente } from '../../hooks/clientes/useDetalleCliente.jsx';
-import { getInitials, formatCurrency, toTitleCase } from '../../utils/textFormatters';
+import { getInitials, formatCurrency, toTitleCase, formatDisplayDate } from '../../utils/textFormatters';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import TabInfoGeneralCliente from './components/TabInfoGeneralCliente';
 import TabProcesoCliente from './components/TabProcesoCliente';
@@ -98,7 +98,6 @@ const DetalleCliente = () => {
     }
 
     const { cliente, renuncia, historialAbonos, vivienda, proyecto, mostrarAvisoValorEscritura, pasoActualLabel, progresoProceso } = datosDetalle || {};
-
     if (!cliente) {
         return <div className="text-center p-10 animate-pulse">Cargando datos del cliente...</div>;
     }
@@ -135,13 +134,28 @@ const DetalleCliente = () => {
                         <PDFGeneratorButton datosDetalle={datosDetalle} />
                     </div>
                 </div>
-                {isReadOnly && (
+                {/* --- INICIO DE LA MODIFICACIÓN: Banners de Estado Globales --- */}
+                {/* Banner para "EN PROCESO DE RENUNCIA"*/}
+                {cliente.status === 'enProcesoDeRenuncia' && renuncia && (
                     <div className="p-4 mb-6 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 rounded-r-lg flex items-center gap-4">
                         <AlertTriangle size={32} className="text-orange-500 flex-shrink-0" />
                         <div>
                             <h4 className="font-bold text-orange-800 dark:text-orange-200">Renuncia en Proceso, Cliente en Estado de Solo Lectura </h4>
                             <p className="text-sm text-orange-700 dark:text-orange-300">Este cliente se encuentra en estado '{datosDetalle.statusInfo.text}', por lo que la mayoría de las acciones están deshabilitadas.</p>
                             <Link to={`/renuncias/detalle/${renuncia.id}`} className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline mt-1 block">Ir a Gestionar Renuncia</Link>
+                        </div>
+                    </div>
+                )}
+                {/* Banner para estado "RENUNCIADO"*/}
+                {cliente.status === 'renunciado' && renuncia && (
+                    <div className="p-4 mb-6 bg-gray-100 dark:bg-gray-700/50 border-l-4 border-gray-400 rounded-r-lg flex items-center gap-4">
+                        <Archive size={32} className="text-gray-500 flex-shrink-0" />
+                        <div>
+                            <h4 className="font-bold text-gray-800 dark:text-gray-200">Renuncia Completada</h4>
+                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                                {/* Mostramos la fecha de la renuncia para dar contexto */}
+                                Este cliente se retiró del proyecto el {renuncia.fechaRenuncia ? formatDisplayDate(renuncia.fechaRenuncia) : 'N/A'}. para mayor información presione en "Ver Detalle Completo de la Renuncia".
+                            </p>
                         </div>
                     </div>
                 )}
@@ -158,34 +172,35 @@ const DetalleCliente = () => {
                         </div>
                     </div>
                 )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    {/* Tarjeta #1: Saldo Pendiente */}
-                    <div className={`p-4 rounded-lg flex items-center gap-4 bg-gray-100 dark:bg-gray-700/50`}>
-                        <DollarSign size={28} className={vivienda && vivienda.saldoPendiente <= 0 ? "text-green-500" : "text-red-500"} />
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Saldo Pendiente</p>
-                            <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{vivienda ? formatCurrency(vivienda.saldoPendiente) : 'N/A'}</p>
+                {/* Este bloque de tarjetas solo se mostrará si el cliente NO está en un estado final */}
+                {cliente.status !== 'renunciado' && cliente.status !== 'inactivo' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        {/* Tarjeta #1: Saldo Pendiente */}
+                        <div className={`p-4 rounded-lg flex items-center gap-4 bg-gray-100 dark:bg-gray-700/50`}>
+                            <DollarSign size={28} className={vivienda && vivienda.saldoPendiente <= 0 ? "text-green-500" : "text-red-500"} />
+                            <div>
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Saldo Pendiente</p>
+                                <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{vivienda ? formatCurrency(vivienda.saldoPendiente) : 'N/A'}</p>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Tarjeta #2: Paso Actual del Proceso */}
-                    <div className={`p-4 rounded-lg flex items-center gap-4 bg-gray-100 dark:bg-gray-700/50`}>
-                        {pasoActualLabel === 'Completado' ? <CheckCircle size={28} className="text-green-500" /> : <GitCommit size={28} className="text-blue-500" />}
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Paso Actual del Proceso</p>
-                            <p className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate" title={pasoActualLabel}>
-                                {pasoActualLabel === 'Completado' ? '¡Proceso Finalizado!' : pasoActualLabel}
-                            </p>
-                            {pasoActualLabel !== 'Completado' && progresoProceso.total > 0 && (
-                                <p className="text-xs font-semibold text-blue-500 dark:text-blue-400 mt-1">
-                                    {`Paso ${progresoProceso.completados + 1} de ${progresoProceso.total}`}
+                        {/* Tarjeta #2: Paso Actual del Proceso */}
+                        <div className={`p-4 rounded-lg flex items-center gap-4 bg-gray-100 dark:bg-gray-700/50`}>
+                            {pasoActualLabel === 'Completado' ? <CheckCircle size={28} className="text-green-500" /> : <GitCommit size={28} className="text-blue-500" />}
+                            <div>
+                                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Paso Actual del Proceso</p>
+                                <p className="text-lg font-bold text-gray-800 dark:text-gray-100 truncate" title={pasoActualLabel}>
+                                    {pasoActualLabel === 'Completado' ? '¡Proceso Finalizado!' : pasoActualLabel}
                                 </p>
-                            )}
+                                {pasoActualLabel !== 'Completado' && progresoProceso.total > 0 && (
+                                    <p className="text-xs font-semibold text-blue-500 dark:text-blue-400 mt-1">
+                                        {`Paso ${progresoProceso.completados + 1} de ${progresoProceso.total}`}
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-
+                )}
                 <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                     <nav className="flex flex-wrap gap-2">
                         <TabButton activeTab={activeTab} tabName="info" label="Información" icon={<Info size={16} />} onClick={handlers.handleTabClick} />
