@@ -105,7 +105,7 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
 };
 
 // Componente principal de la pestaña
-const TabHistorial = ({ cliente }) => {
+const TabHistorial = ({ cliente, isReadOnly }) => {
     const { userData } = useAuth();
     const userName = `${userData.nombres} ${userData.apellidos}`;
 
@@ -165,8 +165,8 @@ const TabHistorial = ({ cliente }) => {
         );
     }
 
+
     const puedeAnadirNotas = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
-    const esSoloLectura = cliente.status === 'renunciado' || cliente.status === 'enProcesoDeRenuncia';
 
     return (
         <AnimatedPage>
@@ -182,7 +182,7 @@ const TabHistorial = ({ cliente }) => {
                             key={item.id}
                             log={item}
                             onEdit={handleIniciarEdicion}
-                            isReadOnly={esSoloLectura} // Pasamos el prop de solo lectura
+                            isReadOnly={isReadOnly}
                         />
                     )}
                 </ol>

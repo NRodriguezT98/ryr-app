@@ -27,6 +27,12 @@ const formatFuentesDePago = (plan) => {
 const getDisplayMessage = (log, viviendas) => {
     const { details, message } = log;
 
+    if (details?.action === 'ADD_NOTE') {
+        // Devolvemos el contenido de la nota en lugar del mensaje genérico
+        // Usamos '|| message' como fallback por si un registro antiguo no tuviera el campo 'nota'
+        return details.nota || message;
+    }
+
     // Caso 1: Es una actualización de cliente CON cambios detallados
     if (details?.action === 'UPDATE_CLIENT' && details.cambios?.length > 0) {
 
