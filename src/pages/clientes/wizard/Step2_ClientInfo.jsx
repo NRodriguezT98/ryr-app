@@ -53,8 +53,11 @@ const FileDisplayActions = ({ url, onReplace, onDelete, isLocked }) => {
 
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
-const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, handleFileReplace, isEditing, isLocked, modo, isFechaIngresoLocked }) => {
+const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, handleFileReplace, isEditing, isLocked, modo, isFechaIngresoLocked, minDateForReactivation }) => {
 
+    // --- DEBUG ---
+    console.log("4. Componente Step2_ClientInfo: Prop 'minDateForReactivation' final recibida:", minDateForReactivation);
+    // --- FIN DEBUG ---
     const handleValueChange = useCallback((field, value) => {
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field, value } });
     }, [dispatch]);
@@ -127,15 +130,15 @@ const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, handl
                     />
                 </div>
                 <div className="md:col-span-2">
-                    <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="fechaIngreso">Fecha de Ingreso al Proceso <span className="text-red-600">*</span></label>
                     <div className="md:col-span-2">
                         <InputField
-                            label={<> <span className="text-red-600"></span></>}
+                            label={<>{modo === 'reactivar' ? 'Fecha de Ingreso al Nuevo Proceso' : 'Fecha de Ingreso al Proceso'} <span className="text-red-600">*</span></>}
                             name="fechaIngreso"
                             type="date"
                             value={formData.fechaIngreso}
                             onChange={handleInputChange}
                             max={getTodayString()}
+                            min={minDateForReactivation}
                             disabled={isFechaIngresoLocked}
                             error={errors.fechaIngreso}
                             data-tooltip-content={isFechaIngresoLocked ? "La fecha no se puede modificar porque el cliente ya tiene abonos o ha avanzado en el proceso." : ''}

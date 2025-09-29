@@ -10,6 +10,7 @@ import { useData } from '../../context/DataContext.jsx';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig.js';
 import { formatCurrency, toTitleCase, formatDisplayDate, getTodayString } from '../../utils/textFormatters.js';
 import { uploadFile } from '../../services/fileService'
+import { getRenunciasByCliente } from '../../services/renunciaService.js';
 
 const blankInitialState = {
     viviendaSeleccionada: null,
@@ -93,11 +94,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
     const [initialData, setInitialData] = useState(null);
     const [isConfirming, setIsConfirming] = useState(false);
     const [cambios, setCambios] = useState([]);
-
-    const isViviendaLocked = useMemo(() => {
-        const resultado = isEditing && abonosDelCliente.length > 0;
-        return resultado;
-    }, [isEditing, abonosDelCliente]);
+    const [ultimaRenuncia, setUltimaRenuncia] = useState(null);
 
     const handleInputChange = useCallback((e) => {
         const { name, value } = e.target;
@@ -183,17 +180,34 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         if (isEditing && clienteAEditar) {
             const viviendaAsignada = viviendas.find(v => v.id === clienteAEditar.viviendaId);
             setViviendaOriginalId(clienteAEditar.viviendaId);
+
             getAbonos().then(abonos => {
-                const abonosFiltrados = abonos.filter(a => a.clienteId === clienteAEditar.id);
-                setAbonosDelCliente(abonosFiltrados);
+                const abonosActivos = abonos.filter(a =>
+                    a.clienteId === clienteAEditar.id && a.estadoProceso === 'activo'
+                );
+                setAbonosDelCliente(abonosActivos);
             });
+
+            // Si estamos en modo 'reactivar', necesitamos buscar la última renuncia.
+            if (modo === 'reactivar') {
+                // Asumimos que tienes una función getRenunciasByCliente en tu dataService.
+                // Si no la tienes, te la doy más abajo.
+                getRenunciasByCliente(clienteAEditar.id).then(renuncias => {
+                    const renunciasCerradas = renuncias.filter(r => r.estadoDevolucion === 'Cerrada');
+                    renunciasCerradas.sort((a, b) => new Date(b.fechaDevolucion) - new Date(a.fechaDevolucion));
+                    if (renunciasCerradas.length > 0) {
+                        setUltimaRenuncia(renunciasCerradas[0]);
+                    }
+                });
+            }
+
             let initialStateForEdit;
             if (modo === 'reactivar') {
                 initialStateForEdit = {
                     ...blankInitialState,
                     datosCliente: {
                         ...clienteAEditar.datosCliente,
-                        fechaIngreso: clienteAEditar.datosCliente.fechaIngreso
+                        fechaIngreso: getTodayString()
                     },
                     status: 'renunciado'
                 };
@@ -204,6 +218,38 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             setInitialData(JSON.parse(JSON.stringify(initialStateForEdit)));
         }
     }, [isEditing, clienteAEditar, viviendas, modo]);
+
+    const minDateForReactivation = useMemo(() => {
+        if (modo === 'reactivar' && ultimaRenuncia?.fechaDevolucion) {
+            try {
+                const fecha = new Date(ultimaRenuncia.fechaDevolucion);
+                fecha.setMinutes(fecha.getMinutes() + fecha.getTimezoneOffset());
+                const fechaFormateada = fecha.toISOString().split('T')[0];
+
+                // --- DEBUG ---
+                console.log("1. Hook useClienteForm: Fecha mínima calculada:", fechaFormateada);
+                // --- FIN DEBUG ---
+
+                return fechaFormateada;
+            } catch (e) {
+                console.error("Fecha de devolución inválida:", ultimaRenuncia.fechaDevolucion);
+                return undefined;
+            }
+        }
+        // --- DEBUG ---
+        console.log("1. Hook useClienteForm: No se calculó fecha mínima (modo no es 'reactivar' o no hay renuncia).");
+        // --- FIN DEBUG ---
+        return undefined;
+    }, [modo, ultimaRenuncia]);
+
+    const isViviendaLocked = useMemo(() => {
+        // Regla de oro: Si estamos reactivando un cliente, NUNCA se bloquea el campo.
+        if (modo === 'reactivar') {
+            return false;
+        }
+        // La lógica original solo aplica para el modo de edición normal.
+        return isEditing && abonosDelCliente.length > 0;
+    }, [isEditing, abonosDelCliente, modo]);
 
     const viviendasOptions = useMemo(() => {
         const disponibles = viviendas.filter(v => !v.clienteId || v.id === clienteAEditar?.viviendaId);
@@ -293,7 +339,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     proceso: nuevoProceso,
                     viviendaId: formData.viviendaSeleccionada.id,
                     status: 'activo',
-                    fechaInicioProceso: getTodayString(),
+                    fechaInicioProceso: formData.datosCliente.fechaIngreso,
                     fechaCreacion: clienteAEditar.fechaCreacion
                 };
                 const nuevaVivienda = viviendas.find(v => v.id === clienteParaActualizar.viviendaId);
@@ -574,6 +620,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         isFechaIngresoLocked,
         escrituraFirmada,
         isViviendaLocked,
+        minDateForReactivation,
         handlers: {
             handleNextStep,
             handlePrevStep,

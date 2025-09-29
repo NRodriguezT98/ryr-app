@@ -28,7 +28,6 @@ const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false }) => 
                 const uniqueFileName = `${timestamp}-${file.name}`;
                 finalPath = `${filePath}${uniqueFileName}`;
             }
-            console.log("🚀 RUTA DE SUBIDA FINAL:", finalPath);
             const downloadURL = await uploadFile(file, finalPath, (p) => setProgress(p));
             onUploadSuccess(downloadURL);
             toast.success('¡Archivo subido con éxito!');

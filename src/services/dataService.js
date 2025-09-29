@@ -11,6 +11,11 @@ const getData = async (collectionName) => {
     return data;
 };
 
+export const getRenunciasByCliente = async (clienteId) => {
+    const q = query(collection(db, "renuncias"), where("clienteId", "==", clienteId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
 // Exportamos todas las funciones específicas que usan 'getData'.
 // Ahora tienes un único lugar para toda la obtención de datos inicial.
 export const getViviendas = () => getData("viviendas");

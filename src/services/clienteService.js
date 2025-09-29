@@ -349,6 +349,7 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
     let clienteNombre = '';
     let viviendaInfoParaLog = '';
     let renunciaIdParaNotificacion = '';
+    let estadoInicialRenuncia;
 
     await runTransaction(db, async (transaction) => {
         const clienteDoc = await transaction.get(clienteRef);
@@ -372,7 +373,8 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
         const abonosRealesDelCliente = abonosDelCiclo.filter(abono => abono.metodoPago !== 'Condonación de Saldo');
         const totalAbonadoReal = abonosRealesDelCliente.reduce((sum, abono) => sum + abono.monto, 0);
         const totalADevolver = totalAbonadoReal - penalidadMonto;
-        const estadoInicialRenuncia = totalADevolver > 0 ? 'Pendiente' : 'Cerrada';
+
+        estadoInicialRenuncia = totalADevolver > 0 ? 'Pendiente' : 'Cerrada';
 
         const renunciaRef = doc(collection(db, "renuncias"));
         renunciaIdParaNotificacion = renunciaRef.id;
@@ -417,15 +419,19 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
             transaction.update(clienteRef, { status: 'enProcesoDeRenuncia' });
         } else {
             transaction.update(clienteRef, { viviendaId: null, proceso: {}, financiero: {}, status: 'renunciado' });
-            registroRenuncia.fechaDevolucion = new Date().toISOString();
-            transaction.update(renunciaRef, { fechaDevolucion: registroRenuncia.fechaDevolucion });
+            transaction.update(renunciaRef, { fechaDevolucion: fechaRenuncia });
+
             abonosDelCiclo.forEach(abono => {
                 transaction.update(doc(db, "abonos", abono.id), { estadoProceso: 'archivado' });
             });
         }
     });
 
-    const auditMessage = `Registró la renuncia del cliente ${toTitleCase(clienteNombre)} a la vivienda ${viviendaInfoParaLog}, indicando el motivo '${motivo}'`;
+    let auditMessage = `Registró la renuncia del cliente ${toTitleCase(clienteNombre)} a la vivienda ${viviendaInfoParaLog}, con fecha ${formatDisplayDate(fechaRenuncia)}, indicando el motivo "${motivo}"`;
+
+    if (estadoInicialRenuncia === 'Cerrada') {
+        auditMessage += '. Este proceso de renuncia queda cerrado automáticamente ya que el cliente no cuenta con abonos pendientes por devolución.';
+    }
 
     await createAuditLog(
         auditMessage,

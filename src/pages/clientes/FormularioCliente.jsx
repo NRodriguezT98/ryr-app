@@ -3,7 +3,10 @@ import Step1_SelectVivienda from './wizard/Step1_SelectVivienda';
 import Step2_ClientInfo from './wizard/Step2_ClientInfo';
 import Step3_Financial from './wizard/Step3_Financial';
 
-const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, proyectos, handleInputChange, handleFinancialFieldChange, handleFileReplace, handleFinancialFileReplace, isEditing = false, isViviendaLocked = false, isFinancialLocked = false, isPersonalInfoLocked = false, isFechaIngresoLocked = false, modo = 'editar' }) => {
+const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, proyectos, handleInputChange, handleFinancialFieldChange, handleFileReplace, handleFinancialFileReplace, isEditing = false, isViviendaLocked = false, isFinancialLocked = false, isPersonalInfoLocked = false, isFechaIngresoLocked = false, modo = 'editar', minDateForReactivation }) => {
+    // --- DEBUG ---
+    console.log("3. Componente FormularioCliente: Prop 'minDateForReactivation' recibida:", minDateForReactivation);
+    // --- FIN DEBUG ---
     const stepsComponents = [
         <Step1_SelectVivienda
             key="step1"
@@ -23,6 +26,7 @@ const FormularioCliente = ({ step, formData, dispatch, errors, viviendaOptions, 
             isEditing={isEditing}
             isLocked={isPersonalInfoLocked}
             isFechaIngresoLocked={isFechaIngresoLocked}
+            minDateForReactivation={minDateForReactivation}
             modo={modo} // <-- Se añade la prop 'modo' que faltaba
         />,
         <Step3_Financial

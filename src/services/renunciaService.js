@@ -7,11 +7,23 @@ import { createAuditLog } from './auditService';
 
 export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) => {
     const renunciaRef = doc(db, "renuncias", renunciaId);
+    let datosParaAuditoria = {};
+
     await runTransaction(db, async (transaction) => {
         const renunciaDoc = await transaction.get(renunciaRef);
         if (!renunciaDoc.exists()) throw new Error("El registro de renuncia no existe.");
+
         const renunciaData = renunciaDoc.data();
+
+        datosParaAuditoria = {
+            clienteId: renunciaData.clienteId,
+            clienteNombre: renunciaData.clienteNombre,
+            valorDevuelto: renunciaData.totalAbonadoParaDevolucion,
+            comprobanteUrl: datosDevolucion.urlComprobanteDevolucion
+        };
+
         transaction.update(renunciaRef, { estadoDevolucion: 'Cerrada', ...datosDevolucion });
+
         if (renunciaData.clienteId) {
             const clienteRef = doc(db, "clientes", renunciaData.clienteId);
             transaction.update(clienteRef, {
@@ -25,6 +37,29 @@ export const marcarDevolucionComoPagada = async (renunciaId, datosDevolucion) =>
             transaction.update(doc(db, "abonos", abono.id), { estadoProceso: 'archivado' });
         });
     });
+
+    if (datosParaAuditoria.clienteId) {
+        const mensajeAuditoria = `Cerró el proceso de renuncia para el cliente ${toTitleCase(datosParaAuditoria.clienteNombre)}, registrando la devolución del dinero.`;
+
+        await createAuditLog(
+            mensajeAuditoria,
+            {
+                action: 'CLOSE_RENOUNCE', // Acción para identificar este evento
+                clienteId: datosParaAuditoria.clienteId,
+                clienteNombre: toTitleCase(datosParaAuditoria.clienteNombre),
+                renunciaId: renunciaId,
+                valorDevuelto: datosParaAuditoria.valorDevuelto,
+                comprobanteUrl: datosParaAuditoria.comprobanteUrl
+            }
+        );
+    }
+    // --- FIN DE LA MODIFICACIÓN 2 ---
+};
+
+export const getRenunciasByCliente = async (clienteId) => {
+    const q = query(collection(db, "renuncias"), where("clienteId", "==", clienteId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 export const cancelarRenuncia = async (renuncia) => {

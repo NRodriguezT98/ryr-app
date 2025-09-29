@@ -23,6 +23,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
         viviendasOptions,
         proyectos,
         isFechaIngresoLocked,
+        minDateForReactivation,
         handlers,
         escrituraFirmada,
         isViviendaLocked
@@ -33,6 +34,10 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
         { number: 2, title: 'Datos Cliente', icon: User },
         { number: 3, title: 'Finanzas', icon: CircleDollarSign },
     ];
+
+    // --- DEBUG ---
+    console.log("2. Componente EditarCliente: Prop 'minDateForReactivation' recibida del hook:", minDateForReactivation);
+    // --- FIN DEBUG ---
 
     if (!isOpen) return null;
 
@@ -77,6 +82,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
                                 isFechaIngresoLocked={isFechaIngresoLocked}
                                 modo={modo}
                                 clienteAEditar={clienteAEditar}
+                                minDateForReactivation={minDateForReactivation}
                                 handleFileReplace={handlers.handleFileReplace}
                                 handleInputChange={handlers.handleInputChange}
                                 handleFinancialFieldChange={handlers.handleFinancialFieldChange}
