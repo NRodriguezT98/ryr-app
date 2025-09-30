@@ -9,17 +9,22 @@ export const useClienteCardLogic = (cliente) => {
 
     return useMemo(() => {
         const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
+
         const totalAbonado = abonos
-            .filter(abono => abono.clienteId === cliente.id && abono.viviendaId === vivienda?.id && abono.estado !== 'anulado')
+            .filter(abono => abono.clienteId === cliente.id && abono.viviendaId === vivienda?.id && abono.estadoProceso === 'activo')
             .reduce((sum, abono) => sum + abono.monto, 0);
+
         const valorFinal = vivienda?.valorFinal || 0;
+
+        const saldoPendienteCalculado = valorFinal - totalAbonado;
+
         const porcentajePagado = valorFinal > 0 ? (totalAbonado / valorFinal) * 100 : 0;
+        const isPagada = saldoPendienteCalculado <= 0 && !!vivienda;
 
         const clientStatus = determineClientStatus(cliente);
         const isRenunciado = cliente.status === 'renunciado';
         const isArchivado = cliente.status === 'inactivo';
         const isEnRenuncia = cliente.status === 'enProcesoDeRenuncia';
-        const isPagada = vivienda?.saldoPendiente <= 0 && !!vivienda;
 
         // La acción de archivar solo está disponible si el cliente NO está en medio de una renuncia.
         const puedeArchivar = !isEnRenuncia;
@@ -68,7 +73,10 @@ export const useClienteCardLogic = (cliente) => {
 
         return {
             ...cliente,
-            vivienda,
+            vivienda: vivienda ? {
+                ...vivienda,
+                saldoPendiente: saldoPendienteCalculado
+            } : null,
             totalAbonado,
             porcentajePagado,
             clientStatus,
@@ -76,6 +84,7 @@ export const useClienteCardLogic = (cliente) => {
             isArchivado,
             isPagada,
             puedeArchivar,
+            saldoPendiente: saldoPendienteCalculado,
             tieneValorEscrituraDiferente,
             acciones,
             tieneAccionesDisponibles

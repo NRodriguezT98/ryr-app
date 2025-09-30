@@ -25,6 +25,7 @@ const GestionarAbonos = () => {
         datosClienteSeleccionado,
         abonosActivos,
         sumarioAbonosActivos,
+        totalesCalculados,
         modals,
         handlers
     } = useGestionarAbonos(clienteId);
@@ -101,9 +102,9 @@ const GestionarAbonos = () => {
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border dark:border-gray-700 mb-8">
-                                    <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Valor Final</p><p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(datosClienteSeleccionado.data.vivienda.valorFinal)}</p></div>
-                                    <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Abonado</p><p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(datosClienteSeleccionado.data.vivienda.totalAbonado)}</p></div>
-                                    <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Saldo Pendiente</p><p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(datosClienteSeleccionado.data.vivienda.saldoPendiente)}</p></div>
+                                    <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Valor Final</p><p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(totalesCalculados.valorFinal)}</p></div>
+                                    <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Total Abonado</p><p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCurrency(totalesCalculados.totalAbonado)}</p></div>
+                                    <div><p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Saldo Pendiente</p><p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCurrency(totalesCalculados.saldoPendiente)}</p></div>
                                 </div>
 
                                 <div className="space-y-4">

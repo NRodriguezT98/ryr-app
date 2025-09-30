@@ -6,6 +6,7 @@ import { useListarViviendas } from "../../hooks/viviendas/useListarViviendas.jsx
 import ListPageLayout from '../../layout/ListPageLayout.jsx';
 import Button from '../../components/Button.jsx';
 import ViviendaCard from './ViviendaCard.jsx';
+import { useViviendaCardData } from '../../hooks/viviendas/useViviendaCardData';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarVivienda from "./EditarVivienda.jsx";
 import ViviendaCardSkeleton from "./ViviendaCardSkeleton.jsx";
@@ -89,6 +90,13 @@ const EmptyState = ({ filters, totalCount, canCreate }) => {
             <p className="text-gray-500 dark:text-gray-400">{message}</p>
         </div>
     );
+};
+
+const ViviendaCardWrapper = ({ vivienda, ...props }) => {
+    // Este wrapper llama al hook para obtener los datos calculados
+    const viviendaData = useViviendaCardData(vivienda);
+    // Y se los pasa a la ViviendaCard, que ahora es un componente puramente visual
+    return <ViviendaCard vivienda={viviendaData} {...props} />;
 };
 
 const ListarViviendas = () => {
@@ -188,7 +196,7 @@ const ListarViviendas = () => {
                             const proyectoDeVivienda = proyectos.find(p => p.id === vivienda.proyectoId);
                             const nombreProyecto = proyectoDeVivienda ? proyectoDeVivienda.nombre : 'Sin Proyecto Asignado';
                             return (
-                                <ViviendaCard
+                                <ViviendaCardWrapper
                                     key={vivienda.id}
                                     vivienda={vivienda}
                                     nombreProyecto={nombreProyecto}

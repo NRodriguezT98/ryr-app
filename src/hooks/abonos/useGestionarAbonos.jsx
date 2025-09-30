@@ -84,6 +84,19 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         [datosClienteSeleccionado]
     );
 
+    const totalesCalculados = useMemo(() => {
+        if (!datosClienteSeleccionado?.data?.vivienda) {
+            return { totalAbonado: 0, saldoPendiente: 0, valorFinal: 0 };
+        }
+
+        const valorFinal = datosClienteSeleccionado.data.vivienda.valorFinal || 0;
+        // Usamos la lista de 'abonosActivos' que ya tenemos calculada.
+        const totalAbonado = abonosActivos.reduce((sum, abono) => sum + abono.monto, 0);
+        const saldoPendiente = valorFinal - totalAbonado;
+
+        return { totalAbonado, saldoPendiente, valorFinal };
+    }, [datosClienteSeleccionado, abonosActivos]);
+
     // Añadimos el cálculo del sumario, que depende de la lista de abonos activos
     const sumarioAbonosActivos = useMemo(() => {
         const totalAbonos = abonosActivos.length;
@@ -117,6 +130,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         datosClienteSeleccionado,
         abonosActivos,
         sumarioAbonosActivos,
+        totalesCalculados,
         modals: {
             abonoAEditar, setAbonoAEditar,
             fuenteACondonar, setFuenteACondonar,
