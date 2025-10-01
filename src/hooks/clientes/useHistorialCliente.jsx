@@ -81,6 +81,14 @@ const getDisplayMessage = (log, viviendas) => {
         // --- FIN DE LA MODIFICACIÓN ---
     }
 
+    if (details?.action === 'VOID_ABONO') {
+        const abono = details.abono || {};
+        const clienteNombre = details.cliente?.nombre || 'N/A';
+        const motivo = abono.motivo ? `, motivo: "${abono.motivo}"` : '';
+
+        return `Anuló el abono N°${abono.consecutivo || 'N/A'} realizado en la fecha ${abono.fechaPago || 'N/A'} del cliente: ${clienteNombre} por valor de ${abono.monto || '$0'}${motivo}.`;
+    }
+
 
     return message; // Mensaje por defecto para todas las demás acciones
 };

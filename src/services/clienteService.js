@@ -64,7 +64,7 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
 
     if (fechaOriginal !== fechaNueva) {
         // Obtenemos los abonos para verificar la primera condición
-        const abonosQuery = query(collection(db, "abonos"), where("clienteId", "==", clienteId));
+        const abonosQuery = query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("estadoProceso", "==", "activo"));
         const abonosSnap = await getDocs(abonosQuery);
 
         // Verificamos si hay más de un paso completado

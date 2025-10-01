@@ -35,10 +35,6 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
         { number: 3, title: 'Finanzas', icon: CircleDollarSign },
     ];
 
-    // --- DEBUG ---
-    console.log("2. Componente EditarCliente: Prop 'minDateForReactivation' recibida del hook:", minDateForReactivation);
-    // --- FIN DEBUG ---
-
     if (!isOpen) return null;
 
     return (
@@ -128,7 +124,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
             <ModalConfirmacion
                 isOpen={isConfirming}
                 onClose={() => setIsConfirming(false)}
-                onConfirm={handlers.executeSave}
+                onConfirm={() => handlers.executeSave(cambios)}
                 titulo="Confirmar Cambios del Cliente"
                 cambios={cambios}
                 isSubmitting={isSubmitting}

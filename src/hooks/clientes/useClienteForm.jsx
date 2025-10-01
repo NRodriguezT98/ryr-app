@@ -226,19 +226,12 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 fecha.setMinutes(fecha.getMinutes() + fecha.getTimezoneOffset());
                 const fechaFormateada = fecha.toISOString().split('T')[0];
 
-                // --- DEBUG ---
-                console.log("1. Hook useClienteForm: Fecha mínima calculada:", fechaFormateada);
-                // --- FIN DEBUG ---
-
                 return fechaFormateada;
             } catch (e) {
                 console.error("Fecha de devolución inválida:", ultimaRenuncia.fechaDevolucion);
                 return undefined;
             }
         }
-        // --- DEBUG ---
-        console.log("1. Hook useClienteForm: No se calculó fecha mínima (modo no es 'reactivar' o no hay renuncia).");
-        // --- FIN DEBUG ---
         return undefined;
     }, [modo, ultimaRenuncia]);
 
@@ -303,7 +296,8 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         return otrosPasosCompletados > 0;
     }, [clienteAEditar, abonosDelCliente, isEditing]);
 
-    const executeSave = useCallback(async () => {
+    const executeSave = useCallback(async (cambiosASalvar) => {
+        console.log("Datos recibidos por executeSave:", cambiosASalvar);
         setIsSubmitting(true);
         try {
             if (modo === 'reactivar') {
@@ -384,8 +378,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
                 await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId, {
                     action: 'UPDATE_CLIENT',
-                    cambios
+                    cambios: cambiosASalvar // Usamos el argumento que recibe la función
                 });
+
                 toast.success("¡Cliente actualizado con éxito!");
                 createNotification('cliente', `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`, `/clientes/detalle/${clienteAEditar.id}`);
             } else {
@@ -477,7 +472,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             setIsSubmitting(false);
             setIsConfirming(false);
         }
-    }, [formData, navigate, todosLosClientes, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId, modo, cambios, initialData, isFechaIngresoLocked, proyectos]);
+    }, [formData, navigate, todosLosClientes, isEditing, clienteAEditar, onSaveSuccess, viviendaOriginalId, modo, initialData, isFechaIngresoLocked, proyectos]);
 
     const hayCambios = useMemo(() => {
         if (!initialData || !formData) return false;
@@ -597,7 +592,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 initial.financiero.subsidioCaja.urlCartaAprobacion,
                 current.financiero.subsidioCaja.urlCartaAprobacion
             );
-
+            console.log("Cambios detectados:", cambiosDetectados);
             setCambios(cambiosDetectados);
             setIsConfirming(true);
         } else {

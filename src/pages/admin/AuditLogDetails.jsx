@@ -1,10 +1,11 @@
 // src/pages/admin/AuditLogDetails.jsx (VERSIÓN FINAL UNIFICADA)
 import React from 'react';
-import { User, Home, Building2, Banknote, DollarSign } from 'lucide-react';
+import { User, Home, Building2, Banknote, DollarSign, FileWarning, BadgeInfo, RefreshCw, Edit3 } from 'lucide-react';
 
 // 1. Importamos nuestros bloques de construcción reutilizables
 import DetalleSujeto from './audit-details/components/DetalleSujeto';
 import DetalleDatosClave from './audit-details/components/DetalleDatosClave';
+import DetalleCambios from './audit-details/DetalleCambios';
 import ResumenDeCambios from './audit-details/components/ResumenDeCambios';
 import ResumenCambiosProceso from './audit-details/components/ResumenCambiosProceso';
 import { NOMBRE_FUENTE_PAGO } from '../../utils/procesoConfig';
@@ -86,11 +87,73 @@ const AuditLogDetails = ({ log }) => {
             break;
         }
 
-        case 'UPDATE_CLIENT':
+        case 'UPDATE_CLIENT': {
+            const cambios = details.cambios || [];
+            const nombreCliente = details.clienteNombre || 'No disponible';
+            const idCliente = details.clienteId;
+
+            return (
+                <div className="space-y-4">
+                    <DetalleSujeto
+                        icon={<User size={16} />}
+                        titulo="Cliente Afectado"
+                        nombre={nombreCliente}
+                        enlace={idCliente ? `/clientes/detalle/${idCliente}` : undefined}
+                    />
+                    <DetalleCambios
+                        icon={<Edit3 size={16} />}
+                        titulo="Cambios Realizados"
+                        cambios={cambios}
+                    />
+                </div>
+            );
+        }
+
         case 'UPDATE_VIVIENDA': {
             const titulo = action === 'UPDATE_CLIENT' ? "Cambios en Datos del Cliente" : "Cambios en Datos de la Vivienda";
             contenidoEspecifico = <ResumenDeCambios titulo={titulo} cambios={cambios} />;
             break;
+        }
+
+        case 'VOID_ABONO': {
+            const abonoAnulado = details.abono || {}; // Aseguramos que abono exista
+            const datosAnulacion = {
+                "Numero Abono Anulado": abonoAnulado.consecutivo || 'No disponible',
+                "Monto Anulado": abonoAnulado.monto || 'No disponible',
+                "Fecha del Abono": abonoAnulado.fechaPago || 'No disponible',
+                "Fuente de pago": NOMBRE_FUENTE_PAGO[abonoAnulado.fuente] || abonoAnulado.fuente || 'No disponible',
+                "Motivo de Anulación": abonoAnulado.motivo || 'No especificado',
+                "Fecha y Hora de Anulación": formatDisplayDateWithTime(normalizeDate(log.timestamp)),
+            };
+            return (
+                <>
+                    <div className="space-y-4">
+                        <DetalleSujeto icon={<User size={16} />} titulo="Cliente Afectado" nombre={details.cliente?.nombre} enlace={`/clientes/detalle/${details.cliente?.id}`} />
+                        {details.vivienda && <DetalleSujeto icon={<Home size={16} />} titulo="Vivienda Relacionada" nombre={details.vivienda?.display} enlace={`/viviendas/detalle/${details.vivienda?.id}`} />}
+                        {details.proyecto && <DetalleSujeto icon={<Building2 size={16} />} titulo="Proyecto" nombre={details.proyecto?.nombre} />}
+                        <DetalleDatosClave icon={<FileWarning size={16} />} titulo="Información de la Anulación" datos={datosAnulacion} />
+                    </div>
+                </>
+            );
+        }
+
+        case 'REVERT_VOID_ABONO': {
+            const abonoRevertido = details.abono || {};
+            const datosReversion = {
+                "Numero Abono Revertido": abonoRevertido.consecutivo || 'No disponible',
+                "Monto Revertido": abonoRevertido.monto || 'No disponible',
+                "Fecha del pago original": abonoRevertido.fechaPago || 'No disponible',
+                "Fuente de pago": NOMBRE_FUENTE_PAGO[abonoRevertido.fuente] || abonoRevertido.fuente || 'No disponible',
+                "Fecha y Hora de Reversión": formatDisplayDateWithTime(normalizeDate(log.timestamp)),
+            };
+            return (
+                <div className="space-y-4">
+                    <DetalleSujeto icon={<User size={16} />} titulo="Cliente Afectado" nombre={details.cliente?.nombre} enlace={`/clientes/detalle/${details.cliente?.id}`} />
+                    {details.vivienda && <DetalleSujeto icon={<Home size={16} />} titulo="Vivienda Relacionada" nombre={details.vivienda?.display} enlace={`/viviendas/detalle/${details.vivienda?.id}`} />}
+                    {details.proyecto && <DetalleSujeto icon={<Building2 size={16} />} titulo="Proyecto" nombre={details.proyecto?.nombre} />}
+                    <DetalleDatosClave icon={<RefreshCw size={16} />} titulo="Información de la Reversión" datos={datosReversion} />
+                </div>
+            );
         }
 
         default:

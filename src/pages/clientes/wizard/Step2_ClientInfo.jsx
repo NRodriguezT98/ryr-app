@@ -55,9 +55,6 @@ const getTodayString = () => new Date().toISOString().split('T')[0];
 
 const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, handleFileReplace, isEditing, isLocked, modo, isFechaIngresoLocked, minDateForReactivation }) => {
 
-    // --- DEBUG ---
-    console.log("4. Componente Step2_ClientInfo: Prop 'minDateForReactivation' final recibida:", minDateForReactivation);
-    // --- FIN DEBUG ---
     const handleValueChange = useCallback((field, value) => {
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field, value } });
     }, [dispatch]);

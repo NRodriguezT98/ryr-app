@@ -2,7 +2,7 @@
 
 import React from 'react';
 import DetailRow from './DetailRow'; // Importamos nuestro ladrillo fundamental
-import { User, DollarSign, Home, Tag, Hash, HandCoins, CalendarCheck, CalendarClock, Phone, IdCard } from 'lucide-react'; // Importamos algunos iconos comunes
+import { User, DollarSign, Home, Tag, Hash, HandCoins, CalendarCheck, CalendarClock, Phone, IdCard, MessageSquareX } from 'lucide-react'; // Importamos algunos iconos comunes
 
 // Función para normalizar el texto
 const normalizeText = (text) => {
@@ -18,19 +18,18 @@ const getIconForLabel = (label) => {
     if (normalizedLabel.includes('cedula')) return <IdCard size={14} />;
     if (normalizedLabel.includes('telefono')) return <Phone size={14} />;
     if (normalizedLabel.includes('cuota inicial')) return <HandCoins size={14} />;
-    if (normalizedLabel.includes('consecutivo')) return <Hash size={14} />;
+    if (normalizedLabel.includes('consecutivo') || normalizedLabel.includes('numero abono')) return <Hash size={14} />;
     if (normalizedLabel.includes('fuente de pago')) return <HandCoins size={14} />;
-    if (normalizedLabel.includes('fecha del pago')) return <CalendarCheck size={14} />;
-    if (normalizedLabel.includes('fecha y hora de registro de la accion')) return <CalendarClock size={14} />;
+    if (normalizedLabel.includes('fecha del pago') || normalizedLabel.includes('fecha del abono')) return <CalendarCheck size={14} />;
+    if (normalizedLabel.includes('fecha y hora')) return <CalendarClock size={14} />;
     if (normalizedLabel.includes('cliente') || lowerLabel.includes('nombre')) return <User size={14} />;
     if (normalizedLabel.includes('monto') || lowerLabel.includes('valor')) return <DollarSign size={14} />;
     if (normalizedLabel.includes('vivienda')) return <Home size={14} />;
-    // ... puedes añadir más mapeos aquí
+    if (normalizedLabel.includes('motivo de anulacion')) return <MessageSquareX size={14} />;
     return <Tag size={14} />;
 };
 
 const DetalleDatosClave = ({ titulo, datos, icon }) => {
-    console.log("Datos recibidos en DetalleDatosClave:", datos);
     return (
         <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-3">
             <h4 className="font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-2 mb-2">

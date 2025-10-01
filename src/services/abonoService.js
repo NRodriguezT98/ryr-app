@@ -184,6 +184,9 @@ export const updateAbono = async (abonoId, datosNuevos, abonoOriginal) => {
 };
 
 export const anularAbono = async (abonoAAnular, userName, motivo) => {
+    // --- DEBUG ---
+    console.log("🕵️‍♂️ Motivo recibido en la función anularAbono:", motivo);
+    // --- FIN DEBUG ---
     if (!abonoAAnular || !abonoAAnular.id || !abonoAAnular.viviendaId) {
         throw new Error("Datos del abono a anular incompletos.");
     }
@@ -256,7 +259,6 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
     const viviendaSnap = await getDoc(viviendaRef);
     const clienteData = clienteSnap.data();
     const viviendaData = viviendaSnap.data();
-
     const proyectoRef = doc(db, "proyectos", viviendaData.proyectoId);
     const proyectoSnap = await getDoc(proyectoRef);
     const proyectoData = proyectoSnap.exists() ? proyectoSnap.data() : { nombre: 'No encontrado' };
@@ -264,8 +266,10 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
     const clienteNombreCompleto = toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`);
     const consecutivoStr = String(abonoAAnular.consecutivo).padStart(4, '0');
 
-    // ▼▼▼ MENSAJE MODIFICADO ▼▼▼
-    const mensajeAuditoria = `Anuló el abono N°${consecutivoStr} del cliente: ${clienteNombreCompleto} por valor de ${formatCurrency(abonoAAnular.monto)}`;
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Creamos el nuevo mensaje genérico, que ahora incluye la fecha.
+    const mensajeAuditoria = `Anuló el abono N°${consecutivoStr} del ${formatDisplayDate(abonoAAnular.fechaPago)} del cliente: ${clienteNombreCompleto} por valor de ${formatCurrency(abonoAAnular.monto)}`;
+    // --- FIN DE LA MODIFICACIÓN ---
 
     await createAuditLog(
         mensajeAuditoria,
@@ -279,7 +283,7 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
                 monto: formatCurrency(abonoAAnular.monto),
                 fechaPago: formatDisplayDate(abonoAAnular.fechaPago),
                 fuente: abonoAAnular.fuente,
-                motivo: motivoFinal,
+                motivo: motivoFinal, // El motivo se guarda en los detalles
                 consecutivo: consecutivoStr
             },
             pasoReabierto: pasoReabierto
