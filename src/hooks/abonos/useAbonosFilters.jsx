@@ -35,6 +35,7 @@ export const useAbonosFilters = () => {
             return {
                 ...abono,
                 clienteInfo,
+                nombreCompletoCliente: nombreCompletoCliente,
                 viviendaInfo: infoVivienda,
                 proyectoNombre: proyecto ? proyecto.nombre : 'No Asignado',
                 clienteStatus: cliente?.status,

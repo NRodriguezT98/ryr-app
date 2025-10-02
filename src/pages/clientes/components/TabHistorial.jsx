@@ -25,6 +25,7 @@ const getActionIcon = (action) => {
         'REGISTER_DISBURSEMENT': <DollarSign className="w-4 h-4 text-white" />,
         'REGISTER_CREDIT_DISBURSEMENT': <DollarSign className="w-4 h-4 text-white" />,
         'VOID_ABONO': <UserX className="w-4 h-4 text-white" />,
+        'REVERT_VOID_ABONO': <RefreshCw className="w-4 h-4 text-white" />,
         'CLIENT_RENOUNCE': <UserX className="w-4 h-4 text-white" />,
         'RESTART_CLIENT_PROCESS': <RefreshCw className="w-4 h-4 text-white" />,
         'ARCHIVE_CLIENT': <Archive className="w-4 h-4 text-white" />,
@@ -51,6 +52,30 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
     const pasoCompletado = log.details?.pasoCompletado;
     const pasoReabierto = log.details?.pasoReabierto;
 
+    let messageContent;
+    const action = log.details?.action;
+    const details = log.details || {};
+
+    if (action === 'REVERT_VOID_ABONO') {
+        const { abono, cliente } = details;
+        messageContent = `Revirtió la anulación del abono N°${abono?.consecutivo || '?'} ` +
+            `realizado el ${abono?.fechaPago || '?'} y anulado el ${abono?.fechaAnulacion || '?'} ` +
+            `del cliente: ${cliente?.nombre || '?'} por valor de ${abono?.monto || '?'}, ` +
+            `motivo: "${abono?.motivoReversion || '?'}"`;
+
+    } else if (action === 'UPDATE_CLIENT' && details.cambios && details.cambios.length > 0) {
+        // Restauramos la lógica para mostrar la lista detallada de cambios del cliente
+        const changesList = details.cambios.map(c => `• ${c.campo}: ${c.anterior} → ${c.actual}`).join('\n');
+        messageContent = `Se realizaron los siguientes cambios:\n${changesList}`;
+    } else if (action === 'VOID_ABONO') {
+        // Añadimos la nueva lógica para el mensaje de anulación detallado
+        const motivoAnulacion = details.abono?.motivo || 'No especificado';
+        messageContent = `${log.message}, motivo: "${motivoAnulacion}"`;
+    } else {
+        // Para todas las demás acciones, usamos el mensaje por defecto que viene en el log
+        messageContent = log.message;
+    }
+
     return (
         <li className="mb-10 ms-6">
             <span className={`absolute flex items-center justify-center w-8 h-8 rounded-full -start-4 ring-4 ring-white dark:ring-gray-800 ${isNota ? 'bg-purple-500' : 'bg-blue-500'}`}>
@@ -73,7 +98,7 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
                         </button>
                     )}
 
-                    <p className="italic whitespace-pre-wrap pr-6">{log.displayMessage}</p>
+                    <p className="italic whitespace-pre-wrap pr-6">{messageContent}</p>
 
 
                     {(pasoCompletado || pasoReabierto || cambiosProceso.length > 0) && (

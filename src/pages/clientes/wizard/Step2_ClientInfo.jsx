@@ -54,7 +54,9 @@ const FileDisplayActions = ({ url, onReplace, onDelete, isLocked }) => {
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
 const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, handleFileReplace, isEditing, isLocked, modo, isFechaIngresoLocked, minDateForReactivation }) => {
+    console.log(isFechaIngresoLocked);
 
+    // Función para actualizar campos específicos en formData);
     const handleValueChange = useCallback((field, value) => {
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field, value } });
     }, [dispatch]);

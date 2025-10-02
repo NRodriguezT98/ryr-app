@@ -8,6 +8,7 @@ import AbonoCard from './AbonoCard';
 import EditarAbonoModal from './EditarAbonoModal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import ModalAnularAbono from './components/ModalAnularAbono';
+import ModalRevertirAbono from './components/ModalRevertirAbono';
 import CustomSelect from '../../components/forms/CustomSelect';
 import { Filter, BarChart2, DollarSign } from 'lucide-react';
 import AbonoCardSkeleton from './AbonoCardSkeleton';
@@ -51,6 +52,7 @@ const ListarAbonos = () => {
     // Hook centralizado para la lógica de REVERSIÓN
     const {
         isRevertirModalOpen,
+        abonoParaRevertir,
         isRevirtiendo,
         iniciarReversion,
         cerrarReversion,
@@ -207,7 +209,15 @@ const ListarAbonos = () => {
             {/* --- SECCIÓN DE MODALES --- */}
             {abonoAEditar && (<EditarAbonoModal isOpen={!!abonoAEditar} onClose={() => setAbonoAEditar(null)} onSave={handleGuardadoEdicion} abonoAEditar={abonoAEditar} />)}
             {isAnularModalOpen && (<ModalAnularAbono isOpen={isAnularModalOpen} onClose={cerrarAnulacion} onAnulacionConfirmada={confirmarAnulacion} abonoAAnular={abonoParaAnular} isSubmitting={isAnulando} size="2xl" />)}
-            {isRevertirModalOpen && (<ModalConfirmacion isOpen={isRevertirModalOpen} onClose={cerrarReversion} onConfirm={confirmarReversion} titulo="¿Revertir Anulación?" mensaje="Esto reactivará el abono y volverá a afectar los saldos de la vivienda. ¿Deseas continuar?" isSubmitting={isRevirtiendo} />)}
+            {isRevertirModalOpen && (
+                <ModalRevertirAbono
+                    isOpen={isRevertirModalOpen}
+                    onClose={cerrarReversion}
+                    onConfirm={confirmarReversion}
+                    abonoARevertir={abonoParaRevertir}
+                    isSubmitting={isRevirtiendo}
+                />
+            )}
         </ListPageLayout>
     );
 };

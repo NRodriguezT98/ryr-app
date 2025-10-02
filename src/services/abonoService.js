@@ -250,7 +250,8 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
         // 4. Marcar el abono como anulado
         transaction.update(abonoRef, {
             estadoProceso: 'anulado',
-            motivoAnulacion: motivoFinal
+            motivoAnulacion: motivoFinal,
+            fechaAnulacion: new Date()
         });
     });
 
@@ -268,7 +269,7 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
 
     // --- INICIO DE LA MODIFICACIÓN ---
     // Creamos el nuevo mensaje genérico, que ahora incluye la fecha.
-    const mensajeAuditoria = `Anuló el abono N°${consecutivoStr} del ${formatDisplayDate(abonoAAnular.fechaPago)} del cliente: ${clienteNombreCompleto} por valor de ${formatCurrency(abonoAAnular.monto)}`;
+    const mensajeAuditoria = `Anuló el abono N°${consecutivoStr} realizado el ${formatDisplayDate(abonoAAnular.fechaPago)} del cliente: ${clienteNombreCompleto} por valor de ${formatCurrency(abonoAAnular.monto)}`;
     // --- FIN DE LA MODIFICACIÓN ---
 
     await createAuditLog(
@@ -291,7 +292,7 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
     );
 };
 
-export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
+export const revertirAnulacionAbono = async (abonoARevertir, userName, motivo) => {
     const viviendaRef = doc(db, "viviendas", abonoARevertir.viviendaId);
     const clienteRef = doc(db, "clientes", abonoARevertir.clienteId);
     const abonoRef = doc(db, "abonos", abonoARevertir.id);
@@ -312,7 +313,9 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
         const viviendaData = viviendaDoc.data();
         const clienteData = clienteDoc.data();
 
-        // --- INICIO DE LA LÓGICA DE VALIDACIÓN CORREGIDA ---
+        if (clienteData.viviendaId !== abonoARevertir.viviendaId) {
+            throw new Error("No se puede revertir un abono de una vivienda que ya no está asignada al cliente. Operación cancelada.");
+        }
 
         // 1. Obtenemos el monto total pactado para la fuente específica del abono.
         const fuente = abonoARevertir.fuente;
@@ -362,7 +365,12 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
         const nuevoTotalAbonado = viviendaData.totalAbonado + abonoARevertir.monto;
         const nuevoSaldo = viviendaData.saldoPendiente - abonoARevertir.monto;
 
-        transaction.update(abonoRef, { estadoProceso: 'activo', motivoAnulacion: null });
+        transaction.update(abonoRef, {
+            estadoProceso: 'activo',
+            motivoAnulacion: null, // Limpiamos el motivo de la anulación original
+            motivoReversion: motivo, // Guardamos el nuevo motivo de la reversión
+            fechaReversion: new Date() // Opcional: guardamos la fecha en que se revirtió
+        });
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
 
         if (pasoConfig) {
@@ -404,13 +412,15 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName) => {
                 monto: formatCurrency(abonoARevertir.monto),
                 fechaPago: formatDisplayDate(abonoARevertir.fechaPago),
                 fuente: abonoARevertir.fuente,
-                consecutivo: consecutivoStr
+                consecutivo: consecutivoStr,
+                motivoReversion: motivo,
+                motivoAnulacion: abonoARevertir.motivoAnulacion || 'No registrado',
+                fechaAnulacion: abonoARevertir.fechaAnulacion ? formatDisplayDate(abonoARevertir.fechaAnulacion) : 'No registrada'
             }
         };
     });
 
-    const mensajeAuditoria = `Revirtió la anulación del abono N°${datosParaAuditoria.abono.consecutivo} para ${datosParaAuditoria.cliente.nombre} por un valor de ${datosParaAuditoria.abono.monto}`;
-
+    const mensajeAuditoria = `Revirtió la anulación del abono N°${datosParaAuditoria.abono.consecutivo} del ${datosParaAuditoria.abono.fechaPago} para ${datosParaAuditoria.cliente.nombre} por un valor de ${datosParaAuditoria.abono.monto}`;
     await createAuditLog(
         mensajeAuditoria,
         {

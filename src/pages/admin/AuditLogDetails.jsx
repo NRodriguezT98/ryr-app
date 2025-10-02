@@ -9,6 +9,7 @@ import DetalleCambios from './audit-details/DetalleCambios';
 import ResumenDeCambios from './audit-details/components/ResumenDeCambios';
 import ResumenCambiosProceso from './audit-details/components/ResumenCambiosProceso';
 import { NOMBRE_FUENTE_PAGO } from '../../utils/procesoConfig';
+import ContenedorAccion from './audit-details/components/ContenedorAccion';
 import { formatDisplayDateWithTime, normalizeDate, formatDisplayDate, formatCurrency } from '../../utils/textFormatters';
 
 
@@ -76,9 +77,16 @@ const AuditLogDetails = ({ log }) => {
             break;
         }
         case 'UPDATE_PROCESO': {
-            // Para una actualización de proceso, usamos nuestro nuevo componente especializado
-            contenidoEspecifico = <ResumenCambiosProceso cambios={cambios} />;
-            break;
+            // Ahora envolvemos todo en nuestro contenedor estándar
+            return (
+                <ContenedorAccion
+                    usuario={log.userName}
+                    descripcion={log.message} // El mensaje principal de la acción
+                >
+                    {/* Y adentro ponemos los detalles específicos */}
+                    <ResumenCambiosProceso cambios={cambios} />
+                </ContenedorAccion>
+            );
         }
 
         case 'EDIT_NOTE': {
@@ -144,6 +152,9 @@ const AuditLogDetails = ({ log }) => {
                 "Monto Revertido": abonoRevertido.monto || 'No disponible',
                 "Fecha del pago original": abonoRevertido.fechaPago || 'No disponible',
                 "Fuente de pago": NOMBRE_FUENTE_PAGO[abonoRevertido.fuente] || abonoRevertido.fuente || 'No disponible',
+                // --- INICIO DE LA MODIFICACIÓN ---
+                "Motivo de Reversión": abonoRevertido.motivoReversion || 'No especificado', // <-- Línea añadida
+                // --- FIN DE LA MODIFICACIÓN ---
                 "Fecha y Hora de Reversión": formatDisplayDateWithTime(normalizeDate(log.timestamp)),
             };
             return (
