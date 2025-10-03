@@ -685,3 +685,4 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
         throw error;
     }
 };
+

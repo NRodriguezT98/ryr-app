@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { doc, getDoc } from "firebase/firestore";
+import { db } from '../../firebase/config';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 import { generarActividadProceso, updateClienteProceso, anularCierreProceso, getClienteProceso } from "../../services/clienteService";
 import { createNotification } from "../../services/notificationService";
@@ -215,6 +217,7 @@ const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationEr
 };
 
 export const useProcesoLogic = (cliente, onSaveSuccess) => {
+    console.log("DEBUG: Objeto 'cliente' completo recibido por el hook:", cliente);
     const { userData } = useAuth();
     const userName = userData ? toTitleCase(`${userData.nombres} ${userData.apellidos}`) : 'Usuario Desconocido';
 
@@ -526,13 +529,50 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
             }
             // --- FIN DE LA SOLUCIÓN ---
 
+            let proyectoData = null;
+            const proyectoId = cliente.vivienda?.proyectoId; // Asumimos que el ID está aquí
+
+            if (proyectoId) {
+                try {
+                    const proyectoRef = doc(db, 'proyectos', proyectoId);
+                    const proyectoSnap = await getDoc(proyectoRef);
+                    if (proyectoSnap.exists()) {
+                        proyectoData = { id: proyectoSnap.id, ...proyectoSnap.data() };
+                    }
+                } catch (error) {
+                    console.error("No se pudo cargar la información del proyecto para la auditoría:", error);
+                }
+            }
+
             const auditDetails = {
                 action: 'UPDATE_PROCESO',
-                clienteId: cliente.id,
-                clienteNombre: clienteNombre,
-                cambios: cambiosDetectados.map(c => ({ paso: c.paso, accion: c.estadoActual.completado ? 'completó' : 'reabrió' })),
-                motivo: motivoReaperturaParaLog
+                cambios: cambiosDetectados.map(c => ({
+                    paso: c.paso,
+                    accion: c.estadoActual.completado ? 'completó' : 'reabrió'
+                })),
+                motivo: motivoReaperturaParaLog,
+
+                // Objeto cliente (este ya estaba bien)
+                cliente: {
+                    id: cliente.id,
+                    nombre: clienteNombre
+                },
+
+                // Objeto vivienda con fallback para .display
+                vivienda: cliente.vivienda ? {
+                    id: cliente.vivienda.id,
+                    display: cliente.vivienda.display || `Mz. ${cliente.vivienda.manzana} - Casa ${cliente.vivienda.numeroCasa}`
+                } : null,
+
+                // CORREGIDO: Obtenemos el proyecto desde la vivienda
+                proyecto: proyectoData ? {
+                    id: proyectoData.id,
+                    nombre: proyectoData.nombre || 'Proyecto no especificado'
+                } : null
             };
+
+            console.log("DEBUG [Paso 1 - Origen]: Datos de auditoría a punto de guardar:", auditDetails);
+
 
             if (cambiosDetectados.length > 0) {
                 await updateClienteProceso(cliente.id, procesoConActividad, auditMessage, auditDetails);

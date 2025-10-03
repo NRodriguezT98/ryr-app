@@ -8,6 +8,7 @@ import DetalleDatosClave from './audit-details/components/DetalleDatosClave';
 import DetalleCambios from './audit-details/DetalleCambios';
 import ResumenDeCambios from './audit-details/components/ResumenDeCambios';
 import ResumenCambiosProceso from './audit-details/components/ResumenCambiosProceso';
+import AuditLogModalLayout from './audit-details/components/AuditLogModalLayout';
 import { NOMBRE_FUENTE_PAGO } from '../../utils/procesoConfig';
 import ContenedorAccion from './audit-details/components/ContenedorAccion';
 import { formatDisplayDateWithTime, normalizeDate, formatDisplayDate, formatCurrency } from '../../utils/textFormatters';
@@ -77,15 +78,16 @@ const AuditLogDetails = ({ log }) => {
             break;
         }
         case 'UPDATE_PROCESO': {
-            // Ahora envolvemos todo en nuestro contenedor estándar
             return (
-                <ContenedorAccion
-                    usuario={log.userName}
-                    descripcion={log.message} // El mensaje principal de la acción
-                >
-                    {/* Y adentro ponemos los detalles específicos */}
+                <div className="space-y-3">
+                    {/* Directamente los sujetos afectados */}
+                    {details.cliente && <DetalleSujeto icon={<User size={16} />} titulo="Cliente Afectado" nombre={details.cliente?.nombre} enlace={`/clientes/detalle/${details.cliente?.id}`} />}
+                    {details.vivienda && <DetalleSujeto icon={<Home size={16} />} titulo="Vivienda Relacionada" nombre={details.vivienda?.display} enlace={`/viviendas/detalle/${details.vivienda?.id}`} />}
+                    {details.proyecto && <DetalleSujeto icon={<Building2 size={16} />} titulo="Proyecto" nombre={details.proyecto?.nombre} />}
+
+                    {/* Y la lista de cambios en el proceso */}
                     <ResumenCambiosProceso cambios={cambios} />
-                </ContenedorAccion>
+                </div>
             );
         }
 
@@ -149,22 +151,16 @@ const AuditLogDetails = ({ log }) => {
             const abonoRevertido = details.abono || {};
             const datosReversion = {
                 "Numero Abono Revertido": abonoRevertido.consecutivo || 'No disponible',
-                "Monto Revertido": abonoRevertido.monto || 'No disponible',
-                "Fecha del pago original": abonoRevertido.fechaPago || 'No disponible',
+                "Monto Revertido": formatCurrency(abonoRevertido.monto), // <-- Añadido formato de moneda
+                "Fecha del pago original": formatDisplayDate(abonoRevertido.fechaPago), // <-- Añadido formato de fecha
                 "Fuente de pago": NOMBRE_FUENTE_PAGO[abonoRevertido.fuente] || abonoRevertido.fuente || 'No disponible',
-                // --- INICIO DE LA MODIFICACIÓN ---
-                "Motivo de Reversión": abonoRevertido.motivoReversion || 'No especificado', // <-- Línea añadida
-                // --- FIN DE LA MODIFICACIÓN ---
+                "Motivo de Reversión": abonoRevertido.motivoReversion || 'No especificado',
                 "Fecha y Hora de Reversión": formatDisplayDateWithTime(normalizeDate(log.timestamp)),
             };
-            return (
-                <div className="space-y-4">
-                    <DetalleSujeto icon={<User size={16} />} titulo="Cliente Afectado" nombre={details.cliente?.nombre} enlace={`/clientes/detalle/${details.cliente?.id}`} />
-                    {details.vivienda && <DetalleSujeto icon={<Home size={16} />} titulo="Vivienda Relacionada" nombre={details.vivienda?.display} enlace={`/viviendas/detalle/${details.vivienda?.id}`} />}
-                    {details.proyecto && <DetalleSujeto icon={<Building2 size={16} />} titulo="Proyecto" nombre={details.proyecto?.nombre} />}
-                    <DetalleDatosClave icon={<RefreshCw size={16} />} titulo="Información de la Reversión" datos={datosReversion} />
-                </div>
-            );
+
+            // Asignamos el contenido específico, sin los detalles del sujeto
+            contenidoEspecifico = <DetalleDatosClave icon={<RefreshCw size={16} />} titulo="Información de la Reversión" datos={datosReversion} />;
+            break; // <-- Se añade el break
         }
 
         default:
