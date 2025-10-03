@@ -70,35 +70,31 @@ export const useCrearVivienda = () => {
                 const nombreProyecto = proyectoAsignado ? proyectoAsignado.nombre : 'Proyecto no encontrado';
 
                 const auditDetails = {
-                    type: "Creación de Vivienda",
-                    details: `Creó la vivienda Mz ${formData.manzana} - Casa ${formData.numeroCasa} para el proyecto '${nombreProyecto}'.`,
                     action: 'CREATE_VIVIENDA',
-                    vivienda: {
-                        id: viviendaDocRef.id, // Usamos el ID que acabamos de recibir
-                        nombre: `Mz ${formData.manzana} - Casa ${formData.numeroCasa}`
+                    proyecto: {
+                        id: formData.proyectoId,
+                        nombre: nombreProyecto
                     },
-                    // Ahora guardamos un snapshot completo de los datos de creación
-                    viviendaInfo: {
-                        proyectoNombre: nombreProyecto,
-                        manzana: formData.manzana,
-                        numeroCasa: formData.numeroCasa,
-                        linderoNorte: formData.linderoNorte,
-                        linderoSur: formData.linderoSur,
-                        linderoOriente: formData.linderoOriente,
-                        linderoOccidente: formData.linderoOccidente,
-                        matricula: formData.matricula,
-                        nomenclatura: formData.nomenclatura,
-                        areaLote: formData.areaLote,
-                        areaConstruida: formData.areaConstruida,
-                        certificadoTradicionAnexado: formData.urlCertificadoTradicion ? 'Sí' : 'No',
-                        valorBase: valorBaseNum,
-                        esEsquinera: formData.esEsquinera ? 'Sí' : 'No',
-                        recargoEsquinera: recargoEsquineraNum,
-                        valorTotal: valorTotalVivienda,
-                    }
+                    // AHORA TODOS LOS DATOS ESTÁN AQUÍ, EN EL NIVEL PRINCIPAL
+                    manzana: formData.manzana,
+                    numeroCasa: formData.numeroCasa,
+                    linderoNorte: formData.linderoNorte,
+                    linderoSur: formData.linderoSur,
+                    linderoOriente: formData.linderoOriente,
+                    linderoOccidente: formData.linderoOccidente,
+                    matricula: formData.matricula,
+                    nomenclatura: formData.nomenclatura,
+                    areaLote: formData.areaLote,
+                    areaConstruida: formData.areaConstruida,
+                    certificadoTradicionAnexado: formData.urlCertificadoTradicion ? 'Sí' : 'No',
+                    valorBase: valorBaseNum,
+                    esEsquinera: formData.esEsquinera ? 'Sí' : 'No',
+                    recargoEsquinera: recargoEsquineraNum,
+                    valorTotal: valorTotalVivienda
                 };
+
                 await createAuditLog(
-                    auditDetails.details,
+                    `Creó la vivienda Mz ${formData.manzana} - Casa ${formData.numeroCasa} en el proyecto '${nombreProyecto}'.`,
                     auditDetails
                 );
 

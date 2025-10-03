@@ -53,10 +53,19 @@ export const useDetalleCliente = () => {
             }
         }
 
+        const clienteCompleto = {
+            ...cliente, // Copiamos todos los datos originales del cliente
+            // Y le anidamos la vivienda y el proyecto en la estructura correcta
+            vivienda: {
+                ...viviendaAsignada,
+                proyecto: proyectoAsignado
+            }
+        };
+
         return {
             isLoading: false,
             data: {
-                cliente,
+                cliente: clienteCompleto,
                 vivienda: viviendaAsignada,
                 proyecto: proyectoAsignado,
                 historialAbonos,

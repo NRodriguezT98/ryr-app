@@ -212,7 +212,7 @@ const DetalleCliente = () => {
 
                 <div>
                     {activeTab === 'info' && <TabInfoGeneralCliente cliente={cliente} renuncia={renuncia} vivienda={vivienda} historialAbonos={historialAbonos} proyecto={proyecto} isReadOnly={isReadOnly} />}
-                    {activeTab === 'proceso' && <TabProcesoCliente cliente={cliente} renuncia={renuncia} onDatosRecargados={recargarDatos} onHayCambiosChange={setProcesoTieneCambios} isReadOnly={isReadOnly} />}
+                    {activeTab === 'proceso' && <TabProcesoCliente cliente={cliente} renuncia={renuncia} onDatosRecargados={recargarDatos} onHayCambiosChange={setProcesoTieneCambios} proyecto={proyecto} isReadOnly={isReadOnly} />}
                     {activeTab === 'documentacion' && <TabDocumentacionCliente cliente={cliente} renuncia={renuncia} />}
                     {activeTab === 'historial' && cliente && <TabHistorial cliente={cliente} isReadOnly={isReadOnly} />}
                 </div>

@@ -7,6 +7,14 @@ import { createAuditLog } from './auditService';
 import { createNotification } from './notificationService';
 
 export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, userName) => {
+
+    let totalAbonadoPrevioCuotaInicial = 0;
+    if (abonoData.fuente === 'cuotaInicial') {
+        const abonosPreviosQuery = query(collection(db, "abonos"), where("clienteId", "==", abonoData.clienteId), where("fuente", "==", "cuotaInicial"), where("estadoProceso", "==", "activo"));
+        const abonosPreviosSnapshot = await getDocs(abonosPreviosQuery);
+        totalAbonadoPrevioCuotaInicial = abonosPreviosSnapshot.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
+    }
+
     const viviendaRef = doc(db, "viviendas", abonoData.viviendaId);
     const clienteRef = doc(db, "clientes", abonoData.clienteId);
     const abonoRef = doc(collection(db, "abonos"));
@@ -18,7 +26,6 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
         const contadorDoc = await transaction.get(contadorRef);
         const viviendaDoc = await transaction.get(viviendaRef);
         const clienteDoc = await transaction.get(clienteRef);
-
         if (!viviendaDoc.exists() || !clienteDoc.exists()) throw new Error("El cliente o la vivienda ya no existen.");
 
         // PASO 2: REALIZAR TODOS LOS CÁLCULOS
@@ -26,16 +33,12 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
         const transClienteData = clienteDoc.data();
         let nombrePasoCompletado = null;
         let isCuotaInicialCompletada = false;
-
         const nuevoConsecutivo = (contadorDoc.exists() ? contadorDoc.data().consecutivo : 0) + 1;
 
         if (abonoData.fuente === 'cuotaInicial') {
             const montoPactado = transClienteData.financiero?.cuotaInicial?.monto || 0;
             if (montoPactado > 0) {
-                const abonosPreviosQuery = query(collection(db, "abonos"), where("clienteId", "==", abonoData.clienteId), where("fuente", "==", "cuotaInicial"), where("estadoProceso", "==", "activo"));
-                const abonosPreviosSnapshot = await getDocs(abonosPreviosQuery);
-                const totalAbonadoPrevio = abonosPreviosSnapshot.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
-                const totalConAbonoActual = totalAbonadoPrevio + abonoData.monto;
+                const totalConAbonoActual = totalAbonadoPrevioCuotaInicial + abonoData.monto;
                 if (totalConAbonoActual >= montoPactado - 0.01) {
                     isCuotaInicialCompletada = true;
                 }
@@ -232,9 +235,11 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
             const pasoKey = pasoConfig.desembolsoKey;
             if (nuevoProceso[pasoKey]) {
                 nuevoProceso[pasoKey].completado = false;
+                const consecutivoStr = String(abonoAAnular.consecutivo).padStart(4, '0');
+                const fechaAbonoStr = formatDisplayDate(abonoAAnular.fechaPago);
                 const entradaHistorial = {
-                    mensaje: `Abono de ${formatCurrency(montoAAnular)} anulado. El paso se reabrió automáticamente.`,
-                    userName: userName || 'Sistema',
+                    mensaje: `Se ANULÓ Desembolso de Crédito Hipotecarío Consecutivo #${consecutivoStr} de la fecha "${fechaAbonoStr}" por valor de ${formatCurrency(montoAAnular)}. El paso 'Crédito Desembolsado' se reabrió automáticamente.`,
+                    userName: userName,
                     fecha: new Date()
                 };
                 if (!nuevoProceso[pasoKey].actividad) nuevoProceso[pasoKey].actividad = [];
@@ -432,6 +437,11 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName, motivo) =
 };
 
 export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembolsoData, proyecto, userName) => {
+
+    const abonosPreviosQuery = query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("fuente", "==", "credito"), where("estadoProceso", "==", "activo"));
+    const abonosPreviosSnapshot = await getDocs(abonosPreviosQuery);
+    const totalAbonadoCredito = abonosPreviosSnapshot.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
+
     const viviendaRef = doc(db, "viviendas", viviendaId);
     const clienteRef = doc(db, "clientes", clienteId);
     const abonoRef = doc(collection(db, "abonos"));
@@ -450,23 +460,36 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
         const transClienteData = clienteDoc.data();
         const transViviendaData = viviendaDoc.data();
         const transClienteNombre = toTitleCase(`${transClienteData.datosCliente.nombres} ${transClienteData.datosCliente.apellidos}`);
-        const pasoConfig = FUENTE_PROCESO_MAP['credito'];
 
+        const pasoConfig = FUENTE_PROCESO_MAP['credito'];
         if (pasoConfig) {
             const pasoSolicitud = transClienteData.proceso?.[pasoConfig.solicitudKey];
             if (!pasoSolicitud?.completado) throw new Error("Debe completar la solicitud de desembolso del crédito.");
         }
 
         const montoCreditoPactado = transClienteData.financiero?.credito?.monto || 0;
-        const abonosPreviosQuery = query(collection(db, "abonos"), where("clienteId", "==", clienteId), where("fuente", "==", "credito"), where("estadoProceso", "==", "activo"));
-        const abonosPreviosSnapshot = await getDocs(abonosPreviosQuery);
-        const totalAbonadoCredito = abonosPreviosSnapshot.docs.reduce((sum, doc) => sum + doc.data().monto, 0);
         const transMontoADesembolsar = montoCreditoPactado - totalAbonadoCredito;
         if (transMontoADesembolsar <= 0) throw new Error("El crédito para este cliente ya ha sido completamente desembolsado.");
 
         const abonoParaGuardar = { ...desembolsoData, consecutivo: nuevoConsecutivo, monto: transMontoADesembolsar, fuente: 'credito', metodoPago: 'Desembolso Bancario', clienteId, viviendaId, id: abonoRef.id, estadoProceso: 'activo', timestampCreacion: new Date() };
         const nuevoTotalAbonado = (transViviendaData.totalAbonado || 0) + transMontoADesembolsar;
         const nuevoSaldo = transViviendaData.valorFinal - nuevoTotalAbonado;
+
+
+        const nuevoProceso = { ...transClienteData.proceso };
+
+        if (pasoConfig && (totalAbonadoCredito + transMontoADesembolsar) >= montoCreditoPactado) {
+            const pasoDesembolsoKey = pasoConfig.desembolsoKey; // ej: 'desembolsoCredito'
+            if (pasoDesembolsoKey) {
+                nombrePasoCompletado = PROCESO_CONFIG.find(p => p.key === pasoDesembolsoKey)?.label || pasoDesembolsoKey;
+
+                nuevoProceso[pasoDesembolsoKey] = {
+                    ...nuevoProceso[pasoDesembolsoKey],
+                    completado: true,
+                    fecha: desembolsoData.fechaPago // Usamos la fecha del desembolso
+                };
+            }
+        }
 
         // PASO 3: ESCRIBIR
         if (contadorDoc.exists()) {
@@ -477,7 +500,29 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
         transaction.set(abonoRef, abonoParaGuardar);
 
-        if (pasoConfig) { /* ... lógica de escritura del proceso ... */ }
+        if (pasoConfig) {
+            const desembolsoKey = pasoConfig.desembolsoKey;
+            const nuevoProceso = { ...transClienteData.proceso };
+            if (!nuevoProceso[desembolsoKey]) nuevoProceso[desembolsoKey] = { actividad: [] };
+            if (!nuevoProceso[desembolsoKey].actividad) nuevoProceso[desembolsoKey].actividad = [];
+
+            nuevoProceso[desembolsoKey] = { ...nuevoProceso[desembolsoKey], completado: true, fecha: desembolsoData.fechaPago, evidencias: { ...nuevoProceso[desembolsoKey]?.evidencias, [pasoConfig.evidenciaId]: { url: desembolsoData.urlComprobante, estado: 'subido' } } };
+
+            const configDelPaso = PROCESO_CONFIG.find(p => p.key === desembolsoKey);
+            let nombreDelPaso = 'desconocido';
+            if (configDelPaso) {
+                nombreDelPaso = configDelPaso.label.substring(configDelPaso.label.indexOf('.') + 1).trim();
+            }
+
+            const entradaHistorial = {
+                mensaje: `Desembolso de crédito registrado desde el módulo "Abonos", con Consecutivo #${String(nuevoConsecutivo).padStart(4, '0')} por valor de ${formatCurrency(transMontoADesembolsar)}. El paso "${nombreDelPaso}" se completó automáticamente.`,
+                userName: userName || 'Sistema',
+                fecha: new Date()
+            };
+
+            nuevoProceso[desembolsoKey].actividad.push(entradaHistorial);
+            transaction.update(clienteRef, { proceso: nuevoProceso });
+        }
 
         return {
             clienteNombre: transClienteNombre,
@@ -493,7 +538,7 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
 
     const consecutivoStr = String(consecutivo).padStart(4, '0');
 
-    const mensajeAuditoria = `Registró desembolso de Crédito Hipotecario para ${clienteNombre} por valor de ${formatCurrency(montoADesembolsar)}`;
+    const mensajeAuditoria = `Registró desembolso de Crédito Hipotecario con el consecutivo #${consecutivoStr} para el cliente ${clienteNombre} por valor de ${formatCurrency(montoADesembolsar)}`;
 
 
     await createAuditLog(

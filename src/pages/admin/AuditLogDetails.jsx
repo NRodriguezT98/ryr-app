@@ -1,6 +1,6 @@
 // src/pages/admin/AuditLogDetails.jsx (VERSIÓN FINAL UNIFICADA)
 import React from 'react';
-import { User, Home, Building2, Banknote, DollarSign, FileWarning, BadgeInfo, RefreshCw, Edit3 } from 'lucide-react';
+import { User, Home, Building2, Banknote, DollarSign, FileWarning, BadgeInfo, RefreshCw, Edit3, Ruler, Trash2 } from 'lucide-react';
 
 // 1. Importamos nuestros bloques de construcción reutilizables
 import DetalleSujeto from './audit-details/components/DetalleSujeto';
@@ -25,6 +25,96 @@ const AuditLogDetails = ({ log }) => {
     let modalSize = "md";
 
     switch (action) {
+        case 'CREATE_VIVIENDA': {
+            // Grupo 1: Datos Principales de la Vivienda
+            const datosPrincipales = {
+                "Ubicación": `Mz. ${details.manzana} - Casa ${details.numeroCasa}`,
+                "Matrícula Inm.": details.matricula,
+                "Nomenclatura": details.nomenclatura,
+            };
+
+            // Grupo 2: Características Físicas y Linderos
+            const datosFisicos = {
+                "Área Construida": `${details.areaConstruida} m²`,
+                "Área del Lote": `${details.areaLote} m²`,
+                "Lindero Norte": details.linderoNorte,
+                "Lindero Sur": details.linderoSur,
+                "Lindero Oriente": details.linderoOriente,
+                "Lindero Occidente": details.linderoOccidente,
+            };
+
+            // Grupo 3: Información Financiera y Documentos
+            const datosFinancieros = {
+                "Valor Vivienda Base": formatCurrency(details.valorBase),
+                "Es Esquinera": details.esEsquinera,
+                "Recargo por Esquinera": formatCurrency(details.recargoEsquinera),
+                "Valor Total": formatCurrency(details.valorTotal),
+                "Certificado de Tradición Anexado": details.certificadoTradicionAnexado,
+            };
+
+            contenidoEspecifico = (
+                <>
+                    <DetalleDatosClave
+                        icon={<Home size={16} />}
+                        titulo="Datos Principales"
+                        datos={datosPrincipales}
+                    />
+                    <DetalleDatosClave
+                        icon={<Ruler size={16} />} // Ícono para medidas y linderos
+                        titulo="Características Físicas"
+                        datos={datosFisicos}
+                    />
+                    <DetalleDatosClave
+                        icon={<DollarSign size={16} />}
+                        titulo="Información Financiera"
+                        datos={datosFinancieros}
+                    />
+                </>
+            );
+            break;
+        }
+
+        case 'DELETE_VIVIENDA': {
+            // Extraemos el snapshot para facilitar la lectura
+            const snapshot = details.snapshotVivienda;
+
+            // Grupo de datos de la "Ficha Técnica"
+            const datosFichaTecnica = {
+                "Matrícula": snapshot.matricula,
+                "Nomenclatura": snapshot.nomenclatura,
+                "Área del Lote": snapshot.areaLote,
+                "Área Construida": snapshot.areaConstruida,
+                "Lindero Norte": snapshot.linderoNorte,
+                "Lindero Sur": snapshot.linderoSur,
+                "Lindero Oriente": snapshot.linderoOriente,
+                "Lindero Occidente": snapshot.linderoOccidente,
+            };
+
+            contenidoEspecifico = (
+                <>
+                    {/* Primero mostramos las entidades principales afectadas */}
+                    <DetalleSujeto
+                        icon={<Building2 size={16} />}
+                        titulo="Proyecto Afectado"
+                        nombre={details.proyectoNombre}
+                    />
+                    <DetalleSujeto
+                        icon={<Trash2 size={16} className="text-red-500" />} // Ícono de eliminación
+                        titulo="Vivienda Eliminada"
+                        nombre={details.viviendaNombre}
+                    />
+
+                    {/* Luego, mostramos la ficha técnica que se guardó como snapshot */}
+                    <DetalleDatosClave
+                        icon={<Ruler size={16} />}
+                        titulo="Ficha Técnica (al momento de la eliminación)"
+                        datos={datosFichaTecnica}
+                    />
+                </>
+            );
+            break;
+        }
+
         case 'REGISTER_ABONO':
         case 'REGISTER_DISBURSEMENT':
         case 'REGISTER_CREDIT_DISBURSEMENT': {

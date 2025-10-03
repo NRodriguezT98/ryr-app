@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { toTitleCase } from '../../utils/textFormatters'; // Importa la utilidad para formatear texto
 
 export const useAnularAbono = (onActionCompleta) => {
-    const { user } = useAuth();
+    const { userData } = useAuth();
     const { clientes, viviendas, proyectos, recargarDatos } = useData();
 
     const [abonoAAnular, setAbonoAAnular] = useState(null);
@@ -43,7 +43,7 @@ export const useAnularAbono = (onActionCompleta) => {
         if (!abonoAAnular) return;
 
         setIsSubmitting(true);
-        const userName = user?.displayName || 'Sistema';
+        const userName = userData ? toTitleCase(`${userData.nombres} ${userData.apellidos}`) : 'Sistema';
 
         try {
             toast.loading('Anulando abono...');
