@@ -39,15 +39,31 @@ export const archiveVivienda = async (vivienda, nombreProyecto) => {
 
     const nombreVivienda = `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`;
     await createAuditLog(
-        `Archivó la vivienda ${nombreVivienda} del proyecto ${nombreProyecto}`,
+        `Archivó la vivienda ${nombreVivienda} del proyecto "${nombreProyecto}"`,
         {
             action: 'ARCHIVE_VIVIENDA',
             viviendaId: vivienda.id,
             viviendaNombre: nombreVivienda,
-            proyectoNombre: nombreProyecto, // <-- Agregamos el nombre del proyecto
-            details: 'La vivienda fue marcada como archivada y no será visible en la lista principal.'
+            proyecto: {
+                id: vivienda.proyectoId,
+                nombre: nombreProyecto
+            },
+            // Snapshot AHORA con TODOS los datos
+            snapshotVivienda: {
+                matricula: vivienda.matricula,
+                nomenclatura: vivienda.nomenclatura,
+                areaLote: `${vivienda.areaLote} m²`,
+                areaConstruida: `${vivienda.areaConstruida} m²`,
+                valorTotal: vivienda.valorTotal,
+                esEsquinera: vivienda.esEsquinera ? 'Sí' : 'No', // <-- AÑADIDO
+                linderoNorte: vivienda.linderoNorte,             // <-- AÑADIDO
+                linderoSur: vivienda.linderoSur,                 // <-- AÑADIDO
+                linderoOriente: vivienda.linderoOriente,         // <-- AÑADIDO
+                linderoOccidente: vivienda.linderoOccidente      // <-- AÑADIDO
+            }
         }
     );
+    // --- FIN DE LA CORRECCIÓN ---
 };
 
 export const restoreVivienda = async (vivienda, nombreProyecto) => {
@@ -122,7 +138,6 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
 
     const formatAuditValue = (key, value) => {
         if (value === null || typeof value === 'undefined') return 'No definido';
-        if (key === 'esEsquinera') return value ? 'Sí' : 'No';
         if (key === 'urlCertificadoTradicion') return value ? 'Documento Anexado' : 'Sin Documento';
         if (typeof value === 'object') return JSON.stringify(value);
         return String(value);
@@ -151,6 +166,10 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
 
 
     if (cambios.length > 0) {
+        console.log("DEBUG: Verificando datos para auditoría de UPDATE_VIVIENDA", {
+            proyectoId_en_vivienda: viviendaOriginal.proyectoId,
+            contexto_recibido: auditContext
+        });
         const nombreVivienda = `Mz ${viviendaOriginal.manzana} - Casa ${viviendaOriginal.numeroCasa}`;
         await createAuditLog(
             `Actualizó la vivienda ${nombreVivienda} del proyecto "${auditContext.proyectoActualNombre}"`,
@@ -158,7 +177,18 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
                 action: 'UPDATE_VIVIENDA',
                 viviendaId: id,
                 viviendaNombre: nombreVivienda,
-                cambios: cambios
+                cambios: cambios,
+
+                // --- AÑADIMOS LA INFORMACIÓN QUE FALTA ---
+                proyecto: {
+                    id: viviendaOriginal.proyectoId,
+                    nombre: auditContext.proyectoActualNombre
+                },
+                // Solo añadimos el cliente si la vivienda tiene uno asignado
+                cliente: viviendaOriginal.clienteId ? {
+                    id: viviendaOriginal.clienteId,
+                    nombre: viviendaOriginal.clienteNombre
+                } : null
             }
         );
     }

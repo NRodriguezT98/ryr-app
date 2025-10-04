@@ -246,7 +246,8 @@ const ListarViviendas = () => {
                     onClose={() => modals.setViviendaAEditar(null)}
                     onSave={handlers.handleGuardado}
                     vivienda={modals.viviendaAEditar}
-                    todasLasViviendas={todasLasViviendasFiltradas} />
+                    todasLasViviendas={todasLasViviendasFiltradas}
+                    size="xl" />
             )}
             {modals.viviendaAArchivar && (
                 <ModalConfirmacion

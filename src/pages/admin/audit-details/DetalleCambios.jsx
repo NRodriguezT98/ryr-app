@@ -2,8 +2,30 @@
 
 import React from 'react';
 import { ArrowRight, FileText, Hash, Home, Mail, Phone, ToggleLeft, ToggleRight, Trash2, UploadCloud, User as UserIcon } from 'lucide-react';
+import { formatCurrency } from '../../../utils/textFormatters';
 
 // Componente para dar estilo a los valores (anterior vs. nuevo)
+const formatValue = (key, valor) => {
+    // Si el valor ya viene formateado como 'Sí' o 'No' desde el servicio, lo dejamos pasar
+    if (valor === 'Sí' || valor === 'No' || valor === 'N/A' || valor === 'No definido') return valor;
+    // Si no tiene valor, lo estandarizamos
+    if (valor === undefined || valor === null || valor === '') return 'N/A';
+
+    // Lista de campos (keys) que deben ser formateados como moneda
+    const camposMoneda = ['valorBase', 'recargoEsquinera', 'valorTotal', 'gastosNotariales', 'valorFinal', 'saldoPendiente'];
+    if (camposMoneda.includes(key)) {
+        // Limpiamos el valor por si viene con símbolos y lo convertimos a número
+        const valorNumerico = Number(String(valor).replace(/[^\d.-]/g, ''));
+        return formatCurrency(valorNumerico);
+    }
+
+    // Campo booleano que queremos como 'Sí' o 'No'
+    if (key === 'esEsquinera') {
+        return valor === true || String(valor).toLowerCase() === 'true' ? 'Sí' : 'No';
+    }
+
+    return valor; // Devuelve el valor original si no hay regla de formato
+};
 const ValorPill = ({ valor, tipo }) => {
     if (valor === 'Sí' || valor === 'No') {
         const Icono = valor === 'Sí' ? ToggleRight : ToggleLeft;
@@ -77,6 +99,8 @@ const DetalleCambios = ({ icon: TitleIcon, titulo, cambios }) => {
             <ul className="space-y-3 pl-9">
                 {cambios.map((cambio, index) => {
                     const IconoCampo = getIconoParaCampo(cambio.campo);
+                    const valorAnteriorFormateado = formatValue(cambio.campo, cambio.anterior);
+                    const valorActualFormateado = formatValue(cambio.campo, cambio.actual);
                     return (
                         <li key={index} className="grid grid-cols-3 items-center gap-4 text-sm">
                             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300 col-span-1">
@@ -84,9 +108,9 @@ const DetalleCambios = ({ icon: TitleIcon, titulo, cambios }) => {
                                 <span className="font-semibold capitalize">{cambio.campo.replace(/_/g, ' ')}</span>
                             </div>
                             <div className="flex items-center gap-2 col-span-2">
-                                <ValorPill valor={cambio.anterior} tipo="anterior" />
+                                <ValorPill valor={valorAnteriorFormateado} tipo="anterior" />
                                 <ArrowRight size={16} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                                <ValorPill valor={cambio.actual} tipo="nuevo" />
+                                <ValorPill valor={valorActualFormateado} tipo="nuevo" />
                             </div>
                         </li>
                     );

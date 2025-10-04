@@ -5,6 +5,7 @@ import FormularioVivienda from "./FormularioVivienda";
 import Modal from "../../components/Modal";
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import { Tooltip } from 'react-tooltip';
+import Button from "../../components/Button.jsx";
 
 const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }) => {
 
@@ -29,6 +30,7 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
                 onClose={onClose}
                 title="Editar Vivienda"
                 icon={<Edit size={28} className="text-[#c62828]" />}
+                size='3xl'
             >
                 {/* --- INICIO DE LA CORRECCIÓN --- */}
                 {/* Se usa 'camposFinancierosBloqueados' del hook, no 'vivienda.camposFinancierosBloqueados' */}
@@ -76,29 +78,42 @@ const EditarVivienda = ({ isOpen, onClose, onSave, vivienda, todasLasViviendas }
 
                 <div className="mt-10 pt-6 border-t dark:border-gray-700 flex justify-between">
                     {step > 1 ? (
-                        <button type="button" onClick={handlers.handlePrevStep} className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 font-bold py-2 px-6 rounded-lg transition-colors">Anterior</button>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handlers.handlePrevStep}
+                        >
+                            Anterior
+                        </Button>
                     ) : <div />}
 
                     {step < 3 ? (
-                        <button type="button" onClick={handlers.handleNextStep} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition-colors ml-auto">
+                        <Button
+                            type="button"
+                            variant="danger"
+                            onClick={handlers.handleNextStep}
+                            className="ml-auto"
+                        >
                             Siguiente
-                        </button>
+                        </Button>
                     ) : (
                         <span
                             className="ml-auto"
                             data-tooltip-id="app-tooltip"
                             data-tooltip-content={!hayCambios ? "No hay cambios para guardar" : ''}
                         >
-                            <button
-                                id="guardar-cambios-btn" // 1. Agregamos un ID único al botón
+                            <Button
+                                id="guardar-cambios-btn"
                                 type="button"
+                                variant="success"
                                 onClick={handlers.handlePreSave}
                                 disabled={!hayCambios || isSubmitting}
-                                className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed w-40 flex items-center justify-center gap-2 ml-auto"
+                                isLoading={isSubmitting}
+                                loadingText="Guardando..."
+                                className="w-40 ml-auto"
                             >
-                                {isSubmitting ? <Loader size={20} className="animate-spin" /> : null}
-                                {isSubmitting ? "Guardando..." : "Guardar Cambios"}
-                            </button>
+                                Guardar Cambios
+                            </Button>
                         </span>
                     )}
                 </div>

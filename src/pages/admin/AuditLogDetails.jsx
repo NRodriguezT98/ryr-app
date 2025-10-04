@@ -1,6 +1,6 @@
 // src/pages/admin/AuditLogDetails.jsx (VERSIÓN FINAL UNIFICADA)
 import React from 'react';
-import { User, Home, Building2, Banknote, DollarSign, FileWarning, BadgeInfo, RefreshCw, Edit3, Ruler, Trash2 } from 'lucide-react';
+import { User, Home, Building2, Banknote, DollarSign, FileWarning, BadgeInfo, RefreshCw, Edit3, Ruler, Trash2, Archive, Info } from 'lucide-react';
 
 // 1. Importamos nuestros bloques de construcción reutilizables
 import DetalleSujeto from './audit-details/components/DetalleSujeto';
@@ -10,8 +10,8 @@ import ResumenDeCambios from './audit-details/components/ResumenDeCambios';
 import ResumenCambiosProceso from './audit-details/components/ResumenCambiosProceso';
 import AuditLogModalLayout from './audit-details/components/AuditLogModalLayout';
 import { NOMBRE_FUENTE_PAGO } from '../../utils/procesoConfig';
-import ContenedorAccion from './audit-details/components/ContenedorAccion';
 import { formatDisplayDateWithTime, normalizeDate, formatDisplayDate, formatCurrency } from '../../utils/textFormatters';
+import UpdateViviendaDetails from './audit-details/components/UpdateViviendaDetails';
 
 
 const AuditLogDetails = ({ log }) => {
@@ -210,9 +210,80 @@ const AuditLogDetails = ({ log }) => {
         }
 
         case 'UPDATE_VIVIENDA': {
-            const titulo = action === 'UPDATE_CLIENT' ? "Cambios en Datos del Cliente" : "Cambios en Datos de la Vivienda";
-            contenidoEspecifico = <ResumenDeCambios titulo={titulo} cambios={cambios} />;
-            break;
+            // Usamos un return directo para tener control total sobre esta vista
+            return (
+                <div className="space-y-4">
+
+                    {/* 1. Muestra el Cliente Afectado (solo si existe en el log) */}
+                    {details.cliente && (
+                        <DetalleSujeto
+                            icon={<User size={16} />}
+                            titulo="Cliente Afectado"
+                            nombre={details.cliente.nombre}
+                            enlace={`/clientes/detalle/${details.cliente.id}`}
+                        />
+                    )}
+
+                    {/* 2. Muestra la Vivienda Modificada (el sujeto principal de la acción) */}
+                    <DetalleSujeto
+                        icon={<Home size={16} />}
+                        titulo="Vivienda Modificada"
+                        nombre={details.viviendaNombre}
+                        enlace={`/viviendas/detalle/${details.viviendaId}`}
+                    />
+
+                    {/* 3. Muestra el Proyecto */}
+                    <DetalleSujeto
+                        icon={<Building2 size={16} />}
+                        titulo="Proyecto"
+                        nombre={details.proyecto?.nombre}
+                    />
+
+                    {/* 4. Muestra el componente con la lista de cambios, que ya funcionaba bien */}
+                    <UpdateViviendaDetails details={details} />
+
+                </div>
+            );
+        }
+
+        case 'ARCHIVE_VIVIENDA': {
+            const snapshot = details.snapshotVivienda || {};
+
+            // Creamos el objeto con TODOS los datos del snapshot
+            const datosArchivados = {
+                "Matrícula": snapshot.matricula,
+                "Nomenclatura": snapshot.nomenclatura,
+                "Área del Lote": snapshot.areaLote,
+                "Área Construida": snapshot.areaConstruida,
+                "Valor Total Vivienda": formatCurrency(snapshot.valorTotal),
+                "Es Esquinera": snapshot.esEsquinera,
+                "Lindero Norte": snapshot.linderoNorte,
+                "Lindero Sur": snapshot.linderoSur,
+                "Lindero Oriente": snapshot.linderoOriente,
+                "Lindero Occidente": snapshot.linderoOccidente,
+            };
+
+            // Usamos un return directo para tener control total
+            return (
+                <div className="space-y-4">
+                    <DetalleSujeto
+                        icon={<Building2 size={16} />}
+                        titulo="Proyecto"
+                        nombre={details.proyecto?.nombre}
+                    />
+                    <DetalleSujeto
+                        icon={<Archive size={16} className="text-orange-500" />}
+                        titulo="Vivienda Archivada"
+                        nombre={details.viviendaNombre}
+                        enlace={`/viviendas/detalle/${details.viviendaId}`}
+                    />
+                    <DetalleDatosClave
+                        icon={<Info size={16} />}
+                        titulo="Información de la Vivienda (al archivar)"
+                        datos={datosArchivados}
+                    />
+                </div>
+            );
         }
 
         case 'VOID_ABONO': {

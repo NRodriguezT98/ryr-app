@@ -3,6 +3,27 @@ import React from 'react';
 import { ArrowRight, AlertTriangle, Check, Info } from 'lucide-react';
 import Modal from './Modal';
 import Button from './Button';
+import { formatCurrency } from '../utils/textFormatters';
+
+const formatValue = (campo, valor) => {
+    // Si el valor es indefinido o nulo, lo mostramos como 'N/A'
+    if (valor === undefined || valor === null || valor === '') return 'N/A';
+
+    // Lista de campos que deben ser formateados como moneda
+    const camposMoneda = ['Valor Base', 'Recargo Esquinera', 'Valor Total', 'Gastos Notariales'];
+    if (camposMoneda.includes(campo)) {
+        return formatCurrency(Number(valor)); // Convertimos a número por seguridad
+    }
+
+    // Campo booleano que queremos como 'Sí' o 'No'
+    if (campo === 'Esquinera') {
+        // Maneja tanto el valor booleano 'true' como el string 'true'
+        return valor === true || String(valor).toLowerCase() === 'true' ? 'Sí' : 'No';
+    }
+
+    // Para todos los demás campos, devolvemos el valor original
+    return valor;
+};
 
 const THEMES = {
     warning: {
@@ -86,11 +107,11 @@ const ModalConfirmacion = ({
                                 <div className="mt-1 flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-1">
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-semibold text-red-600 dark:text-red-400">ANTES:</span>
-                                        <span className="text-sm text-gray-500 dark:text-gray-400 line-through">{String(cambio.anterior) || 'Vacío'}</span>
+                                        <span className="text-sm text-gray-500 dark:text-gray-400 line-through">{formatValue(cambio.campo, cambio.anterior)}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-semibold text-green-600 dark:text-green-400">AHORA:</span>
-                                        <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{String(cambio.actual) || 'Vacío'}</span>
+                                        <span className="text-sm font-bold text-gray-800 dark:text-gray-200">{formatValue(cambio.campo, cambio.actual)}</span>
                                     </div>
                                 </div>
                             </div>
