@@ -40,6 +40,23 @@ const Step2_InfoLegal = ({ formData, errors, handleInputChange, handleValueChang
                     <input id="areaConstruida" name="areaConstruida" type="text" value={formData.areaConstruida} onChange={handleInputChange} className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.areaConstruida ? "border-red-500" : "border-gray-300"}`} />
                     {errors.areaConstruida && <p className="text-red-600 text-sm mt-1">{errors.areaConstruida}</p>}
                 </div>
+                <div className="md:col-span-2">
+                    <label className="block font-semibold mb-1 flex items-center dark:text-gray-200" htmlFor="tipoVivienda">
+                        Tipo de Vivienda <span className="text-red-600">*</span>
+                        <HelpTooltip id="tipoVivienda" content="Define si la vivienda es 'Regular' o 'Irregular' según su construcción." />
+                    </label>
+                    <select
+                        id="tipoVivienda"
+                        name="tipoVivienda"
+                        value={formData.tipoVivienda || 'Regular'}
+                        onChange={handleInputChange}
+                        className={`w-full border p-3 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white ${errors.tipoVivienda ? "border-red-500" : "border-gray-300"}`}
+                    >
+                        <option value="Regular">Regular</option>
+                        <option value="Irregular">Irregular</option>
+                    </select>
+                    {errors.tipoVivienda && <p className="text-red-600 text-sm mt-1">{errors.tipoVivienda}</p>}
+                </div>
             </div>
             <div className="md:col-span-2 mt-6 pt-6 border-t border-dashed dark:border-gray-600">
                 <label className="block font-semibold mb-1 flex items-center dark:text-gray-200">

@@ -26,6 +26,7 @@ const CAMPO_LABELS = {
     nomenclatura: 'Nomenclatura',
     areaLote: 'Área del Lote',
     areaConstruida: 'Área Construida',
+    tipoVivienda: 'Tipo de Vivienda',
     linderoNorte: 'Lindero Norte',
     linderoSur: 'Lindero Sur',
     linderoOriente: 'Lindero Oriente',
@@ -78,7 +79,7 @@ const UpdateViviendaDetails = ({ details }) => {
                 titulo="Cambios Físicos"
                 icono={<Ruler size={16} />}
                 cambios={cambios}
-                campos={['areaLote', 'areaConstruida', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente']}
+                campos={['areaLote', 'areaConstruida', 'tipoVivienda', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente']}
             />
             <SeccionCambios
                 titulo="Cambios Financieros"

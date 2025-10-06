@@ -14,7 +14,7 @@ const initialState = {
     proyectoId: "", manzana: "", numeroCasa: "", matricula: "", nomenclatura: "",
     areaLote: "", areaConstruida: "", linderoNorte: "", linderoSur: "",
     linderoOriente: "", linderoOccidente: "", urlCertificadoTradicion: null,
-    valorBase: "", esEsquinera: false, recargoEsquinera: "0"
+    valorBase: "", esEsquinera: false, recargoEsquinera: "0", tipoVivienda: "Regular"
 };
 
 const inputFilters = {
@@ -59,7 +59,7 @@ export const useCrearVivienda = () => {
                 urlCertificadoTradicion: formData.urlCertificadoTradicion,
                 valorBase: valorBaseNum, recargoEsquinera: recargoEsquineraNum,
                 gastosNotariales: GASTOS_NOTARIALES_FIJOS, valorTotal: valorTotalVivienda,
-                proyectoId: formData.proyectoId,
+                proyectoId: formData.proyectoId, tipoVivienda: formData.tipoVivienda,
             };
             try {
                 const viviendaDocRef = await addVivienda(nuevaVivienda);
@@ -87,6 +87,7 @@ export const useCrearVivienda = () => {
                     areaLote: formData.areaLote,
                     areaConstruida: formData.areaConstruida,
                     certificadoTradicionAnexado: formData.urlCertificadoTradicion ? 'Sí' : 'No',
+                    tipoVivienda: formData.tipoVivienda,
                     valorBase: valorBaseNum,
                     esEsquinera: formData.esEsquinera ? 'Sí' : 'No',
                     recargoEsquinera: recargoEsquineraNum,

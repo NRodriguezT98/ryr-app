@@ -43,6 +43,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
         valorBase: vivienda?.valorBase?.toString() || "0",
         esEsquinera: vivienda?.recargoEsquinera > 0,
         recargoEsquinera: vivienda?.recargoEsquinera?.toString() || "0",
+        tipoVivienda: vivienda?.tipoVivienda || "Regular",
     }), [vivienda]);
 
     const {
@@ -74,6 +75,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
                 valorBase: valorBaseNum,
                 recargoEsquinera: recargoEsquineraNum,
                 valorTotal: valorBaseNum + recargoEsquineraNum + GASTOS_NOTARIALES_FIJOS,
+                tipoVivienda: datosParaGuardar.tipoVivienda,
             };
 
             try {
@@ -127,6 +129,7 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
             areaLote: 'Área del Lote (m²)', areaConstruida: 'Área Construida (m²)', linderoNorte: 'Lindero Norte',
             linderoSur: 'Lindero Sur', linderoOriente: 'Lindero Oriente', linderoOccidente: 'Lindero Occidente',
             valorBase: 'Valor Base', esEsquinera: 'Esquinera', recargoEsquinera: 'Recargo Esquinera',
+            tipoVivienda: 'Tipo de Vivienda',
             urlCertificadoTradicion: 'Certificado de Tradición',
         };
 

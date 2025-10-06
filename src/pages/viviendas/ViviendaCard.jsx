@@ -1,32 +1,27 @@
 import React, { Fragment, memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
-import { MoreVertical, Hash, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign, MapPin, Archive, ArchiveRestore } from 'lucide-react';
+import { MoreVertical, Hash, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign, MapPin, Archive, ArchiveRestore, Tag } from 'lucide-react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
+import { useViviendaCardData } from '../../hooks/viviendas/useViviendaCardData';
 import Card from '../../components/Card';
 
 const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto, onArchive, onRestore }) => {
     const { can } = usePermissions();
+
+    // Usamos el hook para obtener todos los datos calculados y el estado de la vivienda
     const {
         manzana, numeroCasa, matricula, nomenclatura, valorFinal, totalAbonado,
-        saldoPendiente, clienteNombre, clienteId, descuentoMonto, recargoEsquinera, areaConstruida,
-        puedeEditar, puedeEliminar, tieneValorEscrituraDiferente, puedeArchivar, puedeRestaurar
-    } = vivienda;
+        saldoPendiente, clienteNombre, clienteId, puedeEditar, puedeEliminar,
+        tieneValorEscrituraDiferente, puedeArchivar, puedeRestaurar,
+        porcentajePagado, isDisponible, isPagada, esEsquinera, tieneDescuento, esIrregular
+    } = useViviendaCardData(vivienda);
 
-    const porcentajePagado = valorFinal > 0 ? (totalAbonado / valorFinal) * 100 : 0;
-    const isDisponible = !clienteId;
-    const isPagada = saldoPendiente <= 0 && !isDisponible;
-    const esEsquinera = recargoEsquinera > 0;
-    const tieneDescuento = descuentoMonto > 0;
-    const esIrregular = String(areaConstruida) !== "41";
-
-    // --- INICIO DE LA MODIFICACIÓN ---
     // Se determina si el usuario tiene permiso para alguna de las acciones del menú.
     const tieneAccionesDisponibles = useMemo(() => {
         return can('viviendas', 'editar') || can('viviendas', 'eliminar') || can('viviendas', 'verDetalle');
     }, [can]);
-    // --- FIN DE LA MODIFICACIÓN ---
 
     return (
         <Card className={`overflow-hidden ${isPagada ? 'border-green-400 dark:border-green-600' : 'border-gray-200'}`}>

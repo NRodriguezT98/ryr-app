@@ -37,6 +37,7 @@ const AuditLogDetails = ({ log }) => {
             const datosFisicos = {
                 "Área Construida": `${details.areaConstruida} m²`,
                 "Área del Lote": `${details.areaLote} m²`,
+                "Tipo de Vivienda": details.tipoVivienda,
                 "Lindero Norte": details.linderoNorte,
                 "Lindero Sur": details.linderoSur,
                 "Lindero Oriente": details.linderoOriente,
@@ -242,6 +243,68 @@ const AuditLogDetails = ({ log }) => {
                     {/* 4. Muestra el componente con la lista de cambios, que ya funcionaba bien */}
                     <UpdateViviendaDetails details={details} />
 
+                </div>
+            );
+        }
+
+        case 'RESTORE_VIVIENDA': {
+            const snapshot = details.snapshotVivienda || {};
+
+            // Grupo 1: Datos Principales
+            const datosPrincipales = {
+                "Ubicación": `Mz. ${snapshot.manzana} - Casa ${snapshot.numeroCasa}`,
+                "Matrícula Inm.": snapshot.matricula,
+                "Nomenclatura": snapshot.nomenclatura,
+            };
+
+            // Grupo 2: Características Físicas
+            const datosFisicos = {
+                "Área Construida": `${snapshot.areaConstruida} m²`,
+                "Área del Lote": `${snapshot.areaLote} m²`,
+                "Tipo de Vivienda": snapshot.tipoVivienda,
+                "Lindero Norte": snapshot.linderoNorte,
+                "Lindero Sur": snapshot.linderoSur,
+                "Lindero Oriente": snapshot.linderoOriente,
+                "Lindero Occidente": snapshot.linderoOccidente,
+            };
+
+            // Grupo 3: Información Financiera
+            const datosFinancieros = {
+                "Valor Vivienda Base": formatCurrency(snapshot.valorBase),
+                "Es Esquinera": snapshot.esEsquinera,
+                "Recargo por Esquinera": formatCurrency(snapshot.recargoEsquinera),
+                "Valor Total": formatCurrency(snapshot.valorTotal),
+                "Certificado de Tradición Anexado": snapshot.certificadoTradicionAnexado,
+            };
+
+            return (
+                <div className="space-y-4">
+                    <DetalleSujeto
+                        icon={<Building2 size={16} />}
+                        titulo="Proyecto"
+                        nombre={details.proyecto?.nombre}
+                    />
+                    <DetalleSujeto
+                        icon={<RefreshCw size={16} className="text-blue-500" />}
+                        titulo="Vivienda Restaurada"
+                        nombre={details.viviendaNombre}
+                        enlace={`/viviendas/detalle/${details.viviendaId}`}
+                    />
+                    <DetalleDatosClave
+                        icon={<Home size={16} />}
+                        titulo="Datos Principales"
+                        datos={datosPrincipales}
+                    />
+                    <DetalleDatosClave
+                        icon={<Ruler size={16} />}
+                        titulo="Características Físicas"
+                        datos={datosFisicos}
+                    />
+                    <DetalleDatosClave
+                        icon={<DollarSign size={16} />}
+                        titulo="Información Financiera"
+                        datos={datosFinancieros}
+                    />
                 </div>
             );
         }

@@ -83,13 +83,36 @@ export const restoreVivienda = async (vivienda, nombreProyecto) => {
     // Creamos el registro de auditoría
     const nombreVivienda = `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`;
     await createAuditLog(
-        `Restauró la vivienda ${nombreVivienda} del proyecto ${nombreProyecto} `,
+        `Restauró la vivienda ${nombreVivienda} del proyecto ${nombreProyecto}`,
         {
             action: 'RESTORE_VIVIENDA',
             viviendaId: vivienda.id,
             viviendaNombre: nombreVivienda,
-            proyectoNombre: nombreProyecto,
-            details: 'La vivienda fue restaurada y ahora está disponible en la lista principal.'
+            proyecto: {
+                id: vivienda.proyectoId,
+                nombre: nombreProyecto
+            },
+            snapshotVivienda: {
+                // Datos principales
+                manzana: vivienda.manzana,
+                numeroCasa: vivienda.numeroCasa,
+                matricula: vivienda.matricula,
+                nomenclatura: vivienda.nomenclatura,
+                // Características físicas
+                areaConstruida: vivienda.areaConstruida,
+                areaLote: vivienda.areaLote,
+                tipoVivienda: vivienda.tipoVivienda || 'Regular',
+                linderoNorte: vivienda.linderoNorte,
+                linderoSur: vivienda.linderoSur,
+                linderoOriente: vivienda.linderoOriente,
+                linderoOccidente: vivienda.linderoOccidente,
+                // Información financiera
+                valorBase: vivienda.valorBase,
+                esEsquinera: vivienda.esEsquinera ? 'Sí' : 'No',
+                recargoEsquinera: vivienda.recargoEsquinera,
+                valorTotal: vivienda.valorTotal,
+                certificadoTradicionAnexado: vivienda.urlCertificadoTradicion ? 'Sí' : 'No',
+            }
         }
     );
 };
@@ -166,10 +189,6 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
 
 
     if (cambios.length > 0) {
-        console.log("DEBUG: Verificando datos para auditoría de UPDATE_VIVIENDA", {
-            proyectoId_en_vivienda: viviendaOriginal.proyectoId,
-            contexto_recibido: auditContext
-        });
         const nombreVivienda = `Mz ${viviendaOriginal.manzana} - Casa ${viviendaOriginal.numeroCasa}`;
         await createAuditLog(
             `Actualizó la vivienda ${nombreVivienda} del proyecto "${auditContext.proyectoActualNombre}"`,
