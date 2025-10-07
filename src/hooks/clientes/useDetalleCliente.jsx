@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 import toast from 'react-hot-toast';
@@ -9,11 +9,20 @@ export const useDetalleCliente = () => {
     const { clienteId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { clientes, viviendas, proyectos, abonos, renuncias, isLoading: isDataContextLoading, recargarDatos } = useData();
+    const { clientes, viviendas, proyectos, abonos, renuncias, isLoading: isDataContextLoading, recargarDatos: recargarDatosGlobales } = useData();
 
     const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'info');
     const [procesoTieneCambios, setProcesoTieneCambios] = useState(false);
     const [navegacionBloqueada, setNavegacionBloqueada] = useState(null);
+    const historialRef = useRef(null);
+
+    const recargarDatos = async () => {
+        await recargarDatosGlobales();
+        if (historialRef.current && typeof historialRef.current.fetchHistorial === 'function') {
+            historialRef.current.fetchHistorial();
+        }
+        toast.success("Datos actualizados.");
+    };
 
     const blocker = useBlocker(
         ({ currentLocation, nextLocation }) =>
@@ -131,6 +140,7 @@ export const useDetalleCliente = () => {
             handleConfirmarSalida,
             handleCancelarSalida,
         },
-        navigate
+        navigate,
+        historialRef
     };
 };

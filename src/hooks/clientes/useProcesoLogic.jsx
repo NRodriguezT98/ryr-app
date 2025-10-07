@@ -292,9 +292,10 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
 
     const iniciarReapertura = useCallback((pasoKey) => setReaperturaInfo({ key: pasoKey, motivo: '' }), []);
 
-    const confirmarReapertura = useCallback((motivo) => {
+    const confirmarReapertura = useCallback(async (motivo) => {
         if (!reaperturaInfo?.key || !motivo.trim()) return;
 
+        // Actualizamos el proceso localmente
         setProcesoState(prev => {
             const newState = { ...prev };
             const pasoKey = reaperturaInfo.key;
@@ -302,14 +303,39 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
                 ...newState[pasoKey],
                 completado: false,
                 fecha: null,
-                motivoReapertura: motivo, // <-- Aquí guardamos el motivo
+                motivoReapertura: motivo,
                 motivoUltimoCambio: 'Paso reabierto',
                 fechaUltimaModificacion: getTodayString()
             };
             return newState;
         });
+
+        // Construimos el mensaje y detalles para auditoría
+        const pasoConfig = PROCESO_CONFIG.find(p => p.key === reaperturaInfo.key);
+        const nombrePaso = pasoConfig?.label || reaperturaInfo.key;
+        const clienteNombre = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
+        const auditMessage = `Se reabrió el paso '${nombrePaso}'. El Motivo de la reapertura fue: "${motivo}".`;
+        const auditDetails = {
+            action: 'UPDATE_PROCESO',
+            clienteId: cliente.id, // <-- Campo necesario para la consulta
+            cambios: [{ paso: nombrePaso, accion: 'reabrió' }],
+            motivo: motivo,
+            cliente: {
+                id: cliente.id,
+                nombre: clienteNombre
+            },
+            vivienda: cliente.vivienda ? {
+                id: cliente.vivienda.id,
+                display: cliente.vivienda.display || `Mz. ${cliente.vivienda.manzana} - Casa ${cliente.vivienda.numeroCasa}`
+            } : null,
+            proyecto: cliente.vivienda?.proyecto ? {
+                id: cliente.vivienda.proyecto.id,
+                nombre: cliente.vivienda.proyecto.nombre || 'Proyecto no especificado'
+            } : null
+        };
+
         setReaperturaInfo(null);
-    }, [reaperturaInfo]);
+    }, [reaperturaInfo, cliente]);
 
     const cancelarReapertura = useCallback(() => setReaperturaInfo(null), []);
 
@@ -519,19 +545,55 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
                 }
 
             } else if (cambiosDetectados.length > 0) {
-                const cambiosTexto = cambiosDetectados.map(c =>
-                    `${c.estadoActual.completado ? 'Completó' : 'Reabrió'} el paso '${c.paso}'`
-                ).join(', ');
-                auditMessage = `Actualizó el proceso del cliente ${clienteNombre}. Cambios: ${cambiosTexto}.`;
+                // Verificamos si hay cambios que involucran modificación de fecha
+                const cambiosConFecha = cambiosDetectados.filter(c =>
+                    c.estadoInicial.fecha !== c.estadoActual.fecha &&
+                    c.estadoActual.motivoUltimoCambio
+                );
+
+                if (cambiosConFecha.length > 0) {
+                    // Hay cambios de fecha con motivo específico
+                    const mensajesFecha = cambiosConFecha.map(c => {
+                        const fechaAnterior = c.estadoInicial.fecha ? formatDisplayDate(c.estadoInicial.fecha) : 'Sin fecha';
+                        const fechaNueva = formatDisplayDate(c.estadoActual.fecha);
+                        const motivo = c.estadoActual.motivoUltimoCambio;
+                        return `Se modificó la fecha del paso '${c.paso}' de ${fechaAnterior} a ${fechaNueva}. Motivo: "${motivo}".`;
+                    });
+                    auditMessage = mensajesFecha.join(' ');
+                } else {
+                    // Cambios generales sin fechas específicas
+                    const cambiosTexto = cambiosDetectados.map(c =>
+                        `${c.estadoActual.completado ? 'Completó' : 'Reabrió'} el paso '${c.paso}'`
+                    ).join(', ');
+                    auditMessage = `Actualizó el proceso del cliente ${clienteNombre}. Cambios: ${cambiosTexto}.`;
+                }
             }
             // --- FIN DE LA SOLUCIÓN ---
 
             const auditDetails = {
                 action: 'UPDATE_PROCESO',
-                cambios: cambiosDetectados.map(c => ({
-                    paso: c.paso,
-                    accion: c.estadoActual.completado ? 'completó' : 'reabrió'
-                })),
+                clienteId: cliente.id, // <-- Campo necesario para la consulta
+                cambios: cambiosDetectados.map(c => {
+                    // Si hay motivo de reapertura, la acción principal fue reapertura
+                    if (motivoReaperturaParaLog && c.estadoActual.motivoReapertura) {
+                        return {
+                            paso: c.paso,
+                            accion: 'reabrió'
+                        };
+                    }
+
+                    // Para otros casos, usamos la lógica normal
+                    let accion = 'modificó';
+                    if (!c.estadoInicial.completado && c.estadoActual.completado) {
+                        accion = 'completó';
+                    } else if (c.estadoInicial.completado && !c.estadoActual.completado) {
+                        accion = 'reabrió';
+                    }
+                    return {
+                        paso: c.paso,
+                        accion: accion
+                    };
+                }),
                 motivo: motivoReaperturaParaLog,
                 cliente: {
                     id: cliente.id,
@@ -548,11 +610,17 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
                 } : null
             };
 
-            console.log("DEBUG [Paso 1 - Origen]: Datos de auditoría a punto de guardar:", auditDetails);
-
+            console.log("🔍 [DEBUG] Cambios detectados:", cambiosDetectados);
+            console.log("🔍 [DEBUG] Motivo reapertura encontrado:", motivoReaperturaParaLog);
+            console.log("🔍 [DEBUG] Mensaje de auditoría:", auditMessage);
+            console.log("🔍 [DEBUG] Detalles de auditoría:", auditDetails);
 
             if (cambiosDetectados.length > 0) {
+                console.log("🔍 [DEBUG] Guardando proceso y creando log de auditoría...");
                 await updateClienteProceso(cliente.id, procesoConActividad, auditMessage, auditDetails);
+                console.log("🔍 [DEBUG] Proceso guardado exitosamente");
+            } else {
+                console.log("🔍 [DEBUG] No hay cambios detectados, no se crea log de auditoría");
             }
 
             toast.success("Proceso del cliente actualizado con éxito.");

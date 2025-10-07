@@ -90,7 +90,8 @@ const DetalleCliente = () => {
         handlers,
         setActiveTab,
         isReadOnly,
-        navigate
+        navigate,
+        historialRef
     } = useDetalleCliente();
 
     if (isLoading || !datosDetalle) {
@@ -214,7 +215,7 @@ const DetalleCliente = () => {
                     {activeTab === 'info' && <TabInfoGeneralCliente cliente={cliente} renuncia={renuncia} vivienda={vivienda} historialAbonos={historialAbonos} proyecto={proyecto} isReadOnly={isReadOnly} />}
                     {activeTab === 'proceso' && <TabProcesoCliente cliente={cliente} renuncia={renuncia} onDatosRecargados={recargarDatos} onHayCambiosChange={setProcesoTieneCambios} proyecto={proyecto} isReadOnly={isReadOnly} />}
                     {activeTab === 'documentacion' && <TabDocumentacionCliente cliente={cliente} renuncia={renuncia} />}
-                    {activeTab === 'historial' && cliente && <TabHistorial cliente={cliente} isReadOnly={isReadOnly} />}
+                    {activeTab === 'historial' && cliente && <TabHistorial cliente={cliente} isReadOnly={isReadOnly} ref={historialRef} />}
                 </div>
             </div>
 

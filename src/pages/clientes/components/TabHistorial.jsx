@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useImperativeHandle, forwardRef } from 'react';
 import { getAuditLogsForCliente } from '../../../services/auditService';
 import { updateNotaHistorial } from '../../../services/clienteService';
 import { useHistorialCliente } from '../../../hooks/clientes/useHistorialCliente';
 import { useAuth } from '../../../context/AuthContext';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Loader, Edit, UserPlus, FileText, UserX, RefreshCw, Archive, ArchiveRestore, CheckCircle, MessageSquareText, GitCommit, DollarSign, Unlock } from 'lucide-react';
 import AnimatedPage from '../../../components/AnimatedPage';
@@ -49,32 +49,33 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
 
     // Extraemos los detalles relevantes de forma segura
     const cambiosProceso = log.details?.action === 'UPDATE_PROCESO' ? log.details.cambios : [];
-    const pasoCompletado = log.details?.pasoCompletado;
-    const pasoReabierto = log.details?.pasoReabierto;
+    // Usar el mensaje procesado por el hook (el mismo que auditoría)
+    const messageContent = log.displayMessage;
 
-    let messageContent;
-    const action = log.details?.action;
-    const details = log.details || {};
-
-    if (action === 'REVERT_VOID_ABONO') {
-        const { abono, cliente } = details;
-        messageContent = `Revirtió la anulación del abono N°${abono?.consecutivo || '?'} ` +
-            `realizado el ${abono?.fechaPago || '?'} y anulado el ${abono?.fechaAnulacion || '?'} ` +
-            `del cliente: ${cliente?.nombre || '?'} por valor de ${abono?.monto || '?'}, ` +
-            `motivo: "${abono?.motivoReversion || '?'}"`;
-
-    } else if (action === 'UPDATE_CLIENT' && details.cambios && details.cambios.length > 0) {
-        // Restauramos la lógica para mostrar la lista detallada de cambios del cliente
-        const changesList = details.cambios.map(c => `• ${c.campo}: ${c.anterior} → ${c.actual}`).join('\n');
-        messageContent = `Se realizaron los siguientes cambios:\n${changesList}`;
-    } else if (action === 'VOID_ABONO') {
-        // Añadimos la nueva lógica para el mensaje de anulación detallado
-        const motivoAnulacion = details.abono?.motivo || 'No especificado';
-        messageContent = `${log.message}, motivo: "${motivoAnulacion}"`;
-    } else {
-        // Para todas las demás acciones, usamos el mensaje por defecto que viene en el log
-        messageContent = log.message;
-    }
+    // Mejorar visualización de cambios de proceso (reabrió/completó)
+    const renderCambiosProceso = () => {
+        if (!cambiosProceso || cambiosProceso.length === 0) return null;
+        return (
+            <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-500 space-y-1">
+                {cambiosProceso.map((cambio, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                        {cambio.accion === 'completó' ? (
+                            <CheckCircle size={14} className="text-green-500" />
+                        ) : cambio.accion === 'reabrió' ? (
+                            <RefreshCw size={14} className="text-yellow-500" />
+                        ) : (
+                            <Edit size={14} className="text-blue-500" />
+                        )}
+                        <span className="text-xs">
+                            {cambio.accion === 'completó' ? 'Se completó:' :
+                                cambio.accion === 'reabrió' ? 'Se reabrió:' :
+                                    'Se modificó:'} <span className="font-semibold text-gray-700 dark:text-gray-100">{cambio.paso}</span>
+                        </span>
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     return (
         <li className="mb-10 ms-6">
@@ -99,30 +100,7 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
                     )}
 
                     <p className="italic whitespace-pre-wrap pr-6">{messageContent}</p>
-
-
-                    {(pasoCompletado || pasoReabierto || cambiosProceso.length > 0) && (
-                        <div className="mt-2 pt-2 border-t border-dashed dark:border-gray-500 space-y-1">
-                            {pasoCompletado && (
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle size={14} className="text-green-500 flex-shrink-0" />
-                                    <span className="text-xs">Se completó el paso: <span className="font-semibold text-gray-700 dark:text-gray-100">'{pasoCompletado}'</span></span>
-                                </div>
-                            )}
-                            {pasoReabierto && (
-                                <div className="flex items-center gap-2">
-                                    <RefreshCw size={14} className="text-yellow-500 flex-shrink-0" />
-                                    <span className="text-xs">Consecuencia: Se reabrió el paso <span className="font-semibold text-gray-700 dark:text-gray-100">'{pasoReabierto}'</span></span>
-                                </div>
-                            )}
-                            {cambiosProceso.map((cambio, index) => (
-                                <div key={index} className="flex items-center gap-2">
-                                    {cambio.accion === 'completó' ? <CheckCircle size={14} className="text-green-500" /> : <RefreshCw size={14} className="text-yellow-500" />}
-                                    <span className="text-xs">{cambio.accion === 'completó' ? 'Se completó:' : 'Se reabrió:'} <span className="font-semibold text-gray-700 dark:text-gray-100">{cambio.paso}</span></span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    {renderCambiosProceso()}
                 </div>
             </div>
         </li>
@@ -130,11 +108,15 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
 };
 
 // Componente principal de la pestaña
-const TabHistorial = ({ cliente, isReadOnly }) => {
+const TabHistorial = forwardRef(({ cliente, isReadOnly }, ref) => {
     const { userData } = useAuth();
     const userName = `${userData.nombres} ${userData.apellidos}`;
 
     const { historial, loading, fetchHistorial } = useHistorialCliente(cliente?.id);
+
+    useImperativeHandle(ref, () => ({
+        fetchHistorial
+    }));
 
     const [notaAEditar, setNotaAEditar] = useState(null);
     const [confirmacionCambios, setConfirmacionCambios] = useState(null);
@@ -234,6 +216,6 @@ const TabHistorial = ({ cliente, isReadOnly }) => {
             />
         </AnimatedPage>
     );
-};
+});
 
 export default TabHistorial;
