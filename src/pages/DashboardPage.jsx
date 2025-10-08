@@ -1,16 +1,29 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import AnimatedPage from '../components/AnimatedPage';
-import StatCard from '../components/dashboard/StatCard';
-import ActivityItem from '../components/dashboard/ActivityItem';
-import BarChartIngresos from '../components/dashboard/BarChartIngresos';
-import DocumentosPendientes from '../components/dashboard/DocumentosPendientes';
-import RenunciasPendientes from '../components/dashboard/RenunciasPendientes';
-import GraficoOcupacion from '../components/dashboard/GraficoOcupacion';
-import { Home, User, CheckCircle, Wallet } from 'lucide-react';
-import { formatCurrency } from '../utils/textFormatters';
+import HeroMetrics from '../components/dashboard/HeroMetrics';
+import QuickActionsHub from '../components/dashboard/QuickActionsHub';
+import AnalyticsDashboard from '../components/dashboard/AnalyticsDashboard';
+import SmartNotifications from '../components/dashboard/SmartNotifications';
+import { Sparkles, Loader } from 'lucide-react';
+
+const LoadingScreen = () => (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+            <div className="relative">
+                <Loader className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-4" />
+                <Sparkles className="w-8 h-8 text-purple-500 absolute -top-2 -right-2 animate-pulse" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+                Cargando Panel de Control
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+                Preparando la experiencia perfecta para ti...
+            </p>
+        </div>
+    </div>
+);
 
 const DashboardPage = () => {
     const { isLoading, viviendas, clientes, abonos, renuncias } = useData();
@@ -23,64 +36,48 @@ const DashboardPage = () => {
     } = useDashboardStats({ viviendas, clientes, abonos, renuncias });
 
     if (isLoading) {
-        return (
-            <div className="flex justify-center items-center h-[calc(100vh-100px)]">
-                <p className="text-xl text-gray-500 dark:text-gray-400 animate-pulse">Cargando dashboard...</p>
-            </div>
-        );
+        return <LoadingScreen />;
     }
 
     return (
         <AnimatedPage>
-            <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100 mb-8">Panel de Control</h1>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <Link to="/viviendas/listar">
-                        <StatCard title="Total de Viviendas" value={stats.totalViviendas} icon={<Home />} colorClass="text-red-500" />
-                    </Link>
-                    <Link to="/clientes/listar" state={{ statusFilter: 'activo' }}>
-                        <StatCard title="Clientes Activos" value={stats.totalClientes} icon={<User />} colorClass="text-blue-500" />
-                    </Link>
-                    <Link to="/viviendas/listar" state={{ statusFilter: 'disponibles' }}>
-                        <StatCard title="Viviendas Disponibles" value={stats.viviendasDisponibles} icon={<CheckCircle />} colorClass="text-green-500" />
-                    </Link>
-                    <Link to="/abonos/listar">
-                        <StatCard title="Total Recaudado" value={formatCurrency(stats.totalRecaudado)} icon={<Wallet />} colorClass="text-yellow-500" />
-                    </Link>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                    <DocumentosPendientes clientes={clientes} />
-                    <RenunciasPendientes renuncias={renuncias} />
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Ocupación Actual</h2>
-                        <GraficoOcupacion data={chartDataOcupacion} />
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+                <div className="w-full px-4 sm:px-6 lg:px-8 py-4 md:py-8 max-w-7xl mx-auto">
+                    {/* Hero Section - Métricas Principales */}
+                    <div className="mb-8">
+                        <HeroMetrics stats={stats} />
                     </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg flex flex-col">
-                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Ingresos por Mes</h2>
-                        <div className="flex-grow">
-                            <BarChartIngresos data={ingresosPorMes} />
+                    {/* Quick Actions Hub */}
+                    <div className="mb-8">
+                        <QuickActionsHub />
+                    </div>
+
+                    {/* Analytics y Notificaciones */}
+                    <div className="space-y-6 mb-8">
+                        {/* Analytics Dashboard */}
+                        <div className="w-full">
+                            <AnalyticsDashboard
+                                ingresosPorMes={ingresosPorMes}
+                                chartDataOcupacion={chartDataOcupacion}
+                            />
                         </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                        <h2 className="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Actividad Reciente</h2>
-                        <ul className="space-y-2">
-                            {actividadReciente.length > 0 ? (
-                                actividadReciente.map((item) => (
-                                    <ActivityItem
-                                        key={`${item.tipo}-${item.id}`}
-                                        item={item}
-                                        clientes={clientes}
-                                    />
-                                ))
-                            ) : (
-                                <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-10">No hay actividad reciente.</p>
-                            )}
-                        </ul>
+
+                        {/* Smart Notifications */}
+                        <div className="w-full">
+                            <SmartNotifications
+                                actividadReciente={actividadReciente}
+                                clientes={clientes}
+                                renuncias={renuncias}
+                            />
+                        </div>
+                    </div>                    {/* Footer del Dashboard */}
+                    <div className="text-center py-6">
+                        <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
+                            <Sparkles size={16} />
+                            <span>Panel de Control RyR - Gestión Inmobiliaria Inteligente</span>
+                            <Sparkles size={16} />
+                        </div>
                     </div>
                 </div>
             </div>

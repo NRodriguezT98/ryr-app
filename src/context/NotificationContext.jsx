@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo } from '
 import { db } from '../firebase/config';
 import { collection, onSnapshot, query, orderBy, limit, writeBatch, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import toast from 'react-hot-toast';
+import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext(null);
 
@@ -17,7 +18,14 @@ export const NotificationProvider = ({ children }) => {
     const [notifications, setNotifications] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const { currentUser, loading: authLoading } = useAuth();
+
     useEffect(() => {
+        // Solo cargar notificaciones si hay usuario autenticado
+        if (authLoading || !currentUser) {
+            setIsLoading(false);
+            return;
+        }
         const notifCollection = collection(db, 'notifications');
         const q = query(notifCollection, orderBy('timestamp', 'desc'), limit(50));
 
@@ -31,7 +39,7 @@ export const NotificationProvider = ({ children }) => {
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [currentUser, authLoading]);
 
     const unreadCount = useMemo(() => {
         return notifications.filter(n => !n.read).length;

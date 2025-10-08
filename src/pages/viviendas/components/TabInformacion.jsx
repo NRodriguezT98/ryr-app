@@ -30,6 +30,7 @@ const TabInformacion = ({ vivienda, cliente }) => {
                     <div className='divide-y dark:divide-gray-700'>
                         <InfoItem icon={<FileText size={16} />} label="Matrícula" value={vivienda.matricula} />
                         <InfoItem icon={<Maximize size={16} />} label="Área del Lote" value={`${vivienda.areaLote} m²`} />
+                        <InfoItem icon={<Building size={16} />} label="Tipo de Vivienda" value={toTitleCase(vivienda.tipoVivienda)} />
                     </div>
                     <div className='divide-y dark:divide-gray-700'>
                         <InfoItem icon={<Home size={16} />} label="Nomenclatura" value={vivienda.nomenclatura} />

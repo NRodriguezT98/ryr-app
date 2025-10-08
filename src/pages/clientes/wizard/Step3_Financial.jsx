@@ -5,9 +5,8 @@ import AnimatedPage from '../../../components/AnimatedPage';
 import HelpTooltip from '../../../components/HelpTooltip';
 import { formatCurrency } from '../../../utils/textFormatters';
 import { useClienteFinanciero } from '../../../hooks/clientes/useClienteFinanciero';
-import FileUpload from '../../../components/FileUpload';
-import { FileText, XCircle, Lock, Info, Eye, Trash2, Replace } from 'lucide-react';
-import { uploadFile } from '../../../services/fileService';
+import UniversalFileManager from '../../../components/UniversalFileManager';
+import { FileText, XCircle, Lock, Info } from 'lucide-react';
 
 const creditoOptions = [
     { value: 'Bancolombia', label: 'Bancolombia' },
@@ -49,30 +48,7 @@ const getSelectStyles = (hasError) => ({
     input: (base) => ({ ...base, color: 'var(--color-text-form)' }),
 });
 
-const FileDisplayActions = ({ url, onReplace, onDelete, isLocked }) => {
-    const replaceInputRef = useRef(null);
-    const handleReplaceClick = () => replaceInputRef.current?.click();
 
-    return (
-        <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
-            <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'>
-                <FileText size={16} />
-                <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Archivo</a>
-            </div>
-            {!isLocked && (
-                <div className="flex items-center gap-2">
-                    <button type="button" onClick={handleReplaceClick} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-yellow-800 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-700/50 hover:bg-yellow-200 dark:hover:bg-yellow-600/70 transition-colors duration-200 text-sm font-medium" title="Reemplazar documento">
-                        <Replace size={16} /> Reemplazar
-                    </button>
-                    <button type="button" onClick={onDelete} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-700/50 hover:bg-red-200 dark:hover:bg-red-600/70 transition-colors duration-200 text-sm font-medium" title="Eliminar documento">
-                        <Trash2 size={16} /> Eliminar
-                    </button>
-                    <input type="file" ref={replaceInputRef} onChange={onReplace} className="hidden" accept=".pdf,.png,.jpg,.jpeg" />
-                </div>
-            )}
-        </div>
-    );
-};
 
 const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChange, handleFinancialFileReplace, isEditing, isLocked, modo }) => {
     const { financiero, viviendaSeleccionada, documentos, datosCliente } = formData;
@@ -155,29 +131,29 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                     Documento de Promesa Enviado (PDF) <span className="text-red-600">*</span>
                                     <HelpTooltip id="promesaFile" content="Adjunte la promesa de compraventa que se envió al cliente." />
                                 </label>
-                                {documentos.promesaEnviadaUrl ? (
-                                    <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-4 flex items-center justify-between">
-                                        <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold'>
-                                            <FileText />
-                                            <a href={documentos.promesaEnviadaUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Promesa Cargada</a>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDocumentUpload('promesaEnviadaUrl', null)}
-                                            className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
-                                            title="Eliminar documento"
-                                        >
-                                            <XCircle size={20} />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <FileUpload
-                                        label="Subir Promesa de Compraventa"
-                                        filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/promesa-enviada-${fileName}`}
-                                        onUploadSuccess={(url) => handleDocumentUpload('promesaEnviadaUrl', url)}
-                                        disabled={!datosCliente.cedula}
-                                    />
-                                )}
+
+                                <UniversalFileManager
+                                    variant="normal"
+                                    label="Subir Promesa de Compraventa"
+                                    currentFileUrl={documentos.promesaEnviadaUrl}
+                                    filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/promesa-enviada-${fileName}`}
+                                    onUploadSuccess={(url) => handleDocumentUpload('promesaEnviadaUrl', url)}
+                                    onDelete={() => handleDocumentUpload('promesaEnviadaUrl', null)}
+                                    disabled={!datosCliente.cedula}
+                                    required={true}
+                                    showDownload={true}
+                                    showPreview={true}
+                                    disabledTooltip={
+                                        !datosCliente.cedula
+                                            ? "Para subir la promesa necesitas ingresar primero el número de cédula del cliente"
+                                            : undefined
+                                    }
+                                    helpText={
+                                        !datosCliente.cedula
+                                            ? "⚠️ Ingresa el número de cédula para habilitar la subida del documento"
+                                            : "📄 Sube el documento de promesa de compraventa que se envió al cliente"
+                                    }
+                                />
                                 {errors.promesaEnviadaUrl && <p className="text-red-600 text-sm mt-1">{errors.promesaEnviadaUrl}</p>}
                             </div>
 
@@ -186,29 +162,29 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                     Captura del Correo de Envío <span className="text-red-600">*</span>
                                     <HelpTooltip id="promesaCorreoFile" content="Adjunte una captura de pantalla o evidencia del correo con el que se envió la promesa." />
                                 </label>
-                                {documentos.promesaEnviadaCorreoUrl ? (
-                                    <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-4 flex items-center justify-between">
-                                        <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold'>
-                                            <FileText />
-                                            <a href={documentos.promesaEnviadaCorreoUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Captura Cargada</a>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDocumentUpload('promesaEnviadaCorreoUrl', null)}
-                                            className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
-                                            title="Eliminar documento"
-                                        >
-                                            <XCircle size={20} />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <FileUpload
-                                        label="Subir Captura de Correo"
-                                        filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/promesa-correo-${fileName}`}
-                                        onUploadSuccess={(url) => handleDocumentUpload('promesaEnviadaCorreoUrl', url)}
-                                        disabled={!datosCliente.cedula}
-                                    />
-                                )}
+
+                                <UniversalFileManager
+                                    variant="normal"
+                                    label="Subir Captura de Correo"
+                                    currentFileUrl={documentos.promesaEnviadaCorreoUrl}
+                                    filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/promesa-correo-${fileName}`}
+                                    onUploadSuccess={(url) => handleDocumentUpload('promesaEnviadaCorreoUrl', url)}
+                                    onDelete={() => handleDocumentUpload('promesaEnviadaCorreoUrl', null)}
+                                    disabled={!datosCliente.cedula}
+                                    required={true}
+                                    showDownload={true}
+                                    showPreview={true}
+                                    disabledTooltip={
+                                        !datosCliente.cedula
+                                            ? "Para subir la captura necesitas ingresar primero el número de cédula del cliente"
+                                            : undefined
+                                    }
+                                    helpText={
+                                        !datosCliente.cedula
+                                            ? "⚠️ Ingresa el número de cédula para habilitar la subida del documento"
+                                            : "📧 Sube una captura de pantalla o evidencia del correo de envío de la promesa"
+                                    }
+                                />
                                 {errors.promesaEnviadaCorreoUrl && <p className="text-red-600 text-sm mt-1">{errors.promesaEnviadaCorreoUrl}</p>}
                             </div>
                         </div>
@@ -267,26 +243,36 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                     {errors.credito_caso && <p className="text-red-600 text-sm mt-1">{errors.credito_caso}</p>}
                                 </div>
 
-                                <div className="space-y-1">
-                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">
+                                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
+                                    <label className="block font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                                         Carta Aprobación Crédito <span className="text-red-600 ml-1">*</span>
+                                        <HelpTooltip id="cartaCredito" content="Carta de aprobación emitida por el banco que confirma la preaprobación del crédito hipotecario." />
                                     </label>
-                                    {financiero.credito.urlCartaAprobacion ? (
-                                        <FileDisplayActions
-                                            url={financiero.credito.urlCartaAprobacion}
-                                            onDelete={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)}
-                                            // 2. Usamos la nueva función pasada por props
-                                            onReplace={(e) => handleFinancialFileReplace(e, 'credito', 'urlCartaAprobacion')}
-                                            isLocked={isLocked}
-                                        />
-                                    ) : (
-                                        <FileUpload
-                                            label="Subir Carta"
-                                            filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/carta-aprobacion-credito-${fileName}`}
-                                            onUploadSuccess={(url) => handleFinancialFieldChange('credito', 'urlCartaAprobacion', url)}
-                                            disabled={!datosCliente.cedula || isLocked}
-                                        />
-                                    )}
+                                    <UniversalFileManager
+                                        variant="normal"
+                                        label="Subir Carta de Aprobación"
+                                        currentFileUrl={financiero.credito.urlCartaAprobacion}
+                                        filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/carta-aprobacion-credito-${fileName}`}
+                                        onUploadSuccess={(url) => handleFinancialFieldChange('credito', 'urlCartaAprobacion', url)}
+                                        onDelete={() => handleFinancialFieldChange('credito', 'urlCartaAprobacion', null)}
+                                        disabled={!datosCliente.cedula || isLocked}
+                                        readonly={isLocked}
+                                        required={true}
+                                        showDownload={true}
+                                        showPreview={true}
+                                        disabledTooltip={
+                                            !datosCliente.cedula
+                                                ? "Para subir la carta necesitas ingresar primero el número de cédula del cliente"
+                                                : isLocked
+                                                    ? "No puedes modificar documentos en esta etapa del proceso"
+                                                    : undefined
+                                        }
+                                        helpText={
+                                            !datosCliente.cedula
+                                                ? "⚠️ Ingresa el número de cédula para habilitar la subida del documento"
+                                                : "🏦 Sube la carta de aprobación del crédito hipotecario emitida por el banco"
+                                        }
+                                    />
                                     {errors.credito_urlCartaAprobacion && <p className="text-red-600 text-sm mt-1">{errors.credito_urlCartaAprobacion}</p>}
                                 </div>
                             </div>
@@ -326,35 +312,36 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                         {errors.subsidioCaja_monto && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_monto}</p>}
                                     </div>
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">
+                                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
+                                    <label className="block font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                                         Carta Aprobación Subsidio <span className="text-red-600 ml-1">*</span>
+                                        <HelpTooltip id="cartaSubsidio" content="Carta de aprobación del subsidio emitida por la caja de compensación familiar." />
                                     </label>
-                                    {financiero.subsidioCaja.urlCartaAprobacion ? (
-                                        <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
-                                            <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold text-sm'>
-                                                <FileText size={16} />
-                                                <a href={financiero.subsidioCaja.urlCartaAprobacion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Carta</a>
-                                            </div>
-                                            {!isLocked && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', null)}
-                                                    className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50"
-                                                    title="Eliminar documento"
-                                                >
-                                                    <XCircle size={20} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <FileUpload
-                                            label="Subir Carta"
-                                            filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/carta-aprobacion-subsidio-${fileName}`}
-                                            onUploadSuccess={(url) => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', url)}
-                                            disabled={!datosCliente.cedula || isLocked}
-                                        />
-                                    )}
+                                    <UniversalFileManager
+                                        variant="normal"
+                                        label="Subir Carta de Aprobación"
+                                        currentFileUrl={financiero.subsidioCaja.urlCartaAprobacion}
+                                        filePath={(fileName) => `documentos_clientes/${datosCliente.cedula}/carta-aprobacion-subsidio-${fileName}`}
+                                        onUploadSuccess={(url) => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', url)}
+                                        onDelete={() => handleFinancialFieldChange('subsidioCaja', 'urlCartaAprobacion', null)}
+                                        disabled={!datosCliente.cedula || isLocked}
+                                        readonly={isLocked}
+                                        required={true}
+                                        showDownload={true}
+                                        showPreview={true}
+                                        disabledTooltip={
+                                            !datosCliente.cedula
+                                                ? "Para subir la carta necesitas ingresar primero el número de cédula del cliente"
+                                                : isLocked
+                                                    ? "No puedes modificar documentos en esta etapa del proceso"
+                                                    : undefined
+                                        }
+                                        helpText={
+                                            !datosCliente.cedula
+                                                ? "⚠️ Ingresa el número de cédula para habilitar la subida del documento"
+                                                : "🏢 Sube la carta de aprobación del subsidio emitida por la caja de compensación"
+                                        }
+                                    />
                                     {errors.subsidioCaja_urlCartaAprobacion && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_urlCartaAprobacion}</p>}
                                 </div>
                             </div>

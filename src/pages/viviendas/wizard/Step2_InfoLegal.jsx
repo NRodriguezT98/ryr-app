@@ -1,6 +1,6 @@
 import React from 'react';
 import AnimatedPage from '../../../components/AnimatedPage';
-import FileUpload from '../../../components/FileUpload';
+import UniversalFileManager from '../../../components/UniversalFileManager';
 import HelpTooltip from '../../../components/HelpTooltip';
 import { FileText, XCircle } from 'lucide-react';
 
@@ -63,22 +63,23 @@ const Step2_InfoLegal = ({ formData, errors, handleInputChange, handleValueChang
                     Certificado de Tradición y Libertad (Opcional)
                     <HelpTooltip content="Si tienes el certificado de tradición, puedes subirlo aquí; si no, más adelante podrás añadirlo desde la documentación de la vivienda." />
                 </label>
-                {formData.urlCertificadoTradicion ? (
-                    <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center justify-between dark:bg-green-900/50 dark:border-green-800">
-                        <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold'>
-                            <FileText />
-                            <a href={formData.urlCertificadoTradicion} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Certificado Actual</a>
-                        </div>
-                        <button type="button" onClick={() => handleValueChange('urlCertificadoTradicion', null)} className="p-1 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50" title="Eliminar documento"><XCircle size={20} /></button>
-                    </div>
-                ) : (
-                    <FileUpload
-                        label="Subir Certificado"
-                        filePath={(fileName) => `documentos_viviendas/${formData.matricula}/certificado-tradicion-${fileName}`}
-                        onUploadSuccess={(url) => handleValueChange('urlCertificadoTradicion', url)}
-                        disabled={!formData.matricula}
-                    />
-                )}
+                <UniversalFileManager
+                    variant="normal"
+                    label="Subir Certificado de Tradición y Libertad"
+                    currentFileUrl={formData.urlCertificadoTradicion}
+                    filePath={(fileName) => `documentos_viviendas/${formData.matricula}/certificado-tradicion-${fileName}`}
+                    onUploadSuccess={(url) => handleValueChange('urlCertificadoTradicion', url)}
+                    onDelete={() => handleValueChange('urlCertificadoTradicion', null)}
+                    disabled={!formData.matricula}
+                    required={false}
+                    showDownload={true}
+                    showPreview={true}
+                    disabledTooltip="Para subir el certificado necesitas ingresar primero la matrícula inmobiliaria"
+                    helpText={!formData.matricula
+                        ? "⚠️ Ingresa la matrícula inmobiliaria para habilitar la subida del certificado"
+                        : "Documento que certifica la propiedad y su historial legal"
+                    }
+                />
             </div>
         </AnimatedPage >
     );

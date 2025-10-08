@@ -297,7 +297,6 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
     }, [clienteAEditar, abonosDelCliente, isEditing]);
 
     const executeSave = useCallback(async (cambiosASalvar) => {
-        console.log("Datos recibidos por executeSave:", cambiosASalvar);
         setIsSubmitting(true);
         try {
             if (modo === 'reactivar') {
@@ -378,7 +377,7 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
                 await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId, {
                     action: 'UPDATE_CLIENT',
-                    cambios: cambiosASalvar // Usamos el argumento que recibe la función
+                    cambios: cambiosASalvar || [] // Usamos el argumento que recibe la función, o array vacío si no hay cambios
                 });
 
                 toast.success("¡Cliente actualizado con éxito!");
@@ -527,22 +526,37 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
             const compareAndPushFileChange = (label, initialUrl, currentUrl) => {
                 if (initialUrl !== currentUrl) {
-                    let anterior = initialUrl ? 'Archivo adjunto' : 'Vacío';
-                    let actual = currentUrl ? 'Archivo adjunto' : 'Vacío';
+                    let anterior, actual, descripcionCambio;
 
-                    // Si se elimina un archivo
-                    if (initialUrl && !currentUrl) {
+                    // Determinar el tipo de cambio y generar mensajes más descriptivos
+                    if (!initialUrl && currentUrl) {
+                        // Se agregó un archivo nuevo
+                        anterior = 'Sin archivo';
+                        actual = 'Archivo adjuntado';
+                        descripcionCambio = 'Adjuntó';
+                    } else if (initialUrl && !currentUrl) {
+                        // Se eliminó un archivo
+                        anterior = 'Archivo existente';
                         actual = 'Archivo eliminado';
-                    }
-                    // Si se reemplaza un archivo
-                    if (initialUrl && currentUrl) {
-                        actual = 'Nuevo archivo adjunto';
+                        descripcionCambio = 'Eliminó';
+                    } else if (initialUrl && currentUrl) {
+                        // Se reemplazó un archivo
+                        anterior = 'Archivo anterior';
+                        actual = 'Archivo reemplazado';
+                        descripcionCambio = 'Reemplazó';
                     }
 
                     cambiosDetectados.push({
                         campo: label,
                         anterior: anterior,
-                        actual: actual
+                        actual: actual,
+                        // Información adicional para auditoría detallada
+                        fileChange: {
+                            type: descripcionCambio.toLowerCase(),
+                            previousUrl: initialUrl || null,
+                            newUrl: currentUrl || null,
+                            timestamp: new Date().toISOString()
+                        }
                     });
                 }
             };
@@ -592,11 +606,18 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 initial.financiero.subsidioCaja.urlCartaAprobacion,
                 current.financiero.subsidioCaja.urlCartaAprobacion
             );
-            console.log("Cambios detectados:", cambiosDetectados);
-            setCambios(cambiosDetectados);
-            setIsConfirming(true);
+
+            // Solo mostrar modal de confirmación si hay cambios detectados
+            if (cambiosDetectados.length > 0) {
+                setCambios(cambiosDetectados);
+                setIsConfirming(true);
+            } else {
+                // Si no hay cambios, ejecutar guardado directamente con array vacío
+                executeSave([]);
+            }
         } else {
-            executeSave();
+            // Caso para cuando no está en modo edición (modo reactivar)
+            executeSave([]);
         }
     }, [formData, todosLosClientes, isEditing, modo, clienteAEditar, abonosDelCliente, initialData, executeSave, viviendas, abonosDelCliente]);
 

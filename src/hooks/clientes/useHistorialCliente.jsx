@@ -36,9 +36,48 @@ const getDisplayMessage = (log, viviendas) => {
         return log.message;
     }
 
+    // Si es una actualización de cliente con cambios específicos, generamos mensaje detallado para TabHistorial
+    if (details?.action === 'UPDATE_CLIENT' && details?.cambios && details.cambios.length > 0) {
+        const cambios = details.cambios;
+        const clienteNombre = details.clienteNombre || 'Cliente';
+        const clienteId = details.clienteId || '';
+
+        // Si solo hay un cambio, usar formato simplificado
+        if (cambios.length === 1) {
+            const cambio = cambios[0];
+
+            // Mejorar el mensaje para archivos
+            if (cambio.fileChange) {
+                const tipo = cambio.fileChange.type;
+                return `${tipo.charAt(0).toUpperCase() + tipo.slice(1)} ${cambio.campo.toLowerCase()} del cliente ${clienteNombre} (C.C. ${clienteId})`;
+            }
+
+            // Para cambios normales (no archivos)
+            return `Actualizó ${cambio.campo.toLowerCase()} del cliente ${clienteNombre} (C.C. ${clienteId}): de "${cambio.anterior}" → "${cambio.actual}"`;
+        }
+
+        // Si hay múltiples cambios, usar formato de lista
+        const listaCambios = cambios.map(cambio => {
+            // Mejorar el mensaje para archivos
+            if (cambio.fileChange) {
+                const tipo = cambio.fileChange.type;
+                if (tipo === 'adjuntó') {
+                    return `• ${tipo.charAt(0).toUpperCase() + tipo.slice(1)} ${cambio.campo.toLowerCase()}`;
+                } else if (tipo === 'eliminó') {
+                    return `• ${tipo.charAt(0).toUpperCase() + tipo.slice(1)} ${cambio.campo.toLowerCase()}`;
+                } else if (tipo === 'reemplazó') {
+                    return `• ${tipo.charAt(0).toUpperCase() + tipo.slice(1)} ${cambio.campo.toLowerCase()}`;
+                }
+            }
+            // Para cambios normales (no archivos)
+            return `• ${cambio.campo}: de "${cambio.anterior}" → "${cambio.actual}"`;
+        }).join('\n');
+
+        return `Actualizó múltiples datos del cliente ${clienteNombre} (C.C. ${clienteId}):\n${listaCambios}`;
+    }
+
     // Para otros casos, mantenemos la lógica anterior si es necesario
     // o simplemente devolvemos el mensaje por defecto.
-    // Por ahora, devolvemos el mensaje por defecto para todos los demás.
     return log.message;
 };
 
@@ -55,11 +94,8 @@ export const useHistorialCliente = (clienteId) => {
         }
         try {
             setLoading(true);
-            console.log("🔍 [DEBUG] Buscando historial para clienteId:", clienteId);
             const logs = await getAuditLogsForCliente(clienteId);
-            console.log("🔍 [DEBUG] Logs obtenidos de la base de datos:", logs);
             const historialFiltrado = logs.filter(log => log.details.action !== 'EDIT_NOTE');
-            console.log("🔍 [DEBUG] Historial después de filtrar:", historialFiltrado);
             setHistorial(historialFiltrado);
         } catch (err) {
             console.error("Error al cargar el historial:", err);

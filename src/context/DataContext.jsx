@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { db } from '../firebase/config';
 import { collection, onSnapshot } from "firebase/firestore";
 import toast from 'react-hot-toast';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext(null);
 
@@ -21,12 +22,21 @@ export const DataProvider = ({ children }) => {
     const [renuncias, setRenuncias] = useState([]);
     const [proyectos, setProyectos] = useState([]);
 
+    const { currentUser, loading: authLoading } = useAuth();
+
     const recargarDatos = useCallback(() => {
         // Esta función podría forzar una recarga si fuera necesario,
         // pero onSnapshot ya lo hace en tiempo real.
     }, []);
 
     useEffect(() => {
+        // Solo intentar cargar datos si:
+        // 1. Auth no está cargando
+        // 2. Hay un usuario autenticado
+        if (authLoading || !currentUser) {
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
         const dataLoaded = { viviendas: false, clientes: false, abonos: false, renuncias: false, proyectos: false };
 
@@ -59,7 +69,7 @@ export const DataProvider = ({ children }) => {
         return () => {
             subscriptions.forEach(unsub => unsub());
         };
-    }, []);
+    }, [currentUser, authLoading]);
 
     // --- LÓGICA DE ENRIQUECIMIENTO DE DATOS CORREGIDA ---
     const clientesEnriquecidos = useMemo(() => {

@@ -55,14 +55,17 @@ export const useDashboardStats = ({ viviendas, clientes, abonos, renuncias }) =>
             tipo: 'abono',
             fecha: a.fechaPago,
             monto: a.monto,
-            clienteId: a.clienteId
+            clienteId: a.clienteId,
+            fuente: a.fuente,
+            metodoPago: a.metodoPago
         }));
 
         const clientesNuevos = clientes.map(c => ({
             id: `cliente-${c.id}`,
             tipo: 'clienteNuevo',
             fecha: c.fechaCreacion || new Date(0).toISOString(),
-            datosCliente: c.datosCliente
+            datosCliente: c.datosCliente,
+            viviendaId: c.viviendaId
         }));
 
         const renunciasRecientes = renuncias.map(r => ({
@@ -70,7 +73,9 @@ export const useDashboardStats = ({ viviendas, clientes, abonos, renuncias }) =>
             tipo: 'renuncia',
             fecha: r.fechaRenuncia,
             clienteNombre: r.clienteNombre,
-            monto: r.totalAbonadoParaDevolucion
+            monto: r.totalAbonadoParaDevolucion,
+            estadoDevolucion: r.estadoDevolucion,
+            motivo: r.motivo
         }));
 
         return [...ultimosAbonos, ...clientesNuevos, ...renunciasRecientes]

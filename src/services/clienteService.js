@@ -145,13 +145,47 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
             }
         );
     } else {
+        // Separar cambios regulares de cambios de archivos para mejor auditoría
+        const cambiosRegulares = [];
+        const cambiosArchivos = [];
+
+        (cambios || []).forEach(cambio => {
+            if (cambio.fileChange) {
+                cambiosArchivos.push({
+                    ...cambio,
+                    // Información adicional para auditoría de archivos
+                    fileAuditInfo: {
+                        documentType: cambio.campo,
+                        changeType: cambio.fileChange.type,
+                        previousUrl: cambio.fileChange.previousUrl,
+                        newUrl: cambio.fileChange.newUrl,
+                        timestamp: cambio.fileChange.timestamp,
+                        // Hash de los archivos si fuera necesario en el futuro
+                        metadata: {
+                            previousExists: !!cambio.fileChange.previousUrl,
+                            newExists: !!cambio.fileChange.newUrl
+                        }
+                    }
+                });
+            } else {
+                cambiosRegulares.push(cambio);
+            }
+        });
+
         await createAuditLog(
             `Actualizó los datos del cliente ${clienteNombreCompleto} (C.C. ${clienteId})`,
             {
                 action: 'UPDATE_CLIENT',
                 clienteId: clienteId,
                 clienteNombre: clienteNombreCompleto,
-                cambios: cambios || []
+                cambios: cambios || [], // Cambios originales para TabHistorial
+                // Información detallada para auditoría avanzada
+                auditDetails: {
+                    cambiosRegulares: cambiosRegulares,
+                    cambiosArchivos: cambiosArchivos,
+                    totalCambios: (cambios || []).length,
+                    tieneArchivos: cambiosArchivos.length > 0
+                }
             }
         );
     }
@@ -257,6 +291,8 @@ export const deleteClientePermanently = async (clienteId) => {
 };
 
 export const generarActividadProceso = (procesoOriginal, procesoActual, userName) => {
+    const original = JSON.parse(JSON.stringify(procesoOriginal || {}));
+    const actual = JSON.parse(JSON.stringify(procesoActual || {}));
     const nuevoProcesoConActividad = JSON.parse(JSON.stringify(procesoActual));
 
     PROCESO_CONFIG.forEach(pasoConfig => {
@@ -275,6 +311,10 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
         const fueReabiertoEnEsteCambio = pasoOriginalData.completado && !pasoActualData.completado;
         const fechaCambio = pasoOriginalData.fecha !== pasoActualData.fecha;
 
+        if (JSON.stringify(pasoOriginalData) !== JSON.stringify(pasoActualData)) {
+            console.log(`DEBUG Servicio [${pasoConfig.key}]: Se completó: ${seCompletoEnEsteCambio}, Fue reabierto: ${fueReabiertoEnEsteCambio}, Fecha cambió: ${fechaCambio}`);
+        }
+
         const evidenciasCambiadas = [];
         pasoConfig.evidenciasRequeridas.forEach(ev => {
             const idEvidencia = ev.id;
@@ -290,8 +330,16 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
 
         // --- INICIO DE LA LÓGICA CORREGIDA ---
 
-        // CASO 1: El evento principal es que el paso FUE REABIERTO y luego se guardan más cambios.
-        if (pasoActualData.motivoReapertura) {
+        // CASO 1: El paso ya estaba completado y su fecha se modificó. Esta es una acción prioritaria.
+        if (pasoOriginalData.completado && pasoActualData.completado && fechaCambio) {
+            const motivo = pasoActualData.motivoUltimoCambio || 'No se especificó motivo.';
+            const msg = `Se modificó la fecha de completado de ${formatDisplayDate(pasoOriginalData.fecha)} a ${formatDisplayDate(pasoActualData.fecha)}. Motivo: "${motivo}"`;
+            pasoActualData.actividad.push(crearEntrada(msg));
+            // Limpiamos el motivo para que no se vuelva a procesar en otras condiciones.
+            delete pasoActualData.motivoUltimoCambio;
+        }
+        // CASO 2: El paso FUE REABIERTO.
+        else if (pasoActualData.motivoReapertura) {
             let mensaje = `Se reabrió el paso indicando el siguiente Motivo: "${pasoActualData.motivoReapertura}".`;
             const accionesPosteriores = [];
 
@@ -299,9 +347,7 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
                 const textoEvidencia = evidenciasCambiadas.map(ev => `se ${ev.accion} la evidencia '${ev.label}'`).join(' y ');
                 accionesPosteriores.push(textoEvidencia);
             }
-            if (fechaCambio) {
-                accionesPosteriores.push(`se modificó la fecha de completado de ${formatDisplayDate(pasoOriginalData.fecha)} a ${formatDisplayDate(pasoActualData.fecha)}`);
-            }
+            // Ya no verificamos 'fechaCambio' aquí porque se maneja en el CASO 1.
 
             if (accionesPosteriores.length > 0) {
                 mensaje += ` Posteriormente, ${accionesPosteriores.join(' y ')}.`;
@@ -313,9 +359,8 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
 
             pasoActualData.actividad.push(crearEntrada(mensaje));
             delete pasoActualData.motivoReapertura;
-
         }
-        // Si no fue una reapertura, evaluamos los casos simples:
+        // CASO 3: El paso se completó en esta acción.
         else if (seCompletoEnEsteCambio) {
             let msg = `Se completó el paso con fecha ${formatDisplayDate(pasoActualData.fecha)}.`;
             if (evidenciasCambiadas.length > 0) {
@@ -324,16 +369,11 @@ export const generarActividadProceso = (procesoOriginal, procesoActual, userName
             }
             pasoActualData.actividad.push(crearEntrada(msg));
         }
+        // CASO 4: El paso fue reabierto (como única acción).
         else if (fueReabiertoEnEsteCambio) {
-            // Este caso ahora solo se usa si la única acción es reabrir
             pasoActualData.actividad.push(crearEntrada('Paso reabierto.'));
         }
-        else if (pasoOriginalData.completado && pasoActualData.completado && fechaCambio) {
-            const motivo = pasoActualData.motivoUltimoCambio || 'No se especificó motivo.';
-            const msg = `Se modificó la fecha de completado de ${formatDisplayDate(pasoOriginalData.fecha)} a ${formatDisplayDate(pasoActualData.fecha)}. Motivo: "${motivo}"`;
-            pasoActualData.actividad.push(crearEntrada(msg));
-            delete pasoActualData.motivoUltimoCambio;
-        }
+        // CASO 5: Solo cambiaron las evidencias en un paso no completado.
         else if (evidenciasCambiadas.length > 0) {
             const accionesEvidenciaTexto = evidenciasCambiadas.map(ev => `Se ${ev.accion} la evidencia '${ev.label}'`).join(', ');
             pasoActualData.actividad.push(crearEntrada(accionesEvidenciaTexto + '.'));
@@ -522,13 +562,44 @@ export const getClienteProceso = async (clienteId) => {
 export const updateClienteProceso = async (clienteId, nuevoProceso, auditMessage, auditDetails) => {
     const clienteRef = doc(db, "clientes", String(clienteId));
 
+    // Obtener el estado original del cliente para comparar el proceso
+    const clienteOriginalSnap = await getDoc(clienteRef);
+    const clienteOriginal = clienteOriginalSnap.exists() ? clienteOriginalSnap.data() : {};
+    const procesoOriginal = clienteOriginal.proceso || {};
+
     // 1. Actualizamos solo el campo 'proceso' del cliente
     await updateDoc(clienteRef, {
         proceso: nuevoProceso
     });
 
-    // 2. Creamos el registro de auditoría detallado que construimos en el hook
-    await createAuditLog(auditMessage, auditDetails);
+    // 2. Lógica de Auditoría Mejorada
+    const clienteNombre = toTitleCase(`${clienteOriginal.datosCliente.nombres} ${clienteOriginal.datosCliente.apellidos}`);
+
+    // Revisar cada paso del proceso para ver si se completó en esta actualización
+    for (const pasoConfig of PROCESO_CONFIG) {
+        const key = pasoConfig.key;
+        const pasoOriginalData = procesoOriginal[key] || {};
+        const pasoActualData = nuevoProceso[key] || {};
+
+        // Si el paso se acaba de completar (antes no estaba completado y ahora sí)
+        if (!pasoOriginalData.completado && pasoActualData.completado) {
+            const mensajeAuditoria = `Completó el paso "${pasoConfig.label}" con fecha ${formatDisplayDate(pasoActualData.fecha)}.`;
+
+            await createAuditLog(mensajeAuditoria, {
+                action: 'COMPLETE_PROCESS_STEP',
+                clienteId: clienteId,
+                clienteNombre: clienteNombre,
+                // Renombramos 'stepLabel' a 'pasoCompletado' y le pasamos el nombre limpio
+                pasoCompletado: pasoConfig.label.substring(pasoConfig.label.indexOf('.') + 1).trim(),
+                completionDate: pasoActualData.fecha
+            });
+        }
+    }
+
+    // Si se proveyó un mensaje de auditoría general (para otros casos de uso), lo registramos
+    if (auditMessage && auditDetails) {
+        await createAuditLog(auditMessage, auditDetails);
+    }
 };
 
 export const addNotaToHistorial = async (clienteId, nota, userName) => {

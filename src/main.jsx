@@ -34,6 +34,7 @@ import GestionRolesPage from './pages/admin/GestionRolesPage';
 import CrearProyecto from './pages/admin/CrearProyecto'
 import ListarProyectos from './pages/admin/ListarProyectos';
 import AuditLogPage from './pages/admin/AuditLogPage';
+import HistorialActividadPage from './pages/HistorialActividadPage';
 
 // Definimos las rutas como un array de objetos
 const router = createBrowserRouter([
@@ -76,6 +77,9 @@ const router = createBrowserRouter([
       // Ruta de Reportes
       { path: "/reportes", element: <PermissionProtectedRoute module="reportes" action="generar"><ReportesPage /></PermissionProtectedRoute> },
 
+      // Historial de Actividad (accesible para todos)
+      { path: "/historial", element: <HistorialActividadPage /> },
+
       // Rutas de Administración
       { path: "/admin", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AdminPage /></PermissionProtectedRoute> },
       { path: "/admin/crear-usuario", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><CrearUsuarioPage /></PermissionProtectedRoute> },
@@ -104,13 +108,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           },
         }}
       />
-      <DataProvider>
-        <NotificationProvider>
-          <AuthProvider>
+      <AuthProvider>
+        <DataProvider>
+          <NotificationProvider>
             <RouterProvider router={router} />
-          </AuthProvider>
-        </NotificationProvider>
-      </DataProvider>
+          </NotificationProvider>
+        </DataProvider>
+      </AuthProvider>
     </ThemeProvider>
   </React.StrictMode>
 );

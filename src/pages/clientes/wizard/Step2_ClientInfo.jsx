@@ -1,60 +1,12 @@
 import React, { useCallback, useRef } from 'react';
-import FileUpload from '../../../components/FileUpload';
+import UniversalFileManager from '../../../components/UniversalFileManager';
 import HelpTooltip from '../../../components/HelpTooltip';
 import { FileText, XCircle, Eye, Trash2, Replace } from 'lucide-react';
 import InputField from '../../../components/forms/InputField';
 
-const FileDisplayActions = ({ url, onReplace, onDelete, isLocked }) => {
-    const replaceInputRef = useRef(null);
-    const handleReplaceClick = () => replaceInputRef.current?.click();
-
-    return (
-        <div className="bg-green-50 dark:bg-green-900/50 border-2 border-green-200 dark:border-green-700 rounded-lg p-4 flex items-center justify-between">
-            {/* Sección para 'Ver Documento Actual' (se mantiene similar) */}
-            <div className='flex items-center gap-2 text-green-800 dark:text-green-300 font-semibold'>
-                <FileText size={20} /> {/* Tamaño ajustado */}
-                <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">Ver Documento Actual</a>
-            </div>
-
-            {/* --- INICIO DE LA MODIFICACIÓN DE ESTILOS --- */}
-            {!isLocked && (
-                <div className="flex items-center gap-2"> {/* Reducimos el gap si queremos más juntos */}
-                    {/* Botón Reemplazar */}
-                    <button
-                        type="button"
-                        onClick={handleReplaceClick}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-yellow-800 dark:text-yellow-200 bg-yellow-100 dark:bg-yellow-700/50 hover:bg-yellow-200 dark:hover:bg-yellow-600/70 transition-colors duration-200 text-sm font-medium"
-                        title="Reemplazar documento"
-                    >
-                        <Replace size={16} /> Reemplazar
-                    </button>
-                    {/* Botón Eliminar */}
-                    <button
-                        type="button"
-                        onClick={onDelete}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-red-800 dark:text-red-200 bg-red-100 dark:bg-red-700/50 hover:bg-red-200 dark:hover:bg-red-600/70 transition-colors duration-200 text-sm font-medium"
-                        title="Eliminar documento"
-                    >
-                        <Trash2 size={16} /> Eliminar
-                    </button>
-                    <input
-                        type="file"
-                        ref={replaceInputRef}
-                        onChange={onReplace}
-                        className="hidden"
-                        accept=".pdf,.png,.jpg,.jpeg"
-                    />
-                </div>
-            )}
-            {/* --- FIN DE LA MODIFICACIÓN DE ESTILOS --- */}
-        </div>
-    );
-};
-
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
 const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, handleFileReplace, isEditing, isLocked, modo, isFechaIngresoLocked, minDateForReactivation }) => {
-    console.log(isFechaIngresoLocked);
 
     // Función para actualizar campos específicos en formData);
     const handleValueChange = useCallback((field, value) => {
@@ -148,21 +100,33 @@ const Step2_ClientInfo = ({ formData, dispatch, errors, handleInputChange, handl
                 <div className="md:col-span-2">
                     <label className="block font-semibold mb-2 text-gray-700 dark:text-gray-200 flex items-center">Copia de la Cédula <span className="text-red-600">*</span></label>
 
-                    {formData.urlCedula ? (
-                        <FileDisplayActions
-                            url={formData.urlCedula}
-                            onDelete={() => handleValueChange('urlCedula', null)}
-                            onReplace={(e) => handleFileReplace(e, 'urlCedula')}
-                            isLocked={isPersonalInfoLocked}
-                        />
-                    ) : (
-                        <FileUpload
-                            label="Subir Cédula"
-                            filePath={(fileName) => `documentos_clientes/${formData.cedula}/cedula-${fileName}`}
-                            onUploadSuccess={(url) => handleValueChange('urlCedula', url)}
-                            disabled={!formData.cedula || isPersonalInfoLocked}
-                        />
-                    )}
+                    <UniversalFileManager
+                        variant="normal"
+                        label="Subir Cédula de Ciudadanía"
+                        currentFileUrl={formData.urlCedula}
+                        filePath={(fileName) => `documentos_clientes/${formData.cedula}/cedula-${fileName}`}
+                        onUploadSuccess={(url) => handleValueChange('urlCedula', url)}
+                        onDelete={() => handleValueChange('urlCedula', null)}
+                        disabled={!formData.cedula || isPersonalInfoLocked}
+                        readonly={false}
+                        required={true}
+                        showDownload={true}
+                        showPreview={true}
+                        disabledTooltip={
+                            !formData.cedula
+                                ? "Para subir la cédula necesitas ingresar primero el número de cédula"
+                                : isPersonalInfoLocked
+                                    ? "No puedes cambiar la cédula en esta etapa del proceso"
+                                    : undefined
+                        }
+                        helpText={
+                            !formData.cedula
+                                ? "⚠️ Ingresa el número de cédula para habilitar la subida del documento"
+                                : isPersonalInfoLocked
+                                    ? "📎 Documento de identificación del cliente"
+                                    : "📎 Sube la copia de la cédula de ciudadanía del cliente"
+                        }
+                    />
                     {errors.urlCedula && <p className="text-red-600 text-sm mt-1">{errors.urlCedula}</p>}
                 </div>
             </div>

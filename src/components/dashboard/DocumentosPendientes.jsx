@@ -53,7 +53,7 @@ const DocumentosPendientes = ({ clientes }) => {
                                             <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-full">
                                                 <User size={16} className="text-blue-600 dark:text-blue-400" />
                                             </div>
-                                            <p className="font-semibold text-gray-800 dark:text-gray-200">{cliente.datosCliente.nombres} {cliente.datosCliente.apellidos}</p>
+                                            <p className="font-semibold text-gray-900 dark:text-gray-100">{cliente.datosCliente.nombres} {cliente.datosCliente.apellidos}</p>
                                         </div>
                                     </div>
                                     <div className='mt-2 pl-11 text-xs'>

@@ -1,6 +1,6 @@
 import React from 'react';
-import FileUpload from '../FileUpload';
-import { FileText, Eye, AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
+import UniversalFileManager from '../UniversalFileManager';
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 
 const DocumentoRow = ({ label, isRequired, currentFileUrl, estado, isReadOnly = false, onFileUploaded, onFileDeleted, cliente }) => {
 
@@ -25,30 +25,26 @@ const DocumentoRow = ({ label, isRequired, currentFileUrl, estado, isReadOnly = 
                 </span>
             </div>
             <div className="flex-none flex items-center gap-4 ml-4">
-                {currentFileUrl ? (
-                    <div className="flex items-center gap-4">
-                        <a
-                            href={currentFileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold px-3 py-1.5 rounded-lg text-sm hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors"
-                        >
-                            <Eye size={16} /> Ver
-                        </a>
-                        {!isReadOnly && onFileDeleted && (
-                            <button onClick={onFileDeleted} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-full transition-colors">
-                                <Trash2 size={16} />
-                            </button>
-                        )}
-                    </div>
-                ) : !isReadOnly && onFileUploaded ? (
-                    <FileUpload
+                {!isReadOnly && (onFileUploaded || onFileDeleted) ? (
+                    <UniversalFileManager
+                        variant="compact"
                         label="Subir"
-                        filePath={onFileUploaded.filePath(label)}
-                        onUploadSuccess={onFileUploaded.onSuccess}
-                        isCompact={true}
+                        currentFileUrl={currentFileUrl}
+                        filePath={onFileUploaded ? onFileUploaded.filePath(label) : null}
+                        onUploadSuccess={onFileUploaded ? onFileUploaded.onSuccess : null}
+                        onDelete={onFileDeleted}
                         disabled={!cliente?.datosCliente?.cedula}
+                        readonly={isReadOnly}
                     />
+                ) : currentFileUrl ? (
+                    <a
+                        href={currentFileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold px-3 py-1.5 rounded-lg text-sm hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors"
+                    >
+                        Ver Documento
+                    </a>
                 ) : (
                     <span className="text-xs font-semibold text-gray-400 dark:text-gray-500">
                         {isReadOnly ? 'Bloqueado' : 'Pendiente'}

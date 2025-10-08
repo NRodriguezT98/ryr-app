@@ -7,7 +7,6 @@ import { formatCurrency, formatDisplayDate } from '../../../utils/textFormatters
 import Button from '../../../components/Button';
 
 const ModalRevertirAbono = ({ isOpen, onClose, onConfirm, abonoARevertir, isSubmitting, size = '2xl' }) => {
-    console.log("Datos recibidos por la modal de reversión:", abonoARevertir);
     const [motivo, setMotivo] = useState('');
 
     const handleConfirm = () => {

@@ -5,13 +5,15 @@ import { useHistorialCliente } from '../../../hooks/clientes/useHistorialCliente
 import { useAuth } from '../../../context/AuthContext';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Loader, Edit, UserPlus, FileText, UserX, RefreshCw, Archive, ArchiveRestore, CheckCircle, MessageSquareText, GitCommit, DollarSign, Unlock } from 'lucide-react';
+import { Loader, Edit, UserPlus, FileText, UserX, RefreshCw, Archive, ArchiveRestore, CheckCircle, MessageSquareText, GitCommit, DollarSign, Unlock, Eye, FolderOpen } from 'lucide-react';
 import AnimatedPage from '../../../components/AnimatedPage';
 import FormularioNuevaNota from './FormularioNuevaNota';
 import ModalEditarNota from './ModalEditarNota';
 import ModalConfirmacion from '../../../components/ModalConfirmacion';
+import ModalAuditoriaArchivos from '../../../components/ModalAuditoriaArchivos';
 import toast from 'react-hot-toast';
-import { formatDisplayDate } from '../../../utils/textFormatters'; // Asegúrate de importar esto
+import { formatDisplayDate } from '../../../utils/textFormatters';
+import { hasFileChanges } from '../../../utils/fileAuditHelper';
 
 // Helper para asignar un ícono a cada tipo de acción
 const getActionIcon = (action) => {
@@ -38,7 +40,7 @@ const getActionIcon = (action) => {
 };
 
 // Sub-componente para renderizar cada item del historial
-const LogItem = ({ log, onEdit, isReadOnly }) => {
+const LogItem = ({ log, onEdit, onViewFileAudit, isReadOnly }) => {
     const { userData } = useAuth();
     const isNota = log.details?.action === 'ADD_NOTE';
     const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
@@ -46,6 +48,7 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
     const icon = getActionIcon(log.details?.action);
 
     const puedeEditar = !isReadOnly && isNota && log.userName === `${userData.nombres} ${userData.apellidos}`;
+    const tieneArchivos = hasFileChanges(log);
 
     // Extraemos los detalles relevantes de forma segura
     const cambiosProceso = log.details?.action === 'UPDATE_PROCESO' ? log.details.cambios : [];
@@ -86,6 +89,12 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
                 <div className="items-center justify-between mb-3 sm:flex">
                     <div className="text-sm font-normal text-gray-500 dark:text-gray-300">
                         {isNota ? 'Nota añadida por' : 'Acción realizada por'} <span className="font-semibold text-gray-900 dark:text-white">{log.userName}</span>
+                        {tieneArchivos && (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                                <FolderOpen size={10} className="mr-1" />
+                                Con archivos
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
                         {log.editado && <span className="text-xs text-gray-400 italic">(editado)</span>}
@@ -93,13 +102,24 @@ const LogItem = ({ log, onEdit, isReadOnly }) => {
                     </div>
                 </div>
                 <div className="relative p-3 text-sm text-gray-500 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-300">
-                    {puedeEditar && (
-                        <button onClick={() => onEdit(log)} className="absolute top-1 right-1 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors">
-                            <Edit size={14} className="text-gray-500 dark:text-gray-400" />
-                        </button>
-                    )}
+                    <div className="absolute top-1 right-1 flex gap-1">
+                        {tieneArchivos && (
+                            <button
+                                onClick={() => onViewFileAudit(log)}
+                                className="p-1 rounded-full hover:bg-blue-200 dark:hover:bg-blue-700 transition-colors"
+                                title="Ver auditoría de archivos"
+                            >
+                                <FolderOpen size={14} className="text-blue-600 dark:text-blue-400" />
+                            </button>
+                        )}
+                        {puedeEditar && (
+                            <button onClick={() => onEdit(log)} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors">
+                                <Edit size={14} className="text-gray-500 dark:text-gray-400" />
+                            </button>
+                        )}
+                    </div>
 
-                    <p className="italic whitespace-pre-wrap pr-6">{messageContent}</p>
+                    <p className="italic whitespace-pre-wrap pr-8">{messageContent}</p>
                     {renderCambiosProceso()}
                 </div>
             </div>
@@ -121,6 +141,7 @@ const TabHistorial = forwardRef(({ cliente, isReadOnly }, ref) => {
     const [notaAEditar, setNotaAEditar] = useState(null);
     const [confirmacionCambios, setConfirmacionCambios] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [auditoriaArchivos, setAuditoriaArchivos] = useState(null);
 
     if (!cliente) {
         // Esto previene el error y muestra un estado de carga o nulo si los datos no han llegado.
@@ -164,6 +185,10 @@ const TabHistorial = forwardRef(({ cliente, isReadOnly }, ref) => {
         }
     };
 
+    const handleVerAuditoriaArchivos = (log) => {
+        setAuditoriaArchivos(log);
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center p-10">
@@ -189,6 +214,7 @@ const TabHistorial = forwardRef(({ cliente, isReadOnly }, ref) => {
                             key={item.id}
                             log={item}
                             onEdit={handleIniciarEdicion}
+                            onViewFileAudit={handleVerAuditoriaArchivos}
                             isReadOnly={isReadOnly}
                         />
                     )}
@@ -213,6 +239,11 @@ const TabHistorial = forwardRef(({ cliente, isReadOnly }, ref) => {
                 cambios={confirmacionCambios?.cambios || []}
                 isSubmitting={isSubmitting}
                 size="xl"
+            />
+            <ModalAuditoriaArchivos
+                isOpen={!!auditoriaArchivos}
+                onClose={() => setAuditoriaArchivos(null)}
+                auditLog={auditoriaArchivos}
             />
         </AnimatedPage>
     );

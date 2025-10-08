@@ -22,10 +22,15 @@ const DropdownLink = ({ to, icon, children, onClick }) => {
         <Link
             to={to}
             onClick={onClick}
-            className={`flex items-center w-full p-3 text-sm rounded-lg transition-colors duration-200 ${isActive ? 'bg-blue-600 text-white font-semibold' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+            className={`flex items-center w-full p-3 text-sm rounded-xl transition-all duration-300 transform hover:scale-102 ${isActive
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold shadow-md shadow-blue-500/25'
+                : 'text-gray-700 dark:text-gray-200 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 hover:text-gray-900 dark:hover:text-white hover:shadow-sm'
+                }`}
         >
-            {icon}
-            <span className="ml-3">{children}</span>
+            <div className="transition-transform duration-300 group-hover:scale-110">
+                {icon}
+            </div>
+            <span className="ml-3 font-medium">{children}</span>
         </Link>
     );
 };
@@ -62,28 +67,34 @@ const Navbar = () => {
     };
 
     return (
-        <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-40">
+        <header className="bg-gradient-to-r from-white via-gray-50 to-white dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 shadow-xl shadow-gray-200/50 dark:shadow-gray-900/50 sticky top-0 z-40 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-700/50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-20">
-                    <div className="flex-shrink-0">
-                        <Link to="/" className="flex items-center space-x-3">
-                            <img src={theme === 'dark' ? logo1Dark : logo1Light} alt="Logo 1" className="h-9" />
-                            <img src={theme === 'dark' ? logo2Dark : logo2Light} alt="Logo 2" className="h-9" />
+                    <div className="flex-shrink-0 mr-8">
+                        <Link to="/" className="flex items-center space-x-3 group">
+                            <div className="relative">
+                                <img src={theme === 'dark' ? logo1Dark : logo1Light} alt="Logo 1" className="h-9 transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-lg" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-xl"></div>
+                            </div>
+                            <div className="relative">
+                                <img src={theme === 'dark' ? logo2Dark : logo2Light} alt="Logo 2" className="h-9 transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-lg" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-xl"></div>
+                            </div>
                         </Link>
                     </div>
 
                     <div className="hidden md:flex items-center justify-center">
-                        <nav className="flex items-center space-x-2 bg-white dark:bg-gray-800 p-2 rounded-full">
+                        <nav className="flex items-center space-x-1 bg-gradient-to-r from-white/80 via-gray-50/90 to-white/80 dark:from-gray-800/90 dark:via-gray-900/95 dark:to-gray-800/90 p-2 rounded-2xl backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg shadow-gray-200/30 dark:shadow-gray-900/30 mr-8">
                             {/* Menú Viviendas (Visible si puede ver o crear) */}
                             {(can('viviendas', 'ver') || can('viviendas', 'crear')) && (
                                 <Menu as="div" className="relative">
-                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/viviendas') ? 'bg-red-50 text-red-700 dark:bg-red-900/50 dark:text-red-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${isActiveLink('/viviendas') ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/25 dark:shadow-red-500/20' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 hover:shadow-md'}`}>
                                         <Home size={16} />
                                         <span>Viviendas</span>
                                         <ChevronDown size={16} />
                                     </Menu.Button>
-                                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
+                                    <Transition as={Fragment} enter="transition ease-out duration-200" enterFrom="transform opacity-0 scale-95 translate-y-1" enterTo="transform opacity-100 scale-100 translate-y-0" leave="transition ease-in duration-150" leaveFrom="transform opacity-100 scale-100 translate-y-0" leaveTo="transform opacity-0 scale-95 translate-y-1">
+                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl shadow-gray-200/50 dark:shadow-gray-900/50 ring-1 ring-gray-200/50 dark:ring-gray-700/50 focus:outline-none p-3 z-10 border border-gray-100 dark:border-gray-700">
                                             {can('viviendas', 'crear') && <Menu.Item>{({ close }) => (<DropdownLink to="/viviendas/crear" icon={<PlusCircle size={18} />} onClick={close}>Registrar Vivienda</DropdownLink>)}</Menu.Item>}
                                             {can('viviendas', 'ver') && <Menu.Item>{({ close }) => (<DropdownLink to="/viviendas/listar" icon={<List size={18} />} onClick={close}>Ver Viviendas</DropdownLink>)}</Menu.Item>}
                                         </Menu.Items>
@@ -94,13 +105,13 @@ const Navbar = () => {
                             {/* Menú Clientes (Visible si puede ver o crear) */}
                             {(can('clientes', 'ver') || can('clientes', 'crear')) && (
                                 <Menu as="div" className="relative">
-                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/clientes') ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${isActiveLink('/clientes') ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 dark:shadow-blue-500/20' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 hover:shadow-md'}`}>
                                         <Users size={16} />
                                         <span>Clientes</span>
                                         <ChevronDown size={16} />
                                     </Menu.Button>
-                                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
+                                    <Transition as={Fragment} enter="transition ease-out duration-200" enterFrom="transform opacity-0 scale-95 translate-y-1" enterTo="transform opacity-100 scale-100 translate-y-0" leave="transition ease-in duration-150" leaveFrom="transform opacity-100 scale-100 translate-y-0" leaveTo="transform opacity-0 scale-95 translate-y-1">
+                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl shadow-gray-200/50 dark:shadow-gray-900/50 ring-1 ring-gray-200/50 dark:ring-gray-700/50 focus:outline-none p-3 z-10 border border-gray-100 dark:border-gray-700">
                                             {can('clientes', 'crear') && <Menu.Item>{({ close }) => (<DropdownLink to="/clientes/crear" icon={<UserPlus size={18} />} onClick={close}>Registrar Cliente</DropdownLink>)}</Menu.Item>}
                                             {can('clientes', 'ver') && <Menu.Item>{({ close }) => (<DropdownLink to="/clientes/listar" icon={<Users size={18} />} onClick={close}>Ver Clientes</DropdownLink>)}</Menu.Item>}
                                         </Menu.Items>
@@ -111,13 +122,13 @@ const Navbar = () => {
                             {/* Menú Abonos (Visible si puede ver o crear) */}
                             {(can('abonos', 'ver') || can('abonos', 'crear')) && (
                                 <Menu as="div" className="relative">
-                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/abonos') ? 'bg-green-50 text-green-700 dark:bg-green-900/50 dark:text-green-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${isActiveLink('/abonos') ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/25 dark:shadow-green-500/20' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 hover:shadow-md'}`}>
                                         <Wallet size={16} />
                                         <span>Abonos</span>
                                         <ChevronDown size={16} />
                                     </Menu.Button>
-                                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
+                                    <Transition as={Fragment} enter="transition ease-out duration-200" enterFrom="transform opacity-0 scale-95 translate-y-1" enterTo="transform opacity-100 scale-100 translate-y-0" leave="transition ease-in duration-150" leaveFrom="transform opacity-100 scale-100 translate-y-0" leaveTo="transform opacity-0 scale-95 translate-y-1">
+                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl shadow-gray-200/50 dark:shadow-gray-900/50 ring-1 ring-gray-200/50 dark:ring-gray-700/50 focus:outline-none p-3 z-10 border border-gray-100 dark:border-gray-700">
                                             {can('abonos', 'crear') && <Menu.Item>{({ close }) => (<DropdownLink to="/abonos" icon={<Landmark size={18} />} onClick={close}>Gestionar Pagos</DropdownLink>)}</Menu.Item>}
                                             {can('abonos', 'ver') && <Menu.Item>{({ close }) => (<DropdownLink to="/abonos/listar" icon={<History size={18} />} onClick={close}>Historial de Abonos</DropdownLink>)}</Menu.Item>}
                                         </Menu.Items>
@@ -127,7 +138,7 @@ const Navbar = () => {
 
                             {/* Enlace Renuncias (Visible si puede ver) */}
                             {can('renuncias', 'ver') && (
-                                <Link to="/renuncias" className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/renuncias') ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                <Link to="/renuncias" className={`flex items-center gap-2 font-semibold py-2.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${isActiveLink('/renuncias') ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25 dark:shadow-orange-500/20' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 hover:shadow-md'}`}>
                                     <UserX size={16} />
                                     <span>Renuncias</span>
                                 </Link>
@@ -135,7 +146,7 @@ const Navbar = () => {
 
                             {/* Enlace Reportes (Visible si puede generar) */}
                             {can('reportes', 'generar') && (
-                                <Link to="/reportes" className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/reportes') ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                <Link to="/reportes" className={`flex items-center gap-2 font-semibold py-2.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${isActiveLink('/reportes') ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/25 dark:shadow-purple-500/20' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 hover:shadow-md'}`}>
                                     <BarChart2 size={16} />
                                     <span>Reportes</span>
                                 </Link>
@@ -143,13 +154,13 @@ const Navbar = () => {
 
                             {(can('admin', 'gestionarUsuarios') || can('admin', 'gestionarRoles') || can('admin', 'verAuditoria') || can('admin', 'listarProyectos')) && (
                                 <Menu as="div" className="relative">
-                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-full transition-colors duration-200 ${isActiveLink('/admin') ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                                    <Menu.Button className={`flex items-center gap-2 font-semibold py-2.5 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 ${isActiveLink('/admin') ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/25 dark:shadow-indigo-500/20' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 dark:hover:from-gray-700 dark:hover:to-gray-600 hover:shadow-md'}`}>
                                         <ShieldCheck size={16} />
                                         <span>Admin</span>
                                         <ChevronDown size={16} />
                                     </Menu.Button>
-                                    <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-10">
+                                    <Transition as={Fragment} enter="transition ease-out duration-200" enterFrom="transform opacity-0 scale-95 translate-y-1" enterTo="transform opacity-100 scale-100 translate-y-0" leave="transition ease-in duration-150" leaveFrom="transform opacity-100 scale-100 translate-y-0" leaveTo="transform opacity-0 scale-95 translate-y-1">
+                                        <Menu.Items className="absolute mt-2 w-60 origin-top-left bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl shadow-gray-200/50 dark:shadow-gray-900/50 ring-1 ring-gray-200/50 dark:ring-gray-700/50 focus:outline-none p-3 z-10 border border-gray-100 dark:border-gray-700">
                                             {can('admin', 'gestionarUsuarios') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin" icon={<Users size={18} />} onClick={close}>Gestionar Usuarios</DropdownLink>)}</Menu.Item>}
                                             {can('admin', 'gestionarRoles') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin/roles" icon={<ShieldCheck size={18} />} onClick={close}>Gestionar Roles</DropdownLink>)}</Menu.Item>}
                                             {can('admin', 'verAuditoria') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin/auditoria" icon={<History size={18} />} onClick={close}>Registro de Auditoría</DropdownLink>)}</Menu.Item>}
@@ -162,22 +173,24 @@ const Navbar = () => {
                         </nav>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2">
-                        <ThemeSwitcher />
+                    <div className="flex items-center justify-end gap-3">
+                        <div className="p-1 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
+                            <ThemeSwitcher />
+                        </div>
 
                         <Popover as="div" className="relative">
                             {({ open, close: closePopover }) => (
                                 <>
-                                    <Popover.Button className="relative p-2 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    <Popover.Button className="relative p-3 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600 rounded-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500/30 backdrop-blur-md bg-white/80 dark:bg-gray-800/80 border border-gray-200/50 dark:border-gray-700/50 shadow-lg">
                                         <Bell className={isRinging ? 'animate-ring' : ''} />
                                         {unreadCount > 0 && (
-                                            <span className="absolute top-0 right-0 block h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center ring-2 ring-white">
+                                            <span className="absolute -top-1 -right-1 block h-6 w-6 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white text-xs flex items-center justify-center ring-2 ring-white dark:ring-gray-800 shadow-lg animate-pulse">
                                                 {unreadCount}
                                             </span>
                                         )}
                                     </Popover.Button>
                                     <Transition as={Fragment} show={open} enter="transition ease-out duration-200" enterFrom="opacity-0 translate-y-1" enterTo="opacity-100 translate-y-0" leave="transition ease-in duration-150" leaveFrom="opacity-100 translate-y-0" leaveTo="opacity-0 translate-y-1">
-                                        <Popover.Panel className="absolute right-0 mt-4 w-80 max-w-sm transform z-50 bg-white dark:bg-gray-800 shadow-lg rounded-lg border dark:border-gray-700">
+                                        <Popover.Panel className="absolute right-0 mt-4 w-80 max-w-sm transform z-50 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md shadow-2xl shadow-gray-200/50 dark:shadow-gray-900/50 rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
                                             <div className="p-3 flex justify-between items-center border-b dark:border-gray-700">
                                                 <h3 className="text-md font-bold text-gray-800 dark:text-white">Notificaciones</h3>
                                                 {unreadCount > 0 && (
@@ -223,13 +236,13 @@ const Navbar = () => {
 
                         {currentUser && (
                             <Menu as="div" className="relative">
-                                <Menu.Button className="flex items-center justify-center w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-full font-bold text-gray-600 dark:text-gray-300 hover:ring-2 hover:ring-blue-500 transition-all">
+                                <Menu.Button className="flex items-center justify-center w-11 h-11 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-xl font-bold text-gray-700 dark:text-gray-200 hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-800 dark:hover:to-purple-800 hover:text-blue-700 dark:hover:text-blue-300 hover:ring-2 hover:ring-blue-500/30 transition-all duration-300 transform hover:scale-105 shadow-lg border border-gray-300/50 dark:border-gray-600/50">
                                     {getInitials(currentUser.email)}
                                 </Menu.Button>
-                                <Transition as={Fragment} enter="transition ease-out duration-100" enterFrom="transform opacity-0 scale-95" enterTo="transform opacity-100 scale-100" leave="transition ease-in duration-75" leaveFrom="transform opacity-100 scale-100" leaveTo="transform opacity-0 scale-95">
-                                    <Menu.Items className="absolute right-0 mt-2 w-64 origin-top-right bg-white dark:bg-gray-800 rounded-xl shadow-lg ring-1 ring-black dark:ring-gray-700 ring-opacity-5 focus:outline-none p-2 z-50">
+                                <Transition as={Fragment} enter="transition ease-out duration-200" enterFrom="transform opacity-0 scale-95 translate-y-1" enterTo="transform opacity-100 scale-100 translate-y-0" leave="transition ease-in duration-150" leaveFrom="transform opacity-100 scale-100 translate-y-0" leaveTo="transform opacity-0 scale-95 translate-y-1">
+                                    <Menu.Items className="absolute right-0 mt-2 w-64 origin-top-right bg-white/95 dark:bg-gray-800/95 backdrop-blur-md rounded-2xl shadow-2xl shadow-gray-200/50 dark:shadow-gray-900/50 ring-1 ring-gray-200/50 dark:ring-gray-700/50 focus:outline-none p-3 z-50 border border-gray-100 dark:border-gray-700">
                                         <div className="px-3 py-2 border-b dark:border-gray-700">
-                                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate" title={currentUser.email}>
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate" title={currentUser.email}>
                                                 {currentUser.email}
                                             </p>
                                         </div>
