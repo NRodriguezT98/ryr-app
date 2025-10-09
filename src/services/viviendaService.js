@@ -159,15 +159,55 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
 
     const cambios = [];
 
-    const formatAuditValue = (key, value) => {
-        if (value === null || typeof value === 'undefined') return 'No definido';
-        if (key === 'urlCertificadoTradicion') return value ? 'Documento Anexado' : 'Sin Documento';
-        if (typeof value === 'object') return JSON.stringify(value);
-        return String(value);
+    const formatAuditValue = (key, valorAnterior, valorNuevo) => {
+        if (key === 'urlCertificadoTradicion') {
+            // Lógica inteligente para documentos
+            const habiaDocumento = valorAnterior && valorAnterior !== null;
+            const hayDocumento = valorNuevo && valorNuevo !== null;
+
+            if (!habiaDocumento && hayDocumento) {
+                return { anterior: 'Sin Documento', actual: 'Documento Anexado' };
+            } else if (habiaDocumento && !hayDocumento) {
+                return { anterior: 'Documento Existente', actual: 'Documento Eliminado' };
+            } else if (habiaDocumento && hayDocumento) {
+                return { anterior: 'Documento Existente', actual: 'Documento Reemplazado' };
+            }
+            // Caso por defecto (no debería llegar aquí si hay cambio)
+            return { anterior: 'Sin Documento', actual: 'Sin Documento' };
+        }
+
+        // Para otros campos, formateo normal
+        const formatValue = (value) => {
+            if (value === null || typeof value === 'undefined') return 'No definido';
+            if (key === 'esEsquinera') return value ? 'Sí' : 'No';
+            if (typeof value === 'object') return JSON.stringify(value);
+            return String(value);
+        };
+
+        return {
+            anterior: formatValue(valorAnterior),
+            actual: formatValue(valorNuevo)
+        };
     };
 
     Object.keys(datosFinales).forEach(key => {
-        if (viviendaOriginal[key] !== datosFinales[key]) {
+        const valorOriginal = viviendaOriginal[key];
+        const valorNuevo = datosFinales[key];
+
+        // Comparación más precisa para evitar falsos positivos
+        let hayCambio = false;
+
+        if (key === 'esEsquinera') {
+            // Para esquinera, comparamos el valor booleano real
+            const esquineraOriginal = Boolean(valorOriginal);
+            const esquineraNueva = Boolean(valorNuevo);
+            hayCambio = esquineraOriginal !== esquineraNueva;
+        } else {
+            // Para otros campos, comparación directa
+            hayCambio = valorOriginal !== valorNuevo;
+        }
+
+        if (hayCambio) {
             // 👇 3. Lógica especial para el proyecto usando el contexto
             if (key === 'proyectoId') {
                 cambios.push({
@@ -176,10 +216,11 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
                     actual: auditContext.proyectoActualNombre
                 });
             } else {
+                const valoresFormateados = formatAuditValue(key, valorOriginal, valorNuevo);
                 cambios.push({
                     campo: key,
-                    anterior: formatAuditValue(key, viviendaOriginal[key]),
-                    actual: formatAuditValue(key, datosFinales[key])
+                    anterior: valoresFormateados.anterior,
+                    actual: valoresFormateados.actual
                 });
             }
         }

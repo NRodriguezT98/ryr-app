@@ -164,6 +164,7 @@ const Navbar = () => {
                                             {can('admin', 'gestionarUsuarios') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin" icon={<Users size={18} />} onClick={close}>Gestionar Usuarios</DropdownLink>)}</Menu.Item>}
                                             {can('admin', 'gestionarRoles') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin/roles" icon={<ShieldCheck size={18} />} onClick={close}>Gestionar Roles</DropdownLink>)}</Menu.Item>}
                                             {can('admin', 'verAuditoria') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin/auditoria" icon={<History size={18} />} onClick={close}>Registro de Auditoría</DropdownLink>)}</Menu.Item>}
+                                            {can('admin', 'verAuditoria') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin/metricas" icon={<BarChart2 size={18} />} onClick={close}>Métricas de Auditoría</DropdownLink>)}</Menu.Item>}
                                             {can('admin', 'listarProyectos') && <Menu.Item>{({ close }) => (<DropdownLink to="/admin/proyectos" icon={<FolderKanban size={18} />} onClick={close}>Gestionar Proyectos</DropdownLink>)}</Menu.Item>}
                                         </Menu.Items>
                                     </Transition>

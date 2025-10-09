@@ -3,8 +3,86 @@ import { collection, doc, updateDoc, deleteDoc, getDoc, writeBatch, setDoc, quer
 import { toTitleCase, formatDisplayDate, getTodayString } from '../utils/textFormatters';
 import { PROCESO_CONFIG } from '../utils/procesoConfig.js';
 import { DOCUMENTACION_CONFIG } from '../utils/documentacionConfig.js';
-import { createAuditLog } from './auditService';
+import { createAuditLog, createAuditLogWithBuilder } from './auditService';
 import { deleteFile } from './fileService';
+
+// Funciones helper para generar mensajes de auditoría específicos
+
+const obtenerNombreEvidencia = (evidenciaId, evidencia, pasoConfig) => {
+    // PRIORIDAD: Buscar el label en DOCUMENTACION_CONFIG
+    const docConfig = DOCUMENTACION_CONFIG.find(doc => doc.id === evidenciaId);
+    if (docConfig) {
+        return docConfig.label;
+    }
+
+    // Fallback al nombre de la configuración del proceso
+    const evidenciaConfig = pasoConfig.evidenciasRequeridas?.find(ev => ev.id === evidenciaId);
+    if (evidenciaConfig && evidenciaConfig.nombre) {
+        return evidenciaConfig.nombre;
+    }
+
+    // Último fallback
+    return evidencia?.nombre || evidencia?.name || evidencia?.originalName || evidenciaId;
+};
+
+const construirListaEvidencias = (evidencias, pasoConfig) => {
+    if (!evidencias || Object.keys(evidencias).length === 0) return { texto: '', cantidad: 0 };
+
+    const evidenciasAdjuntas = [];
+    Object.entries(evidencias).forEach(([evidenciaId, evidencia]) => {
+        if (evidencia && (evidencia.url || evidencia.nombre || evidencia.originalName)) {
+            const nombreEvidencia = obtenerNombreEvidencia(evidenciaId, evidencia, pasoConfig);
+            if (nombreEvidencia) {
+                evidenciasAdjuntas.push(nombreEvidencia);
+            }
+        }
+    });
+
+    let texto = '';
+    if (evidenciasAdjuntas.length > 0) {
+        if (evidenciasAdjuntas.length === 1) {
+            texto = `\n   • ${evidenciasAdjuntas[0]}`;
+        } else {
+            texto = `\n   • ${evidenciasAdjuntas.join('\n   • ')}`;
+        }
+    }
+
+    return { texto, cantidad: evidenciasAdjuntas.length };
+};
+
+const generarMensajeComplecion = (pasoNombre, pasoData, pasoConfig) => {
+    const { texto: evidenciasTexto, cantidad } = construirListaEvidencias(pasoData.evidencias, pasoConfig);
+    const fechaFormulario = pasoData.fecha;
+
+    if (evidenciasTexto) {
+        const iconoEvidencia = cantidad === 1 ? '📄' : '📋';
+        const textoEvidencias = cantidad === 1 ? 'se adjuntó la evidencia' : `se adjuntaron ${cantidad} evidencias`;
+
+        return `🎉 ¡Paso completado con éxito!
+
+📋 Paso: "${pasoNombre}"
+${iconoEvidencia} Evidencias: ${textoEvidencias}:${evidenciasTexto}
+📅 Fecha de completado: ${formatDisplayDate(fechaFormulario)}`;
+    } else {
+        return `🎉 ¡Paso completado con éxito!
+
+📋 Paso: "${pasoNombre}"
+📝 Sin evidencias adjuntas
+📅 Fecha de completado: ${formatDisplayDate(fechaFormulario)}`;
+    }
+};
+
+const generarMensajeReapertura = (pasoNombre, pasoOriginal, pasoActual) => {
+    const motivo = pasoActual.motivoReapertura || 'No especificado';
+    const fechaOriginal = formatDisplayDate(pasoOriginal.fecha);
+
+    return `🔄 Reapertura de paso
+
+📋 Paso: "${pasoNombre}"
+⚠️  Motivo: ${motivo}
+📅 Fecha original de completado: ${fechaOriginal}
+🔓 El paso fue marcado como pendiente nuevamente`;
+};
 
 export const addClienteAndAssignVivienda = async (clienteData, auditMessage, auditDetails) => {
     const newClienteRef = doc(db, "clientes", clienteData.datosCliente.cedula);
@@ -134,10 +212,10 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
     const clienteNombreCompleto = toTitleCase(`${clienteActualizado.datosCliente.nombres} ${clienteActualizado.datosCliente.apellidos}`);
 
     if (action === 'RESTART_CLIENT_PROCESS') {
-        await createAuditLog(
-            `Inició un nuevo proceso para el cliente ${clienteNombreCompleto}`,
+        await createAuditLogWithBuilder(
+            'RESTART_CLIENT_PROCESS',
             {
-                action: 'RESTART_CLIENT_PROCESS',
+                category: 'clientes',
                 clienteId: clienteId,
                 clienteNombre: clienteNombreCompleto,
                 nombreNuevaVivienda: nombreNuevaVivienda || 'No especificado',
@@ -559,6 +637,248 @@ export const getClienteProceso = async (clienteId) => {
     return clienteSnap.data().proceso || {};
 };
 
+const generarMensajeReCompletado = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+    const motivoReapertura = pasoActual.motivoReapertura || 'No especificado';
+    const estadoAnterior = pasoActual.estadoAnterior || {};
+
+    // Analizar los cambios realizados
+    const cambios = [];
+
+    // 1. Comparar fechas
+    const fechaAnterior = estadoAnterior.fecha;
+    const fechaNueva = pasoActual.fecha;
+    if (fechaAnterior !== fechaNueva) {
+        cambios.push({
+            tipo: 'fecha',
+            anterior: formatDisplayDate(fechaAnterior),
+            nueva: formatDisplayDate(fechaNueva)
+        });
+    }
+
+    // 2. Comparar evidencias
+    const evidenciasAnteriores = estadoAnterior.evidencias || {};
+    const evidenciasNuevas = pasoActual.evidencias || {};
+
+    const { texto: textoEvidenciasAnteriores, cantidad: cantidadAnterior } = construirListaEvidencias(evidenciasAnteriores, pasoConfig);
+    const { texto: textoEvidenciasNuevas, cantidad: cantidadNueva } = construirListaEvidencias(evidenciasNuevas, pasoConfig);
+
+    const evidenciasCambiaron = JSON.stringify(evidenciasAnteriores) !== JSON.stringify(evidenciasNuevas);
+
+    if (evidenciasCambiaron) {
+        cambios.push({
+            tipo: 'evidencias',
+            anteriores: { texto: textoEvidenciasAnteriores, cantidad: cantidadAnterior },
+            nuevas: { texto: textoEvidenciasNuevas, cantidad: cantidadNueva }
+        });
+    }
+
+    // Construir el mensaje integral
+    let mensaje = `🔄➡️✅ Paso re-completado después de reapertura
+
+📋 Paso: "${pasoNombre}"
+⚠️  Motivo de reapertura: ${motivoReapertura}`;
+
+    // Agregar información de cambios realizados
+    if (cambios.length > 0) {
+        mensaje += `\n\n🔧 Cambios realizados al re-completar:`;
+
+        cambios.forEach(cambio => {
+            if (cambio.tipo === 'fecha') {
+                mensaje += `\n📅 Fecha modificada:`;
+                mensaje += `\n   • Anterior: ${cambio.anterior}`;
+                mensaje += `\n   • Nueva: ${cambio.nueva}`;
+            } else if (cambio.tipo === 'evidencias') {
+                mensaje += `\n📄 Evidencias modificadas:`;
+                if (cambio.anteriores.cantidad > 0) {
+                    mensaje += `\n   Anteriores (${cambio.anteriores.cantidad}):${cambio.anteriores.texto}`;
+                } else {
+                    mensaje += `\n   Anteriores: Ninguna`;
+                }
+                if (cambio.nuevas.cantidad > 0) {
+                    mensaje += `\n   Nuevas (${cambio.nuevas.cantidad}):${cambio.nuevas.texto}`;
+                } else {
+                    mensaje += `\n   Nuevas: Ninguna`;
+                }
+            }
+        });
+    } else {
+        // No hubo cambios adicionales
+        mensaje += `\n\n✅ Se re-completó sin cambios adicionales`;
+        if (cantidadNueva > 0) {
+            mensaje += `\n📄 Evidencias mantenidas (${cantidadNueva}):${textoEvidenciasNuevas}`;
+        }
+    }
+
+    mensaje += `\n\n📅 Fecha final de completado: ${formatDisplayDate(fechaNueva)}`;
+
+    return mensaje;
+};
+
+const generarMensajeReaperturaIntegral = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+    const motivo = pasoActual.motivoReapertura || 'No especificado';
+    const fechaOriginal = formatDisplayDate(pasoOriginal.fecha);
+
+    let mensaje = `🔄 Reapertura completa de paso
+
+📋 Paso: "${pasoNombre}"
+⚠️  Motivo: ${motivo}
+📅 Fecha original de completado: ${fechaOriginal}`;
+
+    // Analizar cambios realizados durante la reapertura
+    const cambios = [];
+
+    // Verificar cambio de fecha
+    if (pasoOriginal.fecha !== pasoActual.fecha && pasoActual.fecha) {
+        cambios.push({
+            tipo: 'fecha',
+            anterior: formatDisplayDate(pasoOriginal.fecha),
+            nueva: formatDisplayDate(pasoActual.fecha)
+        });
+    }
+
+    // Verificar cambio de evidencias
+    const evidenciasOriginales = pasoOriginal.evidencias || {};
+    const evidenciasNuevas = pasoActual.evidencias || {};
+
+    if (JSON.stringify(evidenciasOriginales) !== JSON.stringify(evidenciasNuevas)) {
+        const { texto: textoOriginales, cantidad: cantidadOriginal } = construirListaEvidencias(evidenciasOriginales, pasoConfig);
+        const { texto: textoNuevas, cantidad: cantidadNueva } = construirListaEvidencias(evidenciasNuevas, pasoConfig);
+
+        cambios.push({
+            tipo: 'evidencias',
+            anteriores: { texto: textoOriginales, cantidad: cantidadOriginal },
+            nuevas: { texto: textoNuevas, cantidad: cantidadNueva }
+        });
+    }
+
+    // Agregar información de cambios si los hay
+    if (cambios.length > 0) {
+        mensaje += `\n\n🔧 Cambios realizados durante la reapertura:`;
+
+        cambios.forEach(cambio => {
+            if (cambio.tipo === 'fecha') {
+                mensaje += `\n📅 Fecha de completado modificada:`;
+                mensaje += `\n   • De: ${cambio.anterior}`;
+                mensaje += `\n   • A: ${cambio.nueva}`;
+            } else if (cambio.tipo === 'evidencias') {
+                mensaje += `\n📄 Evidencias modificadas:`;
+                if (cambio.anteriores.cantidad > 0) {
+                    mensaje += `\n   Anteriores (${cambio.anteriores.cantidad}):${cambio.anteriores.texto}`;
+                } else {
+                    mensaje += `\n   Anteriores: Ninguna`;
+                }
+                if (cambio.nuevas.cantidad > 0) {
+                    mensaje += `\n   Nuevas (${cambio.nuevas.cantidad}):${cambio.nuevas.texto}`;
+                } else {
+                    mensaje += `\n   Nuevas: Ninguna`;
+                }
+            }
+        });
+
+        mensaje += `\n\n🔓 El paso permanece abierto para revisión`;
+    } else {
+        mensaje += `\n\n🔓 El paso fue reabierto sin cambios adicionales`;
+    }
+
+    return mensaje;
+};
+
+const generarMensajeModificacionIntegral = (pasoNombre, pasoOriginal, pasoActual, pasoConfig, tiposCambios) => {
+    let mensaje = `🔧 Modificación de paso completado
+
+📋 Paso: "${pasoNombre}"`;
+
+    tiposCambios.forEach(tipoCambio => {
+        if (tipoCambio === 'fecha') {
+            mensaje += `\n📅 Fecha modificada:`;
+            mensaje += `\n   • Anterior: ${formatDisplayDate(pasoOriginal.fecha)}`;
+            mensaje += `\n   • Nueva: ${formatDisplayDate(pasoActual.fecha)}`;
+        } else if (tipoCambio === 'evidencias') {
+            const { texto: textoOriginales, cantidad: cantidadOriginal } = construirListaEvidencias(pasoOriginal.evidencias || {}, pasoConfig);
+            const { texto: textoNuevas, cantidad: cantidadNueva } = construirListaEvidencias(pasoActual.evidencias || {}, pasoConfig);
+
+            mensaje += `\n📄 Evidencias modificadas:`;
+            if (cantidadOriginal > 0) {
+                mensaje += `\n   Anteriores (${cantidadOriginal}):${textoOriginales}`;
+            } else {
+                mensaje += `\n   Anteriores: Ninguna`;
+            }
+            if (cantidadNueva > 0) {
+                mensaje += `\n   Nuevas (${cantidadNueva}):${textoNuevas}`;
+            } else {
+                mensaje += `\n   Nuevas: Ninguna`;
+            }
+        }
+    });
+
+    return mensaje;
+};
+
+// Nueva función específica para manejar la reapertura de pasos
+export const reabrirPasoProceso = async (clienteId, pasoKey, motivoReapertura) => {
+    const clienteRef = doc(db, "clientes", String(clienteId));
+
+    // Obtener el estado actual del cliente
+    const clienteSnap = await getDoc(clienteRef);
+    if (!clienteSnap.exists()) {
+        throw new Error("El cliente no existe.");
+    }
+
+    const clienteData = clienteSnap.data();
+    const procesoActual = clienteData.proceso || {};
+    const pasoActual = procesoActual[pasoKey] || {};
+
+    // Obtener información del paso
+    const pasoConfig = PROCESO_CONFIG.find(p => p.key === pasoKey);
+    const pasoNombre = pasoConfig ? pasoConfig.label.substring(pasoConfig.label.indexOf('.') + 1).trim() : pasoKey;
+    const clienteNombre = toTitleCase(`${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`);
+
+    // Crear el nuevo estado del paso (reabierto)
+    const nuevoPaso = {
+        ...pasoActual,
+        completado: false,
+        fechaReapertura: new Date().toISOString(),
+        motivoReapertura: motivoReapertura,
+        estadoAnterior: {
+            completado: pasoActual.completado,
+            fecha: pasoActual.fecha,
+            evidencias: pasoActual.evidencias || {}
+        }
+    };
+
+    // Actualizar el proceso
+    const procesoActualizado = {
+        ...procesoActual,
+        [pasoKey]: nuevoPaso
+    };
+
+    await updateDoc(clienteRef, {
+        proceso: procesoActualizado
+    });
+
+    // Crear log de auditoría para la reapertura
+    const fechaOriginal = formatDisplayDate(pasoActual.fecha);
+    const mensajeReapertura = `🔄 Reapertura de paso
+
+📋 Paso: "${pasoNombre}"
+⚠️  Motivo: ${motivoReapertura}
+📅 Fecha original de completado: ${fechaOriginal}
+🔓 El paso fue marcado como pendiente para su revisión`;
+
+    await createAuditLog(mensajeReapertura, {
+        action: 'REOPEN_PROCESS_STEP',
+        category: 'clientes',
+        clienteId: clienteId,
+        clienteNombre: clienteNombre,
+        pasoReabierto: pasoNombre,
+        fechaOriginal: pasoActual.fecha,
+        motivoReapertura: motivoReapertura,
+        scenario: 'STEP_REOPENED'
+    });
+
+    return procesoActualizado;
+};
+
 export const updateClienteProceso = async (clienteId, nuevoProceso, auditMessage, auditDetails) => {
     const clienteRef = doc(db, "clientes", String(clienteId));
 
@@ -575,29 +895,183 @@ export const updateClienteProceso = async (clienteId, nuevoProceso, auditMessage
     // 2. Lógica de Auditoría Mejorada
     const clienteNombre = toTitleCase(`${clienteOriginal.datosCliente.nombres} ${clienteOriginal.datosCliente.apellidos}`);
 
-    // Revisar cada paso del proceso para ver si se completó en esta actualización
+    // Revisar cada paso del proceso para detectar cambios de manera integral
+    let stepCompletionLogged = false;
+
     for (const pasoConfig of PROCESO_CONFIG) {
         const key = pasoConfig.key;
         const pasoOriginalData = procesoOriginal[key] || {};
         const pasoActualData = nuevoProceso[key] || {};
+        const pasoNombre = pasoConfig.label.substring(pasoConfig.label.indexOf('.') + 1).trim();
 
-        // Si el paso se acaba de completar (antes no estaba completado y ahora sí)
-        if (!pasoOriginalData.completado && pasoActualData.completado) {
-            const mensajeAuditoria = `Completó el paso "${pasoConfig.label}" con fecha ${formatDisplayDate(pasoActualData.fecha)}.`;
+        // Verificar si hubo algún cambio en este paso
+        const huboComplecion = !pasoOriginalData.completado && pasoActualData.completado;
+        const huboReapertura = pasoOriginalData.completado && !pasoActualData.completado;
+        const huboCambioFecha = pasoOriginalData.completado && pasoActualData.completado &&
+            pasoOriginalData.fecha !== pasoActualData.fecha;
+        const huboCambioEvidencias = pasoOriginalData.completado && pasoActualData.completado &&
+            JSON.stringify(pasoOriginalData.evidencias || {}) !== JSON.stringify(pasoActualData.evidencias || {});
 
-            await createAuditLog(mensajeAuditoria, {
-                action: 'COMPLETE_PROCESS_STEP',
-                clienteId: clienteId,
-                clienteNombre: clienteNombre,
-                // Renombramos 'stepLabel' a 'pasoCompletado' y le pasamos el nombre limpio
-                pasoCompletado: pasoConfig.label.substring(pasoConfig.label.indexOf('.') + 1).trim(),
-                completionDate: pasoActualData.fecha
-            });
+        // Si no hay cambios, continuar al siguiente paso
+        if (!huboComplecion && !huboReapertura && !huboCambioFecha && !huboCambioEvidencias) {
+            continue;
         }
+
+        // Determinar el escenario principal y generar mensaje integral
+        let mensajeAuditoria;
+        let actionType;
+        let scenario;
+        let auditDetails = {
+            category: 'clientes',
+            clienteId: clienteId,
+            clienteNombre: clienteNombre,
+        };
+
+        // Verificar si el paso tiene metadatos de reapertura (indica que fue reabierto previamente)
+        const tieneMetadatosReapertura = pasoActualData.fechaReapertura || pasoActualData.motivoReapertura || pasoActualData.estadoAnterior;
+
+        if (huboComplecion) {
+            // ESCENARIO: Completado por primera vez O Re-completado después de reapertura
+            const esReCompletado = pasoActualData.estadoAnterior && pasoActualData.fechaReapertura;
+
+            if (esReCompletado) {
+                mensajeAuditoria = generarMensajeReCompletado(pasoNombre, pasoOriginalData, pasoActualData, pasoConfig);
+                actionType = 'RECOMPLETE_PROCESS_STEP';
+                scenario = 'STEP_RECOMPLETED';
+                auditDetails = {
+                    ...auditDetails,
+                    pasoCompletado: pasoNombre,
+                    completionDate: pasoActualData.fecha,
+                    evidenciasAdjuntas: pasoActualData.evidencias || {},
+                    motivoReapertura: pasoActualData.motivoReapertura,
+                    fechaReapertura: pasoActualData.fechaReapertura,
+                    estadoAnterior: pasoActualData.estadoAnterior,
+                    scenario: scenario
+                };
+            } else {
+                mensajeAuditoria = generarMensajeComplecion(pasoNombre, pasoActualData, pasoConfig);
+                actionType = 'COMPLETE_PROCESS_STEP';
+                scenario = 'FIRST_COMPLETION';
+                auditDetails = {
+                    ...auditDetails,
+                    pasoCompletado: pasoNombre,
+                    completionDate: pasoActualData.fecha,
+                    evidenciasAdjuntas: pasoActualData.evidencias || {},
+                    scenario: scenario
+                };
+            }
+        }
+        else if (huboReapertura) {
+            // ESCENARIO: Reapertura integral (puede incluir múltiples cambios)
+            mensajeAuditoria = generarMensajeReaperturaIntegral(pasoNombre, pasoOriginalData, pasoActualData, pasoConfig);
+            actionType = 'REOPEN_PROCESS_STEP_COMPLETE';
+            scenario = 'STEP_REOPENED_WITH_CHANGES';
+            auditDetails = {
+                ...auditDetails,
+                pasoReabierto: pasoNombre,
+                fechaOriginal: pasoOriginalData.fecha,
+                motivoReapertura: pasoActualData.motivoReapertura || 'No especificado',
+                cambiosRealizados: {
+                    fechaCambio: huboCambioFecha,
+                    evidenciasCambio: huboCambioEvidencias
+                },
+                scenario: scenario
+            };
+        }
+        else if (tieneMetadatosReapertura && (huboCambioFecha || huboCambioEvidencias)) {
+            // ESCENARIO: Cambios realizados durante reapertura (tiene metadatos de reapertura)
+            const resultadoMensaje = generarMensajeReaperturaConCambios(pasoNombre, pasoOriginalData, pasoActualData, pasoConfig);
+            mensajeAuditoria = resultadoMensaje.mensaje || `Se realizó reapertura del paso '${pasoNombre}'`;
+            actionType = 'REOPEN_PROCESS_STEP_COMPLETE';
+            scenario = 'STEP_REOPENED_WITH_CHANGES';
+
+            // Construir evidenciasAcceso de forma segura
+            const evidenciasAcceso = construirAccesoEvidencias(pasoOriginalData.evidencias || {}, pasoActualData.evidencias || {}, pasoConfig);
+
+            auditDetails = {
+                ...auditDetails,
+                pasoReabierto: pasoNombre,
+                fechaOriginal: pasoOriginalData.fecha || '',
+                fechaNueva: pasoActualData.fecha || '',
+                motivoReapertura: pasoActualData.motivoReapertura || 'No especificado',
+                cambiosRealizados: {
+                    fechaCambio: huboCambioFecha,
+                    evidenciasCambio: huboCambioEvidencias
+                },
+                evidenciasDetalladas: {
+                    originales: pasoOriginalData.evidencias || {},
+                    actuales: pasoActualData.evidencias || {}
+                },
+                scenario: scenario
+            };
+
+            // Agregar campos opcionales solo si existen
+            if (resultadoMensaje.iconData) {
+                auditDetails.iconData = resultadoMensaje.iconData;
+            }
+
+            if (evidenciasAcceso && evidenciasAcceso.length > 0) {
+                auditDetails.evidenciasAcceso = evidenciasAcceso;
+            }
+        }
+        else if (huboCambioFecha || huboCambioEvidencias) {
+            // ESCENARIO: Modificaciones en paso ya completado (cambio de fecha o evidencias)
+            const cambios = [];
+            if (huboCambioFecha) cambios.push('fecha');
+            if (huboCambioEvidencias) cambios.push('evidencias');
+
+            // Determinar el tipo específico de modificación
+            if (huboCambioFecha && !huboCambioEvidencias) {
+                // Solo cambio de fecha
+                const resultadoMensaje = generarMensajeCambioFecha(pasoNombre, pasoOriginalData, pasoActualData, pasoConfig);
+                mensajeAuditoria = resultadoMensaje.mensaje;
+                actionType = 'CHANGE_COMPLETION_DATE';
+                scenario = 'DATE_MODIFIED';
+                if (resultadoMensaje.iconData) {
+                    auditDetails.iconData = resultadoMensaje.iconData;
+                }
+            } else if (!huboCambioFecha && huboCambioEvidencias) {
+                // Solo cambio de evidencias
+                const resultadoMensaje = generarMensajeCambioEvidencias(pasoNombre, pasoOriginalData, pasoActualData, pasoConfig);
+                mensajeAuditoria = resultadoMensaje.mensaje;
+                actionType = 'CHANGE_STEP_EVIDENCE';
+                scenario = 'EVIDENCE_MODIFIED';
+                if (resultadoMensaje.iconData) {
+                    auditDetails.iconData = resultadoMensaje.iconData;
+                }
+            } else {
+                // Cambio de fecha Y evidencias
+                mensajeAuditoria = generarMensajeModificacionIntegral(pasoNombre, pasoOriginalData, pasoActualData, pasoConfig, cambios);
+                actionType = 'MODIFY_COMPLETED_STEP';
+                scenario = 'STEP_MODIFIED';
+            }
+
+            auditDetails = {
+                ...auditDetails,
+                pasoModificado: pasoNombre,
+                cambiosRealizados: cambios,
+                fechaOriginal: pasoOriginalData.fecha || '',
+                fechaNueva: pasoActualData.fecha || '',
+                evidenciasOriginales: pasoOriginalData.evidencias || {},
+                evidenciasNuevas: pasoActualData.evidencias || {},
+                scenario: scenario
+            };
+
+            // Agregar acceso a evidencias si hay cambios
+            if (huboCambioEvidencias) {
+                const evidenciasAcceso = construirAccesoEvidencias(pasoOriginalData.evidencias || {}, pasoActualData.evidencias || {}, pasoConfig);
+                if (evidenciasAcceso && evidenciasAcceso.length > 0) {
+                    auditDetails.evidenciasAcceso = evidenciasAcceso;
+                }
+            }
+        }
+
+        await createAuditLog(mensajeAuditoria, auditDetails);
+        stepCompletionLogged = true;
     }
 
-    // Si se proveyó un mensaje de auditoría general (para otros casos de uso), lo registramos
-    if (auditMessage && auditDetails) {
+    // Solo crear log general si NO se completó ningún paso (evitar duplicados)
+    if (auditMessage && auditDetails && !stepCompletionLogged) {
         await createAuditLog(auditMessage, auditDetails);
     }
 };
@@ -754,6 +1228,319 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
     } catch (error) {
         console.error("Error en la operación de transferencia de vivienda: ", error);
         throw error;
+    }
+};
+
+// Helper: Generar mensaje para cambio de fecha en paso completado
+const generarMensajeCambioFecha = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+    const fechaOriginal = formatDisplayDate(pasoOriginal.fecha);
+    const fechaNueva = formatDisplayDate(pasoActual.fecha);
+
+    let mensaje = `Se modificó la fecha de completado del paso '${pasoNombre}'`;
+    mensaje += `\n\nFecha de completado: ${fechaOriginal} → ${fechaNueva}`;
+
+    const evidencias = pasoActual.evidencias || {};
+    const { texto: listaEvidencias } = construirListaEvidencias(evidencias, pasoConfig);
+    if (listaEvidencias) {
+        mensaje += `\nEvidencias: ${listaEvidencias}`;
+    }
+
+    return {
+        mensaje,
+        iconData: {
+            mainIcon: 'Calendar',
+            sections: {
+                fecha: 'Calendar',
+                evidencias: 'FileText'
+            }
+        }
+    };
+};
+
+// Helper: Generar mensaje para cambio de evidencias en paso completado
+const generarMensajeCambioEvidencias = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+    const fecha = formatDisplayDate(pasoActual.fecha);
+
+    let mensaje = `Se modificaron las evidencias del paso completado '${pasoNombre}'`;
+    mensaje += `\n\nFecha de completado: ${fecha}`;
+
+    // Analizar cambios específicos en evidencias
+    const cambiosEvidencias = analizarCambiosEvidenciasSinEmojis(pasoOriginal.evidencias || {}, pasoActual.evidencias || {}, pasoConfig);
+    if (cambiosEvidencias.length > 0) {
+        mensaje += `\n\nCambios en evidencias:\n${cambiosEvidencias.join('\n')}`;
+    }
+
+    return {
+        mensaje,
+        iconData: {
+            mainIcon: 'FileText',
+            sections: {
+                fecha: 'Calendar',
+                evidencias: 'FileText'
+            }
+        }
+    };
+};
+
+// Helper: Generar mensaje para reapertura con cambios posteriores
+const generarMensajeReaperturaConCambios = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+    const fechaOriginal = formatDisplayDate(pasoOriginal.fecha);
+    const fechaNueva = formatDisplayDate(pasoActual.fecha);
+
+    let mensaje = `Se realizó reapertura del paso '${pasoNombre}'`;
+
+    // Indicar motivo de reapertura
+    if (pasoActual.motivoReapertura) {
+        mensaje += `\n\nMotivo de reapertura: ${pasoActual.motivoReapertura}`;
+    }
+
+    // Mostrar cambios específicos
+    const cambios = [];
+
+    if (pasoOriginal.fecha !== pasoActual.fecha) {
+        cambios.push(`Fecha de paso completado: ${fechaOriginal} → ${fechaNueva}`);
+    }
+
+    const evidenciasOriginales = pasoOriginal.evidencias || {};
+    const evidenciasActuales = pasoActual.evidencias || {};
+
+    if (JSON.stringify(evidenciasOriginales) !== JSON.stringify(evidenciasActuales)) {
+        // Analizar cambios específicos en evidencias para auditoría detallada
+        const cambiosEvidencias = analizarCambiosEvidenciasSinEmojis(evidenciasOriginales, evidenciasActuales, pasoConfig);
+        if (cambiosEvidencias.length > 0) {
+            cambios.push(`Evidencias modificadas:\n${cambiosEvidencias.join('\n')}`);
+        }
+    }
+
+    if (cambios.length > 0) {
+        mensaje += `\n\nCambios realizados en la reapertura del paso:\n${cambios.join('\n')}`;
+    }
+
+    return {
+        mensaje,
+        iconData: {
+            mainIcon: 'RotateCcw',
+            sections: {
+                motivo: 'AlertTriangle',
+                cambios: 'Settings',
+                fecha: 'Calendar',
+                evidencias: 'FileText'
+            }
+        }
+    };
+};
+
+// Helper: Analizar cambios específicos en evidencias para auditoría detallada con acceso completo a archivos
+const analizarCambiosEvidenciasDetallado = (evidenciasOriginales, evidenciasActuales, pasoConfig) => {
+    const cambios = [];
+    const tiposOriginales = Object.keys(evidenciasOriginales);
+    const tiposActuales = Object.keys(evidenciasActuales);
+    const todosTipos = [...new Set([...tiposOriginales, ...tiposActuales])];
+
+    todosTipos.forEach(tipo => {
+        const evidenciaOriginal = evidenciasOriginales[tipo];
+        const evidenciaActual = evidenciasActuales[tipo];
+        const nombreTipo = obtenerNombreEvidencia(tipo, evidenciaActual || evidenciaOriginal, pasoConfig);
+
+        if (!evidenciaOriginal && evidenciaActual) {
+            // Evidencia añadida
+            const detalleNueva = construirDetalleEvidencia(evidenciaActual);
+            cambios.push(`   ➕ Agregada: ${nombreTipo}`);
+            cambios.push(`      📄 Nueva: ${detalleNueva}`);
+        } else if (evidenciaOriginal && !evidenciaActual) {
+            // Evidencia eliminada
+            const detalleAnterior = construirDetalleEvidencia(evidenciaOriginal);
+            cambios.push(`   ➖ Eliminada: ${nombreTipo}`);
+            cambios.push(`      📄 Anterior: ${detalleAnterior}`);
+        } else if (evidenciaOriginal && evidenciaActual) {
+            // Verificar si el archivo cambió (comparando propiedades detalladas)
+            const cambioDetectado = detectarCambioEvidencia(evidenciaOriginal, evidenciaActual);
+
+            if (cambioDetectado) {
+                const detalleAnterior = construirDetalleEvidencia(evidenciaOriginal);
+                const detalleNuevo = construirDetalleEvidencia(evidenciaActual);
+
+                cambios.push(`   🔄 Reemplazada: ${nombreTipo}`);
+                cambios.push(`      📋 Anterior: ${detalleAnterior}`);
+                cambios.push(`      📑 Nueva: ${detalleNuevo}`);
+            }
+        }
+    });
+
+    return cambios;
+};
+
+// Helper: Analizar cambios específicos en evidencias SIN EMOJIS (para renderizado con iconos React)
+const analizarCambiosEvidenciasSinEmojis = (evidenciasOriginales, evidenciasActuales, pasoConfig) => {
+    const cambios = [];
+    const tiposOriginales = Object.keys(evidenciasOriginales);
+    const tiposActuales = Object.keys(evidenciasActuales);
+    const todosTipos = [...new Set([...tiposOriginales, ...tiposActuales])];
+
+    todosTipos.forEach(tipo => {
+        const evidenciaOriginal = evidenciasOriginales[tipo];
+        const evidenciaActual = evidenciasActuales[tipo];
+        const nombreTipo = obtenerNombreEvidencia(tipo, evidenciaActual || evidenciaOriginal, pasoConfig);
+
+        if (!evidenciaOriginal && evidenciaActual) {
+            // Evidencia añadida
+            const detalleNueva = construirDetalleEvidencia(evidenciaActual);
+            cambios.push(`   Agregada: ${nombreTipo}`);
+            cambios.push(`      Nueva: ${detalleNueva}`);
+        } else if (evidenciaOriginal && !evidenciaActual) {
+            // Evidencia eliminada
+            const detalleAnterior = construirDetalleEvidencia(evidenciaOriginal);
+            cambios.push(`   Eliminada: ${nombreTipo}`);
+            cambios.push(`      Anterior: ${detalleAnterior}`);
+        } else if (evidenciaOriginal && evidenciaActual) {
+            // Verificar si el archivo cambió (comparando propiedades detalladas)
+            const cambioDetectado = detectarCambioEvidencia(evidenciaOriginal, evidenciaActual);
+
+            if (cambioDetectado) {
+                const detalleAnterior = construirDetalleEvidencia(evidenciaOriginal);
+                const detalleNuevo = construirDetalleEvidencia(evidenciaActual);
+
+                cambios.push(`   Reemplazada: ${nombreTipo}`);
+                cambios.push(`      Anterior: ${detalleAnterior}`);
+                cambios.push(`      Nueva: ${detalleNuevo}`);
+            }
+        }
+    });
+
+    return cambios;
+};
+
+// Helper: Construir detalle completo de evidencia para auditoría
+const construirDetalleEvidencia = (evidencia) => {
+    if (!evidencia) return 'Sin evidencia';
+
+    const nombre = evidencia.nombre || evidencia.fileName || 'Archivo sin nombre';
+    const tamaño = evidencia.size ? `(${formatearTamañoArchivo(evidencia.size)})` : '';
+    const tipo = evidencia.type || (evidencia.fileName ? evidencia.fileName.split('.').pop()?.toUpperCase() : '');
+    const fecha = evidencia.lastModified ? ` - ${formatDisplayDate(new Date(evidencia.lastModified))}` : '';
+
+    return `${nombre} ${tipo ? `[${tipo}]` : ''} ${tamaño}${fecha}`.trim();
+};
+
+// Helper: Detectar si hubo cambio real en evidencia
+const detectarCambioEvidencia = (evidenciaOriginal, evidenciaActual) => {
+    const propiedadesAComparar = ['nombre', 'fileName', 'size', 'type', 'lastModified', 'url', 'downloadURL'];
+
+    return propiedadesAComparar.some(prop => {
+        return evidenciaOriginal[prop] !== evidenciaActual[prop];
+    });
+};
+
+// Helper: Formatear tamaño de archivo
+const formatearTamañoArchivo = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// Helper para filtrar propiedades undefined de un objeto
+const limpiarObjetoPropiedades = (obj) => {
+    const objetoLimpio = {};
+    for (const [key, value] of Object.entries(obj)) {
+        if (value !== undefined && value !== null) {
+            objetoLimpio[key] = value;
+        }
+    }
+    return objetoLimpio;
+};
+
+// Helper: Construir acceso directo a evidencias para componente frontend
+const construirAccesoEvidencias = (evidenciasOriginales, evidenciasActuales, pasoConfig) => {
+    try {
+        const accesos = [];
+        const tiposOriginales = Object.keys(evidenciasOriginales || {});
+        const tiposActuales = Object.keys(evidenciasActuales || {});
+        const todosTipos = [...new Set([...tiposOriginales, ...tiposActuales])];
+
+        todosTipos.forEach(tipo => {
+            const evidenciaOriginal = evidenciasOriginales?.[tipo];
+            const evidenciaActual = evidenciasActuales?.[tipo];
+            const nombreTipo = obtenerNombreEvidencia(tipo, evidenciaActual || evidenciaOriginal, pasoConfig) || 'Evidencia';
+
+            if (!evidenciaOriginal && evidenciaActual) {
+                // Evidencia añadida - solo nueva disponible
+                const archivoNuevo = limpiarObjetoPropiedades({
+                    nombre: evidenciaActual.nombre || evidenciaActual.fileName || 'Archivo nuevo',
+                    url: evidenciaActual.downloadURL || evidenciaActual.url,
+                    size: evidenciaActual.size,
+                    type: evidenciaActual.type,
+                    lastModified: evidenciaActual.lastModified
+                });
+
+                if (archivoNuevo.url) { // Solo agregar si hay URL válida
+                    accesos.push({
+                        tipo: 'AGREGADA',
+                        tipoEvidencia: tipo || 'unknown',
+                        nombreTipo,
+                        archivoNuevo,
+                        archivoAnterior: null
+                    });
+                }
+            } else if (evidenciaOriginal && !evidenciaActual) {
+                // Evidencia eliminada - solo anterior disponible
+                const archivoAnterior = limpiarObjetoPropiedades({
+                    nombre: evidenciaOriginal.nombre || evidenciaOriginal.fileName || 'Archivo anterior',
+                    url: evidenciaOriginal.downloadURL || evidenciaOriginal.url,
+                    size: evidenciaOriginal.size,
+                    type: evidenciaOriginal.type,
+                    lastModified: evidenciaOriginal.lastModified
+                });
+
+                if (archivoAnterior.url) { // Solo agregar si hay URL válida
+                    accesos.push({
+                        tipo: 'ELIMINADA',
+                        tipoEvidencia: tipo || 'unknown',
+                        nombreTipo,
+                        archivoNuevo: null,
+                        archivoAnterior
+                    });
+                }
+            } else if (evidenciaOriginal && evidenciaActual) {
+                // Verificar si realmente cambió
+                const cambioDetectado = detectarCambioEvidencia(evidenciaOriginal, evidenciaActual);
+
+                if (cambioDetectado) {
+                    const archivoNuevo = limpiarObjetoPropiedades({
+                        nombre: evidenciaActual.nombre || evidenciaActual.fileName || 'Archivo nuevo',
+                        url: evidenciaActual.downloadURL || evidenciaActual.url,
+                        size: evidenciaActual.size,
+                        type: evidenciaActual.type,
+                        lastModified: evidenciaActual.lastModified
+                    });
+
+                    const archivoAnterior = limpiarObjetoPropiedades({
+                        nombre: evidenciaOriginal.nombre || evidenciaOriginal.fileName || 'Archivo anterior',
+                        url: evidenciaOriginal.downloadURL || evidenciaOriginal.url,
+                        size: evidenciaOriginal.size,
+                        type: evidenciaOriginal.type,
+                        lastModified: evidenciaOriginal.lastModified
+                    });
+
+                    // Solo agregar si al menos uno de los archivos tiene URL
+                    if (archivoNuevo.url || archivoAnterior.url) {
+                        accesos.push({
+                            tipo: 'REEMPLAZADA',
+                            tipoEvidencia: tipo || 'unknown',
+                            nombreTipo,
+                            archivoNuevo: archivoNuevo.url ? archivoNuevo : null,
+                            archivoAnterior: archivoAnterior.url ? archivoAnterior : null
+                        });
+                    }
+                }
+            }
+        });
+
+        return accesos;
+    } catch (error) {
+        console.error('Error construyendo acceso a evidencias:', error);
+        return []; // Devolver array vacío en caso de error
     }
 };
 

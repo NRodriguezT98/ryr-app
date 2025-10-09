@@ -243,7 +243,7 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                     {errors.credito_caso && <p className="text-red-600 text-sm mt-1">{errors.credito_caso}</p>}
                                 </div>
 
-                                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
+                                <div className="space-y-2">
                                     <label className="block font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                                         Carta Aprobación Crédito <span className="text-red-600 ml-1">*</span>
                                         <HelpTooltip id="cartaCredito" content="Carta de aprobación emitida por el banco que confirma la preaprobación del crédito hipotecario." />
@@ -312,7 +312,7 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                                         {errors.subsidioCaja_monto && <p className="text-red-600 text-sm mt-1">{errors.subsidioCaja_monto}</p>}
                                     </div>
                                 </div>
-                                <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
+                                <div className="space-y-2">
                                     <label className="block font-semibold text-gray-700 dark:text-gray-200 flex items-center">
                                         Carta Aprobación Subsidio <span className="text-red-600 ml-1">*</span>
                                         <HelpTooltip id="cartaSubsidio" content="Carta de aprobación del subsidio emitida por la caja de compensación familiar." />

@@ -9,6 +9,10 @@ export const useLogin = () => {
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [isResetMode, setIsResetMode] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [emailFocused, setEmailFocused] = useState(false);
+    const [passwordFocused, setPasswordFocused] = useState(false);
+
     const { login, resetPassword } = useAuth();
     const navigate = useNavigate();
 
@@ -28,20 +32,37 @@ export const useLogin = () => {
 
     const handleResetSubmit = async (e) => {
         e.preventDefault();
+
+        if (!email) {
+            setError('Por favor, ingresa tu correo electrónico para restablecer la contraseña.');
+            return;
+        }
+
         setError('');
         setMessage('');
         setLoading(true);
+
         try {
             await resetPassword(email);
             setMessage('¡Hecho! Revisa tu correo para ver las instrucciones.');
+            setError('');
         } catch (err) {
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // Se revierte al mensaje de error original, más amigable para el usuario.
             setError('No se pudo enviar el correo. ¿Estás seguro de que es el correcto?');
-            // Ya no es necesario el console.error(err)
-            // --- FIN DE LA MODIFICACIÓN ---
         }
         setLoading(false);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setMessage('');
+        setLoading(true);
+
+        if (isResetMode) {
+            await handleResetSubmit(e);
+        } else {
+            await handleLoginSubmit(e);
+        }
     };
 
     const toggleMode = () => {
@@ -51,19 +72,31 @@ export const useLogin = () => {
         setPassword('');
     };
 
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
+    };
+
     return {
+        // States
         email,
-        setEmail,
         password,
-        setPassword,
         error,
         message,
         loading,
         isResetMode,
-        handlers: {
-            handleLoginSubmit,
-            handleResetSubmit,
-            toggleMode
-        }
+        showPassword,
+        emailFocused,
+        passwordFocused,
+
+        // State setters
+        setEmail,
+        setPassword,
+        setEmailFocused,
+        setPasswordFocused,
+
+        // Handlers
+        handleSubmit,
+        toggleMode,
+        togglePasswordVisibility
     };
 };

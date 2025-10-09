@@ -705,15 +705,11 @@ const TabHistorial = forwardRef(({ cliente, isReadOnly }, ref) => {
 
   const puedeAnadirNotas = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
 
-  // Debug temporal
-  console.log('🔥 TabHistorial SVG renderizándose:', { cliente: cliente?.id, historial: historial?.length });
-
   return (
     <AnimatedPage>
-      <div className="bg-red-100 border-2 border-red-500 p-6 rounded-lg mb-6 shadow-lg">
-        <h3 className="text-xl font-bold text-red-800 mb-3">🚨 BANNER DE PRUEBA - TabHistorial con SVG Embebidos</h3>
-        <p className="text-sm text-red-700 font-medium">Esta versión usa iconos SVG directamente embebidos en lugar de Lucide React.</p>
-        <p className="text-xs text-red-600 mt-2">Si ves este mensaje, el componente SVG está funcionando.</p>
+      <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-4">
+        <h3 className="text-lg font-bold text-green-800 mb-3">✅ TabHistorial con SVG Embebidos</h3>
+        <p className="text-sm text-green-700">Esta versión usa iconos SVG directamente embebidos en lugar de Lucide React.</p>
       </div>
       
       {puedeAnadirNotas && (

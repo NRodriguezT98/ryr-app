@@ -490,27 +490,27 @@ const UniversalFileManager = ({
         <div className={className}>
             {hasFile ? (
                 <div className={`rounded-lg border-2 transition-all duration-300 ${replacing
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'
+                    ? 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600'
                     : uploadComplete
-                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
-                        : 'bg-green-50 dark:bg-green-900/50 border-green-200 dark:border-green-700'
+                        ? 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600'
+                        : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-600'
                     }`}>
                     {replacing && (
-                        <div className="p-3 border-b border-blue-200 dark:border-blue-700">
+                        <div className="p-3 border-b border-slate-200 dark:border-slate-600">
                             <div className="flex items-center justify-between mb-2">
                                 <div className="flex items-center gap-2">
-                                    <Loader className="animate-spin text-blue-500" size={16} />
-                                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                    <Loader className="animate-spin text-indigo-500" size={16} />
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                                         Reemplazando archivo...
                                     </span>
                                 </div>
-                                <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                                <span className="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
                                     {Math.round(progress)}%
                                 </span>
                             </div>
-                            <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
+                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                                 <div
-                                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
                                     style={{ width: `${progress}%` }}
                                 />
                             </div>
@@ -518,9 +518,9 @@ const UniversalFileManager = ({
                     )}
 
                     {uploadComplete && (
-                        <div className="p-3 border-b border-green-200 dark:border-green-700">
-                            <div className="flex items-center gap-2 text-green-700 dark:text-green-300">
-                                <CheckCircle2 size={16} />
+                        <div className="p-3 border-b border-slate-200 dark:border-slate-600">
+                            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                                <CheckCircle2 size={16} className="text-indigo-600 dark:text-indigo-400" />
                                 <span className="text-sm font-medium">¡Archivo reemplazado exitosamente!</span>
                             </div>
                         </div>
@@ -528,9 +528,9 @@ const UniversalFileManager = ({
 
                     <div className="p-4">
                         <div className="flex items-center gap-3">
-                            <FileText className="text-green-600 dark:text-green-400 flex-shrink-0" size={20} />
+                            <FileText className="text-slate-600 dark:text-slate-400 flex-shrink-0" size={20} />
                             <div className="min-w-0 flex-1">
-                                <p className="font-medium text-green-800 dark:text-green-200 truncate" title={getFileName(100)}>
+                                <p className="font-medium text-slate-900 dark:text-slate-100 truncate" title={getFileName(100)}>
                                     {getFileName(35)}
                                 </p>
                                 <div className="flex items-center gap-3 mt-1">
@@ -539,7 +539,7 @@ const UniversalFileManager = ({
                                             href={currentFileUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center gap-1 text-sm text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 transition-colors"
+                                            className="flex items-center gap-1 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
                                         >
                                             <ExternalLink size={14} />
                                             Abrir en nueva pestaña
@@ -549,7 +549,7 @@ const UniversalFileManager = ({
                                         <a
                                             href={currentFileUrl}
                                             download
-                                            className="flex items-center gap-1 text-sm text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100 transition-colors"
+                                            className="flex items-center gap-1 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300 transition-colors"
                                         >
                                             <Download size={14} />
                                             Descargar
@@ -563,7 +563,7 @@ const UniversalFileManager = ({
                                             type="button"
                                             onClick={handleReplaceFile}
                                             disabled={replacing || uploadComplete || disabled || uploading || deleting}
-                                            className="flex items-center gap-1 px-2 py-1 rounded-md text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-800/50 transition-all duration-200 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-yellow-200 dark:border-yellow-700"
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-200 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200 dark:border-slate-600"
                                             title="Reemplazar documento"
                                         >
                                             <Replace size={12} />
@@ -573,7 +573,7 @@ const UniversalFileManager = ({
                                             type="button"
                                             onClick={handleDelete}
                                             disabled={deleting || replacing || uploadComplete || disabled || uploading}
-                                            className="flex items-center gap-1 px-2 py-1 rounded-md text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-800/50 transition-all duration-200 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-red-200 dark:border-red-700"
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/30 hover:bg-rose-100 dark:hover:bg-rose-800/50 transition-all duration-200 text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-rose-200 dark:border-rose-700"
                                             title="Eliminar documento"
                                         >
                                             {deleting ? <Loader className="animate-spin" size={12} /> : <Trash2 size={12} />}
@@ -596,34 +596,34 @@ const UniversalFileManager = ({
                 </div>
             ) : (
                 <div className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-4 relative transition-all duration-300 ${(disabled || readonly || uploading || replacing || deleting)
-                    ? 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 cursor-not-allowed'
+                    ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-600 cursor-not-allowed'
                     : uploading
-                        ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                        ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
                         : uploadComplete
-                            ? 'border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-900/20'
-                            : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-gray-400 dark:hover:border-gray-500'
+                            ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                            : 'border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/50 hover:border-indigo-400 dark:hover:border-indigo-500'
                     }`}>
                     {uploading ? (
                         <div className="text-center">
-                            <Loader className="animate-spin text-blue-500 mb-3" size={28} />
-                            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">
+                            <Loader className="animate-spin text-indigo-500 mb-3" size={28} />
+                            <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400 mb-2">
                                 Subiendo archivo...
                             </p>
-                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-2">
+                            <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2 mb-2">
                                 <div
-                                    className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out"
                                     style={{ width: `${progress}%` }}
                                 />
                             </div>
-                            <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400">
+                            <div className="flex justify-between text-xs text-slate-600 dark:text-slate-400">
                                 <span>{Math.round(progress)}%</span>
                                 <span>Completado</span>
                             </div>
                         </div>
                     ) : uploadComplete ? (
                         <div className="text-center">
-                            <CheckCircle2 className="text-green-500 mb-2 mx-auto" size={28} />
-                            <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                            <CheckCircle2 className="text-indigo-500 mb-2 mx-auto" size={28} />
+                            <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
                                 ¡Archivo subido exitosamente!
                             </p>
                         </div>
@@ -636,13 +636,13 @@ const UniversalFileManager = ({
                                 }`}
                             title={disabled && disabledTooltip ? disabledTooltip : undefined}
                         >
-                            <UploadCloud className={`mx-auto mb-2 ${(disabled || readonly || uploading || replacing || deleting) ? 'text-gray-300 dark:text-gray-600' : 'text-gray-400 dark:text-gray-500'
+                            <UploadCloud className={`mx-auto mb-2 ${(disabled || readonly || uploading || replacing || deleting) ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'
                                 }`} size={32} />
-                            <p className={`text-sm font-medium ${(disabled || readonly || uploading || replacing || deleting) ? 'text-gray-400 dark:text-gray-600' : 'text-gray-600 dark:text-gray-300'
+                            <p className={`text-sm font-medium ${(disabled || readonly || uploading || replacing || deleting) ? 'text-slate-400 dark:text-slate-600' : 'text-slate-700 dark:text-slate-300'
                                 }`}>
                                 {label}
                             </p>
-                            <p className={`text-xs mt-1 ${(disabled || readonly || uploading || replacing || deleting) ? 'text-gray-300 dark:text-gray-700' : 'text-gray-500 dark:text-gray-400'
+                            <p className={`text-xs mt-1 ${(disabled || readonly || uploading || replacing || deleting) ? 'text-slate-300 dark:text-slate-600' : 'text-slate-500 dark:text-slate-400'
                                 }`}>
                                 {acceptedTypes.replace(/\./g, '').toUpperCase()} (Max {maxSizeMB}MB)
                             </p>
@@ -661,7 +661,7 @@ const UniversalFileManager = ({
 
             {/* Mostrar helpText si existe */}
             {helpText && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">
                     {helpText}
                 </p>
             )}

@@ -29,17 +29,57 @@ const sortOptions = [
 const getSelectStyles = (isDarkMode) => ({
     control: (base, state) => ({
         ...base,
-        backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
-        borderColor: state.isFocused ? '#2563eb' : (isDarkMode ? '#4b5563' : '#d1d5db'),
-        '&:hover': { borderColor: '#3b82f6' },
-        boxShadow: state.isFocused ? '0 0 0 1px #2563eb' : 'none',
-        borderRadius: '0.5rem',
-        padding: '0.1rem',
+        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+        borderColor: state.isFocused ? '#6366f1' : (isDarkMode ? '#475569' : '#e2e8f0'),
+        '&:hover': { borderColor: isDarkMode ? '#64748b' : '#cbd5e1' },
+        boxShadow: state.isFocused ? '0 0 0 2px rgba(99, 102, 241, 0.2)' : 'none',
+        borderRadius: '0.75rem',
+        padding: '0.25rem',
+        minHeight: '3rem',
     }),
-    singleValue: (base) => ({ ...base, color: isDarkMode ? '#d1d5db' : '#111827' }),
-    menu: (base) => ({ ...base, backgroundColor: isDarkMode ? '#1f2937' : '#ffffff' }),
-    option: (base, state) => ({ ...base, backgroundColor: state.isSelected ? '#1d4ed8' : (state.isFocused ? (isDarkMode ? '#3b82f650' : '#dbeafe') : 'transparent'), color: state.isSelected ? 'white' : (isDarkMode ? '#d1d5db' : '#111827') }),
-    input: (base) => ({ ...base, color: isDarkMode ? '#d1d5db' : '#111827' }),
+    singleValue: (base) => ({
+        ...base,
+        color: isDarkMode ? '#f1f5f9' : '#0f172a',
+        fontWeight: '500'
+    }),
+    menu: (base) => ({
+        ...base,
+        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+        borderRadius: '0.75rem',
+        border: `1px solid ${isDarkMode ? '#475569' : '#e2e8f0'}`,
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+    }),
+    option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+            ? '#6366f1'
+            : (state.isFocused ? (isDarkMode ? '#334155' : '#f1f5f9') : 'transparent'),
+        color: state.isSelected
+            ? 'white'
+            : (isDarkMode ? '#f1f5f9' : '#0f172a'),
+        fontWeight: state.isSelected ? '600' : '500',
+        padding: '0.75rem',
+        ':hover': {
+            backgroundColor: state.isSelected ? '#6366f1' : (isDarkMode ? '#334155' : '#f1f5f9')
+        }
+    }),
+    input: (base) => ({
+        ...base,
+        color: isDarkMode ? '#f1f5f9' : '#0f172a',
+        fontWeight: '500'
+    }),
+    placeholder: (base) => ({
+        ...base,
+        color: isDarkMode ? '#94a3b8' : '#64748b',
+        fontWeight: '500'
+    }),
+    dropdownIndicator: (base) => ({
+        ...base,
+        color: isDarkMode ? '#94a3b8' : '#64748b',
+        ':hover': {
+            color: isDarkMode ? '#f1f5f9' : '#0f172a'
+        }
+    })
 });
 
 const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, onTransferir }) => {
@@ -90,32 +130,91 @@ const ListarClientes = () => {
     ) : null;
 
     const filterControls = (
-        <div className="w-full space-y-4">
+        <div className="w-full space-y-6">
+            {/* Filtros de estado modernizados */}
             <div className="flex justify-center">
-                <div className="flex-shrink-0 bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg">
-                    <button onClick={() => setStatusFilter('activo')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'activo' ? 'bg-white dark:bg-gray-900 shadow text-blue-600' : 'text-gray-600 dark:text-gray-300'}`}>Activos</button>
-                    <button onClick={() => setStatusFilter('enProcesoDeRenuncia')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'enProcesoDeRenuncia' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300'}`}>En Renuncia</button>
-                    <button onClick={() => setStatusFilter('renunciado')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'renunciado' ? 'bg-white dark:bg-gray-900 shadow text-orange-600' : 'text-gray-600 dark:text-gray-300'}`}>Renunciaron</button>
-                    <button onClick={() => setStatusFilter('inactivo')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'inactivo' ? 'bg-white dark:bg-gray-900 shadow text-gray-500' : 'text-gray-600 dark:text-gray-300'}`}>Archivados</button>
-                    <button onClick={() => setStatusFilter('todos')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${statusFilter === 'todos' ? 'bg-white dark:bg-gray-900 shadow text-gray-800' : 'text-gray-600 dark:text-gray-300'}`}>Todos</button>
+                <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <button
+                        onClick={() => setStatusFilter('activo')}
+                        className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'activo'
+                                ? 'bg-white dark:bg-slate-700 shadow-md text-indigo-600 dark:text-indigo-400 scale-105'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                    >
+                        Activos
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('enProcesoDeRenuncia')}
+                        className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'enProcesoDeRenuncia'
+                                ? 'bg-white dark:bg-slate-700 shadow-md text-amber-600 dark:text-amber-400 scale-105'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                    >
+                        En Renuncia
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('renunciado')}
+                        className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'renunciado'
+                                ? 'bg-white dark:bg-slate-700 shadow-md text-orange-600 dark:text-orange-400 scale-105'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                    >
+                        Renunciaron
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('inactivo')}
+                        className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'inactivo'
+                                ? 'bg-white dark:bg-slate-700 shadow-md text-slate-500 dark:text-slate-400 scale-105'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                    >
+                        Archivados
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('todos')}
+                        className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'todos'
+                                ? 'bg-white dark:bg-slate-700 shadow-md text-slate-800 dark:text-slate-200 scale-105'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                    >
+                        Todos
+                    </button>
                 </div>
             </div>
+
+            {/* Controles de búsqueda y filtros */}
             <div className="flex flex-col md:flex-row items-center gap-4">
                 <div className="relative w-full flex-grow">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                        <Search size={20} />
+                    </div>
                     <input
                         type="text"
                         placeholder="Buscar por Nombre, Cédula o Ubicación (ej: A1)..."
-                        className="w-full p-3 pl-10 border border-gray-300 dark:border-gray-600 dark:bg-gray-900/50 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-4 pl-12 pr-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 placeholder-slate-400"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                 <div className="w-full md:w-64 flex-shrink-0">
-                    <Select options={projectOptions} value={projectOptions.find(option => option.value === proyectoFilter)} onChange={(option) => setProyectoFilter(option.value)} styles={getSelectStyles(isDarkMode)} isSearchable={false} placeholder="Filtrar por proyecto..." />
+                    <Select
+                        options={projectOptions}
+                        value={projectOptions.find(option => option.value === proyectoFilter)}
+                        onChange={(option) => setProyectoFilter(option.value)}
+                        styles={getSelectStyles(isDarkMode)}
+                        isSearchable={false}
+                        placeholder="Filtrar por proyecto..."
+                    />
                 </div>
                 <div className="w-full md:w-64 flex-shrink-0">
-                    <Select options={sortOptions} defaultValue={sortOptions[0]} onChange={(option) => setSortOrder(option.value)} styles={getSelectStyles(isDarkMode)} isSearchable={false} placeholder="Ordenar por..." />
+                    <Select
+                        options={sortOptions}
+                        defaultValue={sortOptions[0]}
+                        onChange={(option) => setSortOrder(option.value)}
+                        styles={getSelectStyles(isDarkMode)}
+                        isSearchable={false}
+                        placeholder="Ordenar por..."
+                    />
                 </div>
             </div>
         </div>
@@ -135,13 +234,19 @@ const ListarClientes = () => {
                 // --- INICIO DE LA LÓGICA DE RENDERIZADO CORREGIDA ---
             ) : totalClientesEnSistema === 0 ? (
                 // 1. Si NO hay clientes en toda la base de datos, muestra el mensaje de bienvenida.
-                <div className="text-center py-16 border-2 border-dashed rounded-xl dark:border-gray-700">
-                    <User size={48} className="mx-auto text-gray-300 dark:text-gray-600" />
-                    <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">Aún no hay clientes</h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Registra a tu primer cliente para empezar a gestionar sus pagos y procesos.</p>
+                <div className="text-center py-20 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                    <div className="relative inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-900 dark:to-indigo-800 rounded-2xl mb-6">
+                        <User size={40} className="text-indigo-600 dark:text-indigo-400" />
+                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center">
+                            <UserPlus size={12} className="text-white" />
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-200 mb-2">¡Comienza tu gestión!</h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto">Registra a tu primer cliente para empezar a gestionar pagos, procesos y documentos de manera eficiente.</p>
                     {can('clientes', 'crear') && (
-                        <Link to="/clientes/crear" className="mt-6 inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors">
-                            <UserPlus size={18} />Registrar primer cliente
+                        <Link to="/clientes/crear" className="inline-flex items-center gap-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold px-8 py-4 rounded-xl shadow-lg hover:shadow-xl transform transition-all duration-200 hover:scale-105">
+                            <UserPlus size={20} />
+                            Registrar primer cliente
                         </Link>
                     )}
                 </div>
@@ -169,16 +274,20 @@ const ListarClientes = () => {
 
             ) : (
                 // 3. Si SÍ hay clientes, pero la vista filtrada está vacía, muestra este mensaje.
-                <div className="text-center py-16">
-                    <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-700">
-                        <FilterX size={32} className="text-gray-400 dark:text-gray-500" />
+                <div className="text-center py-20">
+                    <div className="relative inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-2xl mb-6">
+                        <FilterX size={36} className="text-slate-500 dark:text-slate-400" />
+                        <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center">
+                            <Search size={14} className="text-white" />
+                        </div>
                     </div>
-                    <h3 className="mt-4 text-lg font-semibold text-gray-700 dark:text-gray-200">No se encontraron clientes con los filtros actuales</h3>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Intenta ajustar o eliminar los filtros de búsqueda actuales para ver más resultados.</p>
-                    <div className="mt-6">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">Sin resultados</h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-sm mx-auto">No encontramos clientes que coincidan con los filtros actuales. Prueba ajustando los criterios de búsqueda.</p>
+                    <div className="space-y-3">
                         <Button
                             variant="secondary"
-                            onClick={handlers.limpiarFiltros} // <-- Usamos la nueva función
+                            onClick={handlers.limpiarFiltros}
+                            className="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600"
                         >
                             Limpiar Filtros
                         </Button>

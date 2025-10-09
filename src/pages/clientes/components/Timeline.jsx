@@ -26,7 +26,6 @@ const DuracionConnector = ({ duracion }) => {
 const Timeline = ({ pasos, justSaved, onUpdateEvidencia, onCompletarPaso, onIniciarReapertura, onDescartarCambios, onIniciarEdicionFecha, clienteId, isReadOnly }) => {
     return (
         <div className="relative">
-            <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700 -z-10" />
 
             {pasos.map((paso, index) => (
                 <React.Fragment key={paso.key}>

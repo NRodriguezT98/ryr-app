@@ -7,6 +7,7 @@ import { DataProvider } from './context/DataContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
+import { AuditProvider } from './context/AuditContext';
 
 // Importación de todos tus componentes de página
 import Layout from './layout/Layout';
@@ -34,6 +35,7 @@ import GestionRolesPage from './pages/admin/GestionRolesPage';
 import CrearProyecto from './pages/admin/CrearProyecto'
 import ListarProyectos from './pages/admin/ListarProyectos';
 import AuditLogPage from './pages/admin/AuditLogPage';
+import AuditMetricsPage from './pages/admin/AuditMetricsPage';
 import HistorialActividadPage from './pages/HistorialActividadPage';
 
 // Definimos las rutas como un array de objetos
@@ -85,6 +87,7 @@ const router = createBrowserRouter([
       { path: "/admin/crear-usuario", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><CrearUsuarioPage /></PermissionProtectedRoute> },
       { path: "/admin/roles", element: <PermissionProtectedRoute module="admin" action="gestionarRoles"><GestionRolesPage /></PermissionProtectedRoute> },
       { path: "/admin/auditoria", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AuditLogPage /></PermissionProtectedRoute> },
+      { path: "/admin/metricas", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AuditMetricsPage /></PermissionProtectedRoute> },
       { path: "/admin/proyectos", element: <PermissionProtectedRoute module="admin" action="listarProyectos"><ListarProyectos /></PermissionProtectedRoute> },
       { path: "/admin/proyectos/crear", element: <PermissionProtectedRoute module="admin" action="crearProyectos"><CrearProyecto /></PermissionProtectedRoute> },
     ],
@@ -110,9 +113,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       />
       <AuthProvider>
         <DataProvider>
-          <NotificationProvider>
-            <RouterProvider router={router} />
-          </NotificationProvider>
+          <AuditProvider>
+            <NotificationProvider>
+              <RouterProvider router={router} />
+            </NotificationProvider>
+          </AuditProvider>
         </DataProvider>
       </AuthProvider>
     </ThemeProvider>

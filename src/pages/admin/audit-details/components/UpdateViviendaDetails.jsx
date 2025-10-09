@@ -35,6 +35,7 @@ const CAMPO_LABELS = {
     esEsquinera: 'Esquinera',
     recargoEsquinera: 'Recargo Esquinera',
     valorTotal: 'Valor Total',
+    urlCertificadoTradicion: 'Certificado de Tradición',
     Proyecto: 'Proyecto'
 };
 
@@ -73,7 +74,7 @@ const UpdateViviendaDetails = ({ details }) => {
                 titulo="Cambios Principales"
                 icono={<Home size={16} />}
                 cambios={cambios}
-                campos={['Proyecto', 'manzana', 'numeroCasa', 'matricula', 'nomenclatura']}
+                campos={['Proyecto', 'manzana', 'numeroCasa', 'matricula', 'nomenclatura', 'urlCertificadoTradicion']}
             />
             <SeccionCambios
                 titulo="Cambios Físicos"

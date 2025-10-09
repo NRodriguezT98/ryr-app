@@ -1,6 +1,6 @@
 // En src/hooks/clientes/useHistorialCliente.jsx
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getAuditLogsForCliente } from '../../services/auditService';
 import { useData } from '../../context/DataContext';
 import { formatCurrency } from '../../utils/textFormatters';
@@ -29,6 +29,11 @@ const getDisplayMessage = (log, viviendas) => {
 
     if (details?.action === 'ADD_NOTE') {
         return details.nota || log.message;
+    }
+
+    // Si es completar un paso del proceso, usar el mensaje de auditoría tal como viene
+    if (details?.action === 'COMPLETE_PROCESS_STEP') {
+        return log.message;
     }
 
     // Si es una actualización del proceso, usamos el mensaje de auditoría
@@ -82,26 +87,79 @@ const getDisplayMessage = (log, viviendas) => {
 };
 
 
-export const useHistorialCliente = (clienteId) => {
+export const useHistorialCliente = (clienteId, options = {}) => {
     const { viviendas } = useData();
     const [historial, setHistorial] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const isLoadingRef = useRef(false);
+    const lastClienteIdRef = useRef(null);
 
     const fetchHistorial = useCallback(async () => {
         if (!clienteId) {
             setLoading(false);
             return;
         }
+
+        // Evitar múltiples llamadas simultáneas
+        if (isLoadingRef.current) {
+            return;
+        }
+
+        // Si es el mismo cliente, no recargar
+        if (lastClienteIdRef.current === clienteId && historial.length > 0) {
+            return;
+        }
+
         try {
+            isLoadingRef.current = true;
             setLoading(true);
+            setError(null);
+
+            // Usar la función original que funciona
             const logs = await getAuditLogsForCliente(clienteId);
-            const historialFiltrado = logs.filter(log => log.details.action !== 'EDIT_NOTE');
+
+            // Filtrar EDIT_NOTE y duplicados de proceso
+            let historialFiltrado = logs.filter(log => log.details && log.details.action !== 'EDIT_NOTE');
+
+            // Eliminar duplicados por completar pasos del proceso (mantener solo el más específico)
+            historialFiltrado = historialFiltrado.filter((log, index, array) => {
+                // Si es un log de UPDATE_PROCESO, verificar si hay un COMPLETE_PROCESS_STEP cercano
+                if (log.details.action === 'UPDATE_PROCESO') {
+                    const logTime = log.timestamp?.toDate?.() || new Date(log.timestamp);
+
+                    // Buscar si hay un COMPLETE_PROCESS_STEP en un rango de 10 segundos
+                    const hasSpecificStepLog = array.some(otherLog => {
+                        if (otherLog.details.action === 'COMPLETE_PROCESS_STEP') {
+                            const otherTime = otherLog.timestamp?.toDate?.() || new Date(otherLog.timestamp);
+                            const timeDiff = Math.abs(logTime.getTime() - otherTime.getTime());
+                            return timeDiff < 10000; // 10 segundos
+                        }
+                        return false;
+                    });
+
+                    // Si hay un log específico de completar paso, omitir este log general
+                    return !hasSpecificStepLog;
+                }
+                return true; // Mantener todos los otros logs
+            });
+
             setHistorial(historialFiltrado);
+            lastClienteIdRef.current = clienteId;
         } catch (err) {
             console.error("Error al cargar el historial:", err);
-            // Considera añadir un estado de error aquí si lo deseas
+            setError(err.message || 'Error desconocido');
         } finally {
             setLoading(false);
+            isLoadingRef.current = false;
+        }
+    }, [clienteId, historial.length]);
+
+    // Resetear cuando cambie el clienteId
+    useEffect(() => {
+        if (lastClienteIdRef.current !== clienteId) {
+            setHistorial([]);
+            lastClienteIdRef.current = null;
         }
     }, [clienteId]);
 
@@ -121,6 +179,7 @@ export const useHistorialCliente = (clienteId) => {
     return {
         historial: processedHistorial, // Devolvemos el historial ya procesado
         loading,
+        error,
         fetchHistorial // Lo devolvemos para poder recargar si es necesario
     };
 };
