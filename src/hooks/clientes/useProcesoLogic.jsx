@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
-import { generarActividadProceso, updateClienteProceso, anularCierreProceso, getClienteProceso } from "../../services/clienteService";
+import { generarActividadProceso, updateClienteProceso, updateClienteProcesoUnified, anularCierreProceso, getClienteProceso } from "../../services/clienteService";
 import { createNotification } from "../../services/notificationService";
 import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { useAuth } from '../../context/AuthContext';
@@ -550,7 +550,9 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
             };
 
             if (cambiosDetectados.length > 0) {
-                await updateClienteProceso(cliente.id, procesoConActividad, auditMessage, auditDetails);
+                // PRUEBA: Usar el nuevo sistema unificado de auditoría
+                console.log('🔄 Usando nuevo sistema de auditoría unificado');
+                await updateClienteProcesoUnified(cliente.id, procesoConActividad, auditMessage, auditDetails);
             }
 
             toast.success("Proceso del cliente actualizado con éxito.");

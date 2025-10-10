@@ -116,8 +116,18 @@ export const useHistorialCliente = (clienteId, options = {}) => {
             setLoading(true);
             setError(null);
 
-            // Usar la función original que funciona
+            // TEMPORAL: Usar función original hasta que se cree el índice de Firebase
             const logs = await getAuditLogsForCliente(clienteId);
+
+            console.log('📊 Historial obtenido (temporal):', {
+                totalLogs: logs.length,
+                muestraAcciones: logs.slice(0, 3).map(log => ({
+                    id: log.id?.substring(0, 8),
+                    action: log.details?.action,
+                    scenario: log.details?.scenario,
+                    hasMessage: !!log.message
+                }))
+            });
 
             // Filtrar EDIT_NOTE y duplicados de proceso
             let historialFiltrado = logs.filter(log => log.details && log.details.action !== 'EDIT_NOTE');

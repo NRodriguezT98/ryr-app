@@ -1,6 +1,6 @@
 import { useReducer, useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from "react-router-dom";
-import toast from 'react-hot-toast';
+import { useModernToast } from '../useModernToast.jsx';
 import { validateCliente, validateFinancialStep, validateEditarCliente } from '../../utils/validation.js';
 import { addClienteAndAssignVivienda, updateCliente } from "../../services/clienteService";
 import { getAbonos } from '../../services/dataService.js';
@@ -86,6 +86,7 @@ function formReducer(state, action) {
 export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveSuccess, modo = 'editar') => {
     const navigate = useNavigate();
     const { clientes: todosLosClientes, viviendas, proyectos } = useData();
+    const toast = useModernToast();
     const [step, setStep] = useState(1);
     const [formData, dispatch] = useReducer(formReducer, blankInitialState);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,21 +132,27 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
         const cedula = formData.datosCliente.cedula;
         if (!cedula) {
-            toast.error("Se requiere un número de cédula para subir el archivo.");
+            toast.error("Se requiere un número de cédula para subir el archivo.", {
+                title: "Cédula Requerida"
+            });
             return;
         }
 
         const filePath = `documentos_clientes/${cedula}/${field}-${file.name}`;
 
-        toast.loading('Reemplazando archivo...');
+        const loadingToast = toast.loading('Reemplazando archivo...');
         try {
             const downloadURL = await uploadFile(file, filePath);
             dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field, value: downloadURL } });
-            toast.dismiss();
-            toast.success('¡Archivo reemplazado con éxito!');
+            toast.dismiss(loadingToast);
+            toast.success('¡Archivo reemplazado con éxito!', {
+                title: "¡Archivo Actualizado!"
+            });
         } catch (error) {
-            toast.dismiss();
-            toast.error('No se pudo reemplazar el archivo.');
+            toast.dismiss(loadingToast);
+            toast.error('No se pudo reemplazar el archivo.', {
+                title: "Error de Subida"
+            });
             console.error(error);
         }
     }, [formData.datosCliente.cedula, dispatch]);
@@ -156,22 +163,28 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
 
         const cedula = formData.datosCliente.cedula;
         if (!cedula) {
-            toast.error("Se requiere un número de cédula para subir el archivo.");
+            toast.error("Se requiere un número de cédula para subir el archivo.", {
+                title: "Cédula Requerida"
+            });
             return;
         }
 
         const filePath = `documentos_clientes/${cedula}/${field}-${file.name}`;
 
-        toast.loading('Reemplazando archivo...');
+        const loadingToast = toast.loading('Reemplazando archivo...');
         try {
             const downloadURL = await uploadFile(file, filePath);
             // Usamos el handler que ya existe para campos financieros
             handleFinancialFieldChange(section, field, downloadURL);
-            toast.dismiss();
-            toast.success('¡Archivo reemplazado con éxito!');
+            toast.dismiss(loadingToast);
+            toast.success('¡Archivo reemplazado con éxito!', {
+                title: "¡Archivo Actualizado!"
+            });
         } catch (error) {
-            toast.dismiss();
-            toast.error('No se pudo reemplazar el archivo.');
+            toast.dismiss(loadingToast);
+            toast.error('No se pudo reemplazar el archivo.', {
+                title: "Error de Subida"
+            });
             console.error(error);
         }
     }, [formData.datosCliente.cedula, handleFinancialFieldChange]);
@@ -264,7 +277,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
     const handleNextStep = () => {
         let errors = {};
         if (step === 1 && !formData.viviendaSeleccionada) {
-            toast.error("Debes seleccionar una vivienda para continuar.");
+            toast.error("Debes seleccionar una vivienda para continuar.", {
+                title: "Vivienda Requerida"
+            });
             return;
         }
         if (step === 2) {
@@ -344,7 +359,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     nombreNuevaVivienda: nombreNuevaVivienda
                 });
 
-                toast.success("¡Cliente reactivado con un nuevo proceso!");
+                toast.success("¡Cliente reactivado con un nuevo proceso!", {
+                    title: "¡Cliente Reactivado!"
+                });
                 const clienteNombre = toTitleCase(`${clienteParaActualizar.datosCliente.nombres} ${clienteParaActualizar.datosCliente.apellidos}`);
                 await createNotification('cliente', `El cliente ${clienteNombre} fue reactivado.`, `/clientes/detalle/${clienteAEditar.id}`);
 
@@ -380,7 +397,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                     cambios: cambiosASalvar || [] // Usamos el argumento que recibe la función, o array vacío si no hay cambios
                 });
 
-                toast.success("¡Cliente actualizado con éxito!");
+                toast.success("¡Cliente actualizado con éxito!", {
+                    title: "¡Actualización Exitosa!"
+                });
                 createNotification('cliente', `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`, `/clientes/detalle/${clienteAEditar.id}`);
             } else {
                 if (!formData.viviendaSeleccionada?.id) {
@@ -458,7 +477,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
                 };
 
                 await addClienteAndAssignVivienda(clienteParaGuardar, auditMessage, auditDetails);
-                toast.success("¡Cliente y proceso iniciados con éxito!");
+                toast.success("¡Cliente y proceso iniciados con éxito!", {
+                    title: "¡Cliente Creado!"
+                });
                 const clienteNombre = `${clienteParaGuardar.datosCliente.nombres} ${clienteParaGuardar.datosCliente.apellidos}`.trim();
                 await createNotification('cliente', `Nuevo cliente registrado: ${clienteNombre}`, `/clientes/detalle/${clienteParaGuardar.datosCliente.cedula}`);
             }
@@ -466,7 +487,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
             else navigate('/clientes/listar');
         } catch (error) {
             console.error("Error al guardar el cliente:", error);
-            toast.error("Hubo un error al guardar los datos.");
+            toast.error("Hubo un error al guardar los datos.", {
+                title: "Error de Guardado"
+            });
         } finally {
             setIsSubmitting(false);
             setIsConfirming(false);
@@ -497,7 +520,9 @@ export const useClienteForm = (isEditing = false, clienteAEditar = null, onSaveS
         const totalErrors = { ...clientErrors, ...financialErrors };
         if (Object.keys(totalErrors).length > 0) {
             dispatch({ type: 'SET_ERRORS', payload: totalErrors });
-            toast.error("Por favor, corrige los errores antes de guardar.");
+            toast.error("Por favor, corrige los errores antes de guardar.", {
+                title: "Errores de Validación"
+            });
             return;
         }
         if (isEditing && modo !== 'reactivar') {

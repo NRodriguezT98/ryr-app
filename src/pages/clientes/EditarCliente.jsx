@@ -1,7 +1,7 @@
 // src/pages/clientes/EditarCliente.jsx (CÓDIGO FINAL Y VERIFICADO)
 import React, { Fragment } from 'react';
 import { Tooltip } from 'react-tooltip';
-import { useClienteForm } from '../../hooks/clientes/v2/useClienteForm';
+import { useClienteForm } from '../../hooks/clientes/useClienteForm';
 import Modal from '../../components/Modal';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
 import FormularioCliente from './FormularioCliente';
