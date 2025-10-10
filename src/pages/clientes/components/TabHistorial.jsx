@@ -4,6 +4,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAuth } from '../../../context/AuthContext';
 import { useHistorialCliente } from '../../../hooks/clientes/useHistorialCliente';
+import { interpretAuditForClientHistory } from '../../../utils/clientHistoryAuditInterpreter';
 import { updateNotaHistorial } from '../../../services/clienteService';
 import { hasFileChanges } from '../../../utils/fileAuditHelper';
 import AnimatedPage from '../../../components/AnimatedPage';
@@ -339,12 +340,51 @@ const EvidenceAccessButton = ({ archivo, tipo, className = "" }) => {
     );
 };
 
-// Componente para renderizar mensaje con iconos embebidos
+// NUEVA función para renderizar mensajes usando el intérprete
+const RenderMessageWithInterpreter = ({ log }) => {
+    // Detectar si es un log nuevo (con estructura unificada) o antiguo (con message)
+    const isNewFormat = log.actionType && log.context && log.actionData;
+
+    console.log('📝 Renderizando log:', {
+        id: log.id?.substring(0, 8),
+        isNewFormat,
+        actionType: log.actionType,
+        hasContext: !!log.context,
+        hasActionData: !!log.actionData,
+        oldMessage: log.message?.substring(0, 50) + (log.message?.length > 50 ? '...' : ''),
+        scenario: log.details?.scenario
+    });
+
+    if (isNewFormat) {
+        // Usar el intérprete especializado para generar mensaje detallado
+        try {
+            const detailedMessage = interpretAuditForClientHistory(log);
+            console.log('✨ Mensaje interpretado:', detailedMessage.substring(0, 100) + '...');
+            return <span className="text-gray-800 dark:text-gray-200">{detailedMessage}</span>;
+        } catch (error) {
+            console.error('Error interpretando mensaje:', error);
+            return <span className="text-red-600">Error interpretando mensaje</span>;
+        }
+    } else {
+        // Formato anterior: usar la función existente
+        return <RenderMessageWithIcons log={log} />;
+    }
+};
+
+// Componente original para renderizar mensaje con iconos embebidos (mantener para compatibilidad)
 const RenderMessageWithIcons = ({ log }) => {
     const { displayMessage, details } = log;
 
+    // Determinar el tipo de acción (nuevo sistema usa scenario, viejo usa action)
+    const actionType = details?.action ||
+        (details?.scenario === 'FIRST_COMPLETION' ? 'COMPLETE_PROCESS_STEP' :
+            details?.scenario === 'REOPEN_WITH_CHANGES' ? 'REOPEN_PROCESS_STEP_COMPLETE' :
+                details?.scenario === 'DATE_CHANGE' ? 'CHANGE_COMPLETION_DATE' :
+                    details?.scenario === 'EVIDENCE_CHANGE' ? 'CHANGE_STEP_EVIDENCE' :
+                        null);
+
     // Para reapertura completa
-    if (details?.action === 'REOPEN_PROCESS_STEP_COMPLETE') {
+    if (actionType === 'REOPEN_PROCESS_STEP_COMPLETE') {
         const lines = displayMessage.split('\n');
         return (
             <div className="space-y-2">
@@ -430,7 +470,7 @@ const RenderMessageWithIcons = ({ log }) => {
     }
 
     // Para cambio de fecha
-    if (details?.action === 'CHANGE_COMPLETION_DATE') {
+    if (actionType === 'CHANGE_COMPLETION_DATE') {
         const lines = displayMessage.split('\n');
         return (
             <div className="space-y-2">
@@ -467,7 +507,7 @@ const RenderMessageWithIcons = ({ log }) => {
     }
 
     // Para cambio de evidencias
-    if (details?.action === 'CHANGE_STEP_EVIDENCE') {
+    if (actionType === 'CHANGE_STEP_EVIDENCE') {
         const lines = displayMessage.split('\n');
         return (
             <div className="space-y-2">
@@ -495,7 +535,7 @@ const RenderMessageWithIcons = ({ log }) => {
     }
 
     // Para pasos completados
-    if (details?.action === 'COMPLETE_PROCESS_STEP') {
+    if (actionType === 'COMPLETE_PROCESS_STEP') {
         const lines = displayMessage.split('\n');
         return (
             <div className="space-y-2">
@@ -523,14 +563,36 @@ const RenderMessageWithIcons = ({ log }) => {
 // Sub-componente para renderizar cada item del historial
 const LogItem = ({ log, onEdit, onViewFileAudit, isReadOnly }) => {
     const { userData } = useAuth();
-    const isNota = log.details?.action === 'ADD_NOTE';
+
+    // Determinar el tipo de acción (compatible con nuevo formato unificado y sistema anterior)
+    let actionType = log.actionType; // Nuevo formato unificado
+
+    if (!actionType) {
+        // Sistema anterior: mapear desde scenario o action
+        actionType = log.details?.action ||
+            (log.details?.scenario === 'FIRST_COMPLETION' ? 'COMPLETE_PROCESS_STEP' :
+                log.details?.scenario === 'REOPEN_WITH_CHANGES' ? 'REOPEN_PROCESS_STEP_COMPLETE' :
+                    log.details?.scenario === 'DATE_CHANGE' ? 'CHANGE_COMPLETION_DATE' :
+                        log.details?.scenario === 'EVIDENCE_CHANGE' ? 'CHANGE_STEP_EVIDENCE' :
+                            log.details?.action);
+    }
+
+    console.log('🎨 Determinando estilo para LogItem:', {
+        id: log.id?.substring(0, 8),
+        actionType,
+        isNewFormat: !!log.actionType,
+        scenario: log.details?.scenario,
+        module: log.module
+    });
+
+    const isNota = actionType === 'ADD_NOTE';
     const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date();
     const formattedDate = format(timestamp, "d 'de' MMMM, yyyy 'a las' h:mm a", { locale: es });
-    const icon = getActionIcon(log.details?.action);
+    const icon = getActionIcon(actionType);
 
     const puedeEditar = !isReadOnly && isNota && log.userName === `${userData.nombres} ${userData.apellidos}`;
     const tieneArchivos = hasFileChanges(log);
-    const cambiosProceso = log.details?.action === 'UPDATE_PROCESO' ? log.details.cambios : [];
+    const cambiosProceso = actionType === 'UPDATE_PROCESO' ? log.details.cambios : [];
 
     const renderCambiosProceso = () => {
         if (!cambiosProceso || cambiosProceso.length === 0) return null;
@@ -562,12 +624,12 @@ const LogItem = ({ log, onEdit, onViewFileAudit, isReadOnly }) => {
             animate={{ opacity: 1, y: 0 }}
             className="mb-10 ms-6"
         >
-            <span className={`absolute flex items-center justify-center ${log.details?.action === 'COMPLETE_PROCESS_STEP'
-                    ? 'w-10 h-10 ring-4 ring-emerald-200 dark:ring-emerald-800'
-                    : 'w-8 h-8 ring-4 ring-white dark:ring-gray-800'
-                } rounded-full -start-4 ${getActionColor(log.details?.action)}`}>
+            <span className={`absolute flex items-center justify-center ${actionType === 'COMPLETE_PROCESS_STEP'
+                ? 'w-10 h-10 ring-4 ring-emerald-200 dark:ring-emerald-800'
+                : 'w-8 h-8 ring-4 ring-white dark:ring-gray-800'
+                } rounded-full -start-4 ${getActionColor(actionType)}`}>
                 {icon}
-                {log.details?.action === 'COMPLETE_PROCESS_STEP' && (
+                {actionType === 'COMPLETE_PROCESS_STEP' && (
                     <IconosSVG.CheckCircle className="w-3 h-3 text-white absolute -bottom-1 -right-1 bg-emerald-500 rounded-full p-0.5" />
                 )}
             </span>
@@ -613,7 +675,7 @@ const LogItem = ({ log, onEdit, onViewFileAudit, isReadOnly }) => {
                     </div>
 
                     <div className={`pr-8 ${getMessageStyling(log.details?.action)}`}>
-                        <RenderMessageWithIcons log={log} />
+                        <RenderMessageWithInterpreter log={log} />
                     </div>
                     {renderCambiosProceso()}
                 </div>
@@ -704,20 +766,10 @@ const TabHistorial = forwardRef(({ cliente, isReadOnly }, ref) => {
 
     const puedeAnadirNotas = cliente.status === 'activo' || cliente.status === 'enProcesoDeRenuncia';
 
-    // Debug temporal
-    console.log('🔥 TabHistorial SVG renderizándose:', { cliente: cliente?.id, historial: historial?.length });
-
     return (
-        <AnimatedPage>
-            <div className="bg-red-100 border-2 border-red-500 p-6 rounded-lg mb-6 shadow-lg">
-                <h3 className="text-xl font-bold text-red-800 mb-3">🚨 BANNER DE PRUEBA - TabHistorial con SVG Embebidos</h3>
-                <p className="text-sm text-red-700 font-medium">Esta versión usa iconos SVG directamente embebidos en lugar de Lucide React.</p>
-                <p className="text-xs text-red-600 mt-2">Si ves este mensaje, el componente SVG está funcionando.</p>
-            </div>
-
-            {puedeAnadirNotas && (
-                <FormularioNuevaNota clienteId={cliente.id} onNotaAgregada={fetchHistorial} />
-            )}
+        <AnimatedPage>            {puedeAnadirNotas && (
+            <FormularioNuevaNota clienteId={cliente.id} onNotaAgregada={fetchHistorial} />
+        )}
 
             {historial.length > 0 ? (
                 <div className="relative">

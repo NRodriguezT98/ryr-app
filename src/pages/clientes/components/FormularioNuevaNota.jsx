@@ -3,29 +3,51 @@ import React, { useState } from 'react';
 import { MessageSquarePlus, Loader } from 'lucide-react';
 import { addNotaToHistorial } from '../../../services/clienteService';
 import { useAuth } from '../../../context/AuthContext';
-import toast from 'react-hot-toast';
+import { useModernToast } from '../../../hooks/useModernToast.jsx';
 import Button from '../../../components/Button';
 
 const FormularioNuevaNota = ({ clienteId, onNotaAgregada }) => {
     const [nota, setNota] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { userData } = useAuth();
+    const toast = useModernToast();
     const userName = `${userData.nombres} ${userData.apellidos}`;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!nota.trim()) {
-            toast.error("La nota no puede estar vacía.");
+            toast.warning("La nota no puede estar vacía", {
+                title: 'Campo Requerido'
+            });
             return;
         }
+
         setIsSubmitting(true);
         try {
+            const loadingToast = toast.loading('Guardando nota en el historial...');
+
             await addNotaToHistorial(clienteId, nota, userName);
-            toast.success("Nota agregada al historial.");
+
+            toast.dismiss(loadingToast);
+            toast.successWithAction(
+                "Nota agregada al historial exitosamente",
+                "Ver historial",
+                () => {
+                    // Acción para ver historial - puedes implementar esto después
+                    console.log("Ver historial clicked");
+                },
+                {
+                    title: 'Nota Guardada',
+                    actionIcon: 'view'
+                }
+            );
+
             setNota('');
-            onNotaAgregada(); // Avisamos al padre para que recargue el historial
+            if (onNotaAgregada) onNotaAgregada();
         } catch (error) {
-            toast.error("No se pudo agregar la nota.");
+            toast.error("No se pudo agregar la nota al historial", {
+                title: 'Error al Guardar'
+            });
             console.error(error);
         } finally {
             setIsSubmitting(false);

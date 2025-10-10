@@ -100,16 +100,20 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <Toaster
         position="top-right"
         containerStyle={{
-          top: 80,
+          top: 85,
+          right: 20,
           zIndex: 9999,
         }}
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#363636',
-            color: '#fff',
+            background: 'transparent',
+            boxShadow: 'none',
+            padding: 0,
+            margin: 0,
           },
         }}
+        containerClassName="!top-20 !right-4"
       />
       <AuthProvider>
         <DataProvider>

@@ -71,7 +71,9 @@ const DashboardPage = () => {
                                 renuncias={renuncias}
                             />
                         </div>
-                    </div>                    {/* Footer del Dashboard */}
+                    </div>
+
+                    {/* Footer del Dashboard */}
                     <div className="text-center py-6">
                         <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
                             <Sparkles size={16} />

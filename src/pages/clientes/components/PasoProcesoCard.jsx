@@ -27,7 +27,7 @@ import {
     Target
 } from 'lucide-react';
 import FileUpload from '../../../components/FileUpload';
-import toast from 'react-hot-toast';
+import { useModernToast } from '../../../hooks/useModernToast.jsx';
 import { getTodayString, formatDisplayDate, parseDateAsUTC, normalizeDate, formatCurrency } from '../../../utils/textFormatters';
 import { uploadFile } from "../../../services/fileService";
 import { usePermissions } from '../../../hooks/auth/usePermissions';
@@ -37,6 +37,7 @@ const ModernEvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId,
     const evidenciaData = evidencia.data || {};
     const fileInputRef = useRef(null);
     const [isUploading, setIsUploading] = useState(false);
+    const toast = useModernToast();
 
     const generateUniqueFilePath = (fileName) => {
         const timestamp = Date.now();
@@ -50,7 +51,9 @@ const ModernEvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId,
 
     const handleRemove = () => {
         if (esHito && isPermanentlyLocked) {
-            toast.error("Las evidencias de un hito cerrado permanentemente no se pueden eliminar.");
+            toast.error("Las evidencias de un hito cerrado permanentemente no se pueden eliminar.", {
+                title: "Acción No Permitida"
+            });
             return;
         }
         onUpdateEvidencia(pasoKey, evidencia.id, null);
@@ -61,18 +64,22 @@ const ModernEvidenciaItem = ({ evidencia, pasoKey, onUpdateEvidencia, clienteId,
         if (!file) return;
 
         setIsUploading(true);
-        toast.loading('Reemplazando archivo...');
+        const loadingToast = toast.loading('Reemplazando archivo...');
 
         try {
             const filePath = generateUniqueFilePath(file.name);
             const downloadURL = await uploadFile(file, filePath);
 
             onUpdateEvidencia(pasoKey, evidencia.id, downloadURL);
-            toast.dismiss();
-            toast.success('¡Archivo reemplazado con éxito!');
+            toast.dismiss(loadingToast);
+            toast.success('¡Archivo reemplazado con éxito!', {
+                title: "¡Archivo Actualizado!"
+            });
         } catch (error) {
-            toast.dismiss();
-            toast.error("Error al reemplazar el archivo.");
+            toast.dismiss(loadingToast);
+            toast.error("Error al reemplazar el archivo.", {
+                title: "Error de Reemplazo"
+            });
             console.error("Error en handleFileChangeForReplace:", error);
         } finally {
             setIsUploading(false);

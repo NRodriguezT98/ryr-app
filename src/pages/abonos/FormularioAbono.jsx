@@ -1,7 +1,7 @@
 import React from "react";
 import { NumericFormat } from "react-number-format";
 import { useForm } from "../../hooks/useForm.jsx";
-import toast from 'react-hot-toast'; // <-- 1. Importamos la nueva librería
+import { useModernToast } from '../../hooks/useModernToast.jsx';
 import { validateAbono } from "./abonoValidation.js";
 import { addAbono } from "../../utils/storage";
 
@@ -12,7 +12,7 @@ const INITIAL_ABONO_STATE = {
 };
 
 const FormularioAbono = ({ vivienda, resumenPago, onAbonoRegistrado }) => {
-    // 2. Eliminamos la llamada a useToast()
+    const toast = useModernToast();
 
     const initialState = {
         monto: "",
@@ -31,7 +31,9 @@ const FormularioAbono = ({ vivienda, resumenPago, onAbonoRegistrado }) => {
         };
 
         addAbono(nuevoAbono);
-        toast.success("Abono registrado exitosamente."); // <-- 3. Usamos la nueva sintaxis
+        toast.success("Abono registrado exitosamente.", {
+            title: "¡Abono Registrado!"
+        });
         onAbonoRegistrado();
         resetForm();
     };

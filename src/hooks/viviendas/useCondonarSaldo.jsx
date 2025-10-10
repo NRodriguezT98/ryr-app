@@ -1,7 +1,7 @@
 // src/hooks/viviendas/useCondonarSaldo.jsx (VERSIÓN FINAL)
 import { useMemo } from 'react';
 import { useForm } from '../useForm';
-import toast from 'react-hot-toast';
+import { useModernToast } from '../useModernToast.jsx';
 import { condonarSaldo } from "../../services/abonoService";
 import { useAuth } from '../../context/AuthContext';
 import { getTodayString, parseDateAsUTC, formatDisplayDate } from '../../utils/textFormatters';
@@ -9,6 +9,7 @@ import { getTodayString, parseDateAsUTC, formatDisplayDate } from '../../utils/t
 export const useCondonarSaldo = (fuenteData, onSave, onClose) => {
     const { user } = useAuth();
     const userName = user?.displayName || 'Sistema';
+    const toast = useModernToast();
 
     const initialState = useMemo(() => ({
         motivo: '',
@@ -48,7 +49,9 @@ export const useCondonarSaldo = (fuenteData, onSave, onClose) => {
         },
         onSubmit: async (data) => {
             if (!fuenteData || fuenteData.saldoPendiente <= 0) {
-                toast.error("No hay saldo pendiente para condonar.");
+                toast.error("No hay saldo pendiente para condonar.", {
+                    title: "Sin Saldo Pendiente"
+                });
                 return;
             }
 
@@ -66,11 +69,15 @@ export const useCondonarSaldo = (fuenteData, onSave, onClose) => {
 
             try {
                 await condonarSaldo(datosCondonacion, userName);
-                toast.success('Saldo condonado con éxito.');
+                toast.success('Saldo condonado con éxito.', {
+                    title: "¡Condonación Exitosa!"
+                });
                 onSave();
                 onClose();
             } catch (error) {
-                toast.error('No se pudo registrar la condonación.');
+                toast.error('No se pudo registrar la condonación.', {
+                    title: "Error de Condonación"
+                });
                 console.error("Error al condonar saldo:", error);
             }
         },

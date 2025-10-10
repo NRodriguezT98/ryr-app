@@ -4,6 +4,7 @@ import { toTitleCase, formatDisplayDate, getTodayString } from '../utils/textFor
 import { PROCESO_CONFIG } from '../utils/procesoConfig.js';
 import { DOCUMENTACION_CONFIG } from '../utils/documentacionConfig.js';
 import { createAuditLog, createAuditLogWithBuilder } from './auditService';
+import { createClientAuditLog, ACTION_TYPES } from './unifiedAuditService';
 import { deleteFile } from './fileService';
 
 // Funciones helper para generar mensajes de auditoría específicos
@@ -879,6 +880,163 @@ export const reabrirPasoProceso = async (clienteId, pasoKey, motivoReapertura) =
     return procesoActualizado;
 };
 
+// NUEVA FUNCIÓN CON SISTEMA UNIFICADO
+export const updateClienteProcesoUnified = async (clienteId, nuevoProceso, auditMessage, auditDetails) => {
+    const clienteRef = doc(db, "clientes", String(clienteId));
+
+    // Obtener el estado original del cliente para comparar el proceso
+    const clienteOriginalSnap = await getDoc(clienteRef);
+    const clienteOriginal = clienteOriginalSnap.exists() ? clienteOriginalSnap.data() : {};
+    const procesoOriginal = clienteOriginal.proceso || {};
+
+    // Actualizar el documento
+    await updateDoc(clienteRef, {
+        proceso: nuevoProceso
+    });
+
+    // Preparar datos contextuales para audit
+    const clienteData = {
+        id: clienteId,
+        nombres: clienteOriginal.datosCliente?.nombres,
+        apellidos: clienteOriginal.datosCliente?.apellidos,
+        nombre: toTitleCase(`${clienteOriginal.datosCliente?.nombres} ${clienteOriginal.datosCliente?.apellidos}`)
+    };
+
+    // Obtener datos de vivienda y proyecto si existen
+    let viviendaData = {};
+    let proyectoData = {};
+
+    if (clienteOriginal.viviendaId) {
+        const viviendaRef = doc(db, "viviendas", String(clienteOriginal.viviendaId));
+        const viviendaSnap = await getDoc(viviendaRef);
+        if (viviendaSnap.exists()) {
+            viviendaData = viviendaSnap.data();
+
+            if (viviendaData.proyectoId) {
+                const proyectoRef = doc(db, "proyectos", String(viviendaData.proyectoId));
+                const proyectoSnap = await getDoc(proyectoRef);
+                if (proyectoSnap.exists()) {
+                    proyectoData = proyectoSnap.data();
+                }
+            }
+        }
+    }
+
+    // Revisar cada paso del proceso para detectar cambios
+    let stepCompletionLogged = false;
+
+    for (const pasoConfig of PROCESO_CONFIG) {
+        const key = pasoConfig.key;
+        const pasoOriginalData = procesoOriginal[key] || {};
+        const pasoActualData = nuevoProceso[key] || {};
+        const pasoNombre = pasoConfig.label.substring(pasoConfig.label.indexOf('.') + 1).trim();
+
+        // Verificar si hubo algún cambio en este paso
+        const huboComplecion = !pasoOriginalData.completado && pasoActualData.completado;
+        const huboReapertura = pasoOriginalData.completado && !pasoActualData.completado;
+        const huboCambioFecha = pasoOriginalData.completado && pasoActualData.completado &&
+            pasoOriginalData.fecha !== pasoActualData.fecha;
+        const huboCambioEvidencias = pasoOriginalData.completado && pasoActualData.completado &&
+            JSON.stringify(pasoOriginalData.evidencias || {}) !== JSON.stringify(pasoActualData.evidencias || {});
+
+        // Si no hay cambios, continuar al siguiente paso
+        if (!huboComplecion && !huboReapertura && !huboCambioFecha && !huboCambioEvidencias) {
+            continue;
+        }
+
+        // Mapear evidencias para el audit log
+        const mapEvidencias = (evidencias) => {
+            if (!evidencias) return [];
+            return Object.entries(evidencias).map(([id, evidencia]) => ({
+                id,
+                nombre: obtenerNombreEvidencia(id, evidencia, pasoConfig),
+                displayName: evidencia.displayName || evidencia.nombre,
+                tipo: evidencia.tipo || 'archivo',
+                url: evidencia.url
+            }));
+        };
+
+        // Determinar el escenario y crear audit log con estructura unificada
+        const tieneMetadatosReapertura = pasoActualData.fechaReapertura || pasoActualData.motivoReapertura || pasoActualData.estadoAnterior;
+
+        let actionType;
+        let actionData = {
+            pasoId: key,
+            pasoNombre: pasoNombre,
+            procesoId: pasoConfig.proceso || 'general',
+            procesoNombre: 'Proceso de Cliente',
+            fechaComplecion: pasoActualData.fecha,
+            evidenciasAntes: mapEvidencias(pasoOriginalData.evidencias),
+            evidenciasDespues: mapEvidencias(pasoActualData.evidencias),
+            esReComplecion: false,
+            esPrimeraComplecion: false,
+            fechaAnterior: pasoOriginalData.fecha,
+            cambioSoloFecha: false,
+            cambioSoloEvidencias: false
+        };
+
+        if (huboComplecion) {
+            // Escenario: Completado por primera vez o re-completado
+            const esReCompletado = pasoActualData.estadoAnterior && pasoActualData.fechaReapertura;
+
+            actionType = ACTION_TYPES.CLIENTES.COMPLETE_PROCESS_STEP;
+            actionData.esReComplecion = esReCompletado;
+            actionData.esPrimeraComplecion = !esReCompletado;
+
+            if (esReCompletado) {
+                actionData.motivoReapertura = pasoActualData.motivoReapertura;
+                actionData.fechaReapertura = pasoActualData.fechaReapertura;
+                actionData.estadoAnterior = pasoActualData.estadoAnterior;
+            }
+
+        } else if (huboReapertura) {
+            actionType = ACTION_TYPES.CLIENTES.REOPEN_PROCESS_STEP;
+
+        } else if (huboCambioFecha && !huboCambioEvidencias) {
+            actionType = ACTION_TYPES.CLIENTES.CHANGE_COMPLETION_DATE;
+            actionData.cambioSoloFecha = true;
+
+        } else if (huboCambioEvidencias && !huboCambioFecha) {
+            actionType = ACTION_TYPES.CLIENTES.CHANGE_STEP_EVIDENCE;
+            actionData.cambioSoloEvidencias = true;
+
+        } else {
+            // Cambios múltiples en paso completado
+            actionType = ACTION_TYPES.CLIENTES.COMPLETE_PROCESS_STEP;
+            actionData.esReComplecion = true;
+        }
+
+        // Crear el audit log con estructura unificada
+        await createClientAuditLog(
+            actionType,
+            clienteData,
+            {
+                viviendaId: clienteOriginal.viviendaId,
+                proyectoId: proyectoData.id,
+                vivienda: {
+                    id: viviendaData.id,
+                    manzana: viviendaData.manzana,
+                    numeroCasa: viviendaData.numeroCasa,
+                    proyecto: proyectoData.nombre
+                },
+                proyecto: {
+                    id: proyectoData.id,
+                    nombre: proyectoData.nombre
+                },
+                actionData: actionData
+            }
+        );
+
+        stepCompletionLogged = true;
+    }
+
+    // Solo crear log general si NO se completó ningún paso (evitar duplicados)
+    if (auditMessage && auditDetails && !stepCompletionLogged) {
+        await createAuditLog(auditMessage, auditDetails);
+    }
+};
+
+// FUNCIÓN ORIGINAL (mantener por compatibilidad)
 export const updateClienteProceso = async (clienteId, nuevoProceso, auditMessage, auditDetails) => {
     const clienteRef = doc(db, "clientes", String(clienteId));
 

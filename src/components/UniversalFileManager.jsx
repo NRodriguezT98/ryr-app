@@ -12,7 +12,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import { uploadFile } from '../services/fileService';
-import toast from 'react-hot-toast';
+import { useModernToast } from '../hooks/useModernToast.jsx';
 
 /**
  * Componente universal para manejo de archivos
@@ -60,6 +60,7 @@ const UniversalFileManager = ({
     const [deleting, setDeleting] = useState(false);
     const fileInputRef = useRef(null);
     const replaceInputRef = useRef(null);
+    const toast = useModernToast();
 
     // Estados derivados
     const hasFile = Boolean(currentFileUrl);
@@ -87,7 +88,9 @@ const UniversalFileManager = ({
     const handleFileUpload = async (file, isReplace = false) => {
         const validation = validateFile(file);
         if (!validation.valid) {
-            toast.error(validation.error);
+            toast.error(validation.error, {
+                title: "Archivo Inválido"
+            });
             return;
         }
 
@@ -114,12 +117,16 @@ const UniversalFileManager = ({
             setUploadComplete(true);
             setTimeout(() => {
                 onUploadSuccess?.(downloadURL);
-                toast.success(isReplace ? '¡Archivo reemplazado exitosamente!' : '¡Archivo subido exitosamente!');
+                toast.success(isReplace ? '¡Archivo reemplazado exitosamente!' : '¡Archivo subido exitosamente!', {
+                    title: isReplace ? "¡Archivo Actualizado!" : "¡Subida Exitosa!"
+                });
                 setUploadComplete(false);
             }, 800);
         } catch (error) {
             console.error('Error al subir archivo:', error);
-            toast.error(isReplace ? 'Error al reemplazar el archivo' : 'Error al subir el archivo');
+            toast.error(isReplace ? 'Error al reemplazar el archivo' : 'Error al subir el archivo', {
+                title: isReplace ? "Error de Reemplazo" : "Error de Subida"
+            });
             setUploadComplete(false);
         } finally {
             setState(false);
@@ -147,7 +154,9 @@ const UniversalFileManager = ({
         try {
             await onDelete();
         } catch (error) {
-            toast.error('Error al eliminar el archivo');
+            toast.error('Error al eliminar el archivo', {
+                title: "Error de Eliminación"
+            });
         } finally {
             setDeleting(false);
         }

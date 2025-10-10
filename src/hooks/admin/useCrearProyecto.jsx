@@ -4,7 +4,7 @@ import { useForm } from '../useForm';
 import { useData } from '../../context/DataContext';
 import { validateProyecto } from '../../utils/validation';
 import { addProyecto } from "../../services/proyectoService";
-import toast from 'react-hot-toast';
+import { useModernToast } from '../useModernToast.jsx';
 import { useNavigate } from 'react-router-dom';
 
 const initialState = {
@@ -14,6 +14,7 @@ const initialState = {
 export const useCrearProyecto = () => {
     const navigate = useNavigate();
     const { proyectos, recargarDatos } = useData();
+    const toast = useModernToast();
 
     const {
         formData,
@@ -27,12 +28,16 @@ export const useCrearProyecto = () => {
         onSubmit: async (data) => {
             try {
                 await addProyecto(data);
-                toast.success('¡Proyecto creado con éxito!');
+                toast.success('¡Proyecto creado con éxito!', {
+                    title: "¡Proyecto Creado!"
+                });
                 await recargarDatos(); // Actualizamos la lista de proyectos en la app
                 navigate('/admin/proyectos'); // Navegamos a la lista (la crearemos después)
             } catch (error) {
                 console.error("Error al crear el proyecto:", error);
-                toast.error('No se pudo crear el proyecto.');
+                toast.error('No se pudo crear el proyecto.', {
+                    title: "Error de Creación"
+                });
             }
         },
     });

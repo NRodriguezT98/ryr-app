@@ -3,12 +3,13 @@ import { NumericFormat } from 'react-number-format';
 import { useForm } from '../../hooks/useForm.jsx';
 import { validateAbono } from './abonoValidation.js';
 import { updateAbono } from "../../services/abonoService";
-import toast from 'react-hot-toast';
+import { useModernToast } from '../../hooks/useModernToast.jsx';
 
 // Helper para obtener la fecha de hoy en formato yyyy-MM-dd
 const getTodayString = () => new Date().toISOString().split('T')[0];
 
 const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
+    const toast = useModernToast();
 
     const initialState = useMemo(() => ({
         monto: abonoAEditar?.monto?.toString() || '',
@@ -41,11 +42,15 @@ const EditarAbonoModal = ({ isOpen, onClose, onSave, abonoAEditar }) => {
                 // Pasamos el ID, los datos nuevos, y el abono original completo
                 // para que la transacción pueda calcular la diferencia.
                 await updateAbono(abonoAEditar.id, datosParaGuardar, abonoAEditar);
-                toast.success('Abono actualizado correctamente.');
+                toast.success('Abono actualizado correctamente.', {
+                    title: "¡Actualización Exitosa!"
+                });
                 onSave(); // Recarga los datos en la lista principal
                 onClose(); // Cierra el modal
             } catch (error) {
-                toast.error('Error al actualizar el abono.');
+                toast.error('Error al actualizar el abono.', {
+                    title: "Error de Actualización"
+                });
                 console.error("Error al actualizar abono:", error);
             }
         },

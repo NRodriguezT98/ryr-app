@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, Loader, CheckCircle2, FileText } from 'lucide-react';
 import { uploadFile } from "../services/fileService";;
-import toast from 'react-hot-toast';
+import { useModernToast } from '../hooks/useModernToast.jsx';
 
 const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false, disabled = false }) => {
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [uploadComplete, setUploadComplete] = useState(false);
     const fileInputRef = useRef(null);
+    const toast = useModernToast();
 
     const handleFileChange = async (event) => {
         const file = event.target.files[0];
@@ -32,16 +33,21 @@ const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false, disab
             }
             const downloadURL = await uploadFile(file, finalPath, (p) => setProgress(p));
 
-            // Simular un breve momento de éxito antes de llamar onUploadSuccess
+            // Mostrar el toast primero, luego actualizar el estado
+            toast.success('¡Archivo subido con éxito!', {
+                title: "¡Subida Exitosa!"
+            });
+
             setUploadComplete(true);
             setTimeout(() => {
                 onUploadSuccess(downloadURL);
-                toast.success('¡Archivo subido con éxito!');
                 setUploadComplete(false);
             }, 800);
         } catch (error) {
             console.error('Error al subir archivo:', error);
-            toast.error("Error al subir el archivo.");
+            toast.error("Error al subir el archivo.", {
+                title: "Error de Subida"
+            });
             setUploadComplete(false);
         } finally {
             setUploading(false);
@@ -64,8 +70,8 @@ const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false, disab
                     onClick={handleSelectFileClick}
                     disabled={uploading || disabled}
                     className={`text-sm font-semibold transition-colors duration-200 ${disabled ? 'text-gray-400 cursor-not-allowed' :
-                            uploading ? 'text-orange-600 dark:text-orange-400' :
-                                'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline'
+                        uploading ? 'text-orange-600 dark:text-orange-400' :
+                            'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline'
                         }`}
                 >
                     {uploading ? (
@@ -96,12 +102,12 @@ const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false, disab
     return (
         <div>
             <div className={`w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center p-4 relative transition-all duration-300 ${disabled
-                    ? 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 cursor-not-allowed'
-                    : uploading
-                        ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : uploadComplete
-                            ? 'border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-900/20'
-                            : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-gray-400 dark:hover:border-gray-500'
+                ? 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 cursor-not-allowed'
+                : uploading
+                    ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    : uploadComplete
+                        ? 'border-green-400 dark:border-green-500 bg-green-50 dark:bg-green-900/20'
+                        : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:border-gray-400 dark:hover:border-gray-500'
                 }`}>
                 {uploading ? (
                     <div className="text-center">

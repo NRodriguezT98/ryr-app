@@ -30,7 +30,7 @@ import ModalConfirmacion from '../../components/ModalConfirmacion';
 import TabInfoGeneralCliente from './components/TabInfoGeneralCliente';
 import TabProcesoCliente from './components/TabProcesoCliente';
 import TabDocumentacionCliente from './components/TabDocumentacionClienteModerno';
-import TabHistorial from './components/TabHistorial';
+import NewTabHistorial from './components/NewTabHistorial';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import ClientPDF from '../../components/pdf/ClientPDF';
 import { usePermissions } from '../../hooks/auth/usePermissions';
@@ -521,10 +521,8 @@ const DetalleClienteModerno = () => {
                                     />
                                 )}
                                 {activeTab === 'historial' && cliente && (
-                                    <TabHistorial
+                                    <NewTabHistorial
                                         cliente={cliente}
-                                        isReadOnly={isReadOnly}
-                                        ref={historialRef}
                                     />
                                 )}
                             </motion.div>

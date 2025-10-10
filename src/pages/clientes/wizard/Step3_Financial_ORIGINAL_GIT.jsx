@@ -6,7 +6,6 @@ import HelpTooltip from '../../../components/HelpTooltip';
 import { formatCurrency } from '../../../utils/textFormatters';
 import { useClienteFinanciero } from '../../../hooks/clientes/useClienteFinanciero';
 import UniversalFileManager from '../../../components/UniversalFileManager';
-import ToggleSwitch from '../../../components/forms/ToggleSwitch';
 import { FileText, XCircle, Lock, Info } from 'lucide-react';
 
 const creditoOptions = [
@@ -57,10 +56,6 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
 
     const handleCheckboxChange = useCallback((e) => {
         dispatch({ type: 'TOGGLE_FINANCIAL_OPTION', payload: { field: e.target.name, value: e.target.checked } });
-    }, [dispatch]);
-
-    const handleToggle = useCallback((field, value) => {
-        dispatch({ type: 'TOGGLE_FINANCIAL_OPTION', payload: { field, value } });
     }, [dispatch]);
 
     const handleDocumentUpload = useCallback((docId, url) => {
@@ -361,14 +356,18 @@ const Step3_Financial = ({ formData, dispatch, errors, handleFinancialFieldChang
                             <label htmlFor="usaValorEscrituraDiferente" className="font-medium text-gray-800 dark:text-gray-200 cursor-pointer">
                                 ¿El valor para la escritura es diferente al valor comercial?
                             </label>
-                            <ToggleSwitch
-                                id="usaValorEscrituraDiferente"
-                                checked={financiero.usaValorEscrituraDiferente || false}
-                                onChange={(e) => handleToggle('usaValorEscrituraDiferente', e.target.checked)}
-                                disabled={isLocked}
-                                color="gray"
-                                size="md"
-                            />
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    id="usaValorEscrituraDiferente"
+                                    name="usaValorEscrituraDiferente"
+                                    checked={financiero.usaValorEscrituraDiferente || false}
+                                    onChange={handleCheckboxChange}
+                                    className="sr-only peer"
+                                    disabled={isLocked}
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
                         </div>
                         {financiero.usaValorEscrituraDiferente && (
                             <div className="mt-4 animate-fade-in">

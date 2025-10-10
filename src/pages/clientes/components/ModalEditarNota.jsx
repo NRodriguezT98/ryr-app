@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import Button from '../../../components/Button';
 import { Edit } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useModernToast } from '../../../hooks/useModernToast.jsx';
 
 const ModalEditarNota = ({ isOpen, onClose, onSave, notaAEditar }) => {
     const [texto, setTexto] = useState('');
+    const toast = useModernToast();
 
     useEffect(() => {
         if (notaAEditar) {
@@ -16,12 +17,16 @@ const ModalEditarNota = ({ isOpen, onClose, onSave, notaAEditar }) => {
 
     const handleSave = () => {
         if (texto.trim().length < 10) {
-            toast.error("La nota debe tener al menos 10 caracteres.");
+            toast.error("La nota debe tener al menos 10 caracteres.", {
+                title: "Nota Muy Corta"
+            });
             return;
         }
         // Comparamos con el texto original que está en details.nota
         if (notaAEditar && texto.trim() === notaAEditar.details?.nota.trim()) {
-            toast.error("No has realizado ningún cambio en la nota.");
+            toast.warning("No has realizado ningún cambio en la nota.", {
+                title: "Sin Cambios"
+            });
             return;
         }
         onSave(texto);
