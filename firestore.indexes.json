@@ -1,0 +1,47 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "audits",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "entities.clienteId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "audits",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "entities.viviendaId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "audits",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "entities.proyectoId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "timestamp",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

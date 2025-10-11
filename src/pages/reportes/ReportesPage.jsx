@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import AnimatedPage from '../../components/AnimatedPage';
 import { BarChart2, FileDown, Inbox, Home, CheckCircle, TrendingUp, Loader2 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import InventarioGeneralPDF from '../../components/pdf/reportes/InventarioGeneralPDF';
-import ViviendasDisponiblesPDF from '../../components/pdf/reportes/ViviendasDisponiblesPDF';
-import CarteraActivaPDF from '../../components/pdf/reportes/CarteraActivaPDF';
-import ViviendasPagadasPDF from '../../components/pdf/reportes/ViviendasPagadasPDF';
+
+// Lazy loading de PDF components (muy pesados)
+const PDFDownloadLink = lazy(() => import('@react-pdf/renderer').then(module => ({ default: module.PDFDownloadLink })));
+const InventarioGeneralPDF = lazy(() => import('../../components/pdf/reportes/InventarioGeneralPDF'));
+const ViviendasDisponiblesPDF = lazy(() => import('../../components/pdf/reportes/ViviendasDisponiblesPDF'));
+const CarteraActivaPDF = lazy(() => import('../../components/pdf/reportes/CarteraActivaPDF'));
+const ViviendasPagadasPDF = lazy(() => import('../../components/pdf/reportes/ViviendasPagadasPDF'));
 
 const ReportCard = ({ icon, title, description, disabled, children }) => (
     <div className={`bg-white dark:bg-gray-800 p-6 rounded-xl border dark:border-gray-700 shadow-sm ${disabled ? 'opacity-50' : ''}`}>
@@ -86,12 +88,21 @@ const ReportesPage = () => {
                         description="Un resumen completo de todas las propiedades, su estado y valor total del inventario."
                     >
                         {reportToGenerate === 'inventarioGeneral' ? (
-                            <InteractivePdfLink
-                                document={<InventarioGeneralPDF viviendas={viviendas} />}
-                                fileName="Reporte_General_Inventario.pdf"
-                                baseClassName="bg-blue-600 text-white hover:bg-blue-700"
-                                readyClassName="bg-green-600 hover:bg-green-700"
-                            />
+                            <Suspense fallback={
+                                <div className="w-full text-center block font-semibold px-5 py-2.5 rounded-lg shadow-sm bg-blue-600 text-white opacity-70">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Cargando generador...
+                                    </div>
+                                </div>
+                            }>
+                                <InteractivePdfLink
+                                    document={<InventarioGeneralPDF viviendas={viviendas} />}
+                                    fileName="Reporte_General_Inventario.pdf"
+                                    baseClassName="bg-blue-600 text-white hover:bg-blue-700"
+                                    readyClassName="bg-green-600 hover:bg-green-700"
+                                />
+                            </Suspense>
                         ) : (
                             <GenerateButton reportKey="inventarioGeneral" className="bg-blue-600 text-white hover:bg-blue-700" />
                         )}
@@ -104,13 +115,22 @@ const ReportesPage = () => {
                         disabled={viviendasDisponibles.length === 0}
                     >
                         {reportToGenerate === 'viviendasDisponibles' ? (
-                            <InteractivePdfLink
-                                document={<ViviendasDisponiblesPDF viviendas={viviendasDisponibles} />}
-                                fileName="Reporte_Viviendas_Disponibles.pdf"
-                                baseClassName="bg-yellow-500 text-white hover:bg-yellow-600"
-                                readyClassName="bg-green-600 hover:bg-green-700"
-                                disabled={viviendasDisponibles.length === 0}
-                            />
+                            <Suspense fallback={
+                                <div className="w-full text-center block font-semibold px-5 py-2.5 rounded-lg shadow-sm bg-yellow-500 text-white opacity-70">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Cargando generador...
+                                    </div>
+                                </div>
+                            }>
+                                <InteractivePdfLink
+                                    document={<ViviendasDisponiblesPDF viviendas={viviendasDisponibles} />}
+                                    fileName="Reporte_Viviendas_Disponibles.pdf"
+                                    baseClassName="bg-yellow-500 text-white hover:bg-yellow-600"
+                                    readyClassName="bg-green-600 hover:bg-green-700"
+                                    disabled={viviendasDisponibles.length === 0}
+                                />
+                            </Suspense>
                         ) : (
                             <GenerateButton reportKey="viviendasDisponibles" className="bg-yellow-500 text-white hover:bg-yellow-600" />
                         )}
@@ -123,13 +143,22 @@ const ReportesPage = () => {
                         disabled={viviendasAsignadas.length === 0}
                     >
                         {reportToGenerate === 'carteraActiva' ? (
-                            <InteractivePdfLink
-                                document={<CarteraActivaPDF viviendasAsignadas={viviendasAsignadas} clientes={clientes} />}
-                                fileName="Reporte_Cartera_Activa.pdf"
-                                baseClassName="bg-red-500 text-white hover:bg-red-600"
-                                readyClassName="bg-green-600 hover:bg-green-700"
-                                disabled={viviendasAsignadas.length === 0}
-                            />
+                            <Suspense fallback={
+                                <div className="w-full text-center block font-semibold px-5 py-2.5 rounded-lg shadow-sm bg-red-500 text-white opacity-70">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Cargando generador...
+                                    </div>
+                                </div>
+                            }>
+                                <InteractivePdfLink
+                                    document={<CarteraActivaPDF viviendasAsignadas={viviendasAsignadas} clientes={clientes} />}
+                                    fileName="Reporte_Cartera_Activa.pdf"
+                                    baseClassName="bg-red-500 text-white hover:bg-red-600"
+                                    readyClassName="bg-green-600 hover:bg-green-700"
+                                    disabled={viviendasAsignadas.length === 0}
+                                />
+                            </Suspense>
                         ) : (
                             <GenerateButton reportKey="carteraActiva" className="bg-red-500 text-white hover:bg-red-600" />
                         )}
@@ -142,13 +171,22 @@ const ReportesPage = () => {
                         disabled={viviendasPagadas.length === 0}
                     >
                         {reportToGenerate === 'viviendasPagadas' ? (
-                            <InteractivePdfLink
-                                document={<ViviendasPagadasPDF viviendasPagadas={viviendasPagadas} clientes={clientes} />}
-                                fileName="Reporte_Viviendas_Pagadas.pdf"
-                                baseClassName="bg-green-600 text-white hover:bg-green-700"
-                                readyClassName="bg-green-600 hover:bg-green-700"
-                                disabled={viviendasPagadas.length === 0}
-                            />
+                            <Suspense fallback={
+                                <div className="w-full text-center block font-semibold px-5 py-2.5 rounded-lg shadow-sm bg-green-600 text-white opacity-70">
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Loader2 size={16} className="animate-spin" />
+                                        Cargando generador...
+                                    </div>
+                                </div>
+                            }>
+                                <InteractivePdfLink
+                                    document={<ViviendasPagadasPDF viviendasPagadas={viviendasPagadas} clientes={clientes} />}
+                                    fileName="Reporte_Viviendas_Pagadas.pdf"
+                                    baseClassName="bg-green-600 text-white hover:bg-green-700"
+                                    readyClassName="bg-green-600 hover:bg-green-700"
+                                    disabled={viviendasPagadas.length === 0}
+                                />
+                            </Suspense>
                         ) : (
                             <GenerateButton reportKey="viviendasPagadas" className="bg-green-600 text-white hover:bg-green-700" />
                         )}

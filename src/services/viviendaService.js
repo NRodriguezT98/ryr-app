@@ -20,6 +20,7 @@ export const addVivienda = async (viviendaData) => {
         totalAbonado: 0,
         saldoPendiente: valorTotalFinal,
         valorFinal: valorTotalFinal,
+        descuentoMonto: 0, // 🔥 FIX: Inicializar campo para consistencia
     };
     const docRef = await addDoc(collection(db, "viviendas"), nuevaVivienda);
     return docRef;

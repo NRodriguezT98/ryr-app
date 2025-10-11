@@ -21,6 +21,9 @@ export const AUDIT_STRUCTURE = {
     actionType: null,      // Ej: 'COMPLETE_PROCESS_STEP', 'UPDATE_CLIENT', 'REGISTER_ABONO'
     module: null,          // Ej: 'CLIENTES', 'VIVIENDAS', 'ABONOS', 'RENUNCIAS'
 
+    // Mensaje pre-generado (opcional, para usar plantillas FASE 2)
+    message: null,         // Mensaje espectacular generado por las plantillas
+
     // Entidades afectadas (IDs para relaciones)
     entities: {
         clienteId: null,

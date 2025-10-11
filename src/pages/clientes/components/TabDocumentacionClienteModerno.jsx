@@ -1,6 +1,5 @@
 // TabDocumentacionClienteModerno.jsx - Versión completamente modernizada 🚀
 import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useDocumentacion } from '../../../hooks/clientes/useDocumentacion';
 import DocumentoRow from '../../../components/documentos/DocumentoRow';
 import {
@@ -31,10 +30,7 @@ const ModernStatCard = ({ icon: Icon, label, value, color = "blue", trend, delay
     };
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay, duration: 0.5 }}
+        <div
             className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-300"
         >
             <div className="flex items-center justify-between">
@@ -58,7 +54,7 @@ const ModernStatCard = ({ icon: Icon, label, value, color = "blue", trend, delay
                     <Icon size={20} className="text-white" />
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 };
 
@@ -80,7 +76,7 @@ const CircularProgress = ({ percentage, size = 80, strokeWidth = 6 }) => {
                     fill="none"
                     className="text-gray-200 dark:text-gray-700"
                 />
-                <motion.circle
+                <circle
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
@@ -90,9 +86,6 @@ const CircularProgress = ({ percentage, size = 80, strokeWidth = 6 }) => {
                     strokeDasharray={circumference}
                     strokeDashoffset={offset}
                     strokeLinecap="round"
-                    initial={{ strokeDashoffset: circumference }}
-                    animate={{ strokeDashoffset: offset }}
-                    transition={{ duration: 1.5, ease: "easeOut" }}
                 />
                 <defs>
                     <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -112,10 +105,8 @@ const CircularProgress = ({ percentage, size = 80, strokeWidth = 6 }) => {
 
 // Componente de filtro moderno
 const ModernFilterButton = ({ active, onClick, children, icon: Icon, count }) => (
-    <motion.button
+    <button
         onClick={onClick}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
         className={`
             flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all
             ${active
@@ -134,7 +125,7 @@ const ModernFilterButton = ({ active, onClick, children, icon: Icon, count }) =>
                 {count}
             </span>
         )}
-    </motion.button>
+    </button>
 );
 
 // Componente de aviso modernizado
@@ -158,10 +149,7 @@ const ModernAlert = ({ type = "info", icon: Icon, title, children, delay = 0 }) 
     };
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay, duration: 0.3 }}
+        <div
             className={`rounded-lg border p-4 ${variants[type]}`}
         >
             <div className="flex items-start gap-3">
@@ -177,7 +165,7 @@ const ModernAlert = ({ type = "info", icon: Icon, title, children, delay = 0 }) 
                     </div>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 };
 
@@ -211,15 +199,11 @@ const TabDocumentacionClienteModerno = ({ cliente, renuncia }) => {
     }, [documentosFiltrados, searchTerm]);
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+        <div
             className="space-y-6"
         >
             {/* Header moderno con título y estadísticas */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
+            <div
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
             >
                 <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6">
@@ -242,7 +226,7 @@ const TabDocumentacionClienteModerno = ({ cliente, renuncia }) => {
                         </div>
                     </div>
                 </div>
-            </motion.div>
+            </div>
 
             {/* Estadísticas */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -271,35 +255,32 @@ const TabDocumentacionClienteModerno = ({ cliente, renuncia }) => {
             </div>
 
             {/* Alertas de estado */}
-            <AnimatePresence>
-                {(cliente.status === 'renunciado' || cliente.status === 'inactivo') && (
-                    <ModernAlert
-                        type="info"
-                        icon={Archive}
-                        title="Modo Archivo"
-                        delay={0.4}
-                    >
-                        Esta es la documentación que se reunió del cliente antes de la renuncia.
-                    </ModernAlert>
-                )}
 
-                {cliente.tieneRenunciaPendiente && (
-                    <ModernAlert
-                        type="warning"
-                        icon={AlertTriangle}
-                        title="Modo de Solo Lectura"
-                        delay={0.5}
-                    >
-                        La gestión de documentos está pausada durante el proceso de renuncia.
-                    </ModernAlert>
-                )}
-            </AnimatePresence>
+            {(cliente.status === 'renunciado' || cliente.status === 'inactivo') && (
+                <ModernAlert
+                    type="info"
+                    icon={Archive}
+                    title="Modo Archivo"
+                    delay={0.4}
+                >
+                    Esta es la documentación que se reunió del cliente antes de la renuncia.
+                </ModernAlert>
+            )}
+
+            {cliente.tieneRenunciaPendiente && (
+                <ModernAlert
+                    type="warning"
+                    icon={AlertTriangle}
+                    title="Modo de Solo Lectura"
+                    delay={0.5}
+                >
+                    La gestión de documentos está pausada durante el proceso de renuncia.
+                </ModernAlert>
+            )}
+
 
             {/* Controles de filtrado y búsqueda */}
-            <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
+            <div
                 className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700"
             >
                 <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
@@ -341,78 +322,67 @@ const TabDocumentacionClienteModerno = ({ cliente, renuncia }) => {
                         />
                     </div>
                 </div>
-            </motion.div>
+            </div>
 
             {/* Lista de documentos */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.7 }}
+            <div
                 className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
             >
                 <div className="divide-y dark:divide-gray-700">
-                    <AnimatePresence mode="wait">
-                        {documentosFiltradosConBusqueda.length > 0 ? (
-                            documentosFiltradosConBusqueda.map((doc, index) => (
-                                <motion.div
-                                    key={doc.id || doc.label}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 20 }}
-                                    transition={{ delay: index * 0.05 }}
-                                >
-                                    <DocumentoRow
-                                        label={doc.label}
-                                        isRequired={true}
-                                        currentFileUrl={doc.url}
-                                        estado={doc.estado || 'Subido'}
-                                        isReadOnly={isReadOnly}
-                                    />
-                                </motion.div>
-                            ))
-                        ) : (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="p-12 text-center"
-                            >
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full">
-                                        <FileText size={32} className="text-gray-400" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                                            No hay documentos
-                                        </h3>
-                                        <p className="text-gray-500 dark:text-gray-400">
-                                            {searchTerm
-                                                ? `No se encontraron documentos que coincidan con "${searchTerm}"`
-                                                : "No hay documentos que coincidan con el filtro actual"
-                                            }
-                                        </p>
-                                    </div>
+
+                    {documentosFiltradosConBusqueda.length > 0 ? (
+                        documentosFiltradosConBusqueda.map((doc, index) => (
+                            <div
+                                key={doc.id || doc.label}>
+                                <DocumentoRow
+                                    label={doc.label}
+                                    isRequired={true}
+                                    currentFileUrl={doc.url}
+                                    estado={doc.estado || 'Subido'}
+                                    isReadOnly={isReadOnly}
+                                />
+                            </div>
+                        ))
+                    ) : (
+                        <div
+                            className="p-12 text-center"
+                        >
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full">
+                                    <FileText size={32} className="text-gray-400" />
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                                        No hay documentos
+                                    </h3>
+                                    <p className="text-gray-500 dark:text-gray-400">
+                                        {searchTerm
+                                            ? `No se encontraron documentos que coincidan con "${searchTerm}"`
+                                            : "No hay documentos que coincidan con el filtro actual"
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
-            </motion.div>
+            </div>
 
             {/* Footer decorativo */}
-            <motion.div
+            <div
                 className="text-center py-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1 }}
             >
                 <div className="flex items-center justify-center gap-2 text-gray-400 dark:text-gray-500 text-sm">
                     <Sparkles size={16} />
                     <span>Sistema de Documentación RyR</span>
                     <Sparkles size={16} />
                 </div>
-            </motion.div>
-        </motion.div>
+            </div>
+        </div>
     );
 };
 
 export default TabDocumentacionClienteModerno;
+
+

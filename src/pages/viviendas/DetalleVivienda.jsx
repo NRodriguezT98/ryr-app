@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ArrowLeft, Home, Info, Wallet, MapPin } from 'lucide-react';
 import { useDetalleVivienda } from '../../hooks/viviendas/useDetalleVivienda';
 import { formatCurrency, formatID, toTitleCase } from '../../utils/textFormatters';
-import TabInformacion from './components/TabInformacion';
-import TabFinanciero from './components/TabFinanciero';
+
+// Lazy loading de tabs
+const TabInformacion = lazy(() => import('./components/TabInformacion'));
+const TabFinanciero = lazy(() => import('./components/TabFinanciero'));
+
 import CondonarSaldoModal from './CondonarSaldoModal';
 import RegistrarDesembolsoModal from '../abonos/components/ModalRegistrarDesembolso.jsx';
 
@@ -81,19 +84,28 @@ const DetalleVivienda = () => {
                 </div>
 
                 <div>
-                    {activeTab === 'info' && <TabInformacion vivienda={vivienda} desglose={desgloseValorVivienda} />}
-                    {activeTab === 'financiero' && cliente && (
-                        <TabFinanciero
-                            vivienda={vivienda}
-                            cliente={cliente}
-                            proyecto={proyecto}
-                            fuentes={fuentes}
-                            historialAbonos={historialAbonos}
-                            onAbonoRegistrado={recargarDatos}
-                            onCondonarSaldo={setFuenteACondonar}
-                            onRegistrarDesembolso={handleRegistrarDesembolso}
-                        />
-                    )}
+                    <Suspense fallback={
+                        <div className="flex items-center justify-center py-12">
+                            <div className="text-center">
+                                <div className="w-12 h-12 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mx-auto mb-4"></div>
+                                <p className="text-gray-600 dark:text-gray-400">Cargando...</p>
+                            </div>
+                        </div>
+                    }>
+                        {activeTab === 'info' && <TabInformacion vivienda={vivienda} desglose={desgloseValorVivienda} />}
+                        {activeTab === 'financiero' && cliente && (
+                            <TabFinanciero
+                                vivienda={vivienda}
+                                cliente={cliente}
+                                proyecto={proyecto}
+                                fuentes={fuentes}
+                                historialAbonos={historialAbonos}
+                                onAbonoRegistrado={recargarDatos}
+                                onCondonarSaldo={setFuenteACondonar}
+                                onRegistrarDesembolso={handleRegistrarDesembolso}
+                            />
+                        )}
+                    </Suspense>
                 </div>
             </div>
 

@@ -9,10 +9,9 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { getAuditLogsForCliente } from '../../../services/auditService';
+import { getAuditLogsForCliente } from '../../../services/unifiedAuditService';
 import { interpretAuditForClientHistory } from '../../../utils/clientHistoryAuditInterpreter';
 
 // Iconos SVG embebidos para garantizar renderizado
@@ -260,13 +259,21 @@ const getActionLabel = (log) => {
     return baseLabel;
 };
 
-// Componente para renderizar mensaje inteligente
+// Componente mejorado para renderizar mensajes con iconos y mejor diseño
 const SmartMessage = ({ log }) => {
+    // Si el log tiene un mensaje pre-generado (plantillas FASE 2), parsearlo y mostrarlo con estilo
+    if (log.message) {
+        console.log('✅ Mostrando mensaje pre-generado para log:', log.id);
+        return <ParsedMessage message={log.message} log={log} />;
+    }
+
+    console.log('⚠️ Log sin mensaje pre-generado, usando intérprete:', log.id);
+    
     // Detectar si es estructura nueva o anterior
     const isNewFormat = log.actionType && log.context && log.actionData;
 
     if (isNewFormat) {
-        // Usar intérprete especializado
+        // Usar intérprete especializado (solo para logs sin mensaje pre-generado)
         try {
             const detailedMessage = interpretAuditForClientHistory(log);
             return <span className="text-gray-800 dark:text-gray-200">{detailedMessage}</span>;
@@ -280,21 +287,219 @@ const SmartMessage = ({ log }) => {
     }
 };
 
+// Componente para parsear y mostrar mensajes con diseño mejorado
+const ParsedMessage = ({ message, log }) => {
+    // Detectar tipo de mensaje por el título
+    const isCompletion = message.includes('PASO COMPLETADO');
+    const isDateChange = message.includes('FECHA DE COMPLETADO MODIFICADA');
+    const isReopening = message.includes('PASO REABIERTO');
+
+    // Extraer información del mensaje
+    const lines = message.split('\n').filter(line => line.trim() && !line.includes('═') && !line.includes('║'));
+    
+    let pasoNombre = '';
+    let fecha = '';
+    let evidencias = [];
+    let fechaAnterior = '';
+    let fechaNueva = '';
+    let motivoReapertura = '';
+    let cambiosRealizados = [];
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+            pasoNombre = trimmed.replace(/"/g, '');
+        } else if (trimmed.match(/^\d+ de \w+ de \d{4}$/)) {
+            if (!fecha) fecha = trimmed;
+        } else if (trimmed.startsWith('Anterior:')) {
+            fechaAnterior = trimmed.replace('Anterior:', '').trim();
+        } else if (trimmed.startsWith('Nueva:')) {
+            fechaNueva = trimmed.replace('Nueva:', '').trim();
+        } else if (trimmed.match(/^\d+\./)) {
+            evidencias.push(trimmed);
+        } else if (trimmed.startsWith('Motivo:')) {
+            motivoReapertura = trimmed.replace('Motivo:', '').replace(/"/g, '').trim();
+        } else if (trimmed.includes('modificó') || trimmed.includes('adjuntó') || trimmed.includes('reemplazó')) {
+            cambiosRealizados.push(trimmed);
+        }
+    });
+
+    // Obtener evidencias con URLs desde el log (si existen en actionData)
+    const evidenciasConUrl = log.actionData?.evidenciasDespues || [];
+    
+    // Función para encontrar la URL de una evidencia por nombre
+    const getEvidenciaUrl = (nombreEvidencia) => {
+        const evidenciaClean = nombreEvidencia.replace(/^\d+\.\s*/, '').trim();
+        const found = evidenciasConUrl.find(ev => 
+            ev.nombre === evidenciaClean || 
+            ev.displayName === evidenciaClean
+        );
+        return found?.url;
+    };
+
+    if (isCompletion) {
+        return (
+            <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                    <Icons.CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                            Se completó el paso <span className="font-semibold text-gray-900 dark:text-gray-100">"{pasoNombre}"</span>
+                        </p>
+                    </div>
+                </div>
+                
+                {fecha && (
+                    <div className="flex items-center gap-2 pl-8">
+                        <Icons.Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                            Se indicó como fecha de completado: <span className="font-medium text-gray-800 dark:text-gray-200">{fecha}</span>
+                        </span>
+                    </div>
+                )}
+                
+                {evidencias.length > 0 && (
+                    <div className="pl-8 space-y-2">
+                        <div className="flex items-center gap-2">
+                            <Icons.FolderOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {evidencias.length === 1 ? 'Evidencia adjuntada:' : `${evidencias.length} evidencias adjuntadas:`}
+                            </span>
+                        </div>
+                        <ul className="space-y-1.5 pl-6">
+                            {evidencias.map((ev, idx) => {
+                                const nombreEvidencia = ev.replace(/^\d+\.\s*/, '');
+                                const url = getEvidenciaUrl(ev);
+                                
+                                return (
+                                    <li key={idx} className="flex items-start gap-2 text-sm">
+                                        <span className="text-gray-400 mt-0.5">•</span>
+                                        {url ? (
+                                            <a 
+                                                href={url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+                                                title="Click para abrir la evidencia"
+                                            >
+                                                {nombreEvidencia}
+                                            </a>
+                                        ) : (
+                                            <span className="text-gray-600 dark:text-gray-400">{nombreEvidencia}</span>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    if (isDateChange) {
+        return (
+            <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                    <Icons.Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                            Se modificó la fecha de completado del paso <span className="font-semibold text-gray-900 dark:text-gray-100">"{pasoNombre}"</span>
+                        </p>
+                    </div>
+                </div>
+                
+                {fechaAnterior && fechaNueva && (
+                    <div className="pl-8 space-y-2">
+                        <div className="flex items-start gap-2 text-sm">
+                            <span className="text-gray-500 dark:text-gray-400 min-w-[70px]">Anterior:</span>
+                            <span className="text-gray-600 dark:text-gray-400 line-through">{fechaAnterior}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm">
+                            <span className="text-gray-500 dark:text-gray-400 min-w-[70px]">Nueva:</span>
+                            <span className="text-gray-900 dark:text-gray-100 font-medium">{fechaNueva}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    if (isReopening) {
+        return (
+            <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                    <Icons.RefreshCw className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                        <p className="text-sm text-gray-700 dark:text-gray-300">
+                            Se reabrió y completó el paso <span className="font-semibold text-gray-900 dark:text-gray-100">"{pasoNombre}"</span>
+                        </p>
+                    </div>
+                </div>
+                
+                {motivoReapertura && (
+                    <div className="pl-8">
+                        <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                            <p className="text-sm text-orange-900 dark:text-orange-200">
+                                <span className="font-medium">Motivo de reapertura:</span> {motivoReapertura}
+                            </p>
+                        </div>
+                    </div>
+                )}
+                
+                {cambiosRealizados.length > 0 && (
+                    <div className="pl-8 space-y-2">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Cambios realizados:</p>
+                        <ul className="space-y-1.5 pl-6">
+                            {cambiosRealizados.map((cambio, idx) => (
+                                <li key={idx} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                    <span className="text-gray-400 mt-0.5">•</span>
+                                    <span>{cambio}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Fallback: mostrar mensaje original
+    return <div className="text-gray-800 dark:text-gray-200 text-sm">{message}</div>;
+};
+
 // Componente para cada item del historial
 const HistoryItem = ({ log, index }) => {
     const icon = getActionIcon(log);
     const theme = getActionTheme(log);
     const label = getActionLabel(log);
 
-    // Formatear timestamp
-    const timestamp = log.timestamp?.toDate ? log.timestamp.toDate() : new Date(log.timestamp);
-    const fullDate = format(timestamp, "d 'de' MMMM, yyyy 'a las' h:mm:ss a", { locale: es });
+    // Formatear timestamp con validación
+    let timestamp;
+    let fullDate;
+    
+    try {
+        if (log.timestamp?.toDate) {
+            timestamp = log.timestamp.toDate();
+        } else if (log.timestamp) {
+            timestamp = new Date(log.timestamp);
+        } else {
+            timestamp = new Date(); // Fallback a fecha actual
+        }
+
+        // Validar que el timestamp sea válido
+        if (isNaN(timestamp.getTime())) {
+            timestamp = new Date();
+        }
+
+        fullDate = format(timestamp, "d 'de' MMMM, yyyy 'a las' h:mm:ss a", { locale: es });
+    } catch (error) {
+        console.error('Error formateando timestamp:', error, log);
+        fullDate = 'Fecha no disponible';
+    }
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.05 }}
+        <div
             className={`relative pl-8 pb-8 ${index === 0 ? '' : ''}`}
         >
             {/* Línea vertical de conexión */}
@@ -321,13 +526,23 @@ const HistoryItem = ({ log, index }) => {
                     <SmartMessage log={log} />
                 </div>
 
-                {/* Footer con detalles de tiempo y usuario */}
-                <div className={`text-xs ${theme.text} space-y-1`}>
-                    <div>La acción se realizó: {fullDate}</div>
-                    <div>Acción Realizada por: {log.user?.nombre || log.user?.name || log.userName || 'Usuario'}</div>
+                {/* Footer con detalles de tiempo y usuario - contextualizado */}
+                <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 text-xs ${theme.text} pt-2 border-t border-gray-200 dark:border-gray-700`}>
+                    <div className="flex items-center gap-1.5">
+                        <Icons.Users className="w-3.5 h-3.5" />
+                        <span className="text-gray-500 dark:text-gray-400">Realizado por:</span>
+                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                            {log.user?.nombre || log.user?.name || log.userName || 'Usuario'}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <Icons.Calendar className="w-3.5 h-3.5" />
+                        <span className="text-gray-500 dark:text-gray-400">Fecha y hora de la acción:</span>
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{fullDate}</span>
+                    </div>
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 };
 
@@ -347,9 +562,15 @@ const useClientHistory = (clienteId) => {
             const auditLogs = await getAuditLogsForCliente(clienteId);
 
             // Filtrar logs irrelevantes
-            const filtered = auditLogs.filter(log =>
-                log.details && log.details.action !== 'EDIT_NOTE'
-            );
+            // Soporta tanto estructura nueva (actionType) como antigua (details.action)
+            const filtered = auditLogs.filter(log => {
+                // Estructura nueva: Filtrar por actionType si existe
+                if (log.actionType) {
+                    return log.actionType !== 'EDIT_NOTE';
+                }
+                // Estructura antigua: Filtrar por details.action
+                return log.details && log.details.action !== 'EDIT_NOTE';
+            });
 
             // Ordenar por timestamp descendente (más reciente primero)
             const sorted = filtered.sort((a, b) => {
@@ -358,20 +579,9 @@ const useClientHistory = (clienteId) => {
                 return timestampB - timestampA;
             });
 
-            console.log('📊 Historial cargado:', {
-                total: sorted.length,
-                clienteId,
-                tipos: [...new Set(sorted.map(log => log.details?.action || log.actionType))],
-                muestra: sorted.slice(0, 2).map(log => ({
-                    action: log.details?.action || log.actionType,
-                    hasMessage: !!log.message,
-                    timestamp: log.timestamp
-                }))
-            });
-
             setLogs(sorted);
         } catch (err) {
-            console.error('Error cargando historial:', err);
+            console.error('❌ Error cargando historial:', err);
             setError('Error al cargar el historial del cliente');
         } finally {
             setLoading(false);
@@ -455,15 +665,15 @@ const NewTabHistorial = ({ cliente }) => {
 
             {/* Timeline */}
             <div className="relative">
-                <AnimatePresence>
-                    {logs.map((log, index) => (
-                        <HistoryItem
-                            key={log.id}
-                            log={log}
-                            index={index}
-                        />
-                    ))}
-                </AnimatePresence>
+
+                {logs.map((log, index) => (
+                    <HistoryItem
+                        key={log.id}
+                        log={log}
+                        index={index}
+                    />
+                ))}
+
 
                 {/* Línea vertical final */}
                 {logs.length > 0 && (
@@ -475,3 +685,5 @@ const NewTabHistorial = ({ cliente }) => {
 };
 
 export default NewTabHistorial;
+
+

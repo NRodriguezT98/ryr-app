@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedPage from '../../components/AnimatedPage';
 import {
     ArrowLeft,
@@ -27,12 +26,17 @@ import {
 import { useDetalleCliente } from '../../hooks/clientes/useDetalleCliente.jsx';
 import { getInitials, formatCurrency, toTitleCase, formatDisplayDate } from '../../utils/textFormatters';
 import ModalConfirmacion from '../../components/ModalConfirmacion';
-import TabInfoGeneralCliente from './components/TabInfoGeneralCliente';
-import TabProcesoCliente from './components/TabProcesoCliente';
-import TabDocumentacionCliente from './components/TabDocumentacionClienteModerno';
-import NewTabHistorial from './components/NewTabHistorial';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import ClientPDF from '../../components/pdf/ClientPDF';
+
+// Lazy loading de tabs (code splitting)
+const TabInfoGeneralCliente = lazy(() => import('./components/TabInfoGeneralCliente'));
+const TabProcesoCliente = lazy(() => import('./components/TabProcesoCliente'));
+const TabDocumentacionCliente = lazy(() => import('./components/TabDocumentacionClienteModerno'));
+const NewTabHistorial = lazy(() => import('./components/NewTabHistorial'));
+
+// Lazy loading de PDF (pesado - 500KB+)
+const PDFDownloadLink = lazy(() => import('@react-pdf/renderer').then(module => ({ default: module.PDFDownloadLink })));
+const ClientPDF = lazy(() => import('../../components/pdf/ClientPDF'));
+
 import { usePermissions } from '../../hooks/auth/usePermissions';
 import Button from '../../components/Button';
 
@@ -41,11 +45,7 @@ const ModernAvatar = ({ cliente }) => {
     const initials = getInitials(cliente.datosCliente.nombres, cliente.datosCliente.apellidos);
 
     return (
-        <motion.div
-            className="relative group"
-            whileHover={{ scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 300 }}
-        >
+        <div className="relative group">
             <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 
                            text-white flex items-center justify-center font-bold text-2xl shadow-xl
                            border-4 border-white dark:border-gray-700">
@@ -53,14 +53,12 @@ const ModernAvatar = ({ cliente }) => {
             </div>
             {/* Efectos decorativos */}
             <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity duration-300" />
-            <motion.div
+            <div
                 className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-2 border-white dark:border-gray-700 flex items-center justify-center"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
             >
                 <User size={12} className="text-white" />
-            </motion.div>
-        </motion.div>
+            </div>
+        </div>
     );
 };
 
@@ -75,9 +73,7 @@ const StatsCard = ({ icon: Icon, title, value, subtitle, color = "blue", trend =
     };
 
     return (
-        <motion.div
-            whileHover={{ y: -2, scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300 }}
+        <div
             className="relative overflow-hidden rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300"
         >
             {/* Gradient background */}
@@ -107,7 +103,7 @@ const StatsCard = ({ icon: Icon, title, value, subtitle, color = "blue", trend =
 
             {/* Shine effect */}
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000 skew-x-12" />
-        </motion.div>
+        </div>
     );
 };
 
@@ -116,10 +112,8 @@ const ModernTabButton = ({ activeTab, tabName, label, icon, onClick, count = nul
     const isActive = activeTab === tabName;
 
     return (
-        <motion.button
+        <button
             onClick={() => onClick(tabName)}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
             className={`relative flex items-center gap-3 px-6 py-4 font-semibold text-sm rounded-xl transition-all duration-300
                 ${isActive
                     ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25'
@@ -131,18 +125,16 @@ const ModernTabButton = ({ activeTab, tabName, label, icon, onClick, count = nul
             </div>
             <span>{label}</span>
             {count !== null && (
-                <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
+                <span
                     className={`px-2 py-1 rounded-full text-xs font-bold ${isActive
                         ? 'bg-white/20 text-white'
                         : 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
                         }`}
                 >
                     {count}
-                </motion.span>
+                </span>
             )}
-        </motion.button>
+        </button>
     );
 };
 
@@ -175,9 +167,7 @@ const StatusBanner = ({ type, icon: Icon, title, message, linkText, linkTo }) =>
     const variant = variants[type] || variants.info;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
+        <div
             className={`relative overflow-hidden rounded-2xl p-6 mb-6 bg-gradient-to-r ${variant.bg} border ${variant.border}`}
         >
             <div className="flex items-start gap-4">
@@ -198,7 +188,7 @@ const StatusBanner = ({ type, icon: Icon, title, message, linkText, linkTo }) =>
                     )}
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 };
 
@@ -267,9 +257,7 @@ const DetalleClienteModerno = () => {
     if (isLoading || !datosDetalle) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
-                <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                <div
                     className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full"
                 />
             </div>
@@ -297,10 +285,7 @@ const DetalleClienteModerno = () => {
                 <div className="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-7xl mx-auto">
 
                     {/* Header modernizado */}
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
+                    <div
                         className="relative overflow-hidden rounded-3xl p-8 mb-8 bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl shadow-2xl border border-white/20 dark:border-gray-700/20"
                     >
                         {/* Background effects */}
@@ -313,21 +298,15 @@ const DetalleClienteModerno = () => {
                                 <div className="flex items-center gap-6">
                                     <ModernAvatar cliente={cliente} />
                                     <div className="space-y-2">
-                                        <motion.h1
+                                        <h1
                                             className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent"
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.2 }}
                                         >
                                             {toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`)}
-                                        </motion.h1>
+                                        </h1>
 
                                         {vivienda && proyecto && (
-                                            <motion.div
+                                            <div
                                                 className="flex flex-wrap items-center gap-4 text-gray-600 dark:text-gray-400"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                transition={{ delay: 0.3 }}
                                             >
                                                 <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-full">
                                                     <Home size={16} className="text-blue-600 dark:text-blue-400" />
@@ -337,7 +316,7 @@ const DetalleClienteModerno = () => {
                                                     <Building2 size={16} className="text-purple-600 dark:text-purple-400" />
                                                     <span className="font-semibold text-sm">{proyecto.nombre}</span>
                                                 </div>
-                                            </motion.div>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -350,51 +329,52 @@ const DetalleClienteModerno = () => {
                                     >
                                         Volver
                                     </Button>
-                                    <PDFGeneratorButton datosDetalle={datosDetalle} />
+                                    <Suspense fallback={
+                                        <Button variant="success" disabled isLoading loadingText="Cargando generador..." />
+                                    }>
+                                        <PDFGeneratorButton datosDetalle={datosDetalle} />
+                                    </Suspense>
                                 </div>
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
 
                     {/* Status Banners */}
-                    <AnimatePresence>
-                        {cliente.status === 'enProcesoDeRenuncia' && renuncia && (
-                            <StatusBanner
-                                type="warning"
-                                icon={AlertTriangle}
-                                title="Renuncia en Proceso - Cliente en Estado de Solo Lectura"
-                                message={`Este cliente se encuentra en estado '${datosDetalle.statusInfo?.text}', por lo que la mayoría de las acciones están deshabilitadas.`}
-                                linkText="Ir a Gestionar Renuncia"
-                                linkTo={`/renuncias/detalle/${renuncia.id}`}
-                            />
-                        )}
 
-                        {cliente.status === 'renunciado' && renuncia && (
-                            <StatusBanner
-                                type="info"
-                                icon={Archive}
-                                title="Renuncia Completada"
-                                message={`Este cliente se retiró del proyecto el ${renuncia.fechaRenuncia ? formatDisplayDate(renuncia.fechaRenuncia) : 'N/A'}. Para mayor información presione en "Ver Detalle Completo de la Renuncia".`}
-                            />
-                        )}
+                    {cliente.status === 'enProcesoDeRenuncia' && renuncia && (
+                        <StatusBanner
+                            type="warning"
+                            icon={AlertTriangle}
+                            title="Renuncia en Proceso - Cliente en Estado de Solo Lectura"
+                            message={`Este cliente se encuentra en estado '${datosDetalle.statusInfo?.text}', por lo que la mayoría de las acciones están deshabilitadas.`}
+                            linkText="Ir a Gestionar Renuncia"
+                            linkTo={`/renuncias/detalle/${renuncia.id}`}
+                        />
+                    )}
 
-                        {mostrarAvisoValorEscritura && (
-                            <StatusBanner
-                                type="alert"
-                                icon={AlertTriangle}
-                                title="Recordatorio importante sobre el valor de esta vivienda"
-                                message={`El valor total a pagar del cliente por esta vivienda es de ${formatCurrency(vivienda.valorFinal)}, pero en Notaría se firmó el valor de la vivienda en escritura por: ${formatCurrency(cliente.financiero.valorEscritura)}.`}
-                            />
-                        )}
-                    </AnimatePresence>
+                    {cliente.status === 'renunciado' && renuncia && (
+                        <StatusBanner
+                            type="info"
+                            icon={Archive}
+                            title="Renuncia Completada"
+                            message={`Este cliente se retiró del proyecto el ${renuncia.fechaRenuncia ? formatDisplayDate(renuncia.fechaRenuncia) : 'N/A'}. Para mayor información presione en "Ver Detalle Completo de la Renuncia".`}
+                        />
+                    )}
+
+                    {mostrarAvisoValorEscritura && (
+                        <StatusBanner
+                            type="alert"
+                            icon={AlertTriangle}
+                            title="Recordatorio importante sobre el valor de esta vivienda"
+                            message={`El valor total a pagar del cliente por esta vivienda es de ${formatCurrency(vivienda.valorFinal)}, pero en Notaría se firmó el valor de la vivienda en escritura por: ${formatCurrency(cliente.financiero.valorEscritura)}.`}
+                        />
+                    )}
+
 
                     {/* Stats Cards */}
                     {cliente.status !== 'renunciado' && cliente.status !== 'inactivo' && (
-                        <motion.div
+                        <div
                             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4, duration: 0.6 }}
                         >
                             <StatsCard
                                 icon={DollarSign}
@@ -428,15 +408,12 @@ const DetalleClienteModerno = () => {
                                 subtitle="Situación actual"
                                 color={estaAPazYSalvo ? "green" : "blue"}
                             />
-                        </motion.div>
+                        </div>
                     )}
 
                     {/* Navigation Tabs */}
-                    <motion.div
+                    <div
                         className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/20 p-6 mb-8"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5, duration: 0.6 }}
                     >
                         <nav className="flex flex-wrap gap-3">
                             <ModernTabButton
@@ -476,24 +453,24 @@ const DetalleClienteModerno = () => {
                                 />
                             )}
                         </nav>
-                    </motion.div>
+                    </div>
 
                     {/* Content Area */}
-                    <motion.div
+                    <div
                         className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 dark:border-gray-700/20 overflow-hidden"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6, duration: 0.6 }}
                     >
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={activeTab}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ duration: 0.3 }}
-                                className="p-8"
-                            >
+                        <div
+                            key={activeTab}
+                            className="p-8"
+                        >
+                            <Suspense fallback={
+                                <div className="flex items-center justify-center py-12">
+                                    <div className="text-center">
+                                        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                                        <p className="text-gray-600 dark:text-gray-400">Cargando...</p>
+                                    </div>
+                                </div>
+                            }>
                                 {activeTab === 'info' && (
                                     <TabInfoGeneralCliente
                                         cliente={cliente}
@@ -525,9 +502,10 @@ const DetalleClienteModerno = () => {
                                         cliente={cliente}
                                     />
                                 )}
-                            </motion.div>
-                        </AnimatePresence>
-                    </motion.div>
+                            </Suspense>
+                        </div>
+
+                    </div>
 
                 </div>
             </div>
@@ -552,3 +530,6 @@ const DetalleClienteModerno = () => {
 };
 
 export default DetalleClienteModerno;
+
+
+

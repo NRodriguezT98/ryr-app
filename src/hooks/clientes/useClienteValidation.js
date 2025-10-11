@@ -17,7 +17,7 @@ import {
     validateCliente,
     validateFinancialStep,
     validateEditarCliente
-} from '../../../utils/validation.js';
+} from '../../utils/validation.js';
 
 /**
  * Hook para gestionar las validaciones del formulario de cliente

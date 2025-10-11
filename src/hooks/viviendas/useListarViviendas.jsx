@@ -1,22 +1,39 @@
 // src/hooks/viviendas/useListarViviendas.jsx
+// 🔥 OPTIMIZADO: Lógica de filtrado/ordenamiento extraída a utilidades reutilizables
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from 'react-router-dom';
 import { useData } from "../../context/DataContext";
 import { useUndoableDelete } from "../useUndoableDelete";
 import { deleteViviendaPermanently, archiveVivienda, restoreVivienda } from "../../services/viviendaService";
+import { aplicarFiltrosViviendas, ordenarViviendas, calcularPermisosVivienda } from "../../utils/viviendaFilters";
 import toast from 'react-hot-toast';
+import { useDebounce } from '../useDebounce';
 
 const ITEMS_PER_PAGE = 9;
 
 export const useListarViviendas = () => {
     const location = useLocation();
-    const { isLoading, viviendas, clientes, abonos, recargarDatos } = useData();
+    const { isLoading, viviendas, clientes, abonos, recargarDatos, loadCollection, hasLoaded } = useData();
 
-    // --- Estados del hook ---
+    // Cargar colecciones necesarias si no están cargadas (lazy loading)
+    useEffect(() => {
+        if (!hasLoaded.viviendas) {
+            loadCollection('viviendas');
+        }
+        if (!hasLoaded.clientes) {
+            loadCollection('clientes');
+        }
+        if (!hasLoaded.abonos) {
+            loadCollection('abonos');
+        }
+    }, [hasLoaded.viviendas, hasLoaded.clientes, hasLoaded.abonos, loadCollection]);
+
+    // Estados del hook
     const [statusFilter, setStatusFilter] = useState(location.state?.statusFilter || 'todas');
-    const [proyectoFilter, setProyectoFilter] = useState('todos'); // Estado para el filtro de proyecto
+    const [proyectoFilter, setProyectoFilter] = useState('todos');
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [sortOrder, setSortOrder] = useState('ubicacion');
     const [currentPage, setCurrentPage] = useState(1);
     const [viviendaAEditar, setViviendaAEditar] = useState(null);
@@ -25,87 +42,33 @@ export const useListarViviendas = () => {
     const [viviendaARestaurar, setViviendaARestaurar] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // 🔥 OPTIMIZACIÓN: Procesamiento + filtrado + ordenamiento centralizado
     const viviendasFiltradasYOrdenadas = useMemo(() => {
-        // 1. Procesamos todas las viviendas para añadirles las propiedades calculadas
-        let itemsProcesados = viviendas.map(vivienda => {
+        // 1. Enriquecemos viviendas con permisos calculados
+        const itemsProcesados = viviendas.map(vivienda => {
             const clienteAsignado = clientes.find(c => c.id === vivienda.clienteId);
-            const procesoFinalizado = clienteAsignado?.proceso?.facturaVenta?.completado === true;
             const tieneHistorialDeAbonos = abonos.some(a => a.viviendaId === vivienda.id);
-            const tieneValorEscrituraDiferente = clienteAsignado?.financiero?.usaValorEscrituraDiferente === true && clienteAsignado?.financiero?.valorEscritura > 0;
 
-            return {
-                ...vivienda,
-                puedeEditar: !procesoFinalizado,
-                puedeEliminar: !vivienda.clienteId && !tieneHistorialDeAbonos,
-                puedeArchivar: !vivienda.clienteId && vivienda.status !== 'archivada',
-                puedeRestaurar: vivienda.status === 'archivada',
-                camposFinancierosBloqueados: !!vivienda.clienteId,
-                tieneValorEscrituraDiferente
-            };
+            const permisos = calcularPermisosVivienda(vivienda, clienteAsignado, tieneHistorialDeAbonos);
+
+            return { ...vivienda, ...permisos };
         });
 
-        // 2. Aplicamos los filtros de forma secuencial
-        let itemsFiltrados = itemsProcesados;
+        // 2. Aplicamos filtros usando utilidad centralizada
+        const itemsFiltrados = aplicarFiltrosViviendas(itemsProcesados, {
+            statusFilter,
+            proyectoFilter,
+            searchTerm: debouncedSearchTerm
+        });
 
-        // Filtro de Proyecto
-        if (proyectoFilter !== 'todos') {
-            itemsFiltrados = itemsFiltrados.filter(v => v.proyectoId === proyectoFilter);
-        }
+        // 3. Ordenamos usando utilidad centralizada
+        return ordenarViviendas(itemsFiltrados, sortOrder);
+    }, [viviendas, clientes, abonos, statusFilter, proyectoFilter, debouncedSearchTerm, sortOrder]);
 
-        // Filtro de Estado
-        if (statusFilter === 'archivadas') {
-            itemsFiltrados = itemsFiltrados.filter(v => v.status === 'archivada');
-        } else {
-            itemsFiltrados = itemsFiltrados.filter(v => v.status !== 'archivada');
-            if (statusFilter !== 'todas') {
-                if (statusFilter === 'disponibles') itemsFiltrados = itemsFiltrados.filter(v => !v.clienteId);
-                if (statusFilter === 'asignadas') itemsFiltrados = itemsFiltrados.filter(v => v.clienteId && v.saldoPendiente > 0);
-                if (statusFilter === 'pagadas') itemsFiltrados = itemsFiltrados.filter(v => v.clienteId && v.saldoPendiente <= 0);
-            }
-        }
-
-        // Filtro de Búsqueda
-        if (searchTerm) {
-            const lowerCaseSearchTerm = searchTerm.toLowerCase().replace(/\s/g, '');
-            itemsFiltrados = itemsFiltrados.filter(v => {
-                const ubicacion = `${v.manzana}${v.numeroCasa}`.toLowerCase().replace(/\s/g, '');
-                const matricula = (v.matricula || '').toLowerCase();
-                const cliente = (v.clienteNombre || '').toLowerCase();
-                return ubicacion.includes(lowerCaseSearchTerm) || matricula.includes(lowerCaseSearchTerm) || cliente.includes(searchTerm.toLowerCase());
-            });
-        }
-
-        // 3. Aplicamos el ordenamiento
-        let itemsOrdenados = [...itemsFiltrados];
-        switch (sortOrder) {
-            case 'nombre_cliente':
-                itemsOrdenados.sort((a, b) => (a.clienteNombre || 'z').localeCompare(b.clienteNombre || 'z'));
-                break;
-            case 'recientes':
-                itemsOrdenados.sort((a, b) => (b.fechaCreacion || '').localeCompare(a.fechaCreacion || ''));
-                break;
-            case 'valor_desc':
-                itemsOrdenados.sort((a, b) => b.valorFinal - a.valorFinal);
-                break;
-            case 'valor_asc':
-                itemsOrdenados.sort((a, b) => a.valorFinal - b.valorFinal);
-                break;
-            case 'saldo_desc':
-                itemsOrdenados.sort((a, b) => (b.saldoPendiente ?? 0) - (a.saldoPendiente ?? 0));
-                break;
-            case 'saldo_asc':
-                itemsOrdenados.sort((a, b) => (a.saldoPendiente ?? 0) - (b.saldoPendiente ?? 0));
-                break;
-            case 'ubicacion':
-            default:
-                itemsOrdenados.sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa);
-                break;
-        }
-
-        return itemsOrdenados;
-    }, [viviendas, clientes, abonos, statusFilter, proyectoFilter, searchTerm, sortOrder]);
-
-    const totalPages = useMemo(() => Math.ceil(viviendasFiltradasYOrdenadas.length / ITEMS_PER_PAGE), [viviendasFiltradasYOrdenadas]);
+    const totalPages = useMemo(() =>
+        Math.ceil(viviendasFiltradasYOrdenadas.length / ITEMS_PER_PAGE),
+        [viviendasFiltradasYOrdenadas]
+    );
 
     const viviendasPaginadas = useMemo(() => {
         const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -119,15 +82,13 @@ export const useListarViviendas = () => {
 
     const { hiddenItems: viviendasOcultas, initiateDelete } = useUndoableDelete(
         async ({ vivienda, nombreProyecto }) => {
-            // Modificamos la función que se pasa aquí para manejar el estado
             setIsSubmitting(true);
             try {
                 await deleteViviendaPermanently(vivienda, nombreProyecto);
                 recargarDatos();
             } catch (error) {
-                // El toast de error ya lo maneja useUndoableDelete, pero podemos loggear
                 console.error("Error en borrado permanente:", error);
-                throw error; // Re-lanzamos el error para que el hook lo maneje
+                throw error;
             } finally {
                 setIsSubmitting(false);
             }
@@ -135,9 +96,13 @@ export const useListarViviendas = () => {
         recargarDatos,
         "Vivienda"
     );
+
     const viviendasVisibles = viviendasPaginadas.filter(v => !viviendasOcultas.includes(v.id));
 
-    const handleGuardado = useCallback(() => { recargarDatos(); setViviendaAEditar(null); }, [recargarDatos]);
+    const handleGuardado = useCallback(() => {
+        recargarDatos();
+        setViviendaAEditar(null);
+    }, [recargarDatos]);
 
     const handleIniciarEliminacion = (vivienda, nombreProyecto) => {
         if (!vivienda.puedeEliminar) {
@@ -193,8 +158,11 @@ export const useListarViviendas = () => {
         }
     }, [viviendaARestaurar, recargarDatos]);
 
+    // Determinar si está cargando (incluye estado inicial de lazy loading)
+    const isLoadingData = isLoading || !hasLoaded.viviendas || !hasLoaded.clientes || !hasLoaded.abonos;
+
     return {
-        isLoading,
+        isLoading: isLoadingData,
         isSubmitting,
         viviendasVisibles,
         todasLasViviendasFiltradas: viviendasFiltradasYOrdenadas,

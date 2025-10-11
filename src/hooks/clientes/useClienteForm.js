@@ -1,9 +1,29 @@
 /**
  * 🎯 Hook: useClienteForm (v2 - Refactorizado)
  * 
- * ORQUESTADOR PRINCIPAL
- * 
- * Responsabilidad: Combinar todos los hooks especializados
+ * ORQUESTADOR    // 1. Hook de Estado
+    const { formData, dispatch, errors, setErrors } = useClienteFormState(blankInitialState);
+    
+    // 3. Hook de Navegación (antes de validación para obtener step actual)
+    const navigation = useClienteNavigation(
+        null, // validateCurrentStep se pasa después
+        setErrors,
+        formData
+    );
+
+    // 2. Hook de Validación (ahora con el step correcto)
+    const validation = useClienteValidation(
+        formData,
+        navigation.step, // ✅ Usamos el step del hook de navegación
+        modo,
+        isEditing,
+        todosLosClientes,
+        clienteId?.id,
+        abonosDelCliente
+    );
+    
+    // Actualizar la función de validación en navigation
+    navigation.setValidateFunction(validation.validateCurrentStep);Responsabilidad: Combinar todos los hooks especializados
  * Este hook mantiene la MISMA INTERFAZ que el hook original para
  * garantizar compatibilidad 100% con el código existente.
  * 
@@ -27,12 +47,12 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useData } from '../../../context/DataContext.jsx';
-import { getAbonos } from '../../../services/dataService.js';
-import { getRenunciasByCliente } from '../../../services/renunciaService.js';
-import { formatCurrency, getTodayString } from '../../../utils/textFormatters.js';
-import { validateCliente, validateFinancialStep } from '../../../utils/validation.js';
-import { useModernToast } from '../../useModernToast.jsx';
+import { useData } from '../../context/DataContext.jsx';
+import { getAbonos } from '../../services/dataService.js';
+import { getRenunciasByCliente } from '../../services/renunciaService.js';
+import { formatCurrency, getTodayString } from '../../utils/textFormatters.js';
+import { validateCliente, validateFinancialStep } from '../../utils/validation.js';
+import { useModernToast } from '../useModernToast.jsx';
 
 // Importar hooks especializados
 import { useClienteFormState } from './useClienteFormState.js';
@@ -74,23 +94,28 @@ export const useClienteForm = (
     // 1. Hook de Estado
     const { formData, dispatch, errors, setErrors } = useClienteFormState(blankInitialState);
 
-    // 2. Hook de Validación
+    // 3. Hook de Navegación (antes de validación para obtener step actual)
+    const navigation = useClienteNavigation(
+        null, // validateCurrentStep se pasa después
+        setErrors,
+        formData
+    );
+
+    // 2. Hook de Validación (ahora con el step correcto)
     const validation = useClienteValidation(
         formData,
-        1, // step se maneja abajo
+        navigation.step, // ✅ Usamos el step del hook de navegación
         modo,
         isEditing,
         todosLosClientes,
         clienteAEditar?.id,
         abonosDelCliente
     );
-
-    // 3. Hook de Navegación
-    const navigation = useClienteNavigation(
-        validation.validateCurrentStep,
-        setErrors,
-        formData
-    );
+    
+    // Actualizar la función de validación en navigation (dentro de useEffect para evitar re-renders)
+    useEffect(() => {
+        navigation.setValidateFunction(validation.validateCurrentStep);
+    }, [validation.validateCurrentStep, navigation.setValidateFunction]);
 
     // 4. Hook de Archivos
     const fileUpload = useClienteFileUpload(
@@ -129,12 +154,13 @@ export const useClienteForm = (
 
         const filter = inputFilters[name];
         if (filter && !filter.regex.test(value)) {
-            setErrors({ ...errors, [name]: filter.message });
+            // ✅ Usamos callback para evitar dependencia de errors
+            setErrors(prevErrors => ({ ...prevErrors, [name]: filter.message }));
             return;
         }
 
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field: name, value } });
-    }, [dispatch, errors, setErrors]);
+    }, [dispatch, setErrors]); // ✅ Removimos 'errors' de las dependencias
 
     /**
      * Handler de campos financieros
@@ -143,12 +169,16 @@ export const useClienteForm = (
         if (field === 'caso') {
             const filter = /^[a-zA-Z0-9_-]*$/;
             if (!filter.test(value)) {
-                setErrors({ ...errors, [`${section}_${field}`]: 'Solo se permiten letras, números, _ y -.' });
+                // ✅ Usamos callback para evitar dependencia de errors
+                setErrors(prevErrors => ({
+                    ...prevErrors,
+                    [`${section}_${field}`]: 'Solo se permiten letras, números, _ y -.'
+                }));
                 return;
             }
         }
         dispatch({ type: 'UPDATE_FINANCIAL_FIELD', payload: { section, field, value } });
-    }, [dispatch, errors, setErrors]);
+    }, [dispatch, setErrors]); // ✅ Removimos 'errors' de las dependencias
 
     /**
      * Efecto de inicialización (cargar datos en modo edición)

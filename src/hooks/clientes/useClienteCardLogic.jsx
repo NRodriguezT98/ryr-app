@@ -4,11 +4,12 @@ import { determineClientStatus } from '../../utils/statusHelper';
 import { usePermissions } from '../auth/usePermissions';
 
 export const useClienteCardLogic = (cliente) => {
-    const { viviendas, abonos } = useData();
+    const { maps, abonos } = useData();
     const { can } = usePermissions();
 
     return useMemo(() => {
-        const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
+        // Usar Map para búsqueda O(1) en vez de find O(n)
+        const vivienda = cliente.vivienda || maps.viviendas.get(cliente.viviendaId);
 
         const totalAbonado = abonos
             .filter(abono => abono.clienteId === cliente.id && abono.viviendaId === vivienda?.id && abono.estadoProceso === 'activo')
@@ -26,7 +27,6 @@ export const useClienteCardLogic = (cliente) => {
         const isArchivado = cliente.status === 'inactivo';
         const isEnRenuncia = cliente.status === 'enProcesoDeRenuncia';
 
-        // La acción de archivar solo está disponible si el cliente NO está en medio de una renuncia.
         const puedeArchivar = !isEnRenuncia;
         const tieneValorEscrituraDiferente = cliente.financiero?.usaValorEscrituraDiferente === true && cliente.financiero?.valorEscritura > 0;
 
@@ -42,7 +42,7 @@ export const useClienteCardLogic = (cliente) => {
             },
             transferir: {
                 visible: cliente.status === 'activo' && can('clientes', 'transferirVivienda') && vivienda && !isPagada,
-                enabled: !!vivienda, // Solo se puede transferir si tiene una vivienda actualmente
+                enabled: !!vivienda,
                 tooltip: !vivienda ? "El cliente debe tener una vivienda asignada para poder ser transferido." : 'Transferir cliente a una nueva vivienda.'
             },
             renunciar: {
@@ -89,5 +89,5 @@ export const useClienteCardLogic = (cliente) => {
             acciones,
             tieneAccionesDisponibles
         };
-    }, [cliente, viviendas, abonos, can]);
+    }, [cliente, maps.viviendas, abonos, can]);
 };

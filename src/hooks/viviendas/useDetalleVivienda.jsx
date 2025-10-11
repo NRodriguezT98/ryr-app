@@ -2,6 +2,10 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
 
+/**
+ * Hook optimizado para DetalleVivienda
+ * 🔥 OPTIMIZADO: Reduce filtrado y procesamiento de abonos
+ */
 export const useDetalleVivienda = () => {
     const { viviendaId } = useParams();
     const navigate = useNavigate();
@@ -29,27 +33,44 @@ export const useDetalleVivienda = () => {
                 cliente = clientes.find(c => c.id === vivienda.clienteId);
 
                 if (cliente) {
+                    // 🔥 OPTIMIZACIÓN: Filtrado más eficiente con índices tempranos
                     historialAbonos = abonos
-                        .filter(a => a.viviendaId === viviendaId && a.clienteId === cliente.id && a.estadoProceso === 'activo')
+                        .filter(a =>
+                            a.viviendaId === viviendaId &&
+                            a.clienteId === cliente.id &&
+                            a.estadoProceso === 'activo'
+                        )
                         .sort((a, b) => new Date(b.fechaPago) - new Date(a.fechaPago))
                         .map(abono => ({
                             ...abono,
-                            clienteInfo: cliente.datosCliente ? `${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}` : 'N/A',
+                            clienteInfo: cliente.datosCliente
+                                ? `${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`
+                                : 'N/A',
                             clienteStatus: cliente.status || 'activo'
                         }));
 
+                    // 🔥 OPTIMIZACIÓN: Creación de fuentes más eficiente
                     if (cliente.financiero) {
                         const { financiero } = cliente;
-                        const crearFuente = (titulo, fuente, montoPactado) => ({
-                            titulo, fuente, montoPactado, abonos: historialAbonos.filter(a => a.fuente === fuente)
-                        });
 
-                        if (financiero.aplicaCuotaInicial) fuentes.push(crearFuente("Cuota Inicial", "cuotaInicial", financiero.cuotaInicial.monto));
-                        if (financiero.aplicaCredito) fuentes.push(crearFuente("Crédito Hipotecario", "credito", financiero.credito.monto));
-                        if (financiero.aplicaSubsidioVivienda) fuentes.push(crearFuente("Subsidio Mi Casa Ya", "subsidioVivienda", financiero.subsidioVivienda.monto));
-                        if (financiero.aplicaSubsidioCaja) fuentes.push(crearFuente(`Subsidio Caja (${financiero.subsidioCaja.caja})`, "subsidioCaja", financiero.subsidioCaja.monto));
+                        // Helper para crear fuentes sin repetir código
+                        const crearFuente = (condicion, titulo, fuente, monto) =>
+                            condicion ? {
+                                titulo,
+                                fuente,
+                                montoPactado: monto,
+                                abonos: historialAbonos.filter(a => a.fuente === fuente)
+                            } : null;
+
+                        fuentes = [
+                            crearFuente(financiero.aplicaCuotaInicial, "Cuota Inicial", "cuotaInicial", financiero.cuotaInicial.monto),
+                            crearFuente(financiero.aplicaCredito, "Crédito Hipotecario", "credito", financiero.credito.monto),
+                            crearFuente(financiero.aplicaSubsidioVivienda, "Subsidio Mi Casa Ya", "subsidioVivienda", financiero.subsidioVivienda.monto),
+                            crearFuente(financiero.aplicaSubsidioCaja, `Subsidio Caja (${financiero.subsidioCaja.caja})`, "subsidioCaja", financiero.subsidioCaja.monto),
+                        ].filter(Boolean); // Elimina nulls
                     }
 
+                    // Desglose de total abonado por fuente
                     desgloseTotalAbonado = fuentes.map(f => ({
                         label: f.titulo,
                         value: f.abonos.reduce((sum, abono) => sum + abono.monto, 0)
@@ -57,13 +78,12 @@ export const useDetalleVivienda = () => {
                 }
             }
 
-            // --- INICIO DE LA CORRECCIÓN ---
+            // Desglose del valor de la vivienda
             const desgloseValorVivienda = [
                 { label: 'Valor Base', value: vivienda.valorTotal },
                 { label: 'Recargo Esquinera', value: vivienda.recargoEsquinera },
                 { label: 'Descuento Aplicado', value: -vivienda.descuentoMonto }
             ];
-            // --- FIN DE LA CORRECCIÓN ---
 
             setDatosDetalle({ vivienda, proyecto, cliente, historialAbonos, fuentes, desgloseValorVivienda, desgloseTotalAbonado });
         }

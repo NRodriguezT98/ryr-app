@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 /**
  * Toggle Switch moderno y accesible
@@ -43,9 +42,9 @@ const ToggleSwitch = ({
     };
 
     const sizeClasses = {
-        sm: { track: 'w-10 h-5', thumb: 'w-4 h-4', translate: 'translate-x-5' },
-        md: { track: 'w-14 h-7', thumb: 'w-6 h-6', translate: 'translate-x-7' },
-        lg: { track: 'w-16 h-8', thumb: 'w-7 h-7', translate: 'translate-x-8' }
+        sm: { track: 'w-10 h-5', thumb: 'w-4 h-4', translateChecked: 'translate-x-5' },
+        md: { track: 'w-14 h-7', thumb: 'w-6 h-6', translateChecked: 'translate-x-7' },
+        lg: { track: 'w-16 h-8', thumb: 'w-7 h-7', translateChecked: 'translate-x-8' }
     };
 
     const colors = colorClasses[color] || colorClasses.emerald;
@@ -70,35 +69,26 @@ const ToggleSwitch = ({
                 ${className}
             `}
         >
-            <motion.span
-                initial={false}
-                animate={{
-                    x: checked ? sizes.translate : '0.125rem'
-                }}
-                transition={{
-                    type: 'spring',
-                    stiffness: 500,
-                    damping: 30
-                }}
+            <span
                 className={`
                     ${sizes.thumb}
                     bg-white rounded-full shadow-lg
                     flex items-center justify-center
+                    transition-transform duration-200 ease-out
+                    ${checked ? sizes.translateChecked : 'translate-x-0.5'}
                 `}
             >
                 {/* Icono opcional de check cuando está activo */}
                 {checked && (
-                    <motion.svg
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="w-3 h-3 text-gray-400"
+                    <svg
+                        className="w-3 h-3 text-gray-400 transition-opacity duration-150"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                     >
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </motion.svg>
+                    </svg>
                 )}
-            </motion.span>
+            </span>
         </button>
     );
 };

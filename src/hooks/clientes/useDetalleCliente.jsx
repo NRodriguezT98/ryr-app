@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation, useBlocker } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
-import toast from 'react-hot-toast';
+import { useModernToast } from '../useModernToast';
 import { determineClientStatus } from '../../utils/statusHelper';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 
@@ -9,19 +9,39 @@ export const useDetalleCliente = () => {
     const { clienteId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { clientes, viviendas, proyectos, abonos, renuncias, isLoading: isDataContextLoading, recargarDatos: recargarDatosGlobales } = useData();
+    const {
+        clientes,
+        viviendas,
+        proyectos,
+        abonos,
+        renuncias,
+        isLoading: isDataContextLoading,
+        recargarDatos: recargarDatosGlobales,
+        loadCollection,
+        hasLoaded
+    } = useData();
+    const toast = useModernToast();
 
     const [activeTab, setActiveTab] = useState(location.state?.defaultTab || 'info');
     const [procesoTieneCambios, setProcesoTieneCambios] = useState(false);
     const [navegacionBloqueada, setNavegacionBloqueada] = useState(null);
     const historialRef = useRef(null);
 
-    const recargarDatos = async () => {
+    // Cargar colección de clientes si no está cargada (lazy loading)
+    useEffect(() => {
+        if (!hasLoaded.clientes) {
+            loadCollection('clientes');
+        }
+    }, [hasLoaded.clientes, loadCollection]);
+
+    const recargarDatos = async (mostrarToast = true) => {
         await recargarDatosGlobales();
         if (historialRef.current && typeof historialRef.current.fetchHistorial === 'function') {
             historialRef.current.fetchHistorial();
         }
-        toast.success("Datos actualizados.");
+        if (mostrarToast) {
+            toast.success('Datos actualizados correctamente');
+        }
     };
 
     const blocker = useBlocker(
@@ -30,9 +50,11 @@ export const useDetalleCliente = () => {
     );
 
     const memoizedData = useMemo(() => {
-        if (isDataContextLoading || !clienteId) {
+        // Esperamos a que la colección de clientes esté cargada
+        if (!hasLoaded.clientes || !clienteId) {
             return { isLoading: true, data: null };
         }
+
         const cliente = clientes.find(c => c.id === clienteId);
         if (!cliente) {
             return { isLoading: false, data: null };
@@ -86,19 +108,21 @@ export const useDetalleCliente = () => {
                 estaAPazYSalvo
             }
         };
-    }, [clienteId, clientes, viviendas, proyectos, abonos, renuncias, isDataContextLoading]);
+    }, [clienteId, clientes, viviendas, proyectos, abonos, renuncias, hasLoaded.clientes]);
 
     const isReadOnly = useMemo(() => {
         const status = memoizedData.data?.cliente?.status;
         return status === 'enProcesoDeRenuncia' || status === 'renunciado' || status === 'inactivo';
     }, [memoizedData.data?.cliente?.status]);
 
+    // Solo mostrar error cuando la colección ya haya cargado completamente
     useEffect(() => {
-        if (!memoizedData.isLoading && !memoizedData.data) {
-            toast.error("Cliente no encontrado.");
+        // Si la colección de clientes ya cargó y no encontramos el cliente
+        if (hasLoaded.clientes && !memoizedData.isLoading && !memoizedData.data && clienteId) {
+            toast.error('Cliente no encontrado');
             navigate('/clientes/listar');
         }
-    }, [memoizedData, navigate]);
+    }, [hasLoaded.clientes, memoizedData.isLoading, memoizedData.data, clienteId, navigate, toast]);
 
     const handleTabClick = (tabName) => {
         if (procesoTieneCambios && activeTab === 'proceso' && tabName !== 'proceso') {

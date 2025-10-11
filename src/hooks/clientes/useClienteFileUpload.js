@@ -16,8 +16,8 @@
  */
 
 import { useCallback } from 'react';
-import { useModernToast } from '../../useModernToast.jsx';
-import { uploadFile } from '../../../services/fileService.js';
+import { useModernToast } from '../useModernToast.jsx';
+import { uploadFile } from '../../services/fileService.js';
 
 /**
  * Hook para gestionar la subida de archivos del cliente

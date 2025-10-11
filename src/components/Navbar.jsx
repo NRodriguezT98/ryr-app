@@ -73,11 +73,23 @@ const Navbar = () => {
                     <div className="flex-shrink-0 mr-8">
                         <Link to="/" className="flex items-center space-x-3 group">
                             <div className="relative">
-                                <img src={theme === 'dark' ? logo1Dark : logo1Light} alt="Logo 1" className="h-9 transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-lg" />
+                                <img
+                                    src={theme === 'dark' ? logo1Dark : logo1Light}
+                                    alt="Logo 1"
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="h-9 transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-lg"
+                                />
                                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-xl"></div>
                             </div>
                             <div className="relative">
-                                <img src={theme === 'dark' ? logo2Dark : logo2Light} alt="Logo 2" className="h-9 transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-lg" />
+                                <img
+                                    src={theme === 'dark' ? logo2Dark : logo2Light}
+                                    alt="Logo 2"
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="h-9 transition-all duration-300 group-hover:scale-105 group-hover:drop-shadow-lg"
+                                />
                                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10 blur-xl"></div>
                             </div>
                         </Link>

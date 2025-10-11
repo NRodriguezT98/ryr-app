@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useReducer } from 'react';
 import { useData } from '../../context/DataContext';
 import toast from 'react-hot-toast';
-import { transferirViviendaCliente } from '../../services/clienteService';
+import { transferirViviendaCliente } from '../../services/clientes';
 import { toTitleCase, formatCurrency } from '../../utils/textFormatters';
 import { useClienteFinanciero } from './useClienteFinanciero'; // Reutilizamos tu hook de cálculo
 

@@ -8,8 +8,9 @@ import { createClientAuditLog, ACTION_TYPES } from './unifiedAuditService';
 import { deleteFile } from './fileService';
 
 // Funciones helper para generar mensajes de auditoría específicos
+// ⚠️ EXPORTADAS para uso en módulos de proceso
 
-const obtenerNombreEvidencia = (evidenciaId, evidencia, pasoConfig) => {
+export const obtenerNombreEvidencia = (evidenciaId, evidencia, pasoConfig) => {
     // PRIORIDAD: Buscar el label en DOCUMENTACION_CONFIG
     const docConfig = DOCUMENTACION_CONFIG.find(doc => doc.id === evidenciaId);
     if (docConfig) {
@@ -51,7 +52,7 @@ const construirListaEvidencias = (evidencias, pasoConfig) => {
     return { texto, cantidad: evidenciasAdjuntas.length };
 };
 
-const generarMensajeComplecion = (pasoNombre, pasoData, pasoConfig) => {
+export const generarMensajeComplecion = (pasoNombre, pasoData, pasoConfig) => {
     const { texto: evidenciasTexto, cantidad } = construirListaEvidencias(pasoData.evidencias, pasoConfig);
     const fechaFormulario = pasoData.fecha;
 
@@ -73,7 +74,7 @@ ${iconoEvidencia} Evidencias: ${textoEvidencias}:${evidenciasTexto}
     }
 };
 
-const generarMensajeReapertura = (pasoNombre, pasoOriginal, pasoActual) => {
+export const generarMensajeReapertura = (pasoNombre, pasoOriginal, pasoActual) => {
     const motivo = pasoActual.motivoReapertura || 'No especificado';
     const fechaOriginal = formatDisplayDate(pasoOriginal.fecha);
 
@@ -638,7 +639,7 @@ export const getClienteProceso = async (clienteId) => {
     return clienteSnap.data().proceso || {};
 };
 
-const generarMensajeReCompletado = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+export const generarMensajeReCompletado = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
     const motivoReapertura = pasoActual.motivoReapertura || 'No especificado';
     const estadoAnterior = pasoActual.estadoAnterior || {};
 
@@ -715,7 +716,7 @@ const generarMensajeReCompletado = (pasoNombre, pasoOriginal, pasoActual, pasoCo
     return mensaje;
 };
 
-const generarMensajeReaperturaIntegral = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+export const generarMensajeReaperturaIntegral = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
     const motivo = pasoActual.motivoReapertura || 'No especificado';
     const fechaOriginal = formatDisplayDate(pasoOriginal.fecha);
 
@@ -784,7 +785,7 @@ const generarMensajeReaperturaIntegral = (pasoNombre, pasoOriginal, pasoActual, 
     return mensaje;
 };
 
-const generarMensajeModificacionIntegral = (pasoNombre, pasoOriginal, pasoActual, pasoConfig, tiposCambios) => {
+export const generarMensajeModificacionIntegral = (pasoNombre, pasoOriginal, pasoActual, pasoConfig, tiposCambios) => {
     let mensaje = `🔧 Modificación de paso completado
 
 📋 Paso: "${pasoNombre}"`;
@@ -1390,7 +1391,7 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
 };
 
 // Helper: Generar mensaje para cambio de fecha en paso completado
-const generarMensajeCambioFecha = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+export const generarMensajeCambioFecha = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
     const fechaOriginal = formatDisplayDate(pasoOriginal.fecha);
     const fechaNueva = formatDisplayDate(pasoActual.fecha);
 
@@ -1416,7 +1417,7 @@ const generarMensajeCambioFecha = (pasoNombre, pasoOriginal, pasoActual, pasoCon
 };
 
 // Helper: Generar mensaje para cambio de evidencias en paso completado
-const generarMensajeCambioEvidencias = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+export const generarMensajeCambioEvidencias = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
     const fecha = formatDisplayDate(pasoActual.fecha);
 
     let mensaje = `Se modificaron las evidencias del paso completado '${pasoNombre}'`;
@@ -1441,7 +1442,7 @@ const generarMensajeCambioEvidencias = (pasoNombre, pasoOriginal, pasoActual, pa
 };
 
 // Helper: Generar mensaje para reapertura con cambios posteriores
-const generarMensajeReaperturaConCambios = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
+export const generarMensajeReaperturaConCambios = (pasoNombre, pasoOriginal, pasoActual, pasoConfig) => {
     const fechaOriginal = formatDisplayDate(pasoOriginal.fecha);
     const fechaNueva = formatDisplayDate(pasoActual.fecha);
 
@@ -1610,7 +1611,7 @@ const limpiarObjetoPropiedades = (obj) => {
 };
 
 // Helper: Construir acceso directo a evidencias para componente frontend
-const construirAccesoEvidencias = (evidenciasOriginales, evidenciasActuales, pasoConfig) => {
+export const construirAccesoEvidencias = (evidenciasOriginales, evidenciasActuales, pasoConfig) => {
     try {
         const accesos = [];
         const tiposOriginales = Object.keys(evidenciasOriginales || {});

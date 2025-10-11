@@ -1,67 +1,61 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Mail, LogIn, ArrowRight } from 'lucide-react';
+/**
+ * @file LoginSubmitButton.jsx
+ * @description Botón de submit optimizado con estados visuales mejorados
+ */
 
-const LoginSubmitButton = ({ loading, isResetMode }) => {
+import React from 'react';
+import { Loader2, Mail, LogIn, ArrowRight, Lock } from 'lucide-react';
+
+const LoginSubmitButton = ({ loading, isResetMode, isBlocked }) => {
+    const isDisabled = loading || isBlocked;
+
     return (
-        <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-        >
-            <motion.button
+        <div className="transition-transform duration-200 hover:scale-[1.02] active:scale-[0.98]">
+            <button
                 type="submit"
-                disabled={loading}
-                className="group relative w-full py-4 px-6 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 
-                         text-white font-semibold rounded-2xl shadow-lg overflow-hidden
-                         disabled:opacity-70 disabled:cursor-not-allowed transition-all duration-300
-                         hover:shadow-2xl hover:shadow-blue-500/25 focus:outline-none focus:ring-2 focus:ring-blue-400/50"
-                whileHover={{
-                    boxShadow: "0 20px 40px rgba(59, 130, 246, 0.3)",
-                }}
+                disabled={isDisabled}
+                className={`group relative w-full py-4 px-6 text-white font-semibold rounded-2xl shadow-lg overflow-hidden
+                         transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400/50
+                         ${isBlocked
+                        ? 'bg-gradient-to-r from-gray-600 to-gray-700 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 hover:shadow-2xl hover:shadow-blue-500/25'
+                    }
+                         ${isDisabled && !isBlocked ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
                 {/* Efecto de brillo animado */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
-                               translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                {!isDisabled && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent 
+                                   translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+                )}
 
                 <div className="relative flex items-center justify-center gap-3">
-                    <AnimatePresence mode="wait">
-                        {loading ? (
-                            <motion.div
-                                key="loading"
-                                initial={{ opacity: 0, scale: 0 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0 }}
-                            >
-                                <Loader2 className="animate-spin" size={20} />
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="icon"
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 20 }}
-                                className="flex items-center gap-2"
-                            >
-                                {isResetMode ? <Mail size={20} /> : <LogIn size={20} />}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {loading ? (
+                        <Loader2 className="animate-spin" size={20} />
+                    ) : isBlocked ? (
+                        <Lock size={20} />
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            {isResetMode ? <Mail size={20} /> : <LogIn size={20} />}
+                        </div>
+                    )}
 
                     <span className="text-lg">
-                        {loading ? 'Procesando...' : (isResetMode ? 'Enviar Enlace' : 'Ingresar')}
+                        {loading
+                            ? 'Procesando...'
+                            : isBlocked
+                                ? 'Bloqueado'
+                                : (isResetMode ? 'Enviar Enlace' : 'Ingresar')
+                        }
                     </span>
 
-                    {!loading && (
-                        <motion.div
-                            animate={{ x: [0, 5, 0] }}
-                            transition={{ duration: 1.5, repeat: Infinity }}
-                        >
+                    {!loading && !isBlocked && (
+                        <div className="animate-pulse">
                             <ArrowRight size={16} />
-                        </motion.div>
+                        </div>
                     )}
                 </div>
-            </motion.button>
-        </motion.div>
+            </button>
+        </div>
     );
 };
 

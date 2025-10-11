@@ -1,6 +1,6 @@
 // Importa las funciones que necesitas del SDK de Firebase
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 
@@ -21,7 +21,15 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 // Se crea la instancia de la base de datos
-const db = getFirestore(app);
+// 🔥 OPTIMIZACIÓN: Usando initializeFirestore con persistencia moderna
+// Beneficio: Queries instantáneas cuando datos ya fueron consultados
+// Funciona offline: NO (solo cache para velocidad)
+// Soporte multi-tab: SÍ (sincronización automática entre pestañas)
+const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+    }),
+});
 
 const storage = getStorage(app);
 

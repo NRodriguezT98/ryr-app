@@ -9,7 +9,7 @@
  * Estado: ✅ Código idéntico al original (zero-risk extraction)
  */
 
-import { getTodayString } from '../../../utils/textFormatters.js';
+import { getTodayString } from '../../utils/textFormatters.js';
 
 /**
  * Estado inicial en blanco para el formulario de cliente

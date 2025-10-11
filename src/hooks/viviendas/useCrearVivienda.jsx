@@ -1,10 +1,9 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useForm } from "../useForm.jsx";
 import { validateVivienda } from "../../utils/validation.js";
 import { addVivienda } from "../../services/viviendaService";
-import { getViviendas } from '../../services/dataService.js';
 import { createAuditLog } from "../../services/auditService";
 import { useData } from '../../context/DataContext.jsx'
 
@@ -29,21 +28,23 @@ const inputFilters = {
     linderoOccidente: { regex: /^[a-zA-ZáéíóúÁÉÍÓÚ0-9\s.,\(\)-]*$/, message: "Caracter no permitido, solo se permiten letras (incluyendo acentos), números, ( ) y separadores ( , o . )." }
 };
 
+/**
+ * Hook para crear viviendas
+ * 🔥 OPTIMIZADO: Usa viviendas de DataContext (no llamada redundante a getViviendas)
+ */
 export const useCrearVivienda = () => {
     const navigate = useNavigate();
-    const [isLoading, setIsLoading] = useState(true);
-    const [todasLasViviendas, setTodasLasViviendas] = useState([]);
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { proyectos } = useData();
+    const { proyectos, viviendas, isLoading: isLoadingData } = useData();
 
     const {
         formData, errors, setErrors, handleInputChange,
         handleValueChange, dispatch, handleSubmit
     } = useForm({
         initialState,
-        validate: (data) => validateVivienda(data, todasLasViviendas),
+        validate: (data) => validateVivienda(data, viviendas), // ✅ Usa viviendas del contexto
         onSubmit: async (formData) => {
             setIsSubmitting(true);
             const valorBaseNum = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
@@ -65,7 +66,7 @@ export const useCrearVivienda = () => {
                 const viviendaDocRef = await addVivienda(nuevaVivienda);
                 toast.success("¡Vivienda registrada con éxito!");
 
-                // Aquí empieza la Auditoria.
+                // Auditoría
                 const proyectoAsignado = proyectos.find(p => p.id === formData.proyectoId);
                 const nombreProyecto = proyectoAsignado ? proyectoAsignado.nombre : 'Proyecto no encontrado';
 
@@ -75,7 +76,6 @@ export const useCrearVivienda = () => {
                         id: formData.proyectoId,
                         nombre: nombreProyecto
                     },
-                    // AHORA TODOS LOS DATOS ESTÁN AQUÍ, EN EL NIVEL PRINCIPAL
                     manzana: formData.manzana,
                     numeroCasa: formData.numeroCasa,
                     linderoNorte: formData.linderoNorte,
@@ -110,12 +110,6 @@ export const useCrearVivienda = () => {
         options: { inputFilters }
     });
 
-    useEffect(() => {
-        Promise.all([getViviendas()]).then(([viviendasData]) => {
-            setTodasLasViviendas(viviendasData);
-        }).finally(() => setIsLoading(false));
-    }, []);
-
     const valorTotalCalculado = useMemo(() => {
         const valorBase = parseInt(String(formData.valorBase).replace(/\D/g, ''), 10) || 0;
         const recargoEsquinera = formData.esEsquinera ? parseInt(formData.recargoEsquinera, 10) || 0 : 0;
@@ -123,7 +117,7 @@ export const useCrearVivienda = () => {
     }, [formData.valorBase, formData.esEsquinera, formData.recargoEsquinera]);
 
     const handleNextStep = () => {
-        const allErrors = validateVivienda(formData, todasLasViviendas);
+        const allErrors = validateVivienda(formData, viviendas);
         const fieldsToValidate = step === 1
             ? ['proyectoId', 'manzana', 'numeroCasa', 'linderoNorte', 'linderoSur', 'linderoOriente', 'linderoOccidente']
             : ['matricula', 'nomenclatura', 'areaLote', 'areaConstruida'];
@@ -150,7 +144,7 @@ export const useCrearVivienda = () => {
     };
 
     return {
-        step, isLoading, formData, errors, isSubmitting, valorTotalCalculado,
+        step, isLoading: isLoadingData, formData, errors, isSubmitting, valorTotalCalculado,
         gastosNotarialesFijos: GASTOS_NOTARIALES_FIJOS, proyectos,
         handlers: {
             handleNextStep, handlePrevStep, handleSubmit,

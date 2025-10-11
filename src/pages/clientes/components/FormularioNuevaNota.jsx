@@ -1,7 +1,7 @@
 // src/pages/clientes/components/FormularioNuevaNota.jsx
 import React, { useState } from 'react';
 import { MessageSquarePlus, Loader } from 'lucide-react';
-import { addNotaToHistorial } from '../../../services/clienteService';
+import { addNotaToHistorial } from '../../../services/clientes';
 import { useAuth } from '../../../context/AuthContext';
 import { useModernToast } from '../../../hooks/useModernToast.jsx';
 import Button from '../../../components/Button';

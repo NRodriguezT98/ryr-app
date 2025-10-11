@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import ToggleSwitch from './ToggleSwitch';
 
 /**
@@ -65,12 +64,7 @@ const FinancingCard = ({
     const theme = colorThemes[color] || colorThemes.emerald;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="group relative"
-        >
+        <div className="group relative animate-fadeIn">
             {/* Efecto de glow sutil - simplificado */}
             {isActive && (
                 <div className={`absolute -inset-0.5 bg-gradient-to-br ${theme.gradient} rounded-2xl opacity-20 blur-sm`} />
@@ -126,26 +120,18 @@ const FinancingCard = ({
                     </div>
                 </div>
 
-                {/* Contenido expandible con animación optimizada */}
-                <AnimatePresence mode="wait">
-                    {isActive && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2, ease: 'easeInOut' }}
-                            className="overflow-hidden"
-                        >
-                            <div className={`border-t-2 ${theme.divider} px-6 pb-6 pt-6 ${theme.activeBg}`}>
-                                <div className="space-y-5">
-                                    {children}
-                                </div>
+                {/* Contenido expandible con transición CSS */}
+                {isActive && (
+                    <div className="overflow-hidden transition-all duration-200 animate-slideUp">
+                        <div className={`border-t-2 ${theme.divider} px-6 pb-6 pt-6 ${theme.activeBg}`}>
+                            <div className="space-y-5">
+                                {children}
                             </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                        </div>
+                    </div>
+                )}
             </div>
-        </motion.div>
+        </div>
     );
 };
 

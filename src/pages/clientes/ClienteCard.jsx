@@ -1,9 +1,9 @@
 import React, { Fragment, memo } from 'react';
-import { Link } from 'react-router-dom';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign, MapPin, ArrowRightLeft, CreditCard, TrendingUp } from 'lucide-react';
 import { getInitials, formatID, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import Card from '../../components/Card';
+import { PreloadLink } from '../../utils/routePreloader.jsx';
 
 const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, onTransferir, nombreProyecto }) => {
 
@@ -77,8 +77,10 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
                                     {status === 'enProcesoDeRenuncia' ? 'Renunció a' : 'Vivienda Asignada'}
                                 </p>
-                                <Link
+                                <PreloadLink
                                     to={`/viviendas/detalle/${vivienda.id}`}
+                                    preload={() => import('../viviendas/DetalleVivienda')}
+                                    preloadKey={`vivienda-alt-${vivienda.id}`}
                                     className="text-lg font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors duration-200 flex items-center gap-2"
                                 >
                                     {`Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`}
@@ -91,7 +93,7 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                             <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
                                         </div>
                                     )}
-                                </Link>
+                                </PreloadLink>
                             </div>
                         ) : (
                             <div className="min-w-0 flex-1">
@@ -190,13 +192,19 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
             </div>
             {/* Footer modernizado */}
             <div className="mt-auto p-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <Link to={`/clientes/detalle/${id}`} state={{ defaultTab: 'proceso' }} className="flex">
+                <PreloadLink
+                    to={`/clientes/detalle/${id}`}
+                    state={{ defaultTab: 'proceso' }}
+                    preload={() => import('./DetalleCliente')}
+                    preloadKey={`cliente-${id}`}
+                    className="flex"
+                >
                     <div className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-full transition-all duration-200 hover:scale-105 hover:shadow-md ${clientStatus.color}`}>
                         <div className="w-2 h-2 rounded-full bg-current animate-pulse"></div>
                         {clientStatus.icon}
                         <span>{clientStatus.text}</span>
                     </div>
-                </Link>
+                </PreloadLink>
 
                 {tieneAccionesDisponibles && (
                     <Menu as="div" className="relative">
@@ -210,9 +218,14 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
                                     <div className="px-1 py-1">
                                         <Menu.Item>
                                             {({ active }) => (
-                                                <Link to={`/clientes/detalle/${id}`} className={`${active ? 'bg-slate-100 dark:bg-slate-700' : ''} group flex rounded-lg items-center w-full px-3 py-2.5 text-sm text-slate-900 dark:text-slate-200 transition-colors`}>
+                                                <PreloadLink
+                                                    to={`/clientes/detalle/${id}`}
+                                                    preload={() => import('./DetalleCliente')}
+                                                    preloadKey={`cliente-${id}`}
+                                                    className={`${active ? 'bg-slate-100 dark:bg-slate-700' : ''} group flex rounded-lg items-center w-full px-3 py-2.5 text-sm text-slate-900 dark:text-slate-200 transition-colors`}
+                                                >
                                                     <Eye className="w-4 h-4 mr-3 text-slate-500" /> Ver Detalle
-                                                </Link>
+                                                </PreloadLink>
                                             )}
                                         </Menu.Item>
                                     </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { useModernToast } from '../useModernToast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
-import { generarActividadProceso, updateClienteProceso, updateClienteProcesoUnified, anularCierreProceso, getClienteProceso } from "../../services/clienteService";
+import { generarActividadProceso, updateClienteProceso, updateClienteProcesoUnified, anularCierreProceso, getClienteProceso } from "../../services/clientes";
 import { createNotification } from "../../services/notificationService";
 import { parseDateAsUTC, formatDisplayDate, getTodayString, formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { useAuth } from '../../context/AuthContext';
@@ -216,6 +216,7 @@ const calcularEstadoYDependencias = (procesoState, pasosAplicables, validationEr
 
 export const useProcesoLogic = (cliente, onSaveSuccess) => {
     const { userData } = useAuth();
+    const toast = useModernToast();
     const userName = userData ? toTitleCase(`${userData.nombres} ${userData.apellidos}`) : 'Usuario Desconocido';
 
     const [procesoState, setProcesoState] = useState(cliente.proceso || {});
@@ -256,9 +257,6 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
             const estadoInicial = initialProcesoState[pasoConfig.key];
             const estadoActual = procesoState[pasoConfig.key];
 
-            if (estadoInicial?.completado !== estadoActual?.completado) {
-                console.log(`DEBUG UI [${pasoConfig.key}]: Inicial: ${estadoInicial?.completado}, Actual: ${estadoActual?.completado}`);
-            }
             return estadoInicial?.completado === true && estadoActual?.completado === false;
         });
 
@@ -288,11 +286,27 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
     }, []);
 
     const handleCompletarPaso = useCallback((pasoKey, fecha) => {
+        // VALIDACIÓN: Si el paso está en reapertura, debe haber cambios
+        const pasoActual = procesoState[pasoKey] || {};
+        const pasoOriginal = initialProcesoState[pasoKey] || {};
+
+        // Si tiene metadata de reapertura, verificar que haya cambios
+        if (pasoActual.motivoReapertura || pasoActual.fechaReapertura) {
+            const huboCambioFecha = pasoOriginal.fecha !== fecha;
+            const huboCambioEvidencias = JSON.stringify(pasoOriginal.evidencias || {}) !==
+                JSON.stringify(pasoActual.evidencias || {});
+
+            if (!huboCambioFecha && !huboCambioEvidencias) {
+                toast.error('No se puede completar un paso reabierto sin realizar cambios. Modifica la fecha o reemplaza evidencias.');
+                return;
+            }
+        }
+
         setProcesoState(prev => ({
             ...prev,
             [pasoKey]: { ...prev[pasoKey], completado: true, fecha }
         }));
-    }, []);
+    }, [procesoState, initialProcesoState]);
 
     const iniciarReapertura = useCallback((pasoKey) => setReaperturaInfo({ key: pasoKey, motivo: '' }), []);
 
@@ -319,14 +333,14 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
 
     const descartarCambiosEnPaso = useCallback((pasoKey) => {
         setProcesoState(prev => ({ ...prev, [pasoKey]: initialProcesoState[pasoKey] || { completado: false, fecha: null, evidencias: {} } }));
-        toast('Cambios en el paso descartados.', { icon: '↩️' });
-    }, [initialProcesoState]);
+        toast.info('Cambios en el paso descartados');
+    }, [initialProcesoState, toast]);
 
     const iniciarEdicionFecha = useCallback((pasoKey) => setPasoAEditarFecha({ key: pasoKey, fecha: procesoState[pasoKey].fecha, motivo: '' }), [procesoState]);
 
     const confirmarEdicionFecha = useCallback((pasoKey, nuevaFecha, motivo) => {
         if (!motivo.trim()) {
-            toast.error("El motivo del cambio es obligatorio.");
+            toast.error('El motivo del cambio es obligatorio');
             return;
         }
         setProcesoState(prev => ({
@@ -339,8 +353,8 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
             }
         }));
         setPasoAEditarFecha(null);
-        toast.success("Fecha y motivo actualizados.");
-    }, []);
+        toast.success('Fecha y motivo actualizados');
+    }, [toast]);
 
     const cancelarEdicionFecha = useCallback(() => setPasoAEditarFecha(null), []);
 
@@ -354,12 +368,12 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
 
     const confirmarAnulacionCierre = useCallback(async (motivo) => {
         if (!motivo || !motivo.trim()) {
-            toast.error("El motivo es obligatorio.");
+            toast.error('El motivo es obligatorio');
             return;
         }
         try {
             await anularCierreProceso(cliente.id, userName, motivo);
-            toast.success("¡Cierre anulado! El último paso ha sido reabierto.");
+            toast.success('¡Cierre anulado! El último paso ha sido reabierto');
 
             const procesoRefrescado = await getClienteProceso(cliente.id);
             setProcesoState(procesoRefrescado);
@@ -368,43 +382,11 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
             if (onSaveSuccess) onSaveSuccess();
         } catch (error) {
             console.error("Error al anular el cierre:", error);
-            toast.error("No se pudo anular el cierre del proceso.");
+            toast.error('No se pudo anular el cierre del proceso');
         } finally {
             setCierreAAnular(null);
         }
-    }, [cliente.id, onSaveSuccess, userName, procesoState]);
-
-    // 🔽 REEMPLAZA EL useMemo ANTIGUO CON ESTE 🔽
-    const { pasosRenderizables, validationErrors, progreso, hayPasoEnReapertura, procesoCompletado } = useMemo(() => {
-        // 1. Obtener los pasos que aplican a este cliente específico
-        const pasosAplicables = getPasosAplicables(cliente);
-
-        // 2. Validar el estado actual del proceso
-        const errores = validarPasos(procesoState, pasosAplicables, cliente);
-
-        // 3. Calcular estados derivados (bloqueos, fechas, etc.)
-        const resultado = calcularEstadoYDependencias(procesoState, pasosAplicables, errores, cliente);
-
-        // 4. Calcular datos finales para la UI
-        const pasosCompletados = resultado.filter(p => p.data?.completado && !p.error).length;
-        const procesoEstaCompleto = pasosCompletados === resultado.length && resultado.length > 0;
-
-        const algunPasoEnReapertura = pasosAplicables.some(pasoConfig => {
-            const estadoInicial = initialProcesoState[pasoConfig.key];
-            const estadoActual = procesoState[pasoConfig.key];
-            return estadoInicial?.completado === true && estadoActual?.completado === false;
-        });
-
-        return {
-            pasosRenderizables: resultado,
-            validationErrors: errores,
-            progreso: { completados: pasosCompletados, total: resultado.length },
-            hayPasoEnReapertura: algunPasoEnReapertura,
-            procesoCompletado: procesoEstaCompleto,
-        };
-
-    }, [cliente, procesoState, initialProcesoState]);
-    //
+    }, [cliente.id, onSaveSuccess, userName, toast]);
 
     const hayCambiosSinGuardar = useMemo(() => {
         return JSON.stringify(procesoState) !== JSON.stringify(initialProcesoState);
@@ -420,6 +402,10 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
             return changed && !curr.completado; // cambios pero el paso no está completado aún
         });
     }, [procesoState, initialProcesoState, cliente.financiero]);
+
+    // Extraer validationErrors y hayPasoEnReapertura de datosProcesados
+    const validationErrors = datosProcesados.validationErrors;
+    const hayPasoEnReapertura = datosProcesados.hayPasoEnReapertura;
 
     const isSaveDisabled = useMemo(() => {
         if (Object.keys(validationErrors).length > 0) return true;
@@ -447,115 +433,20 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
 
     const handleSaveChanges = async () => {
         if (isSaveDisabled || isSubmitting) {
-            toast.error(tooltipMessage);
+            toast.warning(tooltipMessage);
             return;
         }
 
         setIsSubmitting(true);
         try {
-            // Nota: Verificación de conflictos deshabilitada por falsos positivos
-            // const procesoActualEnDB = await getClienteProceso(cliente.id);
-            // ... lógica de verificación de conflictos comentada ...
+            // ✅ NUEVO SISTEMA UNIFICADO: El detector de cambios se encarga de todo automáticamente
+            console.log('🔄 Usando nuevo sistema de auditoría unificado');
+            
+            // Pasamos el procesoState directamente (SIN generar actividad manualmente)
+            await updateClienteProcesoUnified(cliente.id, procesoState, null, null);
 
-            const procesoConActividad = generarActividadProceso(initialProcesoState, procesoState, userName);
-
-            const cambiosDetectados = [];
-            let motivoReaperturaParaLog = null;
-
-            PROCESO_CONFIG
-                .filter(p => p.aplicaA(cliente.financiero || {}))
-                .forEach(pasoConfig => {
-                    const key = pasoConfig.key;
-                    const estadoInicial = initialProcesoState[key] || {};
-                    const estadoActual = procesoState[key] || {};
-
-                    if (JSON.stringify(estadoInicial) !== JSON.stringify(estadoActual)) {
-                        const nombrePaso = pasoConfig.label.substring(pasoConfig.label.indexOf('.') + 1).trim();
-                        cambiosDetectados.push({
-                            paso: nombrePaso,
-                            key: key,
-                            estadoInicial: estadoInicial,
-                            estadoActual: estadoActual
-                        });
-
-                        if (estadoActual.motivoReapertura) {
-                            motivoReaperturaParaLog = estadoActual.motivoReapertura;
-                        }
-                    }
-                });
-
-            const clienteNombre = toTitleCase(`${cliente.datosCliente.nombres} ${cliente.datosCliente.apellidos}`);
-            let auditMessage;
-
-            // --- INICIO DE LA SOLUCIÓN ---
-            if (motivoReaperturaParaLog && cambiosDetectados.length > 0) {
-                const cambio = cambiosDetectados[0];
-                let accionesPosteriores = [];
-
-                // Comprobamos si la fecha cambió
-                if (cambio.estadoInicial.fecha !== cambio.estadoActual.fecha) {
-                    accionesPosteriores.push(`se modificó la fecha de completado de ${formatDisplayDate(cambio.estadoInicial.fecha)} a ${formatDisplayDate(cambio.estadoActual.fecha)}`);
-                }
-
-                // Comprobamos si las evidencias cambiaron
-                const evidenciasConfig = PROCESO_CONFIG.find(p => p.key === cambio.key)?.evidenciasRequeridas || [];
-                const evidenciasCambiadas = [];
-                evidenciasConfig.forEach(ev => {
-                    const urlOriginal = cambio.estadoInicial.evidencias?.[ev.id]?.url;
-                    const urlActual = cambio.estadoActual.evidencias?.[ev.id]?.url;
-                    if (urlActual !== urlOriginal) {
-                        evidenciasCambiadas.push(`se ${urlActual ? (urlOriginal ? 'reemplazó' : 'subió') : 'eliminó'} la evidencia '${ev.label}'`);
-                    }
-                });
-                if (evidenciasCambiadas.length > 0) {
-                    accionesPosteriores.push(evidenciasCambiadas.join(' y '));
-                }
-
-                // Construimos el mensaje final al pie de la letra
-                auditMessage = `Se reabrió el paso y ${accionesPosteriores.join(' y ')}. El Motivo de la reapertura fue: "${motivoReaperturaParaLog}".`;
-
-                // Si además de todo, se recompletó el paso, lo añadimos
-                if (!cambio.estadoInicial.completado && cambio.estadoActual.completado) {
-                    auditMessage += " Finalmente, se completó el paso.";
-                }
-
-            } else if (cambiosDetectados.length > 0) {
-                const cambiosTexto = cambiosDetectados.map(c =>
-                    `${c.estadoActual.completado ? 'Completó' : 'Reabrió'} el paso '${c.paso}'`
-                ).join(', ');
-                auditMessage = `Actualizó el proceso del cliente ${clienteNombre}. Cambios: ${cambiosTexto}.`;
-            }
-            // --- FIN DE LA SOLUCIÓN ---
-
-            const auditDetails = {
-                action: 'UPDATE_PROCESO',
-                cambios: cambiosDetectados.map(c => ({
-                    paso: c.paso,
-                    accion: c.estadoActual.completado ? 'completó' : 'reabrió'
-                })),
-                motivo: motivoReaperturaParaLog,
-                cliente: {
-                    id: cliente.id,
-                    nombre: clienteNombre
-                },
-                vivienda: cliente.vivienda ? {
-                    id: cliente.vivienda.id,
-                    display: cliente.vivienda.display || `Mz. ${cliente.vivienda.manzana} - Casa ${cliente.vivienda.numeroCasa}`
-                } : null,
-                // Esta línea ahora funcionará porque cliente.vivienda.proyecto ya no será null
-                proyecto: cliente.vivienda?.proyecto ? {
-                    id: cliente.vivienda.proyecto.id,
-                    nombre: cliente.vivienda.proyecto.nombre || 'Proyecto no especificado'
-                } : null
-            };
-
-            if (cambiosDetectados.length > 0) {
-                // PRUEBA: Usar el nuevo sistema unificado de auditoría
-                console.log('🔄 Usando nuevo sistema de auditoría unificado');
-                await updateClienteProcesoUnified(cliente.id, procesoConActividad, auditMessage, auditDetails);
-            }
-
-            toast.success("Proceso del cliente actualizado con éxito.");
+            // NO mostrar toast aquí - se muestra en onSaveSuccess (useDetalleCliente)
+            // toast.success("Proceso del cliente actualizado con éxito.");
 
             const procesoRefrescado = await getClienteProceso(cliente.id);
             setInitialProcesoState(procesoRefrescado);
@@ -565,7 +456,7 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
 
         } catch (error) {
             console.error("Error al guardar proceso:", error);
-            toast.error("No se pudo guardar los cambios en el proceso.");
+            toast.error('No se pudo guardar los cambios en el proceso');
         } finally {
             setIsSubmitting(false);
         }

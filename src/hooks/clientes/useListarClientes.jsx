@@ -1,21 +1,34 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
 import { useClienteCardLogic } from './useClienteCardLogic';
-import { deleteClientePermanently, inactivarCliente, renunciarAVivienda, restaurarCliente } from "../../services/clienteService";
+import { deleteClientePermanently, inactivarCliente, renunciarAVivienda, restaurarCliente } from "../../services/clientes";
 import { createNotification } from "../../services/notificationService";
 import toast from 'react-hot-toast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
+import { useDebounce } from '../useDebounce';
+import {
+    aplicarFiltrosClientes,
+    ordenarClientes,
+    enriquecerClientes
+} from '../../utils/clienteFilters';
 
 const ITEMS_PER_PAGE = 10;
 
 export const useListarClientes = () => {
-    const { isLoading, clientes, abonos, viviendas, proyectos, recargarDatos } = useData();
+    const { isLoading, clientes, abonos, viviendas, proyectos, recargarDatos, loadCollection } = useData();
 
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300); // Debounce de 300ms
     const [statusFilter, setStatusFilter] = useState('activo');
     const [proyectoFilter, setProyectoFilter] = useState('todos');
     const [sortOrder, setSortOrder] = useState('ubicacion');
     const [currentPage, setCurrentPage] = useState(1);
+
+    // 🔥 CRÍTICO: Cargar clientes, viviendas y abonos al montar
+    useEffect(() => {
+        loadCollection('clientes'); // Auto-carga viviendas internamente
+        loadCollection('abonos');
+    }, [loadCollection]);
 
     const limpiarFiltros = useCallback(() => {
         setSearchTerm('');
@@ -36,86 +49,26 @@ export const useListarClientes = () => {
         clienteEnModal: { cliente: null, modo: null },
     });
 
+    // 🔥 OPTIMIZACIÓN: Enriquecimiento centralizado usando utilidad
     const todosLosClientes = useMemo(() => {
-        return clientes.map(cliente => {
-            const viviendaAsignada = viviendas.find(v => v.id === cliente.viviendaId);
-            const proyectoAsignado = viviendaAsignada ? proyectos.find(p => p.id === viviendaAsignada.proyectoId) : null;
-            const procesoFinalizado = cliente.proceso?.facturaVenta?.completado === true;
-            const tieneAbonos = abonos.some(a => a.clienteId === cliente.id);
+        const proyectosMap = new Map(proyectos.map(p => [p.id, p]));
+        const abonosSet = new Set(abonos.map(a => a.clienteId));
 
-            return {
-                ...cliente,
-                vivienda: viviendaAsignada,
-                nombreProyecto: proyectoAsignado ? proyectoAsignado.nombre : null,
-                puedeRenunciar: !procesoFinalizado,
-                puedeEditar: !procesoFinalizado,
-                puedeSerEliminado: !tieneAbonos
-            };
-        });
-    }, [clientes, abonos, viviendas, proyectos]);
+        return enriquecerClientes(clientes, proyectosMap, abonosSet);
+    }, [clientes, abonos, proyectos]);
 
+    // 🔥 OPTIMIZACIÓN: Filtrado y ordenamiento usando utilidades centralizadas
     const clientesFiltrados = useMemo(() => {
-        // Enriquecemos cada cliente con los datos que la Card necesitará.
-        // Este cálculo se hace una sola vez, en lugar de en cada render del componente.
-        let itemsProcesados = [...todosLosClientes];
+        // 1. Aplicar filtros
+        const filtrados = aplicarFiltrosClientes(todosLosClientes, {
+            statusFilter,
+            proyectoFilter,
+            searchTerm: debouncedSearchTerm
+        });
 
-        if (proyectoFilter !== 'todos') {
-            itemsProcesados = itemsProcesados.filter(c => c.vivienda?.proyectoId === proyectoFilter);
-        }
-
-        if (statusFilter !== 'todos') {
-            itemsProcesados = itemsProcesados.filter(c => c.status === statusFilter);
-        }
-
-        if (searchTerm) {
-            const lowerCaseSearchTerm = searchTerm.toLowerCase().replace(/\s/g, '');
-            itemsProcesados = itemsProcesados.filter(c => {
-                const nombreCompleto = `${c.datosCliente?.nombres || ''} ${c.datosCliente?.apellidos || ''}`.toLowerCase();
-                const cedula = (c.datosCliente?.cedula || '');
-                const ubicacion = c.vivienda ? `${c.vivienda.manzana}${c.vivienda.numeroCasa}`.toLowerCase().replace(/\s/g, '') : '';
-                return nombreCompleto.includes(searchTerm.toLowerCase()) || cedula.includes(lowerCaseSearchTerm) || (ubicacion && ubicacion.includes(lowerCaseSearchTerm));
-            });
-        }
-
-
-        switch (sortOrder) {
-            case 'fecha_reciente':
-                itemsProcesados.sort((a, b) => new Date(b.datosCliente.fechaIngreso) - new Date(a.datosCliente.fechaIngreso));
-                break;
-            case 'saldo_desc':
-                itemsProcesados.sort((a, b) => (b.vivienda?.saldoPendiente ?? -Infinity) - (a.vivienda?.saldoPendiente ?? -Infinity));
-                break;
-            case 'saldo_asc':
-                itemsProcesados.sort((a, b) => (a.vivienda?.saldoPendiente ?? Infinity) - (b.vivienda?.saldoPendiente ?? Infinity));
-                break;
-            case 'valor_desc':
-                itemsProcesados.sort((a, b) => (b.vivienda?.valorFinal || 0) - (a.vivienda?.valorFinal || 0));
-                break;
-            case 'valor_asc':
-                itemsProcesados.sort((a, b) => (a.vivienda?.valorFinal || 0) - (b.vivienda?.valorFinal || 0));
-                break;
-            case 'nombre_asc':
-                itemsProcesados.sort((a, b) => {
-                    const nameA = `${a.datosCliente?.nombres || ''} ${a.datosCliente?.apellidos || ''}`.toLowerCase();
-                    const nameB = `${b.datosCliente?.nombres || ''} ${b.datosCliente?.apellidos || ''}`.toLowerCase();
-                    return nameA.localeCompare(nameB);
-                });
-                break;
-            case 'ubicacion':
-            default:
-                itemsProcesados.sort((a, b) => {
-                    const viviendaA = a.vivienda;
-                    const viviendaB = b.vivienda;
-                    if (!viviendaA && !viviendaB) return 0;
-                    if (!viviendaA) return 1;
-                    if (!viviendaB) return -1;
-                    return viviendaA.manzana.localeCompare(viviendaB.manzana) || viviendaA.numeroCasa - viviendaB.numeroCasa;
-                });
-                break;
-        }
-
-        return itemsProcesados;
-    }, [todosLosClientes, searchTerm, statusFilter, proyectoFilter, sortOrder]);
+        // 2. Ordenar resultados
+        return ordenarClientes(filtrados, sortOrder);
+    }, [todosLosClientes, debouncedSearchTerm, statusFilter, proyectoFilter, sortOrder]);
 
     const totalPages = useMemo(() => Math.ceil(clientesFiltrados.length / ITEMS_PER_PAGE), [clientesFiltrados]);
 
@@ -221,7 +174,8 @@ export const useListarClientes = () => {
         totalClientesEnSistema: todosLosClientes.length,
         statusFilter, setStatusFilter,
         proyectoFilter, setProyectoFilter,
-        searchTerm, setSearchTerm,
+        searchTerm, setSearchTerm, // Mantener searchTerm para el input
+        debouncedSearchTerm, // Exponer para indicadores
         sortOrder, setSortOrder,
         pagination: {
             currentPage,

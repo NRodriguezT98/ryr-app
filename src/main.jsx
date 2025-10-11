@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import './index.css';
@@ -9,34 +9,60 @@ import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { AuditProvider } from './context/AuditContext';
 
-// Importación de todos tus componentes de página
+// Importaciones inmediatas (críticas para el inicio)
 import Layout from './layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PermissionProtectedRoute from './components/PermissionProtectedRoute';
 import LoginPage from './pages/auth/LoginPage';
-import UnauthorizedPage from './pages/auth/UnauthorizedPage';
-import DashboardPage from './pages/DashboardPage';
-import CrearVivienda from './pages/viviendas/CrearVivienda';
-import ListarViviendas from './pages/viviendas/ListarViviendas';
-import DetalleVivienda from './pages/viviendas/DetalleVivienda';
-import EditarVivienda from './pages/viviendas/EditarVivienda';
-import CrearCliente from "./pages/clientes/CrearCliente";
-import ListarClientes from './pages/clientes/ListarClientes';
-import DetalleCliente from './pages/clientes/DetalleCliente';
-import ListarAbonos from './pages/abonos/ListarAbonos';
-import CrearAbono from './pages/abonos/CrearAbono';
-import GestionarAbonos from './pages/abonos/GestionarAbonos';
-import ListarRenuncias from './pages/renuncias/ListarRenuncias';
-import DetalleRenuncia from './pages/renuncias/DetalleRenuncia';
-import ReportesPage from './pages/reportes/ReportesPage';
-import AdminPage from './pages/admin/AdminPage';
-import CrearUsuarioPage from './pages/admin/CrearUsuarioPage';
-import GestionRolesPage from './pages/admin/GestionRolesPage';
-import CrearProyecto from './pages/admin/CrearProyecto'
-import ListarProyectos from './pages/admin/ListarProyectos';
-import AuditLogPage from './pages/admin/AuditLogPage';
-import AuditMetricsPage from './pages/admin/AuditMetricsPage';
-import HistorialActividadPage from './pages/HistorialActividadPage';
+
+// Lazy loading de páginas (se cargan solo cuando se necesitan)
+const UnauthorizedPage = lazy(() => import('./pages/auth/UnauthorizedPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+
+// Viviendas
+const CrearVivienda = lazy(() => import('./pages/viviendas/CrearVivienda'));
+const ListarViviendas = lazy(() => import('./pages/viviendas/ListarViviendas'));
+const DetalleVivienda = lazy(() => import('./pages/viviendas/DetalleVivienda'));
+const EditarVivienda = lazy(() => import('./pages/viviendas/EditarVivienda'));
+
+// Clientes
+const CrearCliente = lazy(() => import("./pages/clientes/CrearCliente"));
+const ListarClientes = lazy(() => import('./pages/clientes/ListarClientes'));
+const DetalleCliente = lazy(() => import('./pages/clientes/DetalleCliente'));
+
+// Abonos
+const ListarAbonos = lazy(() => import('./pages/abonos/ListarAbonos'));
+const CrearAbono = lazy(() => import('./pages/abonos/CrearAbono'));
+const GestionarAbonos = lazy(() => import('./pages/abonos/GestionarAbonos'));
+
+// Renuncias
+const ListarRenuncias = lazy(() => import('./pages/renuncias/ListarRenuncias'));
+const DetalleRenuncia = lazy(() => import('./pages/renuncias/DetalleRenuncia'));
+
+// Reportes
+const ReportesPage = lazy(() => import('./pages/reportes/ReportesPage'));
+
+// Admin
+const AdminPage = lazy(() => import('./pages/admin/AdminPage'));
+const CrearUsuarioPage = lazy(() => import('./pages/admin/CrearUsuarioPage'));
+const GestionRolesPage = lazy(() => import('./pages/admin/GestionRolesPage'));
+const CrearProyecto = lazy(() => import('./pages/admin/CrearProyecto'));
+const ListarProyectos = lazy(() => import('./pages/admin/ListarProyectos'));
+const AuditLogPage = lazy(() => import('./pages/admin/AuditLogPage'));
+const AuditMetricsPage = lazy(() => import('./pages/admin/AuditMetricsPage'));
+
+// Historial
+const HistorialActividadPage = lazy(() => import('./pages/HistorialActividadPage'));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-gray-600 dark:text-gray-400 font-medium">Cargando...</p>
+    </div>
+  </div>
+);
 
 // Definimos las rutas como un array de objetos
 const router = createBrowserRouter([
@@ -52,44 +78,44 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
-      { path: "/unauthorized", element: <UnauthorizedPage /> },
+      { index: true, element: <Suspense fallback={<PageLoader />}><DashboardPage /></Suspense> },
+      { path: "/unauthorized", element: <Suspense fallback={<PageLoader />}><UnauthorizedPage /></Suspense> },
 
       // Rutas de Viviendas
-      { path: "/viviendas/listar", element: <PermissionProtectedRoute module="viviendas" action="ver"><ListarViviendas /></PermissionProtectedRoute> },
-      { path: "/viviendas/detalle/:viviendaId", element: <PermissionProtectedRoute module="viviendas" action="ver"><DetalleVivienda /></PermissionProtectedRoute> },
-      { path: "/viviendas/crear", element: <PermissionProtectedRoute module="viviendas" action="crear"><CrearVivienda /></PermissionProtectedRoute> },
-      { path: "/viviendas/editar/:viviendaId", element: <PermissionProtectedRoute module="viviendas" action="editar"><EditarVivienda /> </PermissionProtectedRoute>, },
+      { path: "/viviendas/listar", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="viviendas" action="ver"><ListarViviendas /></PermissionProtectedRoute></Suspense> },
+      { path: "/viviendas/detalle/:viviendaId", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="viviendas" action="ver"><DetalleVivienda /></PermissionProtectedRoute></Suspense> },
+      { path: "/viviendas/crear", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="viviendas" action="crear"><CrearVivienda /></PermissionProtectedRoute></Suspense> },
+      { path: "/viviendas/editar/:viviendaId", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="viviendas" action="editar"><EditarVivienda /></PermissionProtectedRoute></Suspense> },
 
       // Rutas de Clientes
-      { path: "/clientes/listar", element: <PermissionProtectedRoute module="clientes" action="ver"><ListarClientes /></PermissionProtectedRoute> },
-      { path: "/clientes/detalle/:clienteId", element: <PermissionProtectedRoute module="clientes" action="ver"><DetalleCliente /></PermissionProtectedRoute> },
-      { path: "/clientes/crear", element: <PermissionProtectedRoute module="clientes" action="crear"><CrearCliente /></PermissionProtectedRoute> },
-      { path: "/clientes", element: <PermissionProtectedRoute module="clientes" action="ver"><ListarClientes /></PermissionProtectedRoute> },
+      { path: "/clientes/listar", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="clientes" action="ver"><ListarClientes /></PermissionProtectedRoute></Suspense> },
+      { path: "/clientes/detalle/:clienteId", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="clientes" action="ver"><DetalleCliente /></PermissionProtectedRoute></Suspense> },
+      { path: "/clientes/crear", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="clientes" action="crear"><CrearCliente /></PermissionProtectedRoute></Suspense> },
+      { path: "/clientes", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="clientes" action="ver"><ListarClientes /></PermissionProtectedRoute></Suspense> },
 
       // Rutas de Abonos
-      { path: "/abonos/listar", element: <PermissionProtectedRoute module="abonos" action="ver"><ListarAbonos /></PermissionProtectedRoute> },
-      { path: "/abonos/gestionar/:clienteId", element: <PermissionProtectedRoute module="abonos" action="crear"><GestionarAbonos /></PermissionProtectedRoute> }, // Gestionar implica poder crear abonos
-      { path: "/abonos", element: <PermissionProtectedRoute module="abonos" action="crear"><CrearAbono /></PermissionProtectedRoute> },
+      { path: "/abonos/listar", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="abonos" action="ver"><ListarAbonos /></PermissionProtectedRoute></Suspense> },
+      { path: "/abonos/gestionar/:clienteId", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="abonos" action="crear"><GestionarAbonos /></PermissionProtectedRoute></Suspense> },
+      { path: "/abonos", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="abonos" action="crear"><CrearAbono /></PermissionProtectedRoute></Suspense> },
 
       // Rutas de Renuncias
-      { path: "/renuncias", element: <PermissionProtectedRoute module="renuncias" action="ver"><ListarRenuncias /></PermissionProtectedRoute> },
-      { path: "/renuncias/detalle/:renunciaId", element: <PermissionProtectedRoute module="renuncias" action="ver"><DetalleRenuncia /></PermissionProtectedRoute> },
+      { path: "/renuncias", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="renuncias" action="ver"><ListarRenuncias /></PermissionProtectedRoute></Suspense> },
+      { path: "/renuncias/detalle/:renunciaId", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="renuncias" action="ver"><DetalleRenuncia /></PermissionProtectedRoute></Suspense> },
 
       // Ruta de Reportes
-      { path: "/reportes", element: <PermissionProtectedRoute module="reportes" action="generar"><ReportesPage /></PermissionProtectedRoute> },
+      { path: "/reportes", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="reportes" action="generar"><ReportesPage /></PermissionProtectedRoute></Suspense> },
 
-      // Historial de Actividad (accesible para todos)
-      { path: "/historial", element: <HistorialActividadPage /> },
+      // Historial de Actividad
+      { path: "/historial", element: <Suspense fallback={<PageLoader />}><HistorialActividadPage /></Suspense> },
 
       // Rutas de Administración
-      { path: "/admin", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AdminPage /></PermissionProtectedRoute> },
-      { path: "/admin/crear-usuario", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><CrearUsuarioPage /></PermissionProtectedRoute> },
-      { path: "/admin/roles", element: <PermissionProtectedRoute module="admin" action="gestionarRoles"><GestionRolesPage /></PermissionProtectedRoute> },
-      { path: "/admin/auditoria", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AuditLogPage /></PermissionProtectedRoute> },
-      { path: "/admin/metricas", element: <PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AuditMetricsPage /></PermissionProtectedRoute> },
-      { path: "/admin/proyectos", element: <PermissionProtectedRoute module="admin" action="listarProyectos"><ListarProyectos /></PermissionProtectedRoute> },
-      { path: "/admin/proyectos/crear", element: <PermissionProtectedRoute module="admin" action="crearProyectos"><CrearProyecto /></PermissionProtectedRoute> },
+      { path: "/admin", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AdminPage /></PermissionProtectedRoute></Suspense> },
+      { path: "/admin/crear-usuario", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="admin" action="gestionarUsuarios"><CrearUsuarioPage /></PermissionProtectedRoute></Suspense> },
+      { path: "/admin/roles", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="admin" action="gestionarRoles"><GestionRolesPage /></PermissionProtectedRoute></Suspense> },
+      { path: "/admin/auditoria", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AuditLogPage /></PermissionProtectedRoute></Suspense> },
+      { path: "/admin/metricas", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="admin" action="gestionarUsuarios"><AuditMetricsPage /></PermissionProtectedRoute></Suspense> },
+      { path: "/admin/proyectos", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="admin" action="listarProyectos"><ListarProyectos /></PermissionProtectedRoute></Suspense> },
+      { path: "/admin/proyectos/crear", element: <Suspense fallback={<PageLoader />}><PermissionProtectedRoute module="admin" action="crearProyectos"><CrearProyecto /></PermissionProtectedRoute></Suspense> },
     ],
   },
 ]);

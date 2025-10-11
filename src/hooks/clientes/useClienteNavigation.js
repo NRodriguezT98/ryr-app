@@ -14,7 +14,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useModernToast } from '../../useModernToast.jsx';
+import { useModernToast } from '../useModernToast.jsx';
 
 /**
  * Hook para gestionar la navegación del wizard de cliente
@@ -38,12 +38,20 @@ import { useModernToast } from '../../useModernToast.jsx';
  * handlePrevStep();
  */
 export const useClienteNavigation = (
-    validateCurrentStep,
+    initialValidateFunction,
     setErrors,
     formData
 ) => {
     const toast = useModernToast();
     const [step, setStep] = useState(1);
+    const [validateCurrentStep, setValidateCurrentStep] = useState(() => initialValidateFunction || (() => ({})));
+
+    /**
+     * Actualizar la función de validación (útil cuando se pasa null inicialmente)
+     */
+    const setValidateFunction = useCallback((validateFn) => {
+        setValidateCurrentStep(() => validateFn);
+    }, []);
 
     /**
      * Navegar al siguiente paso
@@ -61,7 +69,7 @@ export const useClienteNavigation = (
         }
 
         // Validación del Paso 2: Ejecutar función de validación
-        if (step === 2) {
+        if (step === 2 && validateCurrentStep) {
             errors = validateCurrentStep();
             if (Object.keys(errors).length > 0) {
                 setErrors(errors);
@@ -73,7 +81,7 @@ export const useClienteNavigation = (
         setErrors({});
         setStep(s => Math.min(s + 1, 3)); // Máximo paso 3
         return true;
-    }, [step, formData, validateCurrentStep, setErrors, toast]);
+    }, [step, formData.viviendaSeleccionada, validateCurrentStep, setErrors, toast]); // ✅ Solo viviendaSeleccionada, no todo formData
 
     /**
      * Navegar al paso anterior
@@ -109,7 +117,8 @@ export const useClienteNavigation = (
         handlePrevStep,
         canGoNext,
         canGoPrev,
-        goToStep
+        goToStep,
+        setValidateFunction // ✅ Exportar para poder actualizar la función
     };
 };
 

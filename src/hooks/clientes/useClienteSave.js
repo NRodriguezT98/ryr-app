@@ -17,11 +17,11 @@
 
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useModernToast } from '../../useModernToast.jsx';
-import { addClienteAndAssignVivienda, updateCliente } from '../../../services/clienteService.js';
-import { createNotification } from '../../../services/notificationService.js';
-import { PROCESO_CONFIG } from '../../../utils/procesoConfig.js';
-import { formatCurrency, toTitleCase, getTodayString } from '../../../utils/textFormatters.js';
+import { useModernToast } from '../useModernToast.jsx';
+import { addClienteAndAssignVivienda, updateCliente } from '../../services/clientes';
+import { createNotification } from '../../services/notificationService.js';
+import { PROCESO_CONFIG } from '../../utils/procesoConfig.js';
+import { formatCurrency, toTitleCase, getTodayString } from '../../utils/textFormatters.js';
 
 /**
  * Hook para gestionar el guardado del cliente

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview - Mensajes Espectaculares del Tab Historial</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .mensaje-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .mensaje-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+        }
+
+        .mensaje-titulo {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .mensaje-contenido {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            border-left: 4px solid #667eea;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin: 5px;
+        }
+
+        .badge.new {
+            background: #f59e0b;
+        }
+
+        .badge.improved {
+            background: #3b82f6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✨ Mensajes Espectaculares</h1>
+            <p>Preview del nuevo sistema de mensajes para el Tab Historial</p>
+            <div style="margin-top: 20px;">
+                <span class="badge">FASE 2 Completada</span>
+                <span class="badge new">7 Plantillas</span>
+                <span class="badge improved">300% Más Completos</span>
+            </div>
+        </div>
+
+        <!-- CASO 1 -->
+        <div class="mensaje-card">
+            <div class="mensaje-titulo">
+                📝 CASO 1: Completación de Paso (Primera vez)
+            </div>
+            <div class="mensaje-contenido">╔════════════════════════════════════════════════════════════════╗
+                ║ 🎉 PASO COMPLETADO CON ÉXITO ║
+                ╚════════════════════════════════════════════════════════════════╝
+
+                📋 PASO DEL PROCESO
+                "Promesa Enviada"
+
+                📅 FECHA DE COMPLETADO
+                11 de octubre de 2025
+
+                📋 EVIDENCIAS ADJUNTAS
+                Se adjuntaron 2 evidencias:
+                1. Promesa de Compra Venta firmada
+                2. Cédula del cliente
+
+                ╔════════════════════════════════════════════════════════════════╗
+                ║ ✅ Este paso ha sido marcado como completado exitosamente ║
+                ╚════════════════════════════════════════════════════════════════╝</div>
+        </div>
+
+        <!-- CASO 2 -->
+        <div class="mensaje-card">
+            <div class="mensaje-titulo">
+                📝 CASO 2: Re-completación después de reapertura
+            </div>
+            <div class="mensaje-contenido">╔════════════════════════════════════════════════════════════════╗
+                ║ 🔄➡️✅ PASO RE-COMPLETADO DESPUÉS DE REAPERTURA ║
+                ╚════════════════════════════════════════════════════════════════╝
+
+                📋 PASO DEL PROCESO
+                "Desembolso Realizado"
+
+                🔄 CONTEXTO DE REAPERTURA
+                ⚠️ Motivo: Error en monto del desembolso
+                📅 Fecha de reapertura: 10 de octubre de 2025
+
+                📊 ESTADO ANTERIOR (Antes de reapertura)
+                📅 Fecha: 5 de octubre de 2025
+                📄 Evidencias: 1 archivo(s)
+
+                🔧 CAMBIOS REALIZADOS AL RE-COMPLETAR
+                📅 Fecha modificada:
+                • Anterior: 5 de octubre de 2025
+                • Nueva: 11 de octubre de 2025
+                📄 Evidencias modificadas:
+                ✅ Agregadas (2):
+                • Comprobante de desembolso corregido
+                • Autorización de corrección
+                ➡️ Mantenidas (1):
+                • Solicitud de desembolso original
+
+                📅 FECHA FINAL DE COMPLETADO
+                11 de octubre de 2025
+
+                📋 EVIDENCIAS FINALES (3)
+                1. Comprobante de desembolso corregido
+                2. Autorización de corrección
+                3. Solicitud de desembolso original
+
+                ╔════════════════════════════════════════════════════════════════╗
+                ║ ✅ Paso re-completado exitosamente con historial preservado ║
+                ╚════════════════════════════════════════════════════════════════╝</div>
+        </div>
+
+        <!-- CASO 3 -->
+        <div class="mensaje-card">
+            <div class="mensaje-titulo">
+                📝 CASO 3: Modificación solo de fecha
+            </div>
+            <div class="mensaje-contenido">╔════════════════════════════════════════════════════════════════╗
+                ║ 📅 FECHA DE COMPLETADO MODIFICADA ║
+                ╚════════════════════════════════════════════════════════════════╝
+
+                📋 PASO MODIFICADO
+                "Factura de Venta"
+
+                📅 CAMBIO DE FECHA
+                Anterior: 5 de octubre de 2025
+                Nueva: 8 de octubre de 2025
+
+                ⬆️ Adelantado 3 días
+
+                📄 EVIDENCIAS ACTUALES DEL PASO (1)
+                Las evidencias se mantuvieron sin cambios:
+                1. Factura de venta firmada
+
+                ╔════════════════════════════════════════════════════════════════╗
+                ║ ✅ Fecha actualizada correctamente ║
+                ╚════════════════════════════════════════════════════════════════╝</div>
+        </div>
+
+        <!-- CASO 4 -->
+        <div class="mensaje-card">
+            <div class="mensaje-titulo">
+                📝 CASO 4: Modificación de evidencias
+            </div>
+            <div class="mensaje-contenido">╔════════════════════════════════════════════════════════════════╗
+                ║ 📄 EVIDENCIAS MODIFICADAS ║
+                ╚════════════════════════════════════════════════════════════════╝
+
+                📋 PASO MODIFICADO
+                "Escritura Pública"
+
+                📅 FECHA DE COMPLETADO
+                10 de octubre de 2025
+                (Sin cambios)
+
+                📊 RESUMEN DE CAMBIOS
+                Total anterior: 2 evidencia(s)
+                Total nuevo: 4 evidencia(s)
+                Diferencia: +2 evidencias ⬆️
+
+                ✅ EVIDENCIAS AGREGADAS (2)
+                1. Registro de escritura
+                2. Certificado de tradición y libertad
+
+                ➡️ EVIDENCIAS MANTENIDAS (2)
+                1. Escritura pública firmada
+                2. Minuta de escrituración
+
+                ╔════════════════════════════════════════════════════════════════╗
+                ║ ✅ Evidencias actualizadas correctamente ║
+                ╚════════════════════════════════════════════════════════════════╝</div>
+        </div>
+
+        <!-- CASO 5 -->
+        <div class="mensaje-card">
+            <div class="mensaje-titulo">
+                📝 CASO 5: Reapertura de paso
+            </div>
+            <div class="mensaje-contenido">╔════════════════════════════════════════════════════════════════╗
+                ║ 🔓 PASO REABIERTO PARA REVISIÓN ║
+                ╚════════════════════════════════════════════════════════════════╝
+
+                📋 PASO DEL PROCESO
+                "Avalúo Inmobiliario"
+
+                ⚠️ MOTIVO DE REAPERTURA
+                Se requiere actualizar avalúo por cambio en normativa
+
+                📊 ESTADO PRESERVADO DEL PASO
+                📅 Fecha original: 1 de octubre de 2025
+                📄 Evidencias preservadas: 1 archivo(s)
+
+                📋 EVIDENCIAS QUE FUERON GUARDADAS
+                1. Avalúo inmobiliario original
+
+                🔄 ACCIÓN REALIZADA
+                El paso ha sido marcado como pendiente nuevamente
+                El estado anterior fue preservado para referencia
+
+                ╔════════════════════════════════════════════════════════════════╗
+                ║ ⏳ Esperando que se complete el paso nuevamente ║
+                ╚════════════════════════════════════════════════════════════════╝</div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value">7</div>
+                <div class="stat-label">Plantillas</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">300%</div>
+                <div class="stat-label">Más Completo</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Funcional</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">✨</div>
+                <div class="stat-label">Espectacular</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; color: white;">
+            <p style="font-size: 1.2em; font-weight: 600;">
+                ✅ FASE 2 Completada - Sistema de Plantillas Implementado
+            </p>
+            <p style="margin-top: 10px; opacity: 0.9;">
+                Los mensajes ahora son específicos, completos y gráficamente atractivos
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

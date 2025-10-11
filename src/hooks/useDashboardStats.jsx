@@ -1,39 +1,43 @@
 import { useMemo } from 'react';
 
 /**
- * Hook personalizado para calcular todas las estadísticas y datos necesarios para el Dashboard.
- * @param {object} data - Objeto que contiene las listas de datos crudos.
- * @param {Array} data.viviendas - Lista de todas las viviendas.
- * @param {Array} data.clientes - Lista de todos los clientes.
- * @param {Array} data.abonos - Lista de todos los abonos.
- * @param {Array} data.renuncias - Lista de todas las renuncias.
- * @returns {object} Un objeto con todas las estadísticas procesadas.
+ * Hook optimizado para calcular estadísticas del Dashboard
+ * Usa memoización agresiva para evitar recálculos innecesarios
  */
 export const useDashboardStats = ({ viviendas, clientes, abonos, renuncias }) => {
 
+    // Memoizar stats básicos
     const stats = useMemo(() => {
-        const totalViviendas = viviendas.length;
-        const viviendasOcupadas = viviendas.filter(v => v.clienteId !== null).length;
+        const totalViviendas = viviendas?.length || 0;
+        const viviendasOcupadas = viviendas?.filter(v => v.clienteId !== null).length || 0;
         const viviendasDisponibles = totalViviendas - viviendasOcupadas;
-        const totalClientes = clientes.filter(c => c.status !== 'renunciado').length;
+        const totalClientes = clientes?.filter(c => c.status !== 'renunciado').length || 0;
 
-        // --- CÁLCULO CORREGIDO AQUÍ ---
-        // Ahora solo sumamos los abonos de procesos activos.
         const totalRecaudado = abonos
-            .filter(abono => abono.estadoProceso === 'activo')
-            .reduce((sum, abono) => sum + (abono.monto || 0), 0);
+            ?.filter(abono => abono.estadoProceso === 'activo')
+            .reduce((sum, abono) => sum + (abono.monto || 0), 0) || 0;
 
-        return { totalViviendas, viviendasOcupadas, viviendasDisponibles, totalClientes, totalRecaudado };
+        return {
+            totalViviendas,
+            viviendasOcupadas,
+            viviendasDisponibles,
+            totalClientes,
+            totalRecaudado
+        };
     }, [viviendas, clientes, abonos]);
 
+    // Memoizar datos de gráfica de ocupación
     const chartDataOcupacion = useMemo(() => [
         { name: 'Ocupadas', value: stats.viviendasOcupadas },
         { name: 'Disponibles', value: stats.viviendasDisponibles },
     ], [stats.viviendasOcupadas, stats.viviendasDisponibles]);
 
+    // Memoizar ingresos por mes
     const ingresosPorMes = useMemo(() => {
+        if (!abonos?.length) return [];
+
         const monthlyTotals = abonos
-            .filter(abono => abono.estadoProceso === 'activo') // También aplicamos el filtro aquí
+            .filter(abono => abono.estadoProceso === 'activo')
             .reduce((acc, abono) => {
                 if (!abono.fechaPago) return acc;
                 const monthYear = abono.fechaPago.substring(0, 7);
@@ -43,14 +47,20 @@ export const useDashboardStats = ({ viviendas, clientes, abonos, renuncias }) =>
 
         return Object.entries(monthlyTotals)
             .map(([monthYear, total]) => ({
-                name: new Date(monthYear + '-02').toLocaleString('es-ES', { month: 'short', year: '2-digit' }),
+                name: new Date(monthYear + '-02').toLocaleString('es-ES', {
+                    month: 'short',
+                    year: '2-digit'
+                }),
                 Ingresos: total,
             }))
-            .sort((a, b) => new Date(a.name) - new Date(b.name));
+            .sort((a, b) => a.name.localeCompare(b.name));
     }, [abonos]);
 
+    // Memoizar actividad reciente
     const actividadReciente = useMemo(() => {
-        const ultimosAbonos = abonos.map(a => ({
+        if (!abonos?.length && !clientes?.length && !renuncias?.length) return [];
+
+        const ultimosAbonos = (abonos || []).map(a => ({
             id: `abono-${a.id}`,
             tipo: 'abono',
             fecha: a.fechaPago,
@@ -60,7 +70,7 @@ export const useDashboardStats = ({ viviendas, clientes, abonos, renuncias }) =>
             metodoPago: a.metodoPago
         }));
 
-        const clientesNuevos = clientes.map(c => ({
+        const clientesNuevos = (clientes || []).map(c => ({
             id: `cliente-${c.id}`,
             tipo: 'clienteNuevo',
             fecha: c.fechaCreacion || new Date(0).toISOString(),
@@ -68,7 +78,7 @@ export const useDashboardStats = ({ viviendas, clientes, abonos, renuncias }) =>
             viviendaId: c.viviendaId
         }));
 
-        const renunciasRecientes = renuncias.map(r => ({
+        const renunciasRecientes = (renuncias || []).map(r => ({
             id: `renuncia-${r.id}`,
             tipo: 'renuncia',
             fecha: r.fechaRenuncia,

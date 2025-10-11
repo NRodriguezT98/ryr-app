@@ -5,7 +5,6 @@ import { UserX } from 'lucide-react';
 import { NumericFormat } from 'react-number-format';
 import { formatCurrency, getTodayString } from '../../../utils/textFormatters';
 import { useMotivoRenuncia } from '../../../hooks/clientes/useMotivoRenuncia';
-import { AnimatePresence, motion } from 'framer-motion';
 import Button from '../../../components/Button.jsx';
 
 const motivosOptions = [
@@ -131,41 +130,36 @@ const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente, size = '2xl'
                         <span className="font-semibold text-gray-700 dark:text-gray-200">¿Desea aplicar penalidad?</span>
                     </label>
 
-                    <AnimatePresence>
-                        {aplicaPenalidad && (
-                            <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="overflow-hidden"
-                            >
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-dashed dark:border-gray-700">
-                                    <div>
-                                        <label className="block font-medium mb-1 dark:text-gray-200">Monto de Penalidad</label>
-                                        <NumericFormat
-                                            value={penalidadMonto}
-                                            onValueChange={(values) => setPenalidadMonto(values.value)}
-                                            className={`w-full border p-2 rounded-lg dark:bg-gray-700 ${errors.penalidadMonto ? 'border-red-500' : 'dark:border-gray-600'}`}
-                                            thousandSeparator="." decimalSeparator="," prefix="$ "
-                                        />
-                                        {errors.penalidadMonto && <p className="text-red-600 text-sm mt-1">{errors.penalidadMonto}</p>}
-                                    </div>
-                                    <div>
-                                        <label className="block font-medium mb-1 dark:text-gray-200">Motivo de Penalidad</label>
-                                        <input
-                                            type="text"
-                                            value={penalidadMotivo}
-                                            onChange={(e) => setPenalidadMotivo(e.target.value)}
-                                            className={`w-full border p-2 rounded-lg dark:bg-gray-700 ${errors.penalidadMotivo ? 'border-red-500' : 'dark:border-gray-600'}`}
-                                            placeholder="Ej: Cláusula de incumplimiento"
-                                        />
-                                        {errors.penalidadMotivo && <p className="text-red-600 text-sm mt-1">{errors.penalidadMotivo}</p>}
-                                    </div>
+                    {aplicaPenalidad && (
+                        <div
+                            className="overflow-hidden"
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-dashed dark:border-gray-700">
+                                <div>
+                                    <label className="block font-medium mb-1 dark:text-gray-200">Monto de Penalidad</label>
+                                    <NumericFormat
+                                        value={penalidadMonto}
+                                        onValueChange={(values) => setPenalidadMonto(values.value)}
+                                        className={`w-full border p-2 rounded-lg dark:bg-gray-700 ${errors.penalidadMonto ? 'border-red-500' : 'dark:border-gray-600'}`}
+                                        thousandSeparator="." decimalSeparator="," prefix="$ "
+                                    />
+                                    {errors.penalidadMonto && <p className="text-red-600 text-sm mt-1">{errors.penalidadMonto}</p>}
                                 </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                <div>
+                                    <label className="block font-medium mb-1 dark:text-gray-200">Motivo de Penalidad</label>
+                                    <input
+                                        type="text"
+                                        value={penalidadMotivo}
+                                        onChange={(e) => setPenalidadMotivo(e.target.value)}
+                                        className={`w-full border p-2 rounded-lg dark:bg-gray-700 ${errors.penalidadMotivo ? 'border-red-500' : 'dark:border-gray-600'}`}
+                                        placeholder="Ej: Cláusula de incumplimiento"
+                                    />
+                                    {errors.penalidadMotivo && <p className="text-red-600 text-sm mt-1">{errors.penalidadMotivo}</p>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
 
                 <div className="bg-blue-50 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-800 p-4 rounded-lg space-y-2">
@@ -197,3 +191,5 @@ const ModalMotivoRenuncia = ({ isOpen, onClose, onConfirm, cliente, size = '2xl'
 };
 
 export default ModalMotivoRenuncia;
+
+

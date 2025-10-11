@@ -112,10 +112,15 @@ export const createClientAuditLog = async (actionType, clientData, additionalDat
         changes: additionalData.changes || {}
     };
 
-    return await createUnifiedAuditLog(actionType, 'CLIENTES', rawData, options);
-};
+    // Agregar mensaje si viene en options
+    if (options.message) {
+        rawData.message = options.message;
+        console.log('✅ [MENSAJE EN rawData]:', rawData.message.substring(0, 80) + '...');
+    }
 
-// === VIVIENDAS ===
+    const result = await createUnifiedAuditLog(actionType, 'CLIENTES', rawData, options);
+    return result;
+};// === VIVIENDAS ===
 export const createViviendaAuditLog = async (actionType, viviendaData, additionalData = {}, options = {}) => {
     if (!ACTION_TYPES.VIVIENDAS[actionType]) {
         throw new Error(`Tipo de acción inválido para módulo VIVIENDAS: ${actionType}`);
@@ -271,18 +276,25 @@ export const createAuditLog = async (message, details = {}, options = {}) => {
 export const getAuditLogsForCliente = async (clienteId) => {
     const logsRef = collection(db, "audits");
 
+    // NOTA: La ruta correcta en la nueva estructura unificada es "entities.clienteId"
     const q = query(
         logsRef,
-        where("details.clienteId", "==", clienteId),
+        where("entities.clienteId", "==", clienteId),
         orderBy("timestamp", "desc")
     );
 
     const querySnapshot = await getDocs(q);
     const logs = [];
     querySnapshot.forEach((doc) => {
-        logs.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        // Debug: Ver si el log tiene mensaje
+        if (data.message) {
+            console.log('📨 [LOG CON MENSAJE]:', data.message.substring(0, 60) + '...');
+        }
+        logs.push({ id: doc.id, ...data });
     });
 
+    console.log(`📊 Total logs: ${logs.length} | Con mensaje: ${logs.filter(l => l.message).length}`);
     return logs;
 };
 
@@ -290,11 +302,11 @@ export const getAuditLogsForClienteAdvanced = async (clienteId, options = {}) =>
     try {
         const logsRef = collection(db, "audits");
 
-        // TEMPORAL: Solo usar consulta de estructura anterior hasta que se cree el índice
-        // La nueva consulta requiere un índice compuesto en Firebase
+        // NOTA: La ruta correcta en la nueva estructura unificada es "entities.clienteId"
+        // Esta consulta requiere un índice compuesto en Firebase
         let q2 = query(
             logsRef,
-            where("details.clienteId", "==", clienteId), // Estructura anterior
+            where("entities.clienteId", "==", clienteId),
             orderBy("timestamp", "desc")
         );
 

@@ -82,7 +82,7 @@ const getSelectStyles = (isDarkMode) => ({
     })
 });
 
-const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, onTransferir }) => {
+const ClienteCardWrapper = React.memo(({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, onTransferir }) => {
     const cardData = useClienteCardLogic(cliente);
     return <ClienteCard
         cardData={cardData}
@@ -95,7 +95,7 @@ const ClienteCardWrapper = ({ cliente, onEdit, onArchive, onDelete, onRenunciar,
         onTransferir={onTransferir}
         nombreProyecto={cliente.nombreProyecto}
     />;
-};
+}, (prev, next) => prev.cliente.id === next.cliente.id && prev.cliente.updatedAt === next.cliente.updatedAt);
 
 const ListarClientes = () => {
     const { can } = usePermissions();
@@ -137,8 +137,8 @@ const ListarClientes = () => {
                     <button
                         onClick={() => setStatusFilter('activo')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'activo'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-indigo-600 dark:text-indigo-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-indigo-600 dark:text-indigo-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Activos
@@ -146,8 +146,8 @@ const ListarClientes = () => {
                     <button
                         onClick={() => setStatusFilter('enProcesoDeRenuncia')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'enProcesoDeRenuncia'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-amber-600 dark:text-amber-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-amber-600 dark:text-amber-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         En Renuncia
@@ -155,8 +155,8 @@ const ListarClientes = () => {
                     <button
                         onClick={() => setStatusFilter('renunciado')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'renunciado'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-orange-600 dark:text-orange-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-orange-600 dark:text-orange-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Renunciaron
@@ -164,8 +164,8 @@ const ListarClientes = () => {
                     <button
                         onClick={() => setStatusFilter('inactivo')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'inactivo'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-slate-500 dark:text-slate-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-slate-500 dark:text-slate-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Archivados
@@ -173,8 +173,8 @@ const ListarClientes = () => {
                     <button
                         onClick={() => setStatusFilter('todos')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFilter === 'todos'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-slate-800 dark:text-slate-200 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-slate-800 dark:text-slate-200 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Todos

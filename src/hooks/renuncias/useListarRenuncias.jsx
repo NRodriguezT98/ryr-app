@@ -2,12 +2,14 @@ import { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
 import { cancelarRenuncia } from "../../services/renunciaService";
 import toast from 'react-hot-toast';
+import { useDebounce } from '../useDebounce';
 
 export const useListarRenuncias = () => {
     const { isLoading, renuncias, recargarDatos } = useData();
 
     const [statusFilter, setStatusFilter] = useState('Pendiente');
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [fechaInicio, setFechaInicio] = useState('');
     const [fechaFin, setFechaFin] = useState('');
     const [motivoFiltro, setMotivoFiltro] = useState(null);
@@ -27,15 +29,15 @@ export const useListarRenuncias = () => {
                 itemsProcesados = itemsProcesados.filter(r => r.estadoDevolucion === statusFilter);
             }
         }
-        if (searchTerm.trim()) {
-            const lower = searchTerm.toLowerCase();
+        if (debouncedSearchTerm.trim()) {
+            const lower = debouncedSearchTerm.toLowerCase();
             itemsProcesados = itemsProcesados.filter(r => r.clienteNombre.toLowerCase().includes(lower) || r.viviendaInfo.toLowerCase().replace(/\s/g, '').includes(lower.replace(/\s/g, '')));
         }
         if (fechaInicio) itemsProcesados = itemsProcesados.filter(r => r.fechaRenuncia >= fechaInicio);
         if (fechaFin) itemsProcesados = itemsProcesados.filter(r => r.fechaRenuncia <= fechaFin);
         if (motivoFiltro) itemsProcesados = itemsProcesados.filter(r => r.motivo === motivoFiltro.value);
         return itemsProcesados;
-    }, [renuncias, statusFilter, searchTerm, fechaInicio, fechaFin, motivoFiltro]);
+    }, [renuncias, statusFilter, debouncedSearchTerm, fechaInicio, fechaFin, motivoFiltro]);
 
     // --- HANDLERS (Manejadores de eventos y acciones) ---
     const handleSave = useCallback(() => {

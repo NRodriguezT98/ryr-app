@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Link } from 'react-router-dom';
 import {
     Home,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/textFormatters';
 
+// Componentes memoizados para evitar re-renders
 const TrendIcon = ({ trend }) => {
     if (trend > 0) return <TrendingUp className="text-green-500" size={16} />;
     if (trend < 0) return <TrendingDown className="text-red-500" size={16} />;
