@@ -128,12 +128,12 @@ const EmptyState = ({ filters, totalCount, canCreate }) => {
     );
 };
 
-const ViviendaCardWrapper = ({ vivienda, ...props }) => {
+const ViviendaCardWrapper = React.memo(({ vivienda, ...props }) => {
     // Este wrapper llama al hook para obtener los datos calculados
     const viviendaData = useViviendaCardData(vivienda);
     // Y se los pasa a la ViviendaCard, que ahora es un componente puramente visual
     return <ViviendaCard vivienda={viviendaData} {...props} />;
-};
+});
 
 const ListarViviendas = () => {
     const { can } = usePermissions();
@@ -165,8 +165,8 @@ const ListarViviendas = () => {
                     <button
                         onClick={() => filters.setStatusFilter('todas')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${filters.statusFilter === 'todas'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-slate-800 dark:text-slate-200 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-slate-800 dark:text-slate-200 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Todas
@@ -174,8 +174,8 @@ const ListarViviendas = () => {
                     <button
                         onClick={() => filters.setStatusFilter('disponibles')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${filters.statusFilter === 'disponibles'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-amber-600 dark:text-amber-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-amber-600 dark:text-amber-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Disponibles
@@ -183,8 +183,8 @@ const ListarViviendas = () => {
                     <button
                         onClick={() => filters.setStatusFilter('asignadas')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${filters.statusFilter === 'asignadas'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-indigo-600 dark:text-indigo-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-indigo-600 dark:text-indigo-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Asignadas
@@ -192,8 +192,8 @@ const ListarViviendas = () => {
                     <button
                         onClick={() => filters.setStatusFilter('pagadas')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${filters.statusFilter === 'pagadas'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-emerald-600 dark:text-emerald-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-emerald-600 dark:text-emerald-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Pagadas
@@ -201,8 +201,8 @@ const ListarViviendas = () => {
                     <button
                         onClick={() => filters.setStatusFilter('archivadas')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${filters.statusFilter === 'archivadas'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-slate-500 dark:text-slate-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-slate-500 dark:text-slate-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Archivadas

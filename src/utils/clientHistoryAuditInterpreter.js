@@ -42,6 +42,7 @@ export class ClientHistoryAuditInterpreter {
             // === CLIENTES ===
             'CREATE_CLIENT': this.interpretCreateClient,
             'UPDATE_CLIENT': this.interpretUpdateClient,
+            'TRANSFER_CLIENT': this.interpretTransferClient,
             'ARCHIVE_CLIENT': this.interpretArchiveClient,
             'RESTORE_CLIENT': this.interpretRestoreClient,
             'DELETE_CLIENT_PERMANENTLY': this.interpretDeleteClient,
@@ -102,37 +103,113 @@ export class ClientHistoryAuditInterpreter {
     }
 
     static interpretUpdateClient(context, actionData, auditLog) {
-        const { tipoActualizacion, camposEditados } = actionData;
+        const { tipoActualizacion, camposEditados, cambios } = actionData;
 
-        let message = `${auditLog.userName} actualizó tu información`;
+        // INFORMACIÓN DEL CLIENTE Y VIVIENDA
+        const clienteNombre = context?.cliente?.nombre || 'Cliente';
+        const clienteDocumento = context?.cliente?.documento || 'Sin documento';
+        const viviendaManzana = context?.vivienda?.manzana || '?';
+        const viviendaCasa = context?.vivienda?.numeroCasa || '?';
 
-        // Especificar qué tipo de información
-        const tipos = {
-            'PERSONAL_INFO': 'personal',
-            'FINANCIAL_INFO': 'financiera',
-            'CONTACT_INFO': 'de contacto'
-        };
+        // NUEVO FORMATO DE ENCABEZADO CON MARCADORES DE ICONOS
+        let message = `${auditLog.userName} actualizó la información del cliente:\n`;
+        message += `\n[ICON:USER] **Cliente:** ${clienteNombre}`;
+        message += `\n[ICON:FILE] **Número de Cédula:** ${clienteDocumento}`;
+        message += `\n[ICON:HOME] **Vivienda:** Manzana ${viviendaManzana} - Casa ${viviendaCasa}`;
 
-        const tipoTexto = tipos[tipoActualizacion];
-        if (tipoTexto) {
-            message += ` ${tipoTexto}`;
+        // PRIORIDAD 1: Si hay array 'cambios' del nuevo sistema, mostrar TODOS los cambios organizados
+        if (cambios && Array.isArray(cambios) && cambios.length > 0) {
+            message += '\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+
+            // Separar cambios regulares de archivos
+            const cambiosRegulares = cambios.filter(c => !c.fileChange);
+            const cambiosArchivos = cambios.filter(c => c.fileChange);
+
+            // Mostrar cambios regulares con iconos apropiados
+            if (cambiosRegulares.length > 0) {
+                message += '\n[ICON:PENCIL] **Datos modificados:**';
+                cambiosRegulares.forEach((cambio, index) => {
+                    const fieldName = ClientHistoryAuditInterpreter.formatFieldNames([cambio.campo]);
+                    const anterior = cambio.anterior || '(vacío)';
+                    const actual = cambio.actual || '(vacío)';
+
+                    message += `\n  ${index + 1}. **${fieldName}**`;
+                    message += `\n     [ICON:ARROW] Anterior: "${anterior}"`;
+                    message += `\n     [ICON:ARROW] Nuevo: "${actual}"`;
+                });
+            }
+
+            // Mostrar cambios de archivos con iconos y enlaces
+            if (cambiosArchivos.length > 0) {
+                message += '\n\n[ICON:PAPERCLIP] **Archivos modificados:**';
+                cambiosArchivos.forEach((cambio, index) => {
+                    const fieldName = ClientHistoryAuditInterpreter.formatFieldNames([cambio.campo]);
+
+                    if (cambio.accion === 'agregado') {
+                        message += `\n  ${index + 1}. **${fieldName}** [ICON:CHECK-GREEN] Archivo agregado`;
+                        message += `\n     [ICON:ARROW] "${cambio.nombreArchivo}"`;
+                        if (cambio.urlNuevo) {
+                            message += ` [Ver archivo](${cambio.urlNuevo})`;
+                        }
+                    } else if (cambio.accion === 'reemplazado') {
+                        message += `\n  ${index + 1}. **${fieldName}** [ICON:REFRESH] Archivo reemplazado`;
+                        if (cambio.urlAnterior && cambio.nombreArchivoAnterior) {
+                            message += `\n     [ICON:X-RED] Anterior: [${cambio.nombreArchivoAnterior}](${cambio.urlAnterior})`;
+                        }
+                        if (cambio.urlNuevo && cambio.nombreArchivo) {
+                            message += `\n     [ICON:CHECK-GREEN] Nuevo: [${cambio.nombreArchivo}](${cambio.urlNuevo})`;
+                        }
+                    } else if (cambio.accion === 'eliminado') {
+                        message += `\n  ${index + 1}. **${fieldName}** [ICON:X-RED] Archivo eliminado`;
+                        message += `\n     [ICON:ARROW] "${cambio.nombreArchivo}"`;
+                        if (cambio.urlAnterior) {
+                            message += ` [Ver eliminado](${cambio.urlAnterior})`;
+                        }
+                    }
+                });
+            }
+
+            message += '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+
+            return message;
         }
 
-        // Mostrar campos específicos si están disponibles
+        // FALLBACK 1: Mostrar campos específicos si están disponibles
         if (camposEditados && camposEditados.length > 0) {
-            const camposFormateados = this.formatFieldNames(camposEditados);
-            message += `. Campos modificados: ${camposFormateados}`;
+            const camposFormateados = ClientHistoryAuditInterpreter.formatFieldNames(camposEditados);
+            message += `\n\n📝 Campos modificados: ${camposFormateados}`;
         }
 
-        // Agregar información de cambios si está disponible
+        // FALLBACK 2: Agregar información de cambios si está disponible (formato antiguo)
         if (auditLog.changes && auditLog.changes.fields && auditLog.changes.fields.length > 0) {
-            const changeDetails = this.formatDetailedChanges(auditLog.changes);
+            const changeDetails = ClientHistoryAuditInterpreter.formatDetailedChanges(auditLog.changes);
             if (changeDetails) {
-                message += `. ${changeDetails}`;
+                message += `\n\n${changeDetails}`;
             }
         }
 
         return message;
+    }
+
+    static interpretTransferClient(context, actionData, auditLog) {
+        // Retornar datos estructurados para el componente TransferMessage
+        return {
+            __renderAsComponent: 'TransferMessage',
+            clienteNombre: context?.cliente?.nombre || 'Cliente',
+            clienteDocumento: actionData?.cedula || actionData?.numeroDocumento || context?.cliente?.documento || 'Sin documento',
+            viviendaActual: {
+                manzana: context?.vivienda?.manzana || '?',
+                numeroCasa: context?.vivienda?.numeroCasa || '?'
+            },
+            motivo: actionData?.motivo || null,
+            viviendaAnterior: actionData?.viviendaAnterior || null,
+            viviendaNueva: actionData?.viviendaNueva || null,
+            planAnterior: actionData?.planFinanciero?.anterior || null,
+            planNuevo: actionData?.planFinanciero?.nuevo || null,
+            abonosSincronizados: actionData?.abonosSincronizados || null,
+            procesoReseteado: actionData?.procesoReseteado || false,
+            pasosNuevoProceso: actionData?.pasosNuevoProceso || null
+        };
     }
 
     static interpretCompleteStep(context, actionData, auditLog) {
@@ -349,16 +426,54 @@ export class ClientHistoryAuditInterpreter {
      */
     static formatFieldNames(fields) {
         const fieldTranslations = {
-            'nombres': 'nombres',
-            'apellidos': 'apellidos',
-            'tipoDocumento': 'tipo de documento',
-            'numeroDocumento': 'número de documento',
-            'telefono': 'teléfono',
-            'email': 'email',
-            'fechaNacimiento': 'fecha de nacimiento',
-            'genero': 'género',
-            'cuotaInicial': 'cuota inicial',
-            'credito': 'crédito'
+            // Datos personales
+            'nombres': 'Nombres',
+            'apellidos': 'Apellidos',
+            'tipoDocumento': 'Tipo de Documento',
+            'numeroDocumento': 'Número de Documento',
+            'cedula': 'Número de Documento',
+            'telefono': 'Teléfono',
+            'email': 'Correo Electrónico',
+            'correo': 'Correo Electrónico',
+            'fechaNacimiento': 'Fecha de Nacimiento',
+            'genero': 'Género',
+            'direccion': 'Dirección',
+
+            // Datos financieros
+            'cuotaInicial': 'Cuota Inicial',
+            'credito': 'Crédito',
+            'totalAPagar': 'Total a Pagar',
+            'saldoCuotaInicial': 'Saldo Cuota Inicial',
+            'saldoCredito': 'Saldo Crédito',
+
+            // Fuentes de pago
+            'Crédito Hipotecario': 'Crédito Hipotecario',
+            'Crédito Hipotecario - Banco': 'Banco (Crédito Hipotecario)',
+            'Crédito Hipotecario - Monto': 'Monto (Crédito Hipotecario)',
+            'Crédito Hipotecario - Referencia': 'Referencia (Crédito Hipotecario)',
+            'Carta Aprob. Crédito': 'Carta de Aprobación (Crédito)',
+
+            'Subsidio de Caja': 'Subsidio de Caja',
+            'Subsidio de Caja - Caja': 'Caja (Subsidio)',
+            'Subsidio de Caja - Monto': 'Monto (Subsidio)',
+            'Subsidio de Caja - Referencia': 'Referencia (Subsidio)',
+            'Carta Aprob. Caja': 'Carta de Aprobación (Subsidio)',
+
+            'Crédito Constructor': 'Crédito Constructor',
+            'Crédito Constructor - Monto': 'Monto (Crédito Constructor)',
+
+            // Archivos
+            'cedulaCiudadania': 'Copia de la Cédula',
+            'Copia de la Cédula': 'Copia de la Cédula',
+            'fotoCasa': 'Foto de la Casa',
+            'certificadoTradicionLibertad': 'Certificado de Tradición y Libertad',
+            'escrituras': 'Escrituras',
+
+            // Otros
+            'estado': 'Estado',
+            'estadoProceso': 'Estado del Proceso',
+            'vivienda': 'Vivienda',
+            'fechaIngreso': 'Fecha de Ingreso'
         };
 
         return fields.map(field => fieldTranslations[field] || field).join(', ');

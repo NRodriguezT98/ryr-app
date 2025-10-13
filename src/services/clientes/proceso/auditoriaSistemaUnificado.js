@@ -16,6 +16,9 @@ import { obtenerNombreEvidencia } from '../../../services/clientes/clienteAuditH
 // Importar generador de mensajes espectaculares
 import { generarMensajeEspectacular } from './generadorMensajes';
 
+// 🆕 FASE 1: Importar builder de datos estructurados
+import { buildStructuredData, createLogData } from './structuredDataBuilder';
+
 /**
  * Crea auditoría usando el sistema unificado.
  * 
@@ -56,23 +59,43 @@ export const crearAuditoriaUnificada = async (cambios, clienteId, clienteOrigina
         }
     }
 
-    // Procesar cada cambio detectado
-    for (const cambio of cambios) {
-        await crearLogUnificado(cambio, clienteData, viviendaData, proyectoData, clienteOriginal);
+    // 🔥 FIX: Crear timestamp base y agregar 1ms entre cada log para garantizar orden único
+    const baseTimestamp = new Date();
+
+    // Procesar cada cambio detectado con timestamps incrementales
+    for (let i = 0; i < cambios.length; i++) {
+        const cambio = cambios[i];
+        // Cada log sucesivo tiene +1ms para mantener orden cronológico
+        const timestampUnico = new Date(baseTimestamp.getTime() + i);
+        await crearLogUnificado(cambio, clienteData, viviendaData, proyectoData, clienteOriginal, timestampUnico);
     }
 };
 
 /**
  * Crea un log unificado para un cambio específico.
  */
-const crearLogUnificado = async (cambio, clienteData, viviendaData, proyectoData, clienteOriginal) => {
+const crearLogUnificado = async (cambio, clienteData, viviendaData, proyectoData, clienteOriginal, customTimestamp) => {
     const { tipo, pasoKey, pasoNombre, pasoConfig, estadoOriginal, estadoNuevo, flags } = cambio;
 
     // Generar mensaje espectacular usando las plantillas FASE 2
-    const mensajeEspectacular = generarMensajeEspectacular(cambio, pasoConfig);
-    console.log('📨 [MENSAJE GENERADO]:', mensajeEspectacular);
+    // Pasar datos financieros para calcular número de paso
+    const mensajeEspectacular = generarMensajeEspectacular(
+        cambio,
+        pasoConfig,
+        clienteOriginal.financiero || {}
+    );
 
-    // Mapear evidencias
+    // 🆕 FASE 1: Generar datos estructurados
+    const structured = buildStructuredData(
+        cambio,
+        pasoConfig,
+        clienteOriginal.financiero || {}
+    );
+
+    // Crear log data completo (mensaje + structured)
+    const logData = createLogData(mensajeEspectacular, structured);
+
+    // Mapear evidencias (mantenido para actionData legacy)
     const mapEvidencias = (evidencias) => {
         if (!evidencias) return [];
         return Object.entries(evidencias).map(([id, evidencia]) => ({
@@ -140,8 +163,6 @@ const crearLogUnificado = async (cambio, clienteData, viviendaData, proyectoData
     }
 
     // Crear el audit log
-    console.log('� [GUARDANDO LOG] Con mensaje:', mensajeEspectacular ? 'SÍ - ' + mensajeEspectacular.substring(0, 50) + '...' : 'NO');
-
     try {
         await createClientAuditLog(
             actionType,
@@ -161,7 +182,11 @@ const crearLogUnificado = async (cambio, clienteData, viviendaData, proyectoData
                 },
                 actionData: actionData
             },
-            { message: mensajeEspectacular } // Pasar mensaje generado
+            {
+                message: logData.message,           // 🆕 FASE 1: Mensaje para humanos
+                structured: logData.structured,      // 🆕 FASE 1: Datos estructurados para la app
+                timestamp: customTimestamp           // Timestamp único para cada log
+            }
         );
     } catch (error) {
         console.error('❌ ERROR guardando log:', error);

@@ -3,7 +3,27 @@
  * 
  * Sistema de plantillas para mensajes de auditoría del proceso.
  * Genera mensajes ESPECTACULARES, completos y gráficamente atractivos
- * para el Tab Historial del cliente.
+ * para el Tab Historial dexport const PLANTILLA_EDICION_FECHA = (data) => {
+    const {
+        pasoNombre,
+        fechaAnterior,
+        fechaNueva,
+        numeroPaso,
+        totalPasos
+    } = data;
+
+    // Construir título con número de paso si está disponible
+    const tituloConPaso = numeroPaso && totalPasos
+        ? `FECHA DE COMPLETADO MODIFICADA (${numeroPaso}/${totalPasos})`
+        : 'FECHA DE COMPLETADO MODIFICADA';
+
+    const espaciosExtra = Math.max(0, 62 - tituloConPaso.length);
+    const espaciosDerecha = ' '.repeat(espaciosExtra);
+
+    let mensaje = `
+╔════════════════════════════════════════════════════════════════╗
+║  📅  ${tituloConPaso}${espaciosDerecha}║
+╚════════════════════════════════════════════════════════════════╝
  * 
  * 🎯 Objetivo: Narrativa clara + Detalles completos + Belleza visual
  * 
@@ -26,11 +46,19 @@ import { formatDisplayDate } from '../../../utils/textFormatters';
  * ═══════════════════════════════════════════════════════════════
  */
 export const PLANTILLA_COMPLETACION = (data) => {
-    const { pasoNombre, fecha, evidencias, cantidadEvidencias } = data;
+    const { pasoNombre, fecha, evidencias, cantidadEvidencias, numeroPaso, totalPasos } = data;
+
+    // Construir título con número de paso si está disponible
+    const tituloConPaso = numeroPaso && totalPasos
+        ? `PASO COMPLETADO CON ÉXITO (${numeroPaso}/${totalPasos})`
+        : 'PASO COMPLETADO CON ÉXITO';
+
+    const espaciosExtra = Math.max(0, 62 - tituloConPaso.length);
+    const espaciosDerecha = ' '.repeat(espaciosExtra);
 
     let mensaje = `
 ╔════════════════════════════════════════════════════════════════╗
-║  🎉  PASO COMPLETADO CON ÉXITO                                ║
+║  🎉  ${tituloConPaso}${espaciosDerecha}║
 ╚════════════════════════════════════════════════════════════════╝
 
 📋 PASO DEL PROCESO
@@ -88,12 +116,22 @@ export const PLANTILLA_REAPERTURA = (data) => {
         cantidadEvidenciasAnterior,
         cantidadEvidenciasNueva,
         huboCambioFecha,
-        huboCambioEvidencias
+        huboCambioEvidencias,
+        numeroPaso,
+        totalPasos
     } = data;
+
+    // Construir título con número de paso si está disponible
+    const tituloConPaso = numeroPaso && totalPasos
+        ? `PASO REABIERTO Y COMPLETADO NUEVAMENTE (${numeroPaso}/${totalPasos})`
+        : 'PASO REABIERTO Y COMPLETADO NUEVAMENTE';
+
+    const espaciosExtra = Math.max(0, 62 - tituloConPaso.length);
+    const espaciosDerecha = ' '.repeat(espaciosExtra);
 
     let mensaje = `
 ╔════════════════════════════════════════════════════════════════╗
-║  🔄  PASO REABIERTO Y COMPLETADO NUEVAMENTE                   ║
+║  🔄  ${tituloConPaso}${espaciosDerecha}║
 ╚════════════════════════════════════════════════════════════════╝
 
 📋 PASO DEL PROCESO

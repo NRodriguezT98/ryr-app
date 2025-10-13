@@ -1,11 +1,13 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
+import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 import { revertirAnulacionAbono } from "../../services/abonoService"; // Ya no se importa anularAbono
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
 export const useGestionarAbonos = (clienteIdDesdeUrl) => {
-    const { isLoading: isDataLoading, clientes, viviendas, abonos, recargarDatos, proyectos } = useData();
+    const { isLoading: isDataLoading, clientes, viviendas, abonos, proyectos } = useData();
+    const { afterAbonoMutation } = useDataSync(); // ✅ Sincronización granular
     const { user } = useAuth();
     const userName = user?.displayName || 'Usuario desconocido';
     const [selectedClienteId, setSelectedClienteId] = useState(clienteIdDesdeUrl || null);
@@ -114,12 +116,13 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         [clientes]
     );
 
-    const handleGuardado = useCallback(() => {
-        recargarDatos();
+    const handleGuardado = useCallback(async () => {
+        // ✅ Sincronización inteligente (abonos, clientes, viviendas)
+        await afterAbonoMutation();
         setAbonoAEditar(null);
         setFuenteACondonar(null);
         setDesembolsoARegistrar(null);
-    }, [recargarDatos]);
+    }, [afterAbonoMutation]);
 
 
     return {
@@ -137,7 +140,6 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
             desembolsoARegistrar, setDesembolsoARegistrar
         },
         handlers: {
-            recargarDatos,
             handleGuardado,
         }
     };

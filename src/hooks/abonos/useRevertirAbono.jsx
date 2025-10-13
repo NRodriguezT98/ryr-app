@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useData } from '../../context/DataContext';
+import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 import { revertirAnulacionAbono } from '../../services/abonoService';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export const useRevertirAbono = (onActionCompleta) => {
     const { user } = useAuth();
-    const { recargarDatos } = useData();
+    const { afterAbonoMutation } = useDataSync(); // ✅ Sincronización granular
     const [abonoARevertir, setAbonoARevertir] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -46,7 +47,9 @@ export const useRevertirAbono = (onActionCompleta) => {
             toast.dismiss();
             toast.success('¡Anulación revertida con éxito!');
 
-            recargarDatos();
+            // ✅ Sincronización inteligente (abonos, clientes, viviendas)
+            await afterAbonoMutation();
+
             if (onActionCompleta) onActionCompleta();
             cerrarReversion();
         } catch (error) {

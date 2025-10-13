@@ -7,6 +7,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useCollection } from '../hooks/useCollection';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase/config';
 
 const DataContext = createContext(null);
 
@@ -225,13 +227,56 @@ export const DataProvider = ({ children }) => {
 
     /**
      * Recarga todas las colecciones (mantiene retrocompatibilidad)
+     * Ahora retorna Promise que se resuelve cuando TODAS las colecciones terminan de recargar
      */
-    const recargarDatos = useCallback(() => {
-        viviendasCollection.reload();
-        clientesCollection.reload();
-        abonosCollection.reload();
-        renunciasCollection.reload();
-        proyectosCollection.reload();
+    const recargarDatos = useCallback(async () => {
+        // Recargar todas las colecciones en paralelo y esperar a que terminen
+        await Promise.all([
+            viviendasCollection.reload(),
+            clientesCollection.reload(),
+            abonosCollection.reload(),
+            renunciasCollection.reload(),
+            proyectosCollection.reload()
+        ]);
+    }, [
+        viviendasCollection,
+        clientesCollection,
+        abonosCollection,
+        renunciasCollection,
+        proyectosCollection
+    ]);
+
+    /**
+     * FUERZA la recarga haciendo queries directas a Firestore
+     * Ignora listeners y caché completamente
+     * Usar SOLO después de mutaciones críticas (renuncias, eliminaciones, etc)
+     */
+    const forzarRecargaDirecta = useCallback(async () => {
+        try {
+            // Hacer queries directas en paralelo
+            const [viviendasSnap, clientesSnap, abonosSnap, renunciasSnap, proyectosSnap] = await Promise.all([
+                getDocs(collection(db, 'viviendas')),
+                getDocs(collection(db, 'clientes')),
+                getDocs(collection(db, 'abonos')),
+                getDocs(collection(db, 'renuncias')),
+                getDocs(collection(db, 'proyectos'))
+            ]);
+
+            // Ahora forzar recarga de listeners para que se sincronicen con los datos frescos
+            await Promise.all([
+                viviendasCollection.reload(),
+                clientesCollection.reload(),
+                abonosCollection.reload(),
+                renunciasCollection.reload(),
+                proyectosCollection.reload()
+            ]);
+
+            // Esperar un poco más para que los listeners se estabilicen
+            await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (error) {
+            console.error('❌ [forzarRecargaDirecta] Error:', error);
+            throw error;
+        }
     }, [
         viviendasCollection,
         clientesCollection,
@@ -279,6 +324,7 @@ export const DataProvider = ({ children }) => {
 
         // Funciones de control (retrocompatibilidad)
         recargarDatos,
+        forzarRecargaDirecta, // NUEVO: Recarga forzada con queries directas
 
         // Nuevas funciones optimizadas
         loadCollection,
@@ -308,6 +354,7 @@ export const DataProvider = ({ children }) => {
         proyectosCollection.hasLoaded,
         maps,
         recargarDatos,
+        forzarRecargaDirecta,
         loadCollection,
         loadAllCollections,
         reloadCollection

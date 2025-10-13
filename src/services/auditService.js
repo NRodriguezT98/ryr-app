@@ -179,21 +179,35 @@ export const createAuditLogBatch = async (logs, options = {}) => {
  * Obtiene logs de auditoría para un cliente específico (función original)
  */
 export const getAuditLogsForCliente = async (clienteId) => {
-    // CORRECCIÓN: Usamos el nombre de tu colección: "audits"
+    console.log('🔍 [getAuditLogsForCliente] Consultando logs para cliente:', clienteId);
+
+    // Usando estructura NUEVA de auditoría (entities.clienteId)
     const logsRef = collection(db, "audits");
 
     const q = query(
         logsRef,
-        where("details.clienteId", "==", clienteId),
+        where("entities.clienteId", "==", clienteId),
         orderBy("timestamp", "desc")
     );
 
     const querySnapshot = await getDocs(q);
+    console.log('  - Total documentos encontrados:', querySnapshot.size);
+
     const logs = [];
     querySnapshot.forEach((doc) => {
-        logs.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        console.log('  - Log encontrado:', {
+            id: doc.id,
+            actionType: data.actionType,
+            timestamp: data.timestamp,
+            timestampType: typeof data.timestamp,
+            timestampKeys: data.timestamp ? Object.keys(data.timestamp) : null,
+            entities: data.entities
+        });
+        logs.push({ id: doc.id, ...data });
     });
 
+    console.log('✅ [getAuditLogsForCliente] Retornando', logs.length, 'logs');
     return logs;
 };
 

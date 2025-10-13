@@ -1,6 +1,6 @@
 // Importa las funciones que necesitas del SDK de Firebase
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 
@@ -21,14 +21,13 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 // Se crea la instancia de la base de datos
-// 🔥 OPTIMIZACIÓN: Usando initializeFirestore con persistencia moderna
-// Beneficio: Queries instantáneas cuando datos ya fueron consultados
-// Funciona offline: NO (solo cache para velocidad)
-// Soporte multi-tab: SÍ (sincronización automática entre pestañas)
+// 🔥 DECISIÓN: Usar memoryLocalCache en lugar de persistentLocalCache
+// RAZÓN: persistentLocalCache causa problemas con actualizaciones en tiempo real
+// después de transacciones (los listeners reciben datos viejos del IndexedDB)
+// TRADEOFF: Sin cache persistente, pero con sincronización correcta en tiempo real
+// BENEFICIO: Los listeners onSnapshot se actualizan inmediatamente después de cambios
 const db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-    }),
+    localCache: memoryLocalCache(),
 });
 
 const storage = getStorage(app);

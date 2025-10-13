@@ -4,11 +4,11 @@
  * 
  * Estructura final:
  * ├── clienteCRUD.js ✅ COMPLETADO - Operaciones CRUD básicas
- * ├── clienteAuditHelpers.js ✅ COMPLETADO - Helpers de auditoría
- * ├── clienteNotas.js ✅ COMPLETADO - Historial de notas
- * ├── clienteTransferencia.js ✅ COMPLETADO - Transferencia de vivienda
- * ├── clienteRenuncia.js ✅ COMPLETADO - Lógica de renuncia
- * └── clienteProceso.js ✅ COMPLETADO - Gestión de proceso
+ * ├── clienteValidators.js ✅ NUEVO - Validaciones de negocio
+ * ├── renunciasService.js ✅ NUEVO - Lógica de renuncia
+ * ├── historial/notasService.js ✅ NUEVO - Historial de notas
+ * ├── utils/evidenciasHelpers.js ✅ NUEVO - Helpers de evidencias
+ * └── proceso/ ✅ Gestión de proceso (ya existente)
  */
 
 // ========== MÓDULOS COMPLETADOS ==========
@@ -23,53 +23,59 @@ export {
     deleteClientePermanently
 } from './clienteCRUD';
 
-// Helpers de auditoría
+// Validadores
 export {
-    obtenerNombreEvidencia,
-    construirListaEvidencias,
-    generarMensajeComplecion,
-    generarMensajeReapertura,
-    generarMensajeReCompletado,
-    generarActividadProceso
-} from './clienteAuditHelpers';
+    validateClientUpdate,
+    validateFechaIngresoChange,
+    sincronizarProcesoConFinanciero
+} from './clienteValidators';
 
-// Proceso
-export {
-    getClienteProceso,
-    updateClienteProceso,
-    updateClienteProcesoUnified,
-    reabrirPasoProceso,
-    anularCierreProceso
-} from './clienteProceso';
-
-// Renuncia
+// Renuncias
 export {
     renunciarAVivienda
-} from './clienteRenuncia';
+} from './renunciasService';
 
-// Transferencia
-export {
-    transferirViviendaCliente
-} from './clienteTransferencia';
-
-// Notas
+// Notas del historial
 export {
     addNotaToHistorial,
     updateNotaHistorial
-} from './clienteNotas';
+} from './historial/notasService';
+
+// Helpers de evidencias
+export {
+    obtenerNombreEvidencia,
+    construirListaEvidencias,
+    construirAccesoEvidencias
+} from './utils/evidenciasHelpers';
+
+// Helpers de auditoría
+export {
+    generarActividadProceso
+} from './clienteAuditHelpers';
+
+// Proceso (módulos ya existentes)
+export {
+    updateClienteProceso,
+    updateClienteProcesoUnified
+} from './proceso/updateProceso';
+
+export {
+    getClienteProceso,
+    reabrirPasoProceso,
+    anularCierreProceso
+} from './proceso/procesoHelpers';
+
+// Transferencia
+export { transferirViviendaCliente } from './clienteTransferencia';
 
 /**
  * ESTADO DE REFACTORIZACIÓN:
- * ✅ COMPLETADO - 6/6 módulos migrados (100%)
+ * ✅ COMPLETADO - Estructura modular implementada
  * 
  * Todos los módulos de cliente ahora están organizados en archivos especializados.
- * El archivo clienteService.js original se mantiene temporalmente para:
- * - Funciones auxiliares complejas de clienteProceso.js (15+ helpers)
- * - Garantizar estabilidad durante la transición
  * 
- * Próximos pasos opcionales (mejora continua):
- * 1. Extraer helpers internos de clienteService.js a submódulos
- * 2. Marcar clienteService.js como @deprecated
- * 3. Eventualmente eliminar clienteService.js cuando todas las dependencias estén migradas
+ * Próximos pasos:
+ * 1. Actualizar imports en componentes que usen clienteService.js
+ * 2. Eliminar clienteService.js cuando todas las dependencias estén migradas
  */
 

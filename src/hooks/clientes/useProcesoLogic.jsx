@@ -291,7 +291,9 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
         const pasoOriginal = initialProcesoState[pasoKey] || {};
 
         // Si tiene metadata de reapertura, verificar que haya cambios
-        if (pasoActual.motivoReapertura || pasoActual.fechaReapertura) {
+        const esReapertura = pasoActual.motivoReapertura || pasoActual.fechaReapertura;
+
+        if (esReapertura) {
             const huboCambioFecha = pasoOriginal.fecha !== fecha;
             const huboCambioEvidencias = JSON.stringify(pasoOriginal.evidencias || {}) !==
                 JSON.stringify(pasoActual.evidencias || {});
@@ -302,11 +304,34 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
             }
         }
 
-        setProcesoState(prev => ({
-            ...prev,
-            [pasoKey]: { ...prev[pasoKey], completado: true, fecha }
-        }));
-    }, [procesoState, initialProcesoState]);
+        setProcesoState(prev => {
+            const pasoAnterior = prev[pasoKey] || {};
+
+            // 🔥 FIX: Preservar metadata de reapertura para que el detector funcione correctamente
+            const nuevoEstado = {
+                ...pasoAnterior,
+                completado: true,
+                fecha
+            };
+
+            // Si es una reapertura, preservar los datos de reapertura y estado anterior
+            if (esReapertura) {
+                nuevoEstado.motivoReapertura = pasoAnterior.motivoReapertura;
+                nuevoEstado.fechaReapertura = pasoAnterior.fechaReapertura || getTodayString();
+                // ✅ CRÍTICO: Preservar el estadoAnterior que se guardó al momento de reabrir
+                // NO crear uno nuevo, ya que el original tiene las evidencias correctas
+                nuevoEstado.estadoAnterior = pasoAnterior.estadoAnterior || {
+                    fecha: pasoOriginal.fecha,
+                    evidencias: pasoOriginal.evidencias || {}
+                };
+            }
+
+            return {
+                ...prev,
+                [pasoKey]: nuevoEstado
+            };
+        });
+    }, [procesoState, initialProcesoState, toast]);
 
     const iniciarReapertura = useCallback((pasoKey) => setReaperturaInfo({ key: pasoKey, motivo: '' }), []);
 
@@ -316,14 +341,25 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
         setProcesoState(prev => {
             const newState = { ...prev };
             const pasoKey = reaperturaInfo.key;
+            const pasoActual = newState[pasoKey] || {};
+
+            // ✅ Guardar estado anterior ANTES de reabrir
             newState[pasoKey] = {
-                ...newState[pasoKey],
+                ...pasoActual,
                 completado: false,
                 fecha: null,
-                motivoReapertura: motivo, // <-- Aquí guardamos el motivo
+                motivoReapertura: motivo,
+                fechaReapertura: getTodayString(),
                 motivoUltimoCambio: 'Paso reabierto',
-                fechaUltimaModificacion: getTodayString()
+                fechaUltimaModificacion: getTodayString(),
+                // ✅ CRÍTICO: Guardar el estado anterior con las evidencias originales
+                estadoAnterior: {
+                    completado: pasoActual.completado,
+                    fecha: pasoActual.fecha,
+                    evidencias: { ...(pasoActual.evidencias || {}) }
+                }
             };
+
             return newState;
         });
         setReaperturaInfo(null);
@@ -440,9 +476,6 @@ export const useProcesoLogic = (cliente, onSaveSuccess) => {
         setIsSubmitting(true);
         try {
             // ✅ NUEVO SISTEMA UNIFICADO: El detector de cambios se encarga de todo automáticamente
-            console.log('🔄 Usando nuevo sistema de auditoría unificado');
-            
-            // Pasamos el procesoState directamente (SIN generar actividad manualmente)
             await updateClienteProcesoUnified(cliente.id, procesoState, null, null);
 
             // NO mostrar toast aquí - se muestra en onSaveSuccess (useDetalleCliente)

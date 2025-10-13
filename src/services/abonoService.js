@@ -3,7 +3,7 @@ import { db } from '../firebase/config';
 import { collection, addDoc, doc, updateDoc, runTransaction, getDoc, query, where, getDocs } from "firebase/firestore";
 import { formatCurrency, toTitleCase, formatDisplayDate } from '../utils/textFormatters';
 import { FUENTE_PROCESO_MAP, PROCESO_CONFIG } from '../utils/procesoConfig.js';
-import { createAuditLog } from './auditService';
+import { createAbonoAuditLog } from './unifiedAuditService';
 import { createNotification } from './notificationService';
 
 export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, userName) => {
@@ -113,20 +113,39 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
         mensajeAuditoria += ". Con este pago se completó el saldo de la Cuota Inicial.";
     }
 
-    await createAuditLog(
-        mensajeAuditoria,
+    // 🔥 MIGRADO AL SISTEMA NUEVO
+    await createAbonoAuditLog(
+        esCuotaInicial ? 'REGISTER_ABONO' : 'REGISTER_DISBURSEMENT',
         {
-            action: esCuotaInicial ? 'REGISTER_ABONO' : 'REGISTER_DISBURSEMENT',
+            id: abonoRef.id,
+            monto: abonoData.monto,
+            fechaPago: abonoData.fechaPago,
+            metodoPago: abonoData.metodoPago,
+            fuente: abonoData.fuente
+        },
+        {
             clienteId: abonoData.clienteId,
-            pasoCompletado: pasoCompletadoNombre,
-            cliente: { id: abonoData.clienteId, nombre: clienteNombre },
-            vivienda: { id: abonoData.viviendaId, display: `Mz ${viviendaData.manzana} - Casa ${viviendaData.numeroCasa}` },
-            proyecto: { id: proyecto.id, nombre: proyecto.nombre },
-            abono: {
-                monto: formatCurrency(abonoData.monto),
-                fechaPago: formatDisplayDate(abonoData.fechaPago),
-                fuente: abonoData.fuente,
-                consecutivo: consecutivoStr
+            viviendaId: abonoData.viviendaId,
+            proyectoId: proyecto.id,
+            cliente: {
+                id: abonoData.clienteId,
+                nombre: clienteNombre
+            },
+            vivienda: {
+                id: abonoData.viviendaId,
+                manzana: viviendaData.manzana,
+                numeroCasa: viviendaData.numeroCasa
+            },
+            proyecto: {
+                id: proyecto.id,
+                nombre: proyecto.nombre
+            },
+            actionData: {
+                pasoCompletado: pasoCompletadoNombre,
+                cuotaInicialCompletada: cuotaInicialCompletada,
+                consecutivo: consecutivoStr,
+                montoFormateado: formatCurrency(abonoData.monto),
+                fechaFormateada: formatDisplayDate(abonoData.fechaPago)
             }
         }
     );

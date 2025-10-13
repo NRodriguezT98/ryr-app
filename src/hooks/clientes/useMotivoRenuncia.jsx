@@ -12,6 +12,7 @@ export const useMotivoRenuncia = (cliente, onConfirm) => {
     const [penalidadMotivo, setPenalidadMotivo] = useState('');
     const [aplicaPenalidad, setAplicaPenalidad] = useState(false);
     const [errors, setErrors] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // --- INICIO DE LA MODIFICACIÓN ---
     const { totalAbonadoReal, totalCondonado, montoPenalidadNum, totalADevolver } = useMemo(() => {
@@ -62,7 +63,7 @@ export const useMotivoRenuncia = (cliente, onConfirm) => {
         return fechaMasReciente;
     }, [cliente, abonos]);
 
-    const handleConfirmar = () => {
+    const handleConfirmar = async () => {
         const newErrors = {};
         if (!motivo) newErrors.motivo = "Por favor, selecciona un motivo.";
         if (motivo?.value === 'Otro' && !observacion.trim()) newErrors.observacion = "Por favor, especifica el motivo.";
@@ -80,7 +81,12 @@ export const useMotivoRenuncia = (cliente, onConfirm) => {
             return;
         }
 
-        onConfirm(motivo.value, observacion, fechaRenuncia, montoPenalidadNum, penalidadMotivo);
+        setIsSubmitting(true);
+        try {
+            await onConfirm(motivo.value, observacion, fechaRenuncia, montoPenalidadNum, penalidadMotivo);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     useEffect(() => {
@@ -92,6 +98,7 @@ export const useMotivoRenuncia = (cliente, onConfirm) => {
             setPenalidadMotivo('');
             setAplicaPenalidad(false);
             setErrors({});
+            setIsSubmitting(false);
         }
     }, [cliente]);
 
@@ -112,6 +119,7 @@ export const useMotivoRenuncia = (cliente, onConfirm) => {
         },
         handlers: {
             setMotivo, setObservacion, setFechaRenuncia, setPenalidadMonto, setPenalidadMotivo, setAplicaPenalidad, handleConfirmar
-        }
+        },
+        isSubmitting
     };
 };

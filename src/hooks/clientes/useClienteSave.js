@@ -18,6 +18,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useModernToast } from '../useModernToast.jsx';
+import { useDataSync } from '../useDataSync'; // ✅ NUEVO: Sistema de sincronización inteligente
 import { addClienteAndAssignVivienda, updateCliente } from '../../services/clientes';
 import { createNotification } from '../../services/notificationService.js';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig.js';
@@ -60,6 +61,7 @@ export const useClienteSave = (
 ) => {
     const navigate = useNavigate();
     const toast = useModernToast();
+    const { afterClienteMutation } = useDataSync(); // ✅ Sistema de sincronización inteligente
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     /**
@@ -191,6 +193,7 @@ export const useClienteSave = (
 
         await addClienteAndAssignVivienda(clienteParaGuardar, auditMessage, auditDetails);
 
+        // 🔥 Mostrar éxito inmediatamente (Optimistic)
         toast.success("¡Cliente y proceso iniciados con éxito!", {
             title: "¡Cliente Creado!"
         });
@@ -202,6 +205,9 @@ export const useClienteSave = (
             `/clientes/detalle/${datosCliente.cedula}`
         );
 
+        // ✅ NO recargar aquí - se hará en handleGuardado de ListarClientes
+        // Esto evita doble recarga y garantiza que el modal se cierre DESPUÉS de la recarga
+
         return true;
     }, [proyectos, createEmptyProcess, toast]);
 
@@ -209,6 +215,11 @@ export const useClienteSave = (
      * Guardar cliente en modo 'editar'
      */
     const saveClienteEditar = useCallback(async (formData, cambios, initialData, isFechaIngresoLocked) => {
+        console.log('📝 [saveClienteEditar] Ejecutando edición...');
+        console.log('  - cambios recibidos:', cambios);
+        console.log('  - cambios.length:', cambios?.length);
+        console.log('  - clienteAEditar:', clienteAEditar);
+
         const clienteParaActualizar = {
             datosCliente: formData.datosCliente,
             financiero: formData.financiero,
@@ -237,11 +248,20 @@ export const useClienteSave = (
             clienteParaActualizar.fechaInicioProceso = fechaNueva;
         }
 
+        console.log('🎯 [saveClienteEditar] Antes de llamar updateCliente');
+        console.log('  - clienteId:', clienteAEditar.id);
+        console.log('  - clienteParaActualizar:', clienteParaActualizar);
+        console.log('  - viviendaOriginalId:', viviendaOriginalId);
+        console.log('  - auditDetails.cambios:', cambios);
+
         await updateCliente(clienteAEditar.id, clienteParaActualizar, viviendaOriginalId, {
             action: 'UPDATE_CLIENT',
             cambios: cambios || []
         });
 
+        console.log('🎉 [saveClienteEditar] updateCliente completado exitosamente');
+
+        // 🔥 Mostrar éxito inmediatamente (Optimistic)
         toast.success("¡Cliente actualizado con éxito!", {
             title: "¡Actualización Exitosa!"
         });
@@ -251,6 +271,8 @@ export const useClienteSave = (
             `Se actualizaron los datos de ${toTitleCase(clienteAEditar.datosCliente.nombres)}.`,
             `/clientes/detalle/${clienteAEditar.id}`
         );
+
+        // ✅ NO recargar aquí - se hará en handleGuardado de ListarClientes
 
         return true;
     }, [clienteAEditar, viviendaOriginalId, toast]);
@@ -292,6 +314,7 @@ export const useClienteSave = (
             nombreNuevaVivienda: nombreNuevaVivienda
         });
 
+        // 🔥 Mostrar éxito inmediatamente (Optimistic)
         toast.success("¡Cliente reactivado con un nuevo proceso!", {
             title: "¡Cliente Reactivado!"
         });
@@ -305,6 +328,8 @@ export const useClienteSave = (
             `/clientes/detalle/${clienteAEditar.id}`
         );
 
+        // ✅ NO recargar aquí - se hará en handleGuardado de ListarClientes
+
         return true;
     }, [clienteAEditar, viviendaOriginalId, viviendas, createEmptyProcess, toast]);
 
@@ -313,20 +338,34 @@ export const useClienteSave = (
      * Decide qué función ejecutar según el modo
      */
     const saveCliente = useCallback(async (formData, cambiosDetectados = [], initialData = null, isFechaIngresoLocked = false) => {
+        console.log('🚀 [saveCliente] Iniciando guardado...');
+        console.log('  - modo:', modo);
+        console.log('  - isEditing:', isEditing);
+        console.log('  - cambiosDetectados:', cambiosDetectados);
+        console.log('  - cambiosDetectados.length:', cambiosDetectados?.length);
+
         setIsSubmitting(true);
 
         try {
             let success = false;
 
             if (modo === 'reactivar') {
+                console.log('  → Llamando a saveClienteReactivar');
                 success = await saveClienteReactivar(formData);
             } else if (isEditing) {
-                success = await saveClienteEditar(formData, cambios, initialData, isFechaIngresoLocked);
+                console.log('  → Llamando a saveClienteEditar');
+                success = await saveClienteEditar(formData, cambiosDetectados, initialData, isFechaIngresoLocked);
             } else {
+                console.log('  → Llamando a saveClienteCrear');
                 success = await saveClienteCrear(formData);
             }
 
             if (success) {
+                // ✅ CRÍTICO: Sincronización inteligente ANTES de navegar o cerrar modal
+                console.log('🔄 [saveCliente] Sincronizando solo clientes y viviendas...');
+                await afterClienteMutation(); // Solo 2 colecciones (80% más rápido)
+                console.log('✅ [saveCliente] Datos sincronizados');
+
                 if (onSaveSuccess) {
                     onSaveSuccess();
                 } else {
@@ -336,7 +375,9 @@ export const useClienteSave = (
 
             return success;
         } catch (error) {
-            console.error("Error al guardar el cliente:", error);
+            console.error("❌ [saveCliente] Error capturado:", error);
+            console.error("  - error.message:", error.message);
+            console.error("  - error.stack:", error.stack);
             toast.error("Hubo un error al guardar los datos.", {
                 title: "Error de Guardado"
             });
@@ -351,7 +392,9 @@ export const useClienteSave = (
         saveClienteEditar,
         saveClienteReactivar,
         onSaveSuccess,
-        navigate
+        navigate,
+        toast,
+        afterClienteMutation
     ]);
 
     return {

@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
+import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 import { useClienteCardLogic } from './useClienteCardLogic';
 import { deleteClientePermanently, inactivarCliente, renunciarAVivienda, restaurarCliente } from "../../services/clientes";
 import { createNotification } from "../../services/notificationService";
-import toast from 'react-hot-toast';
+import { useModernToast } from '../useModernToast';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
 import { useDebounce } from '../useDebounce';
 import {
@@ -15,7 +16,9 @@ import {
 const ITEMS_PER_PAGE = 10;
 
 export const useListarClientes = () => {
-    const { isLoading, clientes, abonos, viviendas, proyectos, recargarDatos, loadCollection } = useData();
+    const { isLoading, clientes, abonos, viviendas, proyectos, loadCollection } = useData();
+    const { afterClienteMutation, afterRenunciaMutation } = useDataSync(); // ✅ Sincronización granular
+    const { success: showSuccess, error: showError } = useModernToast();
 
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm, 300); // Debounce de 300ms
@@ -86,10 +89,11 @@ export const useListarClientes = () => {
         ...proyectos.map(p => ({ value: p.id, label: p.nombre }))
     ], [proyectos]);
 
-    const handleGuardado = useCallback(() => {
-        recargarDatos();
+    const handleGuardado = useCallback(async () => {
+        // ✅ Solo cerrar modal - la sincronización ya se hizo en saveCliente
+        console.log('✅ [handleGuardado] Cerrando modal (datos ya sincronizados)');
         setModals(prev => ({ ...prev, clienteEnModal: { cliente: null, modo: null } }));
-    }, [recargarDatos]);
+    }, []);
 
     const iniciarRenuncia = (cliente) => {
         if (!cliente.puedeRenunciar) {
@@ -118,54 +122,123 @@ export const useListarClientes = () => {
         try {
             const nombreCompleto = `${modals.clienteAArchivar.datosCliente.nombres} ${modals.clienteAArchivar.datosCliente.apellidos}`;
             await inactivarCliente(modals.clienteAArchivar.id, nombreCompleto);
+
+            // ✅ Toast IMMEDIATELY (optimistic)
             toast.success("Cliente archivado con éxito.");
-            recargarDatos();
+
+            // ✅ Sincronización inteligente (solo clientes y viviendas)
+            console.log('🔄 Sincronizando después de archivar...');
+            await afterClienteMutation();
         } catch (error) {
             toast.error("No se pudo archivar el cliente.");
+            await afterClienteMutation(); // Revert on error
         } finally {
             setModals(prev => ({ ...prev, clienteAArchivar: null }));
         }
-    }, [modals.clienteAArchivar, recargarDatos]);
+    }, [modals.clienteAArchivar, afterClienteMutation]);
 
     const confirmarEliminacionPermanente = useCallback(async () => {
         if (!modals.clienteAEliminar) return;
         try {
             await deleteClientePermanently(modals.clienteAEliminar.id);
+
+            // ✅ Toast IMMEDIATELY (optimistic)
             toast.success("Cliente y su historial han sido eliminados permanentemente.");
-            recargarDatos();
-        } catch (error) { toast.error("No se pudo eliminar el cliente."); }
+
+            // ✅ Sincronización inteligente (solo clientes y viviendas)
+            console.log('🔄 Sincronizando después de eliminar...');
+            await afterClienteMutation();
+        } catch (error) {
+            toast.error("No se pudo eliminar el cliente.");
+            await afterClienteMutation(); // Revert on error
+        }
         finally { setModals(prev => ({ ...prev, clienteAEliminar: null })); }
-    }, [modals.clienteAEliminar, recargarDatos]);
+    }, [modals.clienteAEliminar, afterClienteMutation]);
 
     const handleConfirmarMotivo = (motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo) => {
         setModals(prev => ({ ...prev, datosRenuncia: { cliente: prev.clienteARenunciar, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo }, clienteARenunciar: null }));
     };
 
     const confirmarRenunciaFinal = useCallback(async () => {
-        // CORRECCIÓN: Usamos modals.datosRenuncia en lugar de datosRenuncia
         if (!modals.datosRenuncia || !modals.datosRenuncia.cliente) return;
         setModals(prev => ({ ...prev, isSubmitting: true }));
         const { cliente, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo } = modals.datosRenuncia;
+
         try {
-            const { renunciaId, clienteNombre } = await renunciarAVivienda(cliente.id, motivo, observacion, fechaRenuncia, penalidadMonto, penalidadMotivo);
-            toast.success("La renuncia se ha procesado correctamente.");
-            await createNotification('renuncia', `Se registró una renuncia del cliente ${clienteNombre}.`, `/renuncias/detalle/${renunciaId}`);
-            recargarDatos();
-        } catch (error) { toast.error("No se pudo procesar la renuncia."); }
-        finally { setModals(prev => ({ ...prev, datosRenuncia: null, isSubmitting: false })); }
-    }, [modals.datosRenuncia, recargarDatos]);
+            console.log('🔄 [RENUNCIA] Procesando renuncia para cliente:', cliente.id);
+
+            const { renunciaId, clienteNombre } = await renunciarAVivienda(
+                cliente.id,
+                motivo,
+                observacion,
+                fechaRenuncia,
+                penalidadMonto,
+                penalidadMotivo
+            );
+
+            console.log('✅ [RENUNCIA] Renuncia procesada en Firestore, renunciaId:', renunciaId);
+
+            // ✅ Sincronización inteligente (solo renuncias, clientes, viviendas)
+            console.log('🔄 [RENUNCIA] Sincronizando datos...');
+            await afterRenunciaMutation();
+            console.log('✅ [RENUNCIA] Datos sincronizados correctamente');
+
+            // ✅ Cerrar modal PRIMERO para que la lista se actualice
+            setModals(prev => ({ ...prev, datosRenuncia: null, isSubmitting: false }));
+
+            // ✅ Mostrar éxito con toast moderno
+            showSuccess(
+                `La renuncia de ${clienteNombre} se ha registrado correctamente.`,
+                { title: 'Renuncia Procesada' }
+            );
+
+            // Crear notificación
+            await createNotification(
+                'renuncia',
+                `Se registró una renuncia del cliente ${clienteNombre}.`,
+                `/renuncias/detalle/${renunciaId}`
+            );
+
+        } catch (error) {
+            console.error("❌ [RENUNCIA] Error al procesar:", error);
+            showError(
+                error.message || "No se pudo procesar la renuncia.",
+                { title: 'Error al Procesar Renuncia' }
+            );
+
+            // En caso de error, sincronizar para garantizar estado consistente
+            await afterRenunciaMutation();
+
+            setModals(prev => ({ ...prev, datosRenuncia: null, isSubmitting: false }));
+        }
+    }, [modals.datosRenuncia, afterRenunciaMutation, showSuccess, showError]);
 
     const confirmarRestauracion = useCallback(async () => {
-        // CORRECCIÓN: Usamos modals.clienteARestaurar en lugar de clienteARestaurar
         if (!modals.clienteARestaurar) return;
         setModals(prev => ({ ...prev, isSubmitting: true }));
         try {
             await restaurarCliente(modals.clienteARestaurar.id);
-            toast.success("El cliente ha sido restaurado con éxito.");
-            recargarDatos();
-        } catch (error) { toast.error("No se pudo restaurar el cliente."); }
-        finally { setModals(prev => ({ ...prev, clienteARestaurar: null, isSubmitting: false })); }
-    }, [modals.clienteARestaurar, recargarDatos]);
+
+            // ✅ Sincronización inteligente (solo clientes y viviendas)
+            console.log('🔄 Sincronizando datos después de restaurar...');
+            await afterClienteMutation();
+
+            // ✅ Toast moderno
+            showSuccess(
+                `${modals.clienteARestaurar.datosCliente.nombres} ha sido restaurado con éxito.`,
+                { title: 'Cliente Restaurado' }
+            );
+        } catch (error) {
+            showError(
+                "No se pudo restaurar el cliente.",
+                { title: 'Error al Restaurar' }
+            );
+            await afterClienteMutation(); // Sincronizar en caso de error
+        }
+        finally {
+            setModals(prev => ({ ...prev, clienteARestaurar: null, isSubmitting: false }));
+        }
+    }, [modals.clienteARestaurar, afterClienteMutation, showSuccess, showError]);
 
     return {
         isLoading,

@@ -24,7 +24,7 @@ import { PROCESO_CONFIG } from '../../../utils/procesoConfig';
  * @returns {Array} Lista de cambios detectados con contexto completo
  */
 export const detectarCambiosProceso = (procesoOriginal, procesoNuevo) => {
-    const cambios = [];    for (const pasoConfig of PROCESO_CONFIG) {
+    const cambios = []; for (const pasoConfig of PROCESO_CONFIG) {
         const key = pasoConfig.key;
         const pasoOriginal = procesoOriginal[key] || {};
         const pasoNuevo = procesoNuevo[key] || {};
@@ -32,12 +32,10 @@ export const detectarCambiosProceso = (procesoOriginal, procesoNuevo) => {
         const cambio = detectarCambioPaso(pasoOriginal, pasoNuevo, pasoConfig);
 
         if (cambio.tipo !== 'sin_cambios') {
-            console.log('✅ [DEBUG] Cambio detectado en paso:', key, '- Tipo:', cambio.tipo);
             cambios.push(cambio);
         }
     }
 
-    console.log('📊 [DEBUG] Total cambios detectados:', cambios.length);
     return cambios;
 };
 
@@ -60,7 +58,7 @@ const detectarCambioPaso = (pasoOriginal, pasoNuevo, config) => {
         huboComplecion,
         huboCambioFecha,
         huboCambioEvidencias,
-        esReapertura: pasoNuevo.motivoReapertura && pasoNuevo.fechaReapertura
+        esReapertura: !!(pasoNuevo.motivoReapertura && pasoNuevo.fechaReapertura)
     });
 
     // 4. Retornar objeto con TODO el contexto
@@ -84,7 +82,8 @@ const detectarCambioPaso = (pasoOriginal, pasoNuevo, config) => {
         },
         flags: {
             huboCambioFecha,
-            huboCambioEvidencias
+            huboCambioEvidencias,
+            esReapertura: !!(pasoNuevo.motivoReapertura && pasoNuevo.fechaReapertura)
         }
     };
 };
@@ -111,11 +110,11 @@ const compararEvidencias = (pasoOriginal, pasoNuevo) => {
 /**
  * Determina el tipo específico de cambio basado en flags.
  * 
- * LÓGICA SIMPLIFICADA:
+ * LÓGICA MEJORADA:
  * - Si es primera completación → completacion
  * - Si es reapertura (tiene motivoReapertura) → reapertura
- * - Si solo cambia fecha → cambio_fecha
- * - Cambios de evidencias SIN reapertura NO son posibles (requieren reapertura)
+ * - Si solo cambia fecha (sin reapertura ni evidencias) → cambio_fecha
+ * - Cambios de evidencias SIN reapertura → ignorar (no debería pasar)
  */
 const determinarTipoCambio = ({
     huboComplecion,
@@ -128,21 +127,21 @@ const determinarTipoCambio = ({
         return 'completacion';
     }
 
-    // Reapertura (con o sin cambios)
+    // Reapertura (con o sin cambios de fecha/evidencias)
     if (esReapertura) {
         return 'reapertura';
     }
 
-    // Edición solo de fecha (botón Editar Fecha)
+    // Edición solo de fecha (botón Editar Fecha) - sin evidencias
     if (huboCambioFecha && !huboCambioEvidencias) {
         return 'cambio_fecha';
     }
 
-    // NOTA: Cambios de evidencias sin reapertura NO deberían ocurrir
-    // Si ocurren, es un error de lógica del negocio
-    if (huboCambioEvidencias) {
-        console.warn('⚠️  Cambio de evidencias detectado sin reapertura. Esto no debería ocurrir.');
-        return 'cambio_fecha'; // Fallback a cambio simple
+    // 🔥 FIX: Cambios de evidencias sin reapertura → NO CREAR LOG
+    // Esto previene logs duplicados de "cambio de fecha" cuando solo cambiaron evidencias
+    if (huboCambioEvidencias && !esReapertura) {
+        // ℹ️  Cambio de evidencias sin reapertura se ignora para evitar logs duplicados
+        return 'sin_cambios'; // ✅ Cambio de 'cambio_fecha' a 'sin_cambios'
     }
 
     return 'sin_cambios';

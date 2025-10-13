@@ -7,8 +7,70 @@
 
 import { doc, getDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { createAuditLog } from '../auditService';
+import { createClientAuditLog } from '../unifiedAuditService';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
+import { AuditMessageBuilder } from '../../utils/auditMessageBuilder';
+import { formatCurrency } from '../../utils/textFormatters';
+
+/**
+ * Convierte el plan financiero del formato de formulario al formato normalizado
+ * para guardar en el cliente y en la auditoría
+ * 
+ * IMPORTANTE: Mantiene TODOS los datos originales del formulario para preservar
+ * información detallada como banco, caja, URLs de cartas, etc.
+ */
+const normalizarPlanFinanciero = (planFormulario, valorVivienda) => {
+    // Si es null o undefined, retornar null
+    if (!planFormulario) return null;
+
+    // Determinar fuente de pago principal
+    let fuenteDePago = 'directo';
+    if (planFormulario.aplicaSubsidioVivienda || planFormulario.aplicaSubsidioCaja) {
+        fuenteDePago = 'subsidio';
+    } else if (planFormulario.aplicaCredito) {
+        fuenteDePago = 'banco';
+    }
+
+    // Calcular totales para resumen
+    const totalAporte = planFormulario.aplicaCuotaInicial ? (planFormulario.cuotaInicial?.monto || 0) : 0;
+    const totalBanco = planFormulario.aplicaCredito ? (planFormulario.credito?.monto || 0) : 0;
+
+    // CORRECCIÓN: Calcular subsidios por separado para el total, pero mantener individuales
+    const montoSubsidioVivienda = planFormulario.aplicaSubsidioVivienda ? (planFormulario.subsidioVivienda?.monto || 0) : 0;
+    const montoSubsidioCaja = planFormulario.aplicaSubsidioCaja ? (planFormulario.subsidioCaja?.monto || 0) : 0;
+    const totalBonos = montoSubsidioVivienda + montoSubsidioCaja;
+
+    // Retornar plan normalizado completo con TODOS los detalles originales
+    return {
+        // Campos normalizados/calculados (para resumen y comparaciones)
+        fuenteDePago,
+        valorInicial: valorVivienda || 0,
+        totalAporte,
+        totalBanco,
+        totalBonos,
+
+        // Detalles de crédito (si aplica)
+        cuotasMensuales: planFormulario.aplicaCredito ? (planFormulario.credito?.cuotas || 0) : 0,
+        valorCuotaMensual: planFormulario.aplicaCredito ? (planFormulario.credito?.valorCuota || 0) : 0,
+
+        // PRESERVAR TODOS los datos originales del formulario
+        // Esto incluye: banco, caja, URLs de cartas, casos, etc.
+        aplicaCuotaInicial: planFormulario.aplicaCuotaInicial,
+        cuotaInicial: planFormulario.cuotaInicial,
+
+        aplicaCredito: planFormulario.aplicaCredito,
+        credito: planFormulario.credito, // Incluye: banco, monto, caso, urlCartaAprobacion, cuotas, valorCuota
+
+        aplicaSubsidioVivienda: planFormulario.aplicaSubsidioVivienda,
+        subsidioVivienda: planFormulario.subsidioVivienda, // Incluye: monto
+
+        aplicaSubsidioCaja: planFormulario.aplicaSubsidioCaja,
+        subsidioCaja: planFormulario.subsidioCaja, // Incluye: caja, monto, urlCartaAprobacion
+
+        usaValorEscrituraDiferente: planFormulario.usaValorEscrituraDiferente,
+        valorEscritura: planFormulario.valorEscritura
+    };
+};
 
 /**
  * Transfiere un cliente de una vivienda a otra.
@@ -68,6 +130,11 @@ export const transferirViviendaCliente = async ({
             throw new Error("El cliente a transferir no existe.");
         }
         const clienteOriginal = clienteOriginalSnap.data();
+
+        // Validar que el cliente esté activo
+        if (clienteOriginal.status !== 'activo') {
+            throw new Error("Solo se pueden transferir clientes con estado 'activo'. Estado actual: " + (clienteOriginal.status || 'indefinido'));
+        }
         // --- FIN DE LA MODIFICACIÓN 1 ---
 
         // Validar nueva vivienda
@@ -81,6 +148,19 @@ export const transferirViviendaCliente = async ({
         }
         const nuevaViviendaData = nuevaViviendaSnap.data();
 
+        // Normalizar el plan financiero del formulario al formato estándar
+        const planFinancieroNormalizado = normalizarPlanFinanciero(nuevoPlanFinanciero, nuevaViviendaData.valorTotal);
+
+        // Leer datos de la vivienda anterior (si existe) para auditoría
+        let viviendaAnteriorData = null;
+        if (viviendaOriginalId) {
+            const viviendaOriginalRef = doc(db, 'viviendas', viviendaOriginalId);
+            const viviendaOriginalSnap = await getDoc(viviendaOriginalRef);
+            if (viviendaOriginalSnap.exists()) {
+                viviendaAnteriorData = viviendaOriginalSnap.data();
+            }
+        }
+
         // Buscar abonos activos que deben sincronizarse con la nueva vivienda
         const abonosQuery = query(
             collection(db, "abonos"),
@@ -92,7 +172,7 @@ export const transferirViviendaCliente = async ({
         // Generar nuevo proceso según el plan financiero
         const nuevoProceso = {};
         PROCESO_CONFIG.forEach(paso => {
-            if (paso.aplicaA(nuevoPlanFinanciero)) {
+            if (paso.aplicaA(planFinancieroNormalizado)) {
                 const evidencias = {};
                 paso.evidenciasRequeridas.forEach(ev => {
                     evidencias[ev.id] = { url: null, estado: 'pendiente' };
@@ -109,10 +189,10 @@ export const transferirViviendaCliente = async ({
         // Batch write para atomicidad
         const batch = writeBatch(db);
 
-        // Actualizar cliente con nueva vivienda, plan financiero y proceso reseteado
+        // Actualizar cliente con nueva vivienda, plan financiero normalizado y proceso reseteado
         batch.update(clienteRef, {
             viviendaId: nuevaViviendaId,
-            financiero: nuevoPlanFinanciero,
+            financiero: planFinancieroNormalizado,
             proceso: nuevoProceso
         });
 
@@ -138,24 +218,89 @@ export const transferirViviendaCliente = async ({
 
         await batch.commit();
 
-        // Registrar auditoría con snapshot completo de ambos planes financieros
-        const auditMessage = `Transfirió al cliente ${nombreCliente} a una nueva vivienda.`;
-        const auditDetails = {
-            action: 'TRANSFER_CLIENT',
-            clienteId: clienteId,
-            clienteNombre: nombreCliente,
-            motivo,
-            viviendaAnterior: viviendaOriginalId || 'Ninguna',
-            viviendaNueva: {
-                id: nuevaViviendaId,
-                ubicacion: `Mz ${nuevaViviendaData.manzana} - Casa ${nuevaViviendaData.numeroCasa}`,
+        // Construir mensaje de auditoría con el builder
+        const viviendaAnteriorDisplay = viviendaOriginalId
+            ? `Vivienda anterior (ID: ${viviendaOriginalId})`
+            : null;
+
+        const viviendaNuevaDisplay = `Mz ${nuevaViviendaData.manzana} - Casa ${nuevaViviendaData.numeroCasa}`;
+
+        // Detectar cambios en el plan financiero
+        const planAnterior = clienteOriginal.financiero || {};
+        const cambiosPlan = {};
+
+        if (planAnterior.valorInicial !== planFinancieroNormalizado.valorInicial) {
+            cambiosPlan.valorTotal = formatCurrency(planFinancieroNormalizado.valorInicial);
+        }
+
+        if (planAnterior.totalAporte !== planFinancieroNormalizado.totalAporte) {
+            cambiosPlan.cuotaInicial = formatCurrency(planFinancieroNormalizado.totalAporte);
+        }
+
+        if (planAnterior.totalBanco !== planFinancieroNormalizado.totalBanco) {
+            cambiosPlan.credito = formatCurrency(planFinancieroNormalizado.totalBanco);
+        }
+
+        const totalAbonos = abonosASincronizar.size;
+
+        // Registrar auditoría con estructura unificada (PATRÓN ESTÁNDAR)
+        await createClientAuditLog(
+            'TRANSFER_CLIENT',
+            {
+                id: clienteId,
+                nombre: nombreCliente
             },
-            // --- INICIO DE LA MODIFICACIÓN 2: Guardar ambos planes financieros ---
-            snapshotAntiguoPlanFinanciero: clienteOriginal.financiero || {},
-            snapshotNuevoPlanFinanciero: nuevoPlanFinanciero
-            // --- FIN DE LA MODIFICACIÓN 2 ---
-        };
-        await createAuditLog(auditMessage, auditDetails);
+            {
+                viviendaId: nuevaViviendaId,
+                vivienda: {
+                    id: nuevaViviendaId,
+                    manzana: nuevaViviendaData.manzana,
+                    numeroCasa: nuevaViviendaData.numeroCasa
+                },
+                actionData: {
+                    // Documento del cliente
+                    cedula: clienteOriginal.datosCliente?.cedula,
+                    numeroDocumento: clienteOriginal.datosCliente?.cedula,
+
+                    // Vivienda anterior
+                    viviendaAnterior: viviendaOriginalId ? {
+                        id: viviendaOriginalId,
+                        manzana: viviendaAnteriorData?.manzana,
+                        numeroCasa: viviendaAnteriorData?.numeroCasa,
+                        valorTotal: viviendaAnteriorData?.valorTotal
+                    } : null,
+
+                    // Vivienda nueva
+                    viviendaNueva: {
+                        id: nuevaViviendaId,
+                        ubicacion: viviendaNuevaDisplay,
+                        manzana: nuevaViviendaData.manzana,
+                        numeroCasa: nuevaViviendaData.numeroCasa,
+                        valorTotal: nuevaViviendaData.valorTotal
+                    },
+
+                    // Motivo
+                    motivo,
+
+                    // Plan financiero
+                    planFinanciero: {
+                        anterior: planAnterior,
+                        nuevo: planFinancieroNormalizado,
+                        cambios: cambiosPlan
+                    },
+
+                    // Abonos
+                    abonosSincronizados: {
+                        cantidad: totalAbonos,
+                        ids: abonosASincronizar.docs.map(doc => doc.id)
+                    },
+
+                    // Proceso
+                    procesoReseteado: true,
+                    pasosNuevoProceso: Object.keys(nuevoProceso)
+                }
+            }
+        );
 
     } catch (error) {
         console.error("Error en la operación de transferencia de vivienda: ", error);

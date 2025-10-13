@@ -1,11 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
+import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 import { cancelarRenuncia } from "../../services/renunciaService";
 import toast from 'react-hot-toast';
 import { useDebounce } from '../useDebounce';
 
 export const useListarRenuncias = () => {
-    const { isLoading, renuncias, recargarDatos } = useData();
+    const { isLoading, renuncias } = useData();
+    const { afterRenunciaMutation } = useDataSync(); // ✅ Sincronización granular
 
     const [statusFilter, setStatusFilter] = useState('Pendiente');
     const [searchTerm, setSearchTerm] = useState('');
@@ -40,10 +42,11 @@ export const useListarRenuncias = () => {
     }, [renuncias, statusFilter, debouncedSearchTerm, fechaInicio, fechaFin, motivoFiltro]);
 
     // --- HANDLERS (Manejadores de eventos y acciones) ---
-    const handleSave = useCallback(() => {
-        recargarDatos();
+    const handleSave = useCallback(async () => {
+        // ✅ Sincronización inteligente (renuncias, clientes, viviendas)
+        await afterRenunciaMutation();
         setModals(prev => ({ ...prev, renunciaADevolver: null }));
-    }, [recargarDatos]);
+    }, [afterRenunciaMutation]);
 
     const iniciarCancelacion = (renuncia) => {
         setModals(prev => ({ ...prev, renunciaACancelar: renuncia }));
@@ -58,7 +61,9 @@ export const useListarRenuncias = () => {
             // Pasamos el motivo al servicio
             await cancelarRenuncia(modals.renunciaACancelar, motivo);
             toast.success("La renuncia ha sido cancelada exitosamente.");
-            recargarDatos();
+
+            // ✅ Sincronización inteligente (renuncias, clientes, viviendas)
+            await afterRenunciaMutation();
         } catch (error) {
             if (error.message === 'VIVIENDA_NO_DISPONIBLE') {
                 toast.error("No se puede cancelar la renuncia: la vivienda ya ha sido asignada a otro cliente.");
@@ -70,7 +75,7 @@ export const useListarRenuncias = () => {
             // Reseteamos el estado de forma limpia
             setModals(prev => ({ ...prev, renunciaACancelar: null, isSubmitting: false }));
         }
-    }, [modals.renunciaACancelar, recargarDatos]);
+    }, [modals.renunciaACancelar, afterRenunciaMutation]);
 
     return {
         isLoading,

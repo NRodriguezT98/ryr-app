@@ -5,7 +5,8 @@ import { useForm } from "../useForm.jsx";
 import { validateVivienda } from "../../utils/validation.js";
 import { addVivienda } from "../../services/viviendaService";
 import { createAuditLog } from "../../services/auditService";
-import { useData } from '../../context/DataContext.jsx'
+import { useData } from '../../context/DataContext.jsx';
+import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 
@@ -38,6 +39,7 @@ export const useCrearVivienda = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { proyectos, viviendas, isLoading: isLoadingData } = useData();
+    const { afterViviendaMutation } = useDataSync(); // ✅ Sincronización granular
 
     const {
         formData, errors, setErrors, handleInputChange,
@@ -64,6 +66,8 @@ export const useCrearVivienda = () => {
             };
             try {
                 const viviendaDocRef = await addVivienda(nuevaVivienda);
+
+                // 🔥 Mostrar éxito inmediatamente (Optimistic)
                 toast.success("¡Vivienda registrada con éxito!");
 
                 // Auditoría
@@ -98,6 +102,10 @@ export const useCrearVivienda = () => {
                     `Creó la vivienda Mz ${formData.manzana} - Casa ${formData.numeroCasa} en el proyecto '${nombreProyecto}'.`,
                     auditDetails
                 );
+
+                // ✅ Sincronización inteligente (solo viviendas)
+                console.log('🔄 Sincronizando viviendas después de creación...');
+                await afterViviendaMutation();
 
                 navigate("/viviendas/listar");
             } catch (error) {

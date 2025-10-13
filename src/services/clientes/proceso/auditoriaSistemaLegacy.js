@@ -10,7 +10,7 @@
 import { createAuditLog } from '../../auditService';
 import { toTitleCase } from '../../../utils/textFormatters';
 import { generarMensajeEspectacular, generarIconData } from './generadorMensajes';
-import { construirAccesoEvidencias } from '../../clienteService';
+import { construirAccesoEvidencias } from '../utils/evidenciasHelpers';
 
 /**
  * Crea auditoría usando el sistema legacy.

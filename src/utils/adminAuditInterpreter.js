@@ -5,8 +5,7 @@
  * Los usuarios podrán ver el detalle completo en la modal correspondiente
  */
 
-import { formatCurrency } from './textFormatters';
-import { formatDisplayDate } from '../services/dataService';
+import { formatCurrency, formatDisplayDate } from './textFormatters';
 
 export class AdminPanelAuditInterpreter {
 
@@ -47,6 +46,7 @@ export class AdminPanelAuditInterpreter {
             'CHANGE_STEP_EVIDENCE': this.interpretChangeEvidence,
             'CLIENT_RENOUNCE': this.interpretClientRenounce,
             'ANULAR_CIERRE_PROCESO': this.interpretCancelClosure,
+            'TRANSFER_CLIENT': this.interpretTransferClient,
 
             // === VIVIENDAS ===
             'CREATE_VIVIENDA': this.interpretCreateVivienda,
@@ -136,6 +136,20 @@ export class AdminPanelAuditInterpreter {
 
     static interpretCancelClosure(context, actionData) {
         return `Anuló cierre de proceso de ${context.cliente.nombre}`;
+    }
+
+    static interpretTransferClient(context, actionData) {
+        const clienteName = context.cliente.nombre;
+        const viviendaNueva = actionData.viviendaNueva?.ubicacion || 'nueva vivienda';
+
+        let mensaje = `Transfirió a ${clienteName} hacia ${viviendaNueva}`;
+
+        // Si hay abonos sincronizados, mencionarlo
+        if (actionData.abonosSincronizados?.cantidad > 0) {
+            mensaje += ` (${actionData.abonosSincronizados.cantidad} abono${actionData.abonosSincronizados.cantidad > 1 ? 's' : ''})`;
+        }
+
+        return mensaje;
     }
 
     // ========== INTÉRPRETES PARA VIVIENDAS ==========

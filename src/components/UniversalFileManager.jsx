@@ -112,6 +112,11 @@ const UniversalFileManager = ({
                 throw new Error('FilePath no proporcionado');
             }
 
+            // ⚠️ IMPORTANTE: Cuando es reemplazo, NO eliminamos el archivo anterior
+            // Razón: Los links del historial de auditoría deben permanecer funcionales
+            // Los URLs guardados en logs históricos seguirán funcionando correctamente
+            // Esto garantiza trazabilidad y acceso a versiones anteriores de documentos
+
             const downloadURL = await uploadFile(file, finalPath, (p) => setProgress(p));
 
             setUploadComplete(true);

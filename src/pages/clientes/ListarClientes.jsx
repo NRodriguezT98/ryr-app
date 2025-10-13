@@ -84,6 +84,7 @@ const getSelectStyles = (isDarkMode) => ({
 
 const ClienteCardWrapper = React.memo(({ cliente, onEdit, onArchive, onDelete, onRenunciar, onReactivar, onRestaurar, onTransferir }) => {
     const cardData = useClienteCardLogic(cliente);
+
     return <ClienteCard
         cardData={cardData}
         onEdit={onEdit}
@@ -95,7 +96,7 @@ const ClienteCardWrapper = React.memo(({ cliente, onEdit, onArchive, onDelete, o
         onTransferir={onTransferir}
         nombreProyecto={cliente.nombreProyecto}
     />;
-}, (prev, next) => prev.cliente.id === next.cliente.id && prev.cliente.updatedAt === next.cliente.updatedAt);
+});
 
 const ListarClientes = () => {
     const { can } = usePermissions();
@@ -257,7 +258,7 @@ const ListarClientes = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         {clientesVisibles.map(cliente => (
                             <ClienteCardWrapper
-                                key={cliente.id}
+                                key={`${cliente.id}-${cliente.updatedAt || ''}-${cliente.datosCliente?.nombres || ''}`}
                                 cliente={cliente}
                                 onEdit={handlers.iniciarEdicion}
                                 onArchive={handlers.iniciarArchivado}

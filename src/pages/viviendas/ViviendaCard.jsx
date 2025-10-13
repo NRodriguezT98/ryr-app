@@ -4,19 +4,18 @@ import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Hash, Pencil, Trash, Eye, CheckCircle2, Star, Building, Ruler, User, Home, DollarSign, MapPin, Archive, ArchiveRestore, Tag, TrendingUp, CreditCard } from 'lucide-react';
 import { formatCurrency, toTitleCase } from '../../utils/textFormatters';
 import { usePermissions } from '../../hooks/auth/usePermissions';
-import { useViviendaCardData } from '../../hooks/viviendas/useViviendaCardData';
 import Card from '../../components/Card';
 
 const ViviendaCard = ({ vivienda, onEdit, onDelete, nombreProyecto, onArchive, onRestore }) => {
     const { can } = usePermissions();
 
-    // Usamos el hook para obtener todos los datos calculados y el estado de la vivienda
+    // Los datos ya vienen calculados desde el wrapper ViviendaCardWrapper
     const {
         manzana, numeroCasa, matricula, nomenclatura, valorFinal, totalAbonado,
         saldoPendiente, clienteNombre, clienteId, puedeEditar, puedeEliminar,
         tieneValorEscrituraDiferente, puedeArchivar, puedeRestaurar,
         porcentajePagado, isDisponible, isPagada, esEsquinera, tieneDescuento, esIrregular
-    } = useViviendaCardData(vivienda);
+    } = vivienda;
 
     // Se determina si el usuario tiene permiso para alguna de las acciones del menú.
     const tieneAccionesDisponibles = useMemo(() => {

@@ -80,8 +80,20 @@ export const useClienteForm = (
     onSaveSuccess,
     modo = 'editar'
 ) => {
-    const { clientes: todosLosClientes, viviendas, proyectos } = useData();
+    const { clientes: todosLosClientes, viviendas, proyectos, loadCollection, hasLoaded } = useData();
     const toast = useModernToast();
+
+    // 🔥 FIX: Forzar carga de viviendas y proyectos cuando se monta el formulario
+    useEffect(() => {
+        // Cargar viviendas si no están cargadas
+        if (!hasLoaded.viviendas) {
+            loadCollection('viviendas');
+        }
+        // Cargar proyectos si no están cargados
+        if (!hasLoaded.proyectos) {
+            loadCollection('proyectos');
+        }
+    }, []); // Solo al montar el componente
 
     // Estados adicionales (no cubiertos por hooks especializados)
     const [abonosDelCliente, setAbonosDelCliente] = useState([]);
@@ -111,7 +123,7 @@ export const useClienteForm = (
         clienteAEditar?.id,
         abonosDelCliente
     );
-    
+
     // Actualizar la función de validación en navigation (dentro de useEffect para evitar re-renders)
     useEffect(() => {
         navigation.setValidateFunction(validation.validateCurrentStep);
@@ -159,26 +171,47 @@ export const useClienteForm = (
             return;
         }
 
+        // 🔥 NUEVO: Limpiar el error del campo cuando el usuario lo modifica
+        setErrors(prevErrors => {
+            const newErrors = { ...prevErrors };
+            delete newErrors[name];
+            return newErrors;
+        });
+
         dispatch({ type: 'UPDATE_DATOS_CLIENTE', payload: { field: name, value } });
-    }, [dispatch, setErrors]); // ✅ Removimos 'errors' de las dependencias
+    }, [dispatch, setErrors]);
 
     /**
      * Handler de campos financieros
      */
     const handleFinancialFieldChange = useCallback((section, field, value) => {
+        const errorKey = `${section}_${field}`;
+
         if (field === 'caso') {
             const filter = /^[a-zA-Z0-9_-]*$/;
             if (!filter.test(value)) {
                 // ✅ Usamos callback para evitar dependencia de errors
                 setErrors(prevErrors => ({
                     ...prevErrors,
-                    [`${section}_${field}`]: 'Solo se permiten letras, números, _ y -.'
+                    [errorKey]: 'Solo se permiten letras, números, _ y -.'
                 }));
                 return;
             }
         }
+
+        // 🔥 NUEVO: Limpiar el error del campo cuando el usuario lo modifica
+        setErrors(prevErrors => {
+            const newErrors = { ...prevErrors };
+            delete newErrors[errorKey];
+            // También limpiar errores relacionados con validaciones financieras generales
+            if (field === 'valorVivienda') delete newErrors['valorVivienda'];
+            if (field === 'cuotaInicial') delete newErrors['cuotaInicial'];
+            if (field === 'valorCreditoHipotecario') delete newErrors['creditoHipotecario'];
+            return newErrors;
+        });
+
         dispatch({ type: 'UPDATE_FINANCIAL_FIELD', payload: { section, field, value } });
-    }, [dispatch, setErrors]); // ✅ Removimos 'errors' de las dependencias
+    }, [dispatch, setErrors]);
 
     /**
      * Efecto de inicialización (cargar datos en modo edición)
@@ -255,7 +288,16 @@ export const useClienteForm = (
     }, [isEditing, abonosDelCliente, modo]);
 
     const viviendasOptions = useMemo(() => {
+        // Validar que viviendas y proyectos estén cargados
+        if (!viviendas || viviendas.length === 0) {
+            return [];
+        }
+        if (!proyectos || proyectos.length === 0) {
+            return [];
+        }
+
         const disponibles = viviendas.filter(v => !v.clienteId || v.id === clienteAEditar?.viviendaId);
+
         return disponibles
             .sort((a, b) => a.manzana.localeCompare(b.manzana) || a.numeroCasa - b.numeroCasa)
             .map(v => {
@@ -308,13 +350,401 @@ export const useClienteForm = (
 
         // Si es edición y no reactivar, detectar cambios
         if (isEditing && modo !== 'reactivar') {
-            // TODO: Implementar detección de cambios detallada
-            // Por ahora, guardar directamente
-            save.saveCliente(formData, [], initialData, isFechaIngresoLocked);
+            console.log('🔍 [useClienteForm] Detectando cambios...');
+            console.log('  - isEditing:', isEditing);
+            console.log('  - modo:', modo);
+            console.log('  - initialData:', initialData);
+            console.log('  - formData:', formData);
+
+            const cambiosDetectados = [];
+
+            // Definir orden de campos para mantener consistencia con el formulario
+            let orderCounter = 0;
+
+            // Labels para campos comunes
+            const fieldLabels = {
+                // Datos personales (orden según formulario)
+                nombres: { label: 'Nombres', order: orderCounter++ },
+                apellidos: { label: 'Apellidos', order: orderCounter++ },
+                cedula: { label: 'Número de Documento', order: orderCounter++ },
+                tipoDocumento: { label: 'Tipo de Documento', order: orderCounter++ },
+                telefono: { label: 'Teléfono', order: orderCounter++ },
+                correo: { label: 'Correo Electrónico', order: orderCounter++ },
+                direccion: { label: 'Dirección', order: orderCounter++ },
+                fechaNacimiento: { label: 'Fecha de Nacimiento', order: orderCounter++ },
+                genero: { label: 'Género', order: orderCounter++ },
+                // Datos financieros
+                cuotaInicial: { label: 'Cuota Inicial', order: orderCounter++ },
+                cuotaMensual: { label: 'Cuota Mensual', order: orderCounter++ },
+                tasaInteres: { label: 'Tasa de Interés', order: orderCounter++ },
+                plazoMeses: { label: 'Plazo (meses)', order: orderCounter++ },
+                bancoCredito: { label: 'Banco de Crédito', order: orderCounter++ },
+                estadoCesantias: { label: 'Estado Cesantías', order: orderCounter++ },
+                // Vivienda
+                viviendaId: { label: 'Vivienda Asignada', order: 0 }, // Primera en el formulario
+                fechaIngreso: { label: 'Fecha de Ingreso', order: 1 }
+            };
+
+            if (!initialData) {
+                toast.error("No se pudo detectar el estado inicial del cliente", {
+                    title: "Error"
+                });
+                return;
+            }
+
+            // Comparar vivienda
+            const viviendaInicial = initialData.viviendaAsignada?.viviendaId;
+            const viviendaActual = formData.viviendaAsignada?.viviendaId;
+
+            if (viviendaInicial !== viviendaActual) {
+                const viviendaInicialData = viviendas.find(v => v.id === viviendaInicial);
+                const viviendaActualData = viviendas.find(v => v.id === viviendaActual);
+
+                cambiosDetectados.push({
+                    campo: fieldLabels.viviendaId.label,
+                    anterior: viviendaInicialData ? `Mz ${viviendaInicialData.manzana} - Casa ${viviendaInicialData.numeroCasa}` : 'Sin asignar',
+                    actual: viviendaActualData ? `Mz ${viviendaActualData.manzana} - Casa ${viviendaActualData.numeroCasa}` : 'Sin asignar',
+                    order: fieldLabels.viviendaId.order
+                });
+            }
+
+            // Comparar datos del cliente
+            const datosIniciales = initialData.datosCliente || {};
+            const datosActuales = formData.datosCliente || {};
+
+            for (const key of Object.keys(datosActuales)) {
+                // Saltar campos que ya manejamos o que no deberíamos comparar
+                // Excluimos cualquier campo que sea URL o archivo
+                if (['viviendaId', 'urlCedula'].includes(key)) continue;
+
+                const valorInicial = datosIniciales[key] || '';
+                const valorActual = datosActuales[key] || '';
+
+                // Solo comparar si son valores primitivos (no objetos)
+                if (typeof valorActual === 'object' || typeof valorInicial === 'object') continue;
+
+                if (String(valorInicial) !== String(valorActual)) {
+                    const fieldConfig = fieldLabels[key];
+                    const label = fieldConfig ? fieldConfig.label : key;
+                    const order = fieldConfig ? fieldConfig.order : 999;
+
+                    cambiosDetectados.push({
+                        campo: label,
+                        anterior: String(valorInicial || 'Vacío'),
+                        actual: String(valorActual || 'Vacío'),
+                        order: order
+                    });
+                }
+            }
+
+            // Comparar cédula (archivo) - ÚLTIMO campo del formulario de datos personales
+            if (datosIniciales.urlCedula !== datosActuales.urlCedula) {
+                // Determinar acción
+                let accion = 'reemplazado';
+                if (!datosIniciales.urlCedula && datosActuales.urlCedula) {
+                    accion = 'agregado';
+                } else if (datosIniciales.urlCedula && !datosActuales.urlCedula) {
+                    accion = 'eliminado';
+                }
+
+                // Extraer nombres de archivos de las URLs
+                const getNombreArchivo = (url) => {
+                    if (!url) return null;
+                    try {
+                        const urlObj = new URL(url);
+                        const pathname = decodeURIComponent(urlObj.pathname);
+                        const filename = pathname.split('/').pop();
+                        return filename || 'archivo.pdf';
+                    } catch (error) {
+                        return 'cedula.pdf';
+                    }
+                };
+
+                cambiosDetectados.push({
+                    campo: 'Copia de la Cédula',
+                    fileChange: true,
+                    accion: accion,
+                    urlAnterior: datosIniciales.urlCedula,
+                    urlNuevo: datosActuales.urlCedula,
+                    nombreArchivoAnterior: getNombreArchivo(datosIniciales.urlCedula),
+                    nombreArchivo: getNombreArchivo(datosActuales.urlCedula),
+                    mensaje: datosActuales.urlCedula && datosIniciales.urlCedula
+                        ? 'Está por reemplazar la "Copia de la Cédula" antigua por la nueva adjuntada'
+                        : datosActuales.urlCedula
+                            ? 'Se agregará la copia de la cédula del cliente'
+                            : 'Se eliminará la copia de la cédula del cliente',
+                    order: (fieldLabels.genero?.order || 8) + 0.5 // Después del último campo (género)
+                });
+            }
+
+            // Comparar datos financieros
+            const financieroInicial = initialData.financiero || {};
+            const financieroActual = formData.financiero || {};
+
+            // Comparar Cuota Inicial (que tiene flag y monto en objeto)
+            if (financieroInicial.aplicaCuotaInicial !== financieroActual.aplicaCuotaInicial) {
+                cambiosDetectados.push({
+                    campo: 'Cuota Inicial',
+                    anterior: financieroInicial.aplicaCuotaInicial ? 'Activo' : 'Inactivo',
+                    actual: financieroActual.aplicaCuotaInicial ? 'Activo' : 'Inactivo',
+                    order: fieldLabels.cuotaInicial.order
+                });
+            }
+
+            // Si la cuota inicial está activa, comparar monto
+            if (financieroActual.aplicaCuotaInicial && financieroInicial.aplicaCuotaInicial) {
+                const montoInicial = financieroInicial.cuotaInicial?.monto || 0;
+                const montoActual = financieroActual.cuotaInicial?.monto || 0;
+
+                if (Number(montoInicial) !== Number(montoActual)) {
+                    cambiosDetectados.push({
+                        campo: 'Cuota Inicial - Monto',
+                        anterior: formatCurrency(montoInicial),
+                        actual: formatCurrency(montoActual),
+                        order: fieldLabels.cuotaInicial.order + 0.1
+                    });
+                }
+            } else if (financieroActual.aplicaCuotaInicial && !financieroInicial.aplicaCuotaInicial) {
+                // Si se activó la cuota inicial, mostrar el monto nuevo
+                const montoActual = financieroActual.cuotaInicial?.monto || 0;
+                if (montoActual > 0) {
+                    cambiosDetectados.push({
+                        campo: 'Cuota Inicial - Monto',
+                        anterior: 'No aplicaba',
+                        actual: formatCurrency(montoActual),
+                        order: fieldLabels.cuotaInicial.order + 0.1
+                    });
+                }
+            }
+
+            // Comparar fuentes de pago (crédito, subsidioVivienda, subsidioCaja)
+            const fuentesConfig = [
+                {
+                    key: 'credito',
+                    flag: 'aplicaCredito',
+                    nombre: 'Crédito Hipotecario',
+                    nombreCarta: 'Carta de Aprobación - Crédito Hipotecario',
+                    tieneCarta: true,
+                    order: orderCounter++
+                },
+                {
+                    key: 'subsidioVivienda',
+                    flag: 'aplicaSubsidioVivienda',
+                    nombre: 'Subsidio Mi Casa Ya',
+                    tieneCarta: false,
+                    order: orderCounter++
+                },
+                {
+                    key: 'subsidioCaja',
+                    flag: 'aplicaSubsidioCaja',
+                    nombre: 'Subsidio de Caja de Compensación',
+                    nombreCarta: 'Carta de Aprobación - Caja de Compensación',
+                    tieneCarta: true,
+                    order: orderCounter++
+                }
+            ];
+
+            for (const fuenteConfig of fuentesConfig) {
+                const fuenteInicial = financieroInicial[fuenteConfig.key] || {};
+                const fuenteActual = financieroActual[fuenteConfig.key] || {};
+
+                // Comparar si la fuente está activa
+                const activaInicial = financieroInicial[fuenteConfig.flag];
+                const activaActual = financieroActual[fuenteConfig.flag];
+
+                if (activaInicial !== activaActual) {
+                    cambiosDetectados.push({
+                        campo: fuenteConfig.nombre,
+                        anterior: activaInicial ? 'Activo' : 'Inactivo',
+                        actual: activaActual ? 'Activo' : 'Inactivo',
+                        order: fuenteConfig.order
+                    });
+
+                    // 🔥 Si se activó la fuente, mostrar campos en orden del formulario
+                    if (activaActual && !activaInicial) {
+                        // 1. Banco/Caja (primero en el formulario)
+                        if (fuenteActual.banco) {
+                            cambiosDetectados.push({
+                                campo: `${fuenteConfig.nombre} - Banco`,
+                                anterior: 'No aplicaba',
+                                actual: String(fuenteActual.banco),
+                                order: fuenteConfig.order + 0.1
+                            });
+                        }
+                        if (fuenteActual.caja) {
+                            cambiosDetectados.push({
+                                campo: `${fuenteConfig.nombre} - Caja`,
+                                anterior: 'No aplicaba',
+                                actual: String(fuenteActual.caja),
+                                order: fuenteConfig.order + 0.1
+                            });
+                        }
+
+                        // 2. Monto (segundo en el formulario)
+                        const montoActual = fuenteActual.monto || 0;
+                        if (montoActual > 0) {
+                            cambiosDetectados.push({
+                                campo: `${fuenteConfig.nombre} - Monto`,
+                                anterior: 'No aplicaba',
+                                actual: formatCurrency(montoActual),
+                                order: fuenteConfig.order + 0.2
+                            });
+                        }
+
+                        // 3. Referencia (tercero en el formulario)
+                        if (fuenteActual.caso) {
+                            cambiosDetectados.push({
+                                campo: `${fuenteConfig.nombre} - Referencia`,
+                                anterior: 'No aplicaba',
+                                actual: String(fuenteActual.caso),
+                                order: fuenteConfig.order + 0.3
+                            });
+                        }
+
+                        // 4. Carta (ÚLTIMO en el formulario - adjunto)
+                        if (fuenteConfig.tieneCarta && fuenteActual.urlCartaAprobacion) {
+                            // Extraer nombre de archivo de la URL
+                            const getNombreArchivo = (url) => {
+                                if (!url) return null;
+                                try {
+                                    const urlObj = new URL(url);
+                                    const pathname = decodeURIComponent(urlObj.pathname);
+                                    const filename = pathname.split('/').pop();
+                                    return filename || 'carta.pdf';
+                                } catch (error) {
+                                    return 'carta.pdf';
+                                }
+                            };
+
+                            cambiosDetectados.push({
+                                campo: fuenteConfig.nombreCarta,
+                                fileChange: true,
+                                accion: 'agregado',
+                                urlAnterior: null,
+                                urlNuevo: fuenteActual.urlCartaAprobacion,
+                                nombreArchivo: getNombreArchivo(fuenteActual.urlCartaAprobacion),
+                                mensaje: `Se agregará la carta de aprobación de ${fuenteConfig.nombre}`,
+                                order: fuenteConfig.order + 0.4
+                            });
+                        }
+                    }
+                }
+
+                // Si está activa en ambos, comparar campos internos (ORDEN: Banco → Monto → Referencia → Carta)
+                if (activaActual && activaInicial) {
+                    for (const key of Object.keys(fuenteActual)) {
+                        if (key === 'banco' || key === 'caja') {
+                            // 1. Banco/Caja (primero)
+                            const valorInicial = fuenteInicial[key] || '';
+                            const valorActual = fuenteActual[key] || '';
+
+                            if (String(valorInicial) !== String(valorActual)) {
+                                const labelCampo = key === 'banco' ? 'Banco' : 'Caja';
+                                cambiosDetectados.push({
+                                    campo: `${fuenteConfig.nombre} - ${labelCampo}`,
+                                    anterior: String(valorInicial || 'Vacío'),
+                                    actual: String(valorActual || 'Vacío'),
+                                    order: fuenteConfig.order + 0.1
+                                });
+                            }
+                        } else if (key === 'monto') {
+                            // 2. Monto (segundo)
+                            const montoInicial = fuenteInicial[key] || 0;
+                            const montoActual = fuenteActual[key] || 0;
+
+                            if (Number(montoInicial) !== Number(montoActual)) {
+                                cambiosDetectados.push({
+                                    campo: `${fuenteConfig.nombre} - Monto`,
+                                    anterior: formatCurrency(montoInicial),
+                                    actual: formatCurrency(montoActual),
+                                    order: fuenteConfig.order + 0.2
+                                });
+                            }
+                        } else if (key === 'caso') {
+                            // 3. Referencia (tercero)
+                            const valorInicial = fuenteInicial[key] || '';
+                            const valorActual = fuenteActual[key] || '';
+
+                            if (String(valorInicial) !== String(valorActual)) {
+                                cambiosDetectados.push({
+                                    campo: `${fuenteConfig.nombre} - Referencia`,
+                                    anterior: String(valorInicial || 'Vacío'),
+                                    actual: String(valorActual || 'Vacío'),
+                                    order: fuenteConfig.order + 0.3
+                                });
+                            }
+                        } else if (key === 'urlCartaAprobacion' && fuenteConfig.tieneCarta) {
+                            // 4. Carta (último - archivo adjunto)
+                            if (fuenteInicial[key] !== fuenteActual[key]) {
+                                // Determinar acción
+                                let accion = 'reemplazado';
+                                if (!fuenteInicial[key] && fuenteActual[key]) {
+                                    accion = 'agregado';
+                                } else if (fuenteInicial[key] && !fuenteActual[key]) {
+                                    accion = 'eliminado';
+                                }
+
+                                // Extraer nombres de archivos de las URLs
+                                const getNombreArchivo = (url) => {
+                                    if (!url) return null;
+                                    try {
+                                        const urlObj = new URL(url);
+                                        const pathname = decodeURIComponent(urlObj.pathname);
+                                        const filename = pathname.split('/').pop();
+                                        return filename || 'carta.pdf';
+                                    } catch (error) {
+                                        return 'carta.pdf';
+                                    }
+                                };
+
+                                cambiosDetectados.push({
+                                    campo: fuenteConfig.nombreCarta,
+                                    fileChange: true,
+                                    accion: accion,
+                                    urlAnterior: fuenteInicial[key],
+                                    urlNuevo: fuenteActual[key],
+                                    nombreArchivoAnterior: getNombreArchivo(fuenteInicial[key]),
+                                    nombreArchivo: getNombreArchivo(fuenteActual[key]),
+                                    mensaje: fuenteActual[key] && fuenteInicial[key]
+                                        ? `Está por reemplazar la "${fuenteConfig.nombreCarta}" antigua por la nueva adjuntada`
+                                        : fuenteActual[key]
+                                            ? `Se agregará la carta de aprobación de ${fuenteConfig.nombre}`
+                                            : `Se eliminará la carta de aprobación de ${fuenteConfig.nombre}`,
+                                    order: fuenteConfig.order + 0.4
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Si no hay cambios, mostrar mensaje
+            if (cambiosDetectados.length === 0) {
+                console.log('⚠️ [useClienteForm] NO se detectaron cambios');
+                toast.info("No se detectaron cambios para guardar", {
+                    title: "Sin Cambios"
+                });
+                return;
+            }
+
+            // 🔥 ORDENAR cambios según el orden del formulario
+            cambiosDetectados.sort((a, b) => {
+                const orderA = a.order !== undefined ? a.order : 999;
+                const orderB = b.order !== undefined ? b.order : 999;
+                return orderA - orderB;
+            });
+
+            console.log('✅ [useClienteForm] Cambios detectados:', cambiosDetectados);
+            console.log('  - Total de cambios:', cambiosDetectados.length);
+
+            // Abrir modal de confirmación
+            setCambios(cambiosDetectados);
+            setIsConfirming(true);
         } else {
+            // Modo crear o reactivar - guardar directamente
             save.saveCliente(formData, [], initialData, isFechaIngresoLocked);
         }
-    }, [formData, validation, setErrors, toast, isEditing, modo, save, initialData, isFechaIngresoLocked]);
+    }, [formData, validation, setErrors, toast, isEditing, modo, save, initialData, isFechaIngresoLocked, viviendas, setCambios, setIsConfirming]);
 
     // ===== RETORNAR INTERFAZ IDÉNTICA AL ORIGINAL =====
     return {
@@ -323,6 +753,7 @@ export const useClienteForm = (
         formData,
         dispatch,
         errors,
+        setErrors, // 🔥 NUEVO: Exportar setErrors para limpiar errores desde componentes
         isSubmitting: save.isSubmitting,
         viviendasOptions,
         isConfirming,
@@ -334,6 +765,10 @@ export const useClienteForm = (
         escrituraFirmada,
         isViviendaLocked,
         minDateForReactivation,
+        initialData, // 🔥 NUEVO: Exportar initialData para modal de confirmación
+        // 🔥 NUEVO: Estados de carga
+        isLoadingViviendas: !hasLoaded.viviendas,
+        isLoadingProyectos: !hasLoaded.proyectos,
 
         // Handlers
         handlers: {

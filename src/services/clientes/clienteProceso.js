@@ -15,12 +15,12 @@ export {
     updateClienteProcesoUnified  // Alias para compatibilidad
 } from './proceso/updateProceso';
 
-// Funciones que permanecen en el original (por ahora)
+// Funciones del módulo principal de clientes
 export {
     getClienteProceso,
     reabrirPasoProceso,
     anularCierreProceso
-} from '../clienteService';
+} from '../clientes';
 
 /**
  * DOCUMENTACIÓN DE FUNCIONES:

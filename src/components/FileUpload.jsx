@@ -33,9 +33,10 @@ const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false, disab
             }
             const downloadURL = await uploadFile(file, finalPath, (p) => setProgress(p));
 
-            // Mostrar el toast primero, luego actualizar el estado
+            // Mostrar el toast moderno mejorado
             toast.success('¡Archivo subido con éxito!', {
-                title: "¡Subida Exitosa!"
+                icon: '✅',
+                description: `${file.name} se subió correctamente`
             });
 
             setUploadComplete(true);
@@ -46,7 +47,8 @@ const FileUpload = ({ label, filePath, onUploadSuccess, isCompact = false, disab
         } catch (error) {
             console.error('Error al subir archivo:', error);
             toast.error("Error al subir el archivo.", {
-                title: "Error de Subida"
+                icon: '❌',
+                description: 'Por favor, verifica el archivo e intenta nuevamente'
             });
             setUploadComplete(false);
         } finally {

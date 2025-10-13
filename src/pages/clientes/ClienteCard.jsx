@@ -1,4 +1,4 @@
-import React, { Fragment, memo } from 'react';
+import React, { Fragment } from 'react';
 import { Menu, Transition } from '@headlessui/react';
 import { MoreVertical, Eye, Pencil, Trash, UserX, RefreshCw, Home, ArchiveRestore, Archive, AlertTriangle, DollarSign, MapPin, ArrowRightLeft, CreditCard, TrendingUp } from 'lucide-react';
 import { getInitials, formatID, formatCurrency, toTitleCase } from '../../utils/textFormatters';
@@ -331,4 +331,4 @@ const ClienteCard = ({ cardData, onEdit, onArchive, onDelete, onRenunciar, onRea
     );
 };
 
-export default memo(ClienteCard);
+export default React.memo(ClienteCard);

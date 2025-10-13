@@ -4,6 +4,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLocation } from 'react-router-dom';
 import { useData } from "../../context/DataContext";
+import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 import { useUndoableDelete } from "../useUndoableDelete";
 import { deleteViviendaPermanently, archiveVivienda, restoreVivienda } from "../../services/viviendaService";
 import { aplicarFiltrosViviendas, ordenarViviendas, calcularPermisosVivienda } from "../../utils/viviendaFilters";
@@ -14,7 +15,8 @@ const ITEMS_PER_PAGE = 9;
 
 export const useListarViviendas = () => {
     const location = useLocation();
-    const { isLoading, viviendas, clientes, abonos, recargarDatos, loadCollection, hasLoaded } = useData();
+    const { isLoading, viviendas, clientes, abonos, reloadCollection, loadCollection, hasLoaded } = useData();
+    const { afterViviendaMutation } = useDataSync(); // ✅ Sincronización granular
 
     // Cargar colecciones necesarias si no están cargadas (lazy loading)
     useEffect(() => {
@@ -85,7 +87,10 @@ export const useListarViviendas = () => {
             setIsSubmitting(true);
             try {
                 await deleteViviendaPermanently(vivienda, nombreProyecto);
-                recargarDatos();
+
+                // ✅ Sincronización inteligente (solo viviendas)
+                console.log('🔄 Sincronizando viviendas después de eliminar...');
+                await afterViviendaMutation();
             } catch (error) {
                 console.error("Error en borrado permanente:", error);
                 throw error;
@@ -93,16 +98,18 @@ export const useListarViviendas = () => {
                 setIsSubmitting(false);
             }
         },
-        recargarDatos,
+        afterViviendaMutation, // ✅ Usar sincronización inteligente
         "Vivienda"
     );
 
     const viviendasVisibles = viviendasPaginadas.filter(v => !viviendasOcultas.includes(v.id));
 
-    const handleGuardado = useCallback(() => {
-        recargarDatos();
+    const handleGuardado = useCallback(async () => {
+        // ✅ Sincronización inteligente (solo viviendas)
+        console.log('🔄 Sincronizando viviendas después de editar...');
+        await afterViviendaMutation();
         setViviendaAEditar(null);
-    }, [recargarDatos]);
+    }, [afterViviendaMutation]);
 
     const handleIniciarEliminacion = (vivienda, nombreProyecto) => {
         if (!vivienda.puedeEliminar) {
@@ -128,15 +135,21 @@ export const useListarViviendas = () => {
         setIsSubmitting(true);
         try {
             await archiveVivienda(viviendaAArchivar.vivienda, viviendaAArchivar.nombreProyecto);
+
+            // ✅ Toast IMMEDIATELY (optimistic)
             toast.success("Vivienda archivada con éxito.");
-            recargarDatos();
+
+            // ✅ Sincronización inteligente (solo viviendas)
+            console.log('🔄 Sincronizando viviendas después de archivar...');
+            await afterViviendaMutation();
         } catch (error) {
             toast.error(error.message || "No se pudo archivar la vivienda.");
+            await afterViviendaMutation(); // Revert on error
         } finally {
             setIsSubmitting(false);
             setViviendaAArchivar(null);
         }
-    }, [viviendaAArchivar, recargarDatos]);
+    }, [viviendaAArchivar, afterViviendaMutation]);
 
     const handleIniciarRestauracion = useCallback((vivienda, nombreProyecto) => {
         setViviendaARestaurar({ vivienda, nombreProyecto });
@@ -148,15 +161,21 @@ export const useListarViviendas = () => {
         setIsSubmitting(true);
         try {
             await restoreVivienda(viviendaARestaurar.vivienda, viviendaARestaurar.nombreProyecto);
+
+            // ✅ Toast IMMEDIATELY (optimistic)
             toast.success("Vivienda restaurada con éxito.");
-            recargarDatos();
+
+            // ✅ Sincronización inteligente (solo viviendas)
+            console.log('🔄 Sincronizando viviendas después de restaurar...');
+            await afterViviendaMutation();
         } catch (error) {
             toast.error(error.message || "No se pudo restaurar la vivienda.");
+            await afterViviendaMutation(); // Revert on error
         } finally {
             setIsSubmitting(false);
             setViviendaARestaurar(null);
         }
-    }, [viviendaARestaurar, recargarDatos]);
+    }, [viviendaARestaurar, afterViviendaMutation]);
 
     // Determinar si está cargando (incluye estado inicial de lazy loading)
     const isLoadingData = isLoading || !hasLoaded.viviendas || !hasLoaded.clientes || !hasLoaded.abonos;
@@ -178,7 +197,6 @@ export const useListarViviendas = () => {
         handlers: {
             handleGuardado, handleIniciarEliminacion, confirmarEliminar, handleIniciarArchivado, confirmarArchivado, handleIniciarRestauracion,
             confirmarRestauracion
-        },
-        recargarDatos
+        }
     };
 };

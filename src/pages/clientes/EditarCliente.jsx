@@ -15,6 +15,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
         formData,
         dispatch,
         errors,
+        setErrors,
         isConfirming,
         setIsConfirming,
         isSubmitting,
@@ -26,7 +27,10 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
         minDateForReactivation,
         handlers,
         escrituraFirmada,
-        isViviendaLocked
+        isViviendaLocked,
+        isLoadingViviendas,
+        isLoadingProyectos,
+        initialData, // 🔥 NUEVO: Para pasar a executeSave
     } = useClienteForm(true, clienteAEditar, onGuardar, modo);
 
     const STEPS_CONFIG = [
@@ -69,6 +73,7 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
                                 formData={formData}
                                 dispatch={dispatch}
                                 errors={errors}
+                                setErrors={setErrors}
                                 viviendaOptions={viviendasOptions}
                                 proyectos={proyectos}
                                 isEditing={true}
@@ -83,6 +88,8 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
                                 handleInputChange={handlers.handleInputChange}
                                 handleFinancialFieldChange={handlers.handleFinancialFieldChange}
                                 handleFinancialFileReplace={handlers.handleFinancialFileReplace}
+                                isLoadingViviendas={isLoadingViviendas}
+                                isLoadingProyectos={isLoadingProyectos}
                             />
                         </div>
 
@@ -124,7 +131,12 @@ const EditarCliente = ({ isOpen, onClose, onGuardar, clienteAEditar, modo }) => 
             <ModalConfirmacion
                 isOpen={isConfirming}
                 onClose={() => setIsConfirming(false)}
-                onConfirm={() => handlers.executeSave(cambios)}
+                onConfirm={async () => {
+                    const success = await handlers.executeSave(formData, cambios, initialData, isFechaIngresoLocked);
+                    if (success) {
+                        setIsConfirming(false);
+                    }
+                }}
                 titulo="Confirmar Cambios del Cliente"
                 cambios={cambios}
                 isSubmitting={isSubmitting}

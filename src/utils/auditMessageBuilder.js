@@ -45,6 +45,41 @@ export class AuditMessageBuilder {
             category: 'proceso'
         }),
 
+        TRANSFER_CLIENT: ({ cliente, viviendaAnterior, viviendaNueva, motivo, cambiosPlan, totalAbonos }) => {
+            let message = `Transfirió a ${cliente.nombre} `;
+
+            if (viviendaAnterior && viviendaAnterior !== 'Ninguna') {
+                message += `desde ${viviendaAnterior} `;
+            }
+
+            message += `hacia ${viviendaNueva.display}`;
+
+            if (cambiosPlan) {
+                const detalles = [];
+                if (cambiosPlan.valorTotal) detalles.push(`nuevo valor ${cambiosPlan.valorTotal}`);
+                if (cambiosPlan.cuotaInicial) detalles.push(`cuota inicial ${cambiosPlan.cuotaInicial}`);
+                if (cambiosPlan.credito) detalles.push(`crédito ${cambiosPlan.credito}`);
+
+                if (detalles.length > 0) {
+                    message += ` (${detalles.join(', ')})`;
+                }
+            }
+
+            if (totalAbonos > 0) {
+                message += `. Se sincronizaron ${totalAbonos} abono${totalAbonos > 1 ? 's' : ''} activo${totalAbonos > 1 ? 's' : ''}`;
+            }
+
+            if (motivo) {
+                message += `. Motivo: ${motivo}`;
+            }
+
+            return {
+                message,
+                shortMessage: `🔄 Transfirió ${cliente.nombre}`,
+                category: 'cliente'
+            };
+        },
+
         // === GESTIÓN DE PROCESO ===
         UPDATE_PROCESO: ({ cliente, paso, accion, fecha, motivo }) => {
             let baseMessage = '';

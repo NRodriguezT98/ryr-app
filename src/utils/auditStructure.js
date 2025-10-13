@@ -73,6 +73,7 @@ export const ACTION_TYPES = {
     CLIENTES: {
         CREATE_CLIENT: 'CREATE_CLIENT',
         UPDATE_CLIENT: 'UPDATE_CLIENT',
+        TRANSFER_CLIENT: 'TRANSFER_CLIENT',
         ARCHIVE_CLIENT: 'ARCHIVE_CLIENT',
         RESTORE_CLIENT: 'RESTORE_CLIENT',
         DELETE_CLIENT: 'DELETE_CLIENT_PERMANENTLY',
@@ -209,10 +210,19 @@ export const AUDIT_TEMPLATES = {
 export const createAuditLog = (actionType, module, data = {}) => {
     const baseStructure = createBaseAuditStructure(actionType, module);
 
+    // 🆕 FASE 1: Debug - verificar si structured viene en data
+    if (data.structured) {
+        console.log('🔍 [auditStructure.js] Structured data recibido:', {
+            type: data.structured.type,
+            step: data.structured.step?.name,
+            version: data.structured.version
+        });
+    }
+
     // Aplicar plantilla específica si existe
     if (AUDIT_TEMPLATES[actionType]) {
         const template = AUDIT_TEMPLATES[actionType](baseStructure);
-        return {
+        const result = {
             ...template,
             ...data,
             actionData: {
@@ -228,6 +238,15 @@ export const createAuditLog = (actionType, module, data = {}) => {
                 ...data.entities
             }
         };
+
+        // 🆕 FASE 1: Verificar que structured quedó en el resultado
+        if (result.structured) {
+            console.log('✅ [auditStructure.js] Structured data incluido en resultado final');
+        } else if (data.structured) {
+            console.error('❌ [auditStructure.js] ¡Structured se perdió en el merge!');
+        }
+
+        return result;
     }
 
     return {

@@ -45,7 +45,6 @@ export const useCollection = (collectionName, options = {}) => {
     const load = useCallback(() => {
         // CRÍTICO: Verificar autenticación antes de intentar cargar
         if (requireAuth && !auth.currentUser) {
-            // console.log(`[useCollection] No se puede cargar ${collectionName}: usuario no autenticado`);
             setIsLoading(false);
             setData([]);
             return;
@@ -68,6 +67,12 @@ export const useCollection = (collectionName, options = {}) => {
                 : collectionRef;
 
             if (realtime) {
+                // CRÍTICO: Cancelar listener anterior si existe para evitar duplicados
+                if (unsubscribeRef.current) {
+                    unsubscribeRef.current();
+                    unsubscribeRef.current = null;
+                }
+
                 // Tiempo real con onSnapshot
                 unsubscribeRef.current = onSnapshot(
                     q,
@@ -77,9 +82,12 @@ export const useCollection = (collectionName, options = {}) => {
                             return transform ? transform(item) : item;
                         });
 
-                        setData(items);
+                        // CRÍTICO: Crear siempre un nuevo array para forzar re-render
+                        const newData = [...items];
+
+                        setData(newData);
                         if (cache) {
-                            cacheRef.current = items;
+                            cacheRef.current = newData;
                         }
                         setIsLoading(false);
                         setHasLoaded(true);
@@ -104,12 +112,68 @@ export const useCollection = (collectionName, options = {}) => {
 
     /**
      * Recarga forzada (ignora cache)
+     * Retorna una promesa que se resuelve cuando el listener recibe nuevos datos
+     * 
+     * ⚡ OPTIMIZACIÓN EQUILIBRADA:
+     * - NO mostramos skeletons (mantenemos datos antiguos visibles)
+     * - PERO esperamos confirmación de que llegaron datos frescos
      */
     const reload = useCallback(() => {
-        cacheRef.current = null;
-        setHasLoaded(false);
-        load();
-    }, [load]);
+        return new Promise((resolve) => {
+            // CRÍTICO: Cancelar listener anterior antes de recargar
+            if (unsubscribeRef.current) {
+                unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+
+            cacheRef.current = null;
+
+            // 🔥 NO cambiamos isLoading ni hasLoaded para mantener UI estable
+            // Los datos antiguos permanecen visibles hasta que lleguen los nuevos
+
+            // Configurar listener temporal QUE ESPERA DATOS REALES
+            const collectionRef = collection(db, collectionName);
+            const q = constraints.length > 0
+                ? query(collectionRef, ...constraints)
+                : collectionRef;
+
+            let dataReceived = false;
+
+            const tempUnsubscribe = onSnapshot(
+                q,
+                (snapshot) => {
+                    if (!dataReceived) {
+                        dataReceived = true;
+
+                        // Cancelar este listener temporal
+                        tempUnsubscribe();
+
+                        // Ahora establecer el listener permanente
+                        load();
+
+                        // Resolver la promesa - los datos ya están actualizados
+                        setTimeout(resolve, 50); // Pequeño delay para que load() se establezca
+                    }
+                },
+                (error) => {
+                    console.error(`❌ [useCollection] Error en reload de ${collectionName}:`, error);
+                    // Aun con error, intentar establecer listener permanente
+                    load();
+                    resolve();
+                }
+            );
+
+            // Timeout de seguridad: si después de 3 segundos no hay respuesta, resolver igual
+            setTimeout(() => {
+                if (!dataReceived) {
+                    console.warn(`⚠️ [useCollection] Timeout en reload de ${collectionName}, resolviendo...`);
+                    tempUnsubscribe();
+                    load();
+                    resolve();
+                }
+            }, 3000);
+        });
+    }, [load, collectionName, constraints]);
 
     /**
      * Limpia datos y cache

@@ -14,7 +14,6 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useModernToast } from '../useModernToast.jsx';
 
 /**
  * Hook para gestionar la navegación del wizard de cliente
@@ -42,7 +41,6 @@ export const useClienteNavigation = (
     setErrors,
     formData
 ) => {
-    const toast = useModernToast();
     const [step, setStep] = useState(1);
     const [validateCurrentStep, setValidateCurrentStep] = useState(() => initialValidateFunction || (() => ({})));
 
@@ -62,9 +60,8 @@ export const useClienteNavigation = (
 
         // Validación específica del Paso 1: Vivienda requerida
         if (step === 1 && !formData.viviendaSeleccionada) {
-            toast.error("Debes seleccionar una vivienda para continuar.", {
-                title: "Vivienda Requerida"
-            });
+            // 🔥 CAMBIO: Establecer error en el formulario en lugar de toast
+            setErrors({ vivienda: 'Debe seleccionar una vivienda para continuar' });
             return false;
         }
 
@@ -81,7 +78,7 @@ export const useClienteNavigation = (
         setErrors({});
         setStep(s => Math.min(s + 1, 3)); // Máximo paso 3
         return true;
-    }, [step, formData.viviendaSeleccionada, validateCurrentStep, setErrors, toast]); // ✅ Solo viviendaSeleccionada, no todo formData
+    }, [step, formData.viviendaSeleccionada, validateCurrentStep, setErrors]);
 
     /**
      * Navegar al paso anterior

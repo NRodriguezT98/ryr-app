@@ -68,14 +68,23 @@ const CustomViviendaOption = (props) => {
 };
 
 
-const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked, proyectos }) => {
+const Step1_SelectVivienda = ({ formData, dispatch, errors, setErrors, options, isLocked, proyectos, isLoadingViviendas = false }) => {
 
     const handleSelectChange = useCallback((selectedOption) => {
+        // 🔥 NUEVO: Limpiar error de vivienda cuando el usuario selecciona una
+        if (setErrors) {
+            setErrors(prevErrors => {
+                const newErrors = { ...prevErrors };
+                delete newErrors.vivienda;
+                return newErrors;
+            });
+        }
+
         dispatch({
             type: 'UPDATE_VIVIENDA_SELECCIONADA',
             payload: selectedOption ? selectedOption.vivienda : null
         });
-    }, [dispatch]);
+    }, [dispatch, setErrors]);
 
     const currentValue = options.find(op => op.value === formData.viviendaSeleccionada?.id) || null;
     const filterOption = (option, inputValue) => {
@@ -95,6 +104,13 @@ const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked, proyectos
         return proyectos.find(p => p.id === formData.viviendaSeleccionada.proyectoId);
     }, [formData.viviendaSeleccionada, proyectos]);
 
+    // 🔥 NUEVO: Mensaje de estado de carga
+    const placeholderText = isLoadingViviendas
+        ? "⏳ Cargando viviendas disponibles..."
+        : options.length === 0
+            ? "⚠️ No hay viviendas disponibles"
+            : "🔍 Buscar por Manzana y Casa...";
+
     return (
         <AnimatedPage>
             <div className="bg-white dark:bg-gray-800/50 p-4 md:p-6 rounded-xl">
@@ -108,6 +124,17 @@ const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked, proyectos
                     </p>
                 </div>
 
+                {/* 🔥 NUEVO: Alerta de carga */}
+                {isLoadingViviendas && (
+                    <div className="mt-4 flex items-center gap-3 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800 animate-pulse">
+                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <div>
+                            <p className="font-semibold">Cargando viviendas disponibles...</p>
+                            <p className="text-xs mt-1">Por favor espera mientras obtenemos las propiedades disponibles del sistema.</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="mt-6 space-y-2">
                     <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                         Seleccionar Vivienda <span className="text-red-500">*</span>
@@ -116,18 +143,29 @@ const Step1_SelectVivienda = ({ formData, dispatch, options, isLocked, proyectos
                     <CustomSelect
                         options={options}
                         onChange={handleSelectChange}
-                        placeholder="🔍 Buscar por Manzana y Casa..."
-                        noOptionsMessage={() => "No hay viviendas disponibles."}
+                        placeholder={placeholderText}
+                        noOptionsMessage={() => isLoadingViviendas ? "Cargando..." : "No hay viviendas disponibles."}
                         value={currentValue}
                         isClearable
                         components={{ Option: CustomViviendaOption }}
-                        isDisabled={isLocked}
+                        isDisabled={isLocked || isLoadingViviendas}
                         filterOption={filterOption}
                         loadingMessage={() => "Cargando viviendas..."}
                         menuPlacement="auto"
                         maxMenuHeight={280}
                         menuShouldScrollIntoView={false}
+                        isLoading={isLoadingViviendas}
                     />
+
+                    {/* 🔥 NUEVO: Mensaje de error de validación */}
+                    {errors?.vivienda && (
+                        <div className="mt-2 flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800">
+                            <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                            <span className="font-medium">{errors.vivienda}</span>
+                        </div>
+                    )}
 
                     {/* Mensaje de ayuda cuando el campo está bloqueado */}
                     {isLocked && (

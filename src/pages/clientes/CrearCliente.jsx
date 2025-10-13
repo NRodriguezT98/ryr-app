@@ -11,10 +11,13 @@ const CrearCliente = () => {
         formData,
         dispatch,
         errors,
+        setErrors,
         isSubmitting,
         viviendasOptions,
         proyectos,
         handlers,
+        isLoadingViviendas,
+        isLoadingProyectos,
     } = useClienteForm(false);
 
     const STEPS_CONFIG = [
@@ -87,10 +90,13 @@ const CrearCliente = () => {
                                     formData={formData}
                                     dispatch={dispatch}
                                     errors={errors}
+                                    setErrors={setErrors}
                                     viviendaOptions={viviendasOptions}
                                     proyectos={proyectos}
                                     handleInputChange={handlers.handleInputChange}
                                     handleFinancialFieldChange={handlers.handleFinancialFieldChange}
+                                    isLoadingViviendas={isLoadingViviendas}
+                                    isLoadingProyectos={isLoadingProyectos}
                                 />
                             </div>
 

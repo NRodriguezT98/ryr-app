@@ -16,16 +16,25 @@ import {
     PLANTILLA_EDICION_FECHA
 } from './mensajesPlantillas';
 import { DOCUMENTACION_CONFIG } from '../../../utils/documentacionConfig';
+import { PROCESO_CONFIG } from '../../../utils/procesoConfig';
 
 /**
  * Genera mensaje espectacular según el tipo de cambio detectado.
  * 
  * @param {Object} cambio - Cambio detectado por cambiosDetector
  * @param {Object} pasoConfig - Configuración del paso
+ * @param {Object} financiero - Datos financieros del cliente para calcular pasos aplicables
  * @returns {string} Mensaje hermoso y completo
  */
-export const generarMensajeEspectacular = (cambio, pasoConfig) => {
-    const { tipo, pasoNombre, estadoOriginal, estadoNuevo, flags } = cambio;
+export const generarMensajeEspectacular = (cambio, pasoConfig, financiero = {}) => {
+    const { tipo, pasoNombre, estadoOriginal, estadoNuevo, flags, pasoKey } = cambio;
+
+    // Calcular número del paso y total de pasos
+    const pasosAplicables = PROCESO_CONFIG.filter(p =>
+        typeof p.aplicaA === 'function' ? p.aplicaA(financiero) : true
+    );
+    const numeroPaso = pasosAplicables.findIndex(p => p.key === pasoKey) + 1;
+    const totalPasos = pasosAplicables.length;
 
     // Preparar evidencias
     const evidenciasOriginales = prepararEvidencias(estadoOriginal.evidencias, pasoConfig);
@@ -38,37 +47,60 @@ export const generarMensajeEspectacular = (cambio, pasoConfig) => {
                 pasoNombre,
                 fecha: estadoNuevo.fecha,
                 evidencias: evidenciasNuevas,
-                cantidadEvidencias: evidenciasNuevas.length
+                cantidadEvidencias: evidenciasNuevas.length,
+                numeroPaso,
+                totalPasos
             });
 
         case 'reapertura':
             // Reapertura con o sin cambios
+            // 🔥 IMPORTANTE: Para reaperturas, debemos comparar con el estadoAnterior guardado
+            const fechaAnteriorReapertura = estadoNuevo.estadoAnterior?.fecha || estadoOriginal.fecha;
+            const fechaNuevaReapertura = estadoNuevo.fecha;
+
+            // Detectar cambio de fecha comparando estado anterior con estado nuevo
+            const huboCambioFechaReapertura = fechaAnteriorReapertura !== fechaNuevaReapertura;
+
+            // Para evidencias, usar el estadoAnterior si existe
+            const evidenciasAntesDeReabrir = prepararEvidencias(
+                estadoNuevo.estadoAnterior?.evidencias || estadoOriginal.evidencias,
+                pasoConfig
+            );
+
             // Detectar reemplazos de evidencias
             const evidenciasReemplazadas = detectarReemplazosEvidencias(
-                evidenciasOriginales,
+                evidenciasAntesDeReabrir,
                 evidenciasNuevas,
                 pasoConfig
             );
 
-            return PLANTILLA_REAPERTURA({
+            const mensajeGenerado = PLANTILLA_REAPERTURA({
                 pasoNombre,
                 motivoReapertura: estadoNuevo.motivoReapertura || 'No especificado',
-                fechaAnterior: estadoOriginal.fecha,
-                fechaNueva: estadoNuevo.fecha,
+                fechaAnterior: fechaAnteriorReapertura,
+                fechaNueva: fechaNuevaReapertura,
                 evidenciasReemplazadas,
                 evidenciasNuevas,
-                cantidadEvidenciasAnterior: evidenciasOriginales.length,
+                cantidadEvidenciasAnterior: evidenciasAntesDeReabrir.length,
                 cantidadEvidenciasNueva: evidenciasNuevas.length,
-                huboCambioFecha: flags.huboCambioFecha,
-                huboCambioEvidencias: flags.huboCambioEvidencias
+                huboCambioFecha: huboCambioFechaReapertura,
+                huboCambioEvidencias: evidenciasReemplazadas.length > 0,
+                numeroPaso,
+                totalPasos
             });
+
+            console.log('📝 [REAPERTURA] Mensaje generado para:', pasoNombre);
+
+            return mensajeGenerado;
 
         case 'cambio_fecha':
             // Edición SOLO de fecha (botón Editar Fecha)
             return PLANTILLA_EDICION_FECHA({
                 pasoNombre,
                 fechaAnterior: estadoOriginal.fecha,
-                fechaNueva: estadoNuevo.fecha
+                fechaNueva: estadoNuevo.fecha,
+                numeroPaso,
+                totalPasos
             });
 
         default:

@@ -93,7 +93,8 @@ export const addClienteAndAssignVivienda = async (clienteData, auditMessage, aud
         id: newClienteRef.id,
         status: 'activo',
         fechaCreacion: clienteData.datosCliente.fechaIngreso,
-        fechaInicioProceso: clienteData.datosCliente.fechaIngreso
+        fechaInicioProceso: clienteData.datosCliente.fechaIngreso,
+        updatedAt: new Date().toISOString() // 🔥 Timestamp inicial
     };
     if (clienteData.viviendaId) {
         const viviendaRef = doc(db, "viviendas", String(clienteData.viviendaId));
@@ -116,6 +117,12 @@ export const addClienteAndAssignVivienda = async (clienteData, auditMessage, aud
 };
 
 export const updateCliente = async (clienteId, clienteActualizado, viviendaOriginalId, auditDetails = {}) => {
+    console.log('🎬 [updateCliente] INICIO DE FUNCIÓN - Versión actualizada con logs');
+    console.log('  - clienteId:', clienteId);
+    console.log('  - auditDetails:', auditDetails);
+    console.log('  - auditDetails.action:', auditDetails.action);
+    console.log('  - auditDetails.cambios:', auditDetails.cambios);
+
     const clienteRef = doc(db, "clientes", String(clienteId));
 
     const clienteOriginalSnap = await getDoc(clienteRef);
@@ -188,7 +195,11 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
         }
     });
 
-    const datosFinales = { ...clienteActualizado, proceso: procesoSincronizado };
+    const datosFinales = {
+        ...clienteActualizado,
+        proceso: procesoSincronizado,
+        updatedAt: new Date().toISOString() // 🔥 Timestamp para detectar cambios
+    };
 
     // 2. Lógica para actualizar las viviendas
     const batch = writeBatch(db);
@@ -213,61 +224,62 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
     const { action, cambios, snapshotCompleto, nombreNuevaVivienda } = auditDetails;
     const clienteNombreCompleto = toTitleCase(`${clienteActualizado.datosCliente.nombres} ${clienteActualizado.datosCliente.apellidos}`);
 
-    if (action === 'RESTART_CLIENT_PROCESS') {
-        await createAuditLogWithBuilder(
-            'RESTART_CLIENT_PROCESS',
-            {
-                category: 'clientes',
-                clienteId: clienteId,
-                clienteNombre: clienteNombreCompleto,
-                nombreNuevaVivienda: nombreNuevaVivienda || 'No especificado',
-                snapshotCompleto: snapshotCompleto
-            }
-        );
-    } else {
-        // Separar cambios regulares de cambios de archivos para mejor auditoría
+    console.log('🔍 [updateCliente] Verificando condición para audit log');
+    console.log('  - action:', action);
+    console.log('  - action !== RESTART_CLIENT_PROCESS:', action !== 'RESTART_CLIENT_PROCESS');
+    console.log('  - cambios:', cambios);
+    console.log('  - cambios existe:', !!cambios);
+    console.log('  - cambios.length:', cambios?.length);
+    console.log('  - condición completa:', (action !== 'RESTART_CLIENT_PROCESS' && cambios && cambios.length > 0));
+
+    // 🔥 MIGRADO AL SISTEMA NUEVO - Solo registramos ediciones de cliente
+    if (action !== 'RESTART_CLIENT_PROCESS' && cambios && cambios.length > 0) {
+        console.log('✅ [updateCliente] Condición cumplida, intentando crear audit log');
+        console.log('  - clienteId:', clienteId);
+        console.log('  - nombre:', clienteNombreCompleto);
+        console.log('  - cambios:', cambios);
+
+        // Separar cambios regulares de cambios de archivos
         const cambiosRegulares = [];
         const cambiosArchivos = [];
 
-        (cambios || []).forEach(cambio => {
+        cambios.forEach(cambio => {
             if (cambio.fileChange) {
-                cambiosArchivos.push({
-                    ...cambio,
-                    // Información adicional para auditoría de archivos
-                    fileAuditInfo: {
-                        documentType: cambio.campo,
-                        changeType: cambio.fileChange.type,
-                        previousUrl: cambio.fileChange.previousUrl,
-                        newUrl: cambio.fileChange.newUrl,
-                        timestamp: cambio.fileChange.timestamp,
-                        // Hash de los archivos si fuera necesario en el futuro
-                        metadata: {
-                            previousExists: !!cambio.fileChange.previousUrl,
-                            newExists: !!cambio.fileChange.newUrl
-                        }
-                    }
-                });
+                cambiosArchivos.push(cambio);
             } else {
                 cambiosRegulares.push(cambio);
             }
         });
 
-        await createAuditLog(
-            `Actualizó los datos del cliente ${clienteNombreCompleto} (C.C. ${clienteId})`,
-            {
-                action: 'UPDATE_CLIENT',
-                clienteId: clienteId,
-                clienteNombre: clienteNombreCompleto,
-                cambios: cambios || [], // Cambios originales para TabHistorial
-                // Información detallada para auditoría avanzada
-                auditDetails: {
-                    cambiosRegulares: cambiosRegulares,
-                    cambiosArchivos: cambiosArchivos,
-                    totalCambios: (cambios || []).length,
-                    tieneArchivos: cambiosArchivos.length > 0
+        try {
+            const result = await createClientAuditLog(
+                'UPDATE_CLIENT',
+                {
+                    id: clienteId,
+                    nombre: clienteNombreCompleto,
+                    numeroDocumento: clienteId
+                },
+                {
+                    viviendaId: clienteActualizado.viviendaId,
+                    actionData: {
+                        tipoActualizacion: 'EDIT_DATA',
+                        cambios: cambios,
+                        cambiosRegulares: cambiosRegulares,
+                        cambiosArchivos: cambiosArchivos,
+                        totalCambios: cambios.length,
+                        tieneArchivos: cambiosArchivos.length > 0
+                    }
                 }
-            }
-        );
+            );
+            console.log('✅ [updateCliente] Audit log creado:', result);
+        } catch (error) {
+            console.error('❌ [updateCliente] Error creando audit log:', error);
+        }
+    } else {
+        console.log('⚠️ [updateCliente] NO se creó audit log:');
+        console.log('  - action:', action);
+        console.log('  - cambios:', cambios);
+        console.log('  - cambios.length:', cambios?.length);
     }
 };
 
@@ -278,15 +290,22 @@ export const deleteCliente = async (clienteId) => {
 export const inactivarCliente = async (clienteId, clienteNombre) => {
     await updateDoc(doc(db, "clientes", String(clienteId)), {
         status: 'inactivo',
-        fechaInactivacion: new Date().toISOString()
+        fechaInactivacion: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
     });
 
-    await createAuditLog(
-        `Archivó al cliente ${toTitleCase(clienteNombre)} (C.C. ${clienteId})`,
+    // 🔥 MIGRADO AL SISTEMA NUEVO
+    await createClientAuditLog(
+        'ARCHIVE_CLIENT',
         {
-            action: 'ARCHIVE_CLIENT',
-            clienteId: clienteId,
-            clienteNombre: toTitleCase(clienteNombre)
+            id: clienteId,
+            nombre: toTitleCase(clienteNombre),
+            numeroDocumento: clienteId
+        },
+        {
+            actionData: {
+                fechaInactivacion: new Date().toISOString()
+            }
         }
     );
 };
@@ -303,7 +322,8 @@ export const restaurarCliente = async (clienteId) => {
 
 
     await updateDoc(doc(db, "clientes", String(clienteId)), {
-        status: 'renunciado'
+        status: 'renunciado',
+        updatedAt: new Date().toISOString() // 🔥 Timestamp para detectar cambios
     });
 
     // Creamos el registro de auditoría
@@ -536,9 +556,18 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
         transaction.update(viviendaRef, { clienteId: null, clienteNombre: "", totalAbonado: 0, saldoPendiente: viviendaData.valorTotal });
 
         if (estadoInicialRenuncia === 'Pendiente') {
-            transaction.update(clienteRef, { status: 'enProcesoDeRenuncia' });
+            transaction.update(clienteRef, {
+                status: 'enProcesoDeRenuncia',
+                updatedAt: new Date().toISOString() // 🔥 Timestamp para detectar cambios
+            });
         } else {
-            transaction.update(clienteRef, { viviendaId: null, proceso: {}, financiero: {}, status: 'renunciado' });
+            transaction.update(clienteRef, {
+                viviendaId: null,
+                proceso: {},
+                financiero: {},
+                status: 'renunciado',
+                updatedAt: new Date().toISOString() // 🔥 Timestamp para detectar cambios
+            });
             transaction.update(renunciaRef, { fechaDevolucion: fechaRenuncia });
 
             abonosDelCiclo.forEach(abono => {
@@ -553,18 +582,25 @@ export const renunciarAVivienda = async (clienteId, motivo, observacion = '', fe
         auditMessage += '. Este proceso de renuncia queda cerrado automáticamente ya que el cliente no cuenta con abonos pendientes por devolución.';
     }
 
-    await createAuditLog(
-        auditMessage,
+    // 🔥 MIGRADO AL SISTEMA NUEVO
+    await createClientAuditLog(
+        'CLIENT_RENOUNCE',
         {
-            action: 'CLIENT_RENOUNCE',
-            clienteId: clienteId,
-            clienteNombre: toTitleCase(clienteNombre),
-            viviendaInfo: viviendaInfoParaLog,
-            motivoRenuncia: motivo,
-            observaciones: observacion,
-            penalidadAplicada: penalidadMonto > 0,
-            montoPenalidad: penalidadMonto,
-            motivoPenalidad: penalidadMotivo
+            id: clienteId,
+            nombre: toTitleCase(clienteNombre),
+            numeroDocumento: clienteId
+        },
+        {
+            actionData: {
+                viviendaInfo: viviendaInfoParaLog,
+                motivoRenuncia: motivo,
+                observaciones: observacion,
+                fechaRenuncia: fechaRenuncia,
+                penalidadAplicada: penalidadMonto > 0,
+                montoPenalidad: penalidadMonto,
+                motivoPenalidad: penalidadMotivo,
+                estadoInicialRenuncia: estadoInicialRenuncia
+            }
         }
     );
 
@@ -855,7 +891,8 @@ export const reabrirPasoProceso = async (clienteId, pasoKey, motivoReapertura) =
     };
 
     await updateDoc(clienteRef, {
-        proceso: procesoActualizado
+        proceso: procesoActualizado,
+        updatedAt: new Date().toISOString() // 🔥 Timestamp para detectar cambios
     });
 
     // Crear log de auditoría para la reapertura
@@ -892,7 +929,8 @@ export const updateClienteProcesoUnified = async (clienteId, nuevoProceso, audit
 
     // Actualizar el documento
     await updateDoc(clienteRef, {
-        proceso: nuevoProceso
+        proceso: nuevoProceso,
+        updatedAt: new Date().toISOString() // 🔥 Timestamp para detectar cambios
     });
 
     // Preparar datos contextuales para audit
@@ -1048,7 +1086,8 @@ export const updateClienteProceso = async (clienteId, nuevoProceso, auditMessage
 
     // 1. Actualizamos solo el campo 'proceso' del cliente
     await updateDoc(clienteRef, {
-        proceso: nuevoProceso
+        proceso: nuevoProceso,
+        updatedAt: new Date().toISOString() // 🔥 Timestamp para detectar cambios
     });
 
     // 2. Lógica de Auditoría Mejorada
@@ -1347,7 +1386,8 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
         batch.update(clienteRef, {
             viviendaId: nuevaViviendaId,
             financiero: nuevoPlanFinanciero,
-            proceso: nuevoProceso
+            proceso: nuevoProceso,
+            updatedAt: new Date().toISOString() // 🔥 Timestamp para detectar cambios
         });
 
         if (viviendaOriginalId) {
@@ -1366,23 +1406,30 @@ export const transferirViviendaCliente = async ({ clienteId, viviendaOriginalId,
 
         await batch.commit();
 
-        const auditMessage = `Transfirió al cliente ${nombreCliente} a una nueva vivienda.`;
-        const auditDetails = {
-            action: 'TRANSFER_CLIENT',
-            clienteId: clienteId,
-            clienteNombre: nombreCliente,
-            motivo,
-            viviendaAnterior: viviendaOriginalId || 'Ninguna',
-            viviendaNueva: {
-                id: nuevaViviendaId,
-                ubicacion: `Mz ${nuevaViviendaData.manzana} - Casa ${nuevaViviendaData.numeroCasa}`,
+        // 🔥 MIGRADO AL SISTEMA NUEVO
+        await createClientAuditLog(
+            'UPDATE_CLIENT',
+            {
+                id: clienteId,
+                nombre: nombreCliente,
+                numeroDocumento: clienteId
             },
-            // --- INICIO DE LA MODIFICACIÓN 2: Guardar ambos planes financieros ---
-            snapshotAntiguoPlanFinanciero: clienteOriginal.financiero || {},
-            snapshotNuevoPlanFinanciero: nuevoPlanFinanciero
-            // --- FIN DE LA MODIFICACIÓN 2 ---
-        };
-        await createAuditLog(auditMessage, auditDetails);
+            {
+                viviendaId: nuevaViviendaId,
+                actionData: {
+                    tipoActualizacion: 'TRANSFER_VIVIENDA',
+                    motivo: motivo,
+                    viviendaAnterior: viviendaOriginalId || 'Ninguna',
+                    viviendaNueva: {
+                        id: nuevaViviendaId,
+                        ubicacion: `Mz ${nuevaViviendaData.manzana} - Casa ${nuevaViviendaData.numeroCasa}`,
+                    },
+                    snapshotAntiguoPlanFinanciero: clienteOriginal.financiero || {},
+                    snapshotNuevoPlanFinanciero: nuevoPlanFinanciero,
+                    abonosSincronizados: abonosASincronizar.size
+                }
+            }
+        );
 
     } catch (error) {
         console.error("Error en la operación de transferencia de vivienda: ", error);

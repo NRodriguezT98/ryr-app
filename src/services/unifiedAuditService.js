@@ -8,7 +8,7 @@
  */
 
 import { db, auth } from '../firebase/config';
-import { collection, addDoc, doc, getDoc, serverTimestamp, query, where, orderBy, getDocs, limit, startAfter } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, serverTimestamp, Timestamp, query, where, orderBy, getDocs, limit, startAfter } from "firebase/firestore";
 import { toTitleCase } from '../utils/textFormatters';
 import { createAuditLog as createAuditStructure, ACTION_TYPES } from '../utils/auditStructure';
 import toast from 'react-hot-toast';
@@ -50,9 +50,10 @@ export const createUnifiedAuditLog = async (actionType, module, rawData, options
         }
 
         // Preparar para guardar (convertir timestamp para Firestore)
+        // Si se pasa un timestamp específico en options, usarlo; sino usar serverTimestamp
         const auditToSave = {
             ...auditStructure,
-            timestamp: serverTimestamp()
+            timestamp: options.timestamp ? Timestamp.fromDate(options.timestamp) : serverTimestamp()
         };
 
         // Limpiar valores undefined para evitar errores de Firestore
@@ -62,10 +63,11 @@ export const createUnifiedAuditLog = async (actionType, module, rawData, options
         const auditCollectionRef = collection(db, "audits");
         const docRef = await addDoc(auditCollectionRef, cleanedAudit);
 
-        // Retornar el log creado con su ID
+        // Retornar el log creado con su ID y timestamp válido
         return {
             id: docRef.id,
-            ...auditStructure
+            ...auditStructure,
+            timestamp: new Date() // Garantizar un timestamp válido en el retorno
         };
 
     } catch (error) {
@@ -100,22 +102,23 @@ export const createClientAuditLog = async (actionType, clientData, additionalDat
             cliente: {
                 id: clientData.id || clientData.clienteId,
                 nombre: clientData.nombre || `${clientData.nombres} ${clientData.apellidos}`,
-                documento: clientData.numeroDocumento
+                documento: clientData.numeroDocumento || clientData.documento
             },
             vivienda: additionalData.vivienda || {},
             proyecto: additionalData.proyecto || {}
         },
-        actionData: {
-            ...additionalData.actionData,
-            ...clientData // Datos específicos del cliente
-        },
+        actionData: additionalData.actionData || {},
         changes: additionalData.changes || {}
     };
 
     // Agregar mensaje si viene en options
     if (options.message) {
         rawData.message = options.message;
-        console.log('✅ [MENSAJE EN rawData]:', rawData.message.substring(0, 80) + '...');
+    }
+
+    // Agregar structured data si viene en options
+    if (options.structured) {
+        rawData.structured = options.structured;
     }
 
     const result = await createUnifiedAuditLog(actionType, 'CLIENTES', rawData, options);
@@ -377,6 +380,11 @@ export const getAuditLogsForClienteAdvanced = async (clienteId, options = {}) =>
 function cleanFirestoreData(obj) {
     if (obj === null || obj === undefined) {
         return null;
+    }
+
+    // 🔥 NO procesar serverTimestamp() ni Timestamp de Firestore
+    if (obj && typeof obj === 'object' && (obj._methodName === 'serverTimestamp' || obj.constructor?.name === 'Timestamp')) {
+        return obj; // Retornar tal cual sin procesar
     }
 
     if (Array.isArray(obj)) {

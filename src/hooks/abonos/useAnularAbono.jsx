@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useData } from '../../context/DataContext';
+import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 import { anularAbono } from '../../services/abonoService';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -7,7 +8,8 @@ import { toTitleCase } from '../../utils/textFormatters'; // Importa la utilidad
 
 export const useAnularAbono = (onActionCompleta) => {
     const { userData } = useAuth();
-    const { clientes, viviendas, proyectos, recargarDatos } = useData();
+    const { clientes, viviendas, proyectos } = useData();
+    const { afterAbonoMutation } = useDataSync(); // ✅ Sincronización granular
 
     const [abonoAAnular, setAbonoAAnular] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,7 +54,9 @@ export const useAnularAbono = (onActionCompleta) => {
             toast.dismiss();
             toast.success('Abono anulado y saldos recalculados correctamente');
 
-            recargarDatos();
+            // ✅ Sincronización inteligente (abonos, clientes, viviendas)
+            await afterAbonoMutation();
+
             if (onActionCompleta) onActionCompleta();
             cerrarAnulacion();
         } catch (error) {
