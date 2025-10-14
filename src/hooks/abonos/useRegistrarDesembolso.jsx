@@ -69,6 +69,8 @@ export const useRegistrarDesembolso = (fuenteData, isOpen, onSave, onClose) => {
                 toast.success(`¡Desembolso de ${fuenteData.titulo} registrado con éxito!`);
                 onSave();
                 onClose();
+
+                // ✅ FIX: La sincronización en tiempo real ahora funciona usando serverTimestamp()
             } catch (error) {
                 toast.error(error.message || `No se pudo registrar el desembolso.`);
                 console.error("Error al registrar desembolso:", error);

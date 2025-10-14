@@ -485,7 +485,6 @@ const DetalleClienteModerno = () => {
                                     <TabProcesoCliente
                                         cliente={cliente}
                                         renuncia={renuncia}
-                                        onDatosRecargados={recargarDatos}
                                         onHayCambiosChange={setProcesoTieneCambios}
                                         proyecto={proyecto}
                                         isReadOnly={isReadOnly}

@@ -1,6 +1,6 @@
 // src/services/abonoService.js
 import { db } from '../firebase/config';
-import { collection, addDoc, doc, updateDoc, runTransaction, getDoc, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, runTransaction, getDoc, query, where, getDocs, serverTimestamp } from "firebase/firestore";
 import { formatCurrency, toTitleCase, formatDisplayDate } from '../utils/textFormatters';
 import { FUENTE_PROCESO_MAP, PROCESO_CONFIG } from '../utils/procesoConfig.js';
 import { createAbonoAuditLog } from './unifiedAuditService';
@@ -59,7 +59,10 @@ export const addAbonoAndUpdateProceso = async (abonoData, cliente, proyecto, use
             ...abonoData, id: abonoRef.id,
             consecutivo: nuevoConsecutivo,
             estadoProceso: 'activo',
-            timestampCreacion: new Date()
+            timestampCreacion: serverTimestamp(),
+            // ✅ FIX: Timestamps para sincronización en tiempo real
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
         };
 
         // PASO 3: EJECUTAR TODAS LAS ESCRITURAS
@@ -275,7 +278,8 @@ export const anularAbono = async (abonoAAnular, userName, motivo) => {
         transaction.update(abonoRef, {
             estadoProceso: 'anulado',
             motivoAnulacion: motivoFinal,
-            fechaAnulacion: new Date()
+            fechaAnulacion: serverTimestamp(),
+            updatedAt: serverTimestamp()
         });
     });
 
@@ -393,7 +397,8 @@ export const revertirAnulacionAbono = async (abonoARevertir, userName, motivo) =
             estadoProceso: 'activo',
             motivoAnulacion: null, // Limpiamos el motivo de la anulación original
             motivoReversion: motivo, // Guardamos el nuevo motivo de la reversión
-            fechaReversion: new Date() // Opcional: guardamos la fecha en que se revirtió
+            fechaReversion: serverTimestamp(), // Opcional: guardamos la fecha en que se revirtió
+            updatedAt: serverTimestamp()
         });
         transaction.update(viviendaRef, { totalAbonado: nuevoTotalAbonado, saldoPendiente: nuevoSaldo });
 
@@ -490,7 +495,7 @@ export const registrarDesembolsoCredito = async (clienteId, viviendaId, desembol
         const transMontoADesembolsar = montoCreditoPactado - totalAbonadoCredito;
         if (transMontoADesembolsar <= 0) throw new Error("El crédito para este cliente ya ha sido completamente desembolsado.");
 
-        const abonoParaGuardar = { ...desembolsoData, consecutivo: nuevoConsecutivo, monto: transMontoADesembolsar, fuente: 'credito', metodoPago: 'Desembolso Bancario', clienteId, viviendaId, id: abonoRef.id, estadoProceso: 'activo', timestampCreacion: new Date() };
+        const abonoParaGuardar = { ...desembolsoData, consecutivo: nuevoConsecutivo, monto: transMontoADesembolsar, fuente: 'credito', metodoPago: 'Desembolso Bancario', clienteId, viviendaId, id: abonoRef.id, estadoProceso: 'activo', timestampCreacion: serverTimestamp() };
         const nuevoTotalAbonado = (transViviendaData.totalAbonado || 0) + transMontoADesembolsar;
         const nuevoSaldo = transViviendaData.valorFinal - nuevoTotalAbonado;
 
@@ -608,7 +613,7 @@ export const condonarSaldo = async (datosCondonacion, userName) => {
             observacion: `Condonación de saldo. Motivo: ${motivo}`,
             urlComprobante: urlSoporte,
             estadoProceso: 'activo',
-            timestampCreacion: new Date()
+            timestampCreacion: serverTimestamp()
         };
 
         // PASO 3: ESCRIBIR

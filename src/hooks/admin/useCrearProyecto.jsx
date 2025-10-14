@@ -13,7 +13,7 @@ const initialState = {
 
 export const useCrearProyecto = () => {
     const navigate = useNavigate();
-    const { proyectos, recargarDatos } = useData();
+    const { proyectos } = useData();
     const toast = useModernToast();
 
     const {
@@ -31,8 +31,8 @@ export const useCrearProyecto = () => {
                 toast.success('¡Proyecto creado con éxito!', {
                     title: "¡Proyecto Creado!"
                 });
-                await recargarDatos(); // Actualizamos la lista de proyectos en la app
-                navigate('/admin/proyectos'); // Navegamos a la lista (la crearemos después)
+                // ✅ FIX: La sincronización en tiempo real ahora funciona usando serverTimestamp()
+                navigate('/admin/proyectos');
             } catch (error) {
                 console.error("Error al crear el proyecto:", error);
                 toast.error('No se pudo crear el proyecto.', {

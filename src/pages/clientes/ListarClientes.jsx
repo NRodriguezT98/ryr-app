@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useListarClientes } from '../../hooks/clientes/useListarClientes.jsx';
 import { useClienteCardLogic } from '../../hooks/clientes/useClienteCardLogic.jsx';
+import { useLoadCollections } from '../../components/withCollections';
 import ModalConfirmacion from '../../components/ModalConfirmacion.jsx';
 import EditarCliente from "./EditarCliente";
 import ModalMotivoRenuncia from "./components/ModalMotivoRenuncia";
@@ -100,10 +101,13 @@ const ClienteCardWrapper = React.memo(({ cliente, onEdit, onArchive, onDelete, o
 
 const ListarClientes = () => {
     const { can } = usePermissions();
+
+    // ✅ Cargar colecciones necesarias
+    const { isReady: collectionsReady } = useLoadCollections(['clientes', 'viviendas', 'proyectos']);
+
     // Obtenemos toda la data que necesitamos para hacer los cruces
     const { viviendas, proyectos } = useData();
     const {
-        isLoading,
         clientesVisibles,
         todosLosClientesFiltrados,
         totalClientesEnSistema,
@@ -229,7 +233,7 @@ const ListarClientes = () => {
             filterControls={filterControls}
         >
 
-            {isLoading ? (
+            {!collectionsReady ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">{[...Array(9)].map((_, i) => <ClienteCardSkeleton key={i} />)}</div>
 
                 // --- INICIO DE LA LÓGICA DE RENDERIZADO CORREGIDA ---

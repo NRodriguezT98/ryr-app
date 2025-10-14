@@ -2,15 +2,20 @@ import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import AnimatedPage from "../../components/AnimatedPage";
 import { useData } from "../../context/DataContext";
+import { useLoadCollections } from "../../components/withCollections";
 import { Search, Calculator, User, Home, Sparkles, CreditCard } from "lucide-react";
 
 const CrearAbono = () => {
+    // ✅ Cargar colecciones necesarias
+    const { isReady: collectionsReady } = useLoadCollections(['clientes', 'viviendas']);
     const { isLoading, clientes } = useData();
     const [searchTerm, setSearchTerm] = useState("");
 
-    const clientesConVivienda = useMemo(() =>
-        clientes.filter(c => c.vivienda && c.status === 'activo'),
-        [clientes]);
+    const clientesConVivienda = useMemo(() => {
+        // ✅ Solo procesar si las colecciones están listas
+        if (!collectionsReady) return [];
+        return clientes.filter(c => c.vivienda && c.status === 'activo');
+    }, [clientes, collectionsReady]);
 
     // Función de ordenamiento personalizada por Manzana + Casa
     const sortByVivienda = (a, b) => {
@@ -28,6 +33,9 @@ const CrearAbono = () => {
     };
 
     const clientesFiltrados = useMemo(() => {
+        // ✅ Solo procesar si las colecciones están listas
+        if (!collectionsReady) return [];
+
         let clientesFinal = clientesConVivienda;
 
         if (searchTerm.trim()) {
@@ -49,9 +57,9 @@ const CrearAbono = () => {
 
         // Siempre ordenar por Manzana + Casa
         return clientesFinal.sort(sortByVivienda);
-    }, [clientesConVivienda, searchTerm]);
+    }, [clientesConVivienda, searchTerm, collectionsReady]);
 
-    if (isLoading) {
+    if (!collectionsReady || isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
                 <div className="text-center">

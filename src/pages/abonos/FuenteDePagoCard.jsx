@@ -176,7 +176,7 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
                     <div className="flex justify-center items-center gap-4">
                         {isCredito || isSubsidio ? (
                             onRegistrarDesembolso && (
-                                <div className="flex items-center gap-1"> {/* Un div para agrupar botón y tooltip */}
+                                <div className="flex items-center gap-1">
                                     <button
                                         onClick={() => onRegistrarDesembolso({ titulo, fuente, montoPactado, abonos, vivienda, cliente, proyecto })}
                                         disabled={botonDesembolsoDeshabilitado}
@@ -186,7 +186,6 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
                                         {creditoYaDesembolsado || subsidioYaDesembolsado ? 'Desembolso Registrado' : 'Registrar Desembolso'}
                                     </button>
 
-                                    {/* El icono de ayuda solo aparece si el botón está deshabilitado por el prerrequisito */}
                                     {!isPrerrequisitoCompleto && (
                                         <HelpTooltip content={tooltipMessage} id={`tooltip-${fuente}`} />
                                     )}
@@ -200,13 +199,11 @@ const FuenteDePagoCard = ({ titulo, fuente, montoPactado, abonos, resumenPago, v
                                 </button>
                             )
                         )}
-                        {fuente === 'cuotaInicial' && !isCredito && (
-                            onCondonarSaldo && (
-                                <>
-                                    <span className="text-gray-300 dark:text-gray-600">|</span>
-                                    <button onClick={onCondonarSaldo} className="text-green-600 dark:text-green-400 font-semibold text-sm hover:underline">Condonar Saldo</button>
-                                </>
-                            )
+                        {fuente === 'cuotaInicial' && onCondonarSaldo && (
+                            <>
+                                <span className="text-gray-300 dark:text-gray-600">|</span>
+                                <button onClick={onCondonarSaldo} className="text-green-600 dark:text-green-400 font-semibold text-sm hover:underline">Condonar Saldo</button>
+                            </>
                         )}
                     </div>
                 ) : null}

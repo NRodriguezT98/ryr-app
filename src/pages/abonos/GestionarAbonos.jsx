@@ -17,9 +17,11 @@ import { useRevertirAbono } from '../../hooks/abonos/useRevertirAbono';
 
 const GestionarAbonos = () => {
     const { clienteId } = useParams();
+
     // Hook principal para los datos de la página y otros modales (edición, condonación)
     const {
         isLoading,
+        isReady,
         clientesParaLaLista,
         selectedClienteId, setSelectedClienteId,
         datosClienteSeleccionado,
@@ -38,7 +40,7 @@ const GestionarAbonos = () => {
         cerrarAnulacion,
         confirmarAnulacion,
         isAnulando
-    } = useAnularAbono(handlers.recargarDatos);
+    } = useAnularAbono();
 
     // Hook centralizado para la lógica de REVERSIÓN
     const {
@@ -47,7 +49,7 @@ const GestionarAbonos = () => {
         iniciarReversion,
         cerrarReversion,
         confirmarReversion
-    } = useRevertirAbono(handlers.recargarDatos);
+    } = useRevertirAbono();
 
     const [clienteSearchTerm, setClienteSearchTerm] = useState('');
 
@@ -66,8 +68,21 @@ const GestionarAbonos = () => {
         });
     }, [clientesParaLaLista, clienteSearchTerm]);
 
-    if (isLoading && !selectedClienteId) {
-        return <div className="text-center p-10 animate-pulse">Cargando datos iniciales...</div>;
+    // ✅ Esperar a que las colecciones estén listas antes de mostrar contenido
+    if (!isReady || (isLoading && !selectedClienteId)) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+                <div className="text-center">
+                    <Calculator className="w-16 h-16 text-green-600 animate-spin mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+                        Cargando Datos Financieros
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        Preparando información de clientes y abonos...
+                    </p>
+                </div>
+            </div>
+        );
     }
 
     const historialVisible = datosClienteSeleccionado?.data?.historial || [];
@@ -343,7 +358,6 @@ const GestionarAbonos = () => {
                                                             vivienda={datosClienteSeleccionado.data.vivienda}
                                                             cliente={datosClienteSeleccionado.data.cliente}
                                                             proyecto={datosClienteSeleccionado.data.proyecto}
-                                                            onAbonoRegistrado={handlers.recargarDatos}
                                                             onCondonarSaldo={() => modals.setFuenteACondonar({ ...fuente, saldoPendiente: fuente.montoPactado - fuente.abonos.reduce((sum, a) => sum + a.monto, 0), vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente, proyecto: datosClienteSeleccionado.data.proyecto })}
                                                             onRegistrarDesembolso={() => modals.setDesembolsoARegistrar({ ...fuente, vivienda: datosClienteSeleccionado.data.vivienda, cliente: datosClienteSeleccionado.data.cliente, proyecto: datosClienteSeleccionado.data.proyecto })}
                                                             showHistory={false}

@@ -21,6 +21,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { createAuditLog } from '../auditService';
+import { createClientAuditLog } from '../unifiedAuditService';
 import { toTitleCase, formatDisplayDate } from '../../utils/textFormatters';
 import { DOCUMENTACION_CONFIG } from '../../utils/documentacionConfig';
 
@@ -207,7 +208,36 @@ export const renunciarAVivienda = async (
         }
     });
 
-    // 12. Registrar auditoría con información completa
+    // 12. Obtener la renuncia completa para auditoría
+    const renunciaRef = doc(db, "renuncias", renunciaIdParaNotificacion);
+    const renunciaDoc = await getDoc(renunciaRef);
+    const renunciaCompleta = renunciaDoc.data();
+
+    // 13. Registrar auditoría con sistema unificado (FASE 2)
+    await createClientAuditLog(
+        'CLIENT_RENOUNCE',
+        {
+            clienteId,
+            clienteNombre: toTitleCase(clienteNombre)
+        },
+        {
+            actionData: {
+                motivo,
+                observacion,
+                fechaRenuncia,
+                viviendaInfo: viviendaInfoParaLog,
+                totalAbonado: totalAbonadoReal,
+                penalidadMonto,
+                penalidadMotivo,
+                totalADevolver,
+                estadoDevolucion: estadoInicialRenuncia,
+                historialAbonos: abonosDelCiclo,
+                documentosArchivados: renunciaCompleta?.documentosArchivados || []
+            }
+        }
+    );
+
+    // 14. Mantener auditoría antigua para historial administrativo
     let auditMessage = `Registró la renuncia del cliente ${toTitleCase(clienteNombre)} a la vivienda ${viviendaInfoParaLog}, con fecha ${formatDisplayDate(fechaRenuncia)}, indicando el motivo "${motivo}"`;
 
     if (estadoInicialRenuncia === 'Cerrada') {

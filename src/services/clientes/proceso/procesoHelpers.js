@@ -6,7 +6,7 @@
  */
 
 import { db } from '../../../firebase/config';
-import { doc, getDoc, updateDoc, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { toTitleCase, formatDisplayDate, getTodayString } from '../../../utils/textFormatters';
 import { PROCESO_CONFIG } from '../../../utils/procesoConfig';
 import { createAuditLog } from '../../auditService';
@@ -142,7 +142,7 @@ export const reabrirPasoProceso = async (clienteId, pasoKey, motivoReapertura) =
 
     await updateDoc(clienteRef, {
         proceso: procesoActualizado,
-        updatedAt: new Date().toISOString()
+        updatedAt: serverTimestamp()
     });
 
     // Crear log de auditoría para la reapertura

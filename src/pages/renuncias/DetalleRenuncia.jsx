@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../../context/DataContext';
+import { useLoadCollections } from '../../components/withCollections';
 import AnimatedPage from '../../components/AnimatedPage';
 import { ArrowLeft, User, Home, Calendar, DollarSign, CheckCircle, Download, FileX, Briefcase, FileText, MinusCircle } from 'lucide-react';
 import AbonoCard from '../abonos/AbonoCard';
@@ -9,10 +10,14 @@ import { formatCurrency, formatDisplayDate } from '../../utils/textFormatters';
 const DetalleRenuncia = () => {
     const { renunciaId } = useParams();
     const navigate = useNavigate();
+
+    // ✅ Cargar colecciones necesarias
+    const { isReady: collectionsReady } = useLoadCollections(['renuncias', 'clientes', 'viviendas']);
     const { renuncias, clientes, isLoading } = useData();
 
     const datosDetalle = useMemo(() => {
-        if (isLoading) return null;
+        // ✅ Esperar a que las colecciones estén listas
+        if (!collectionsReady || isLoading) return null;
         const renuncia = renuncias.find(r => r.id === renunciaId);
         if (!renuncia) return null;
         let clienteEncontrado = null;
@@ -31,9 +36,9 @@ const DetalleRenuncia = () => {
             clienteStatus: 'renunciado'
         }));
         return { renuncia, cliente: clienteEncontrado, historialAbonos };
-    }, [renunciaId, renuncias, clientes, isLoading]);
+    }, [renunciaId, renuncias, clientes, isLoading, collectionsReady]);
 
-    if (isLoading) {
+    if (!collectionsReady || isLoading) {
         return <div className="text-center p-10 animate-pulse">Cargando detalles de la renuncia...</div>;
     }
 

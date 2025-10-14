@@ -18,7 +18,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useModernToast } from '../useModernToast.jsx';
-import { useDataSync } from '../useDataSync'; // ✅ NUEVO: Sistema de sincronización inteligente
 import { addClienteAndAssignVivienda, updateCliente } from '../../services/clientes';
 import { createNotification } from '../../services/notificationService.js';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig.js';
@@ -61,7 +60,6 @@ export const useClienteSave = (
 ) => {
     const navigate = useNavigate();
     const toast = useModernToast();
-    const { afterClienteMutation } = useDataSync(); // ✅ Sistema de sincronización inteligente
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     /**
@@ -361,11 +359,7 @@ export const useClienteSave = (
             }
 
             if (success) {
-                // ✅ CRÍTICO: Sincronización inteligente ANTES de navegar o cerrar modal
-                console.log('🔄 [saveCliente] Sincronizando solo clientes y viviendas...');
-                await afterClienteMutation(); // Solo 2 colecciones (80% más rápido)
-                console.log('✅ [saveCliente] Datos sincronizados');
-
+                // ✅ FIX: La sincronización en tiempo real ahora funciona usando serverTimestamp()
                 if (onSaveSuccess) {
                     onSaveSuccess();
                 } else {
@@ -393,8 +387,7 @@ export const useClienteSave = (
         saveClienteReactivar,
         onSaveSuccess,
         navigate,
-        toast,
-        afterClienteMutation
+        toast
     ]);
 
     return {

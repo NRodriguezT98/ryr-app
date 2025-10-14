@@ -17,9 +17,9 @@ import { usePermissions } from '../../hooks/auth/usePermissions';
 import { useAnularAbono } from '../../hooks/abonos/useAnularAbono';
 import { useRevertirAbono } from '../../hooks/abonos/useRevertirAbono';
 import { formatCurrency } from '../../utils/textFormatters';
-import ListPageLayout from '../../layout/ListPageLayout'; // <-- ¡NUESTRO LAYOUT!
+import ListPageLayout from '../../layout/ListPageLayout';
 import Button from '../../components/Button';
-
+import { useLoadCollections } from '../../components/withCollections';
 const CustomOption = (props) => {
     const { innerProps, label, data } = props;
     return (
@@ -34,7 +34,11 @@ const CustomOption = (props) => {
 
 const ListarAbonos = () => {
     const { can } = usePermissions();
-    const { isLoading, abonos, clientes, viviendas, renuncias, recargarDatos } = useData();
+
+    // ✅ Cargar colecciones necesarias automáticamente
+    const { isReady: collectionsReady } = useLoadCollections(['abonos', 'clientes', 'viviendas', 'renuncias']);
+
+    const { isLoading, abonos, clientes, viviendas, renuncias } = useData();
 
     // Estado local para el modal de edición
     const [abonoAEditar, setAbonoAEditar] = useState(null);
@@ -47,7 +51,7 @@ const ListarAbonos = () => {
         cerrarAnulacion,
         confirmarAnulacion,
         isAnulando
-    } = useAnularAbono(recargarDatos);
+    } = useAnularAbono();
 
     // Hook centralizado para la lógica de REVERSIÓN
     const {
@@ -57,7 +61,7 @@ const ListarAbonos = () => {
         iniciarReversion,
         cerrarReversion,
         confirmarReversion
-    } = useRevertirAbono(recargarDatos);
+    } = useRevertirAbono();
 
     // Hook para manejar los filtros de la lista
     const {
@@ -69,13 +73,14 @@ const ListarAbonos = () => {
 
     // Opciones para los menús de selección (filtros)
     const clienteOptions = useMemo(() => {
+        if (!collectionsReady) return [{ value: null, label: 'Todos los Clientes', cliente: null }];
         const opciones = clientes.filter(c => c.vivienda).map(c => ({
             value: c.id,
             label: `${c.vivienda.manzana}${c.vivienda.numeroCasa} - ${c.datosCliente.nombres} ${c.datosCliente.apellidos}`,
             cliente: c
         }));
         return [{ value: null, label: 'Todos los Clientes', cliente: null }, ...opciones];
-    }, [clientes]);
+    }, [clientes, collectionsReady]);
 
     const fuenteOptions = useMemo(() => [
         { value: null, label: 'Todas las Fuentes' },
@@ -86,13 +91,9 @@ const ListarAbonos = () => {
         { value: 'gastosNotariales', label: 'Gastos Notariales' }
     ], []);
 
-    // Placeholder para la función de guardado de edición
-    const handleGuardadoEdicion = () => {
-        setAbonoAEditar(null);
-        recargarDatos();
-    };
-
+    // ✅ IMPORTANTE: Estos useMemo DEBEN estar ANTES del early return
     const abonosAgrupados = useMemo(() => {
+        if (!collectionsReady) return {};
         return abonosFiltrados.reduce((acc, abono) => {
             const month = format(new Date(abono.fechaPago), 'MMMM yyyy', { locale: es });
             const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
@@ -102,13 +103,37 @@ const ListarAbonos = () => {
             acc[capitalizedMonth].push(abono);
             return acc;
         }, {});
-    }, [abonosFiltrados]);
+    }, [abonosFiltrados, collectionsReady]);
 
     const sumario = useMemo(() => {
+        if (!collectionsReady) return { totalAbonos: 0, sumaTotal: 0 };
         const totalAbonos = todosLosAbonosFiltrados.length;
         const sumaTotal = todosLosAbonosFiltrados.reduce((sum, abono) => sum + abono.monto, 0);
         return { totalAbonos, sumaTotal };
-    }, [todosLosAbonosFiltrados]);
+    }, [todosLosAbonosFiltrados, collectionsReady]);
+
+    // ✅ Mostrar loader mientras se cargan las colecciones
+    if (!collectionsReady || isLoading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+                <div className="text-center space-y-4">
+                    <BarChart2 className="w-16 h-16 text-indigo-600 dark:text-indigo-400 animate-spin mx-auto" />
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                        Cargando Historial de Abonos
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        Preparando datos financieros...
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // Placeholder para la función de guardado de edición
+    const handleGuardadoEdicion = async () => {
+        setAbonoAEditar(null);
+        // Firestore sincronizará automáticamente
+    };
 
     const actionButton = can('abonos', 'crear') ? (
         <Link to="/abonos">
@@ -207,8 +232,8 @@ const ListarAbonos = () => {
                     <button
                         onClick={() => setStatusFiltro('activo')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFiltro === 'activo'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-emerald-600 dark:text-emerald-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-emerald-600 dark:text-emerald-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Activos
@@ -216,8 +241,8 @@ const ListarAbonos = () => {
                     <button
                         onClick={() => setStatusFiltro('anulado')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFiltro === 'anulado'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-red-600 dark:text-red-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-red-600 dark:text-red-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Anulados
@@ -225,8 +250,8 @@ const ListarAbonos = () => {
                     <button
                         onClick={() => setStatusFiltro('renunciado')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFiltro === 'renunciado'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-amber-600 dark:text-amber-400 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-amber-600 dark:text-amber-400 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         De Renuncias
@@ -234,8 +259,8 @@ const ListarAbonos = () => {
                     <button
                         onClick={() => setStatusFiltro('todos')}
                         className={`px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${statusFiltro === 'todos'
-                                ? 'bg-white dark:bg-slate-700 shadow-md text-slate-800 dark:text-slate-200 scale-105'
-                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                            ? 'bg-white dark:bg-slate-700 shadow-md text-slate-800 dark:text-slate-200 scale-105'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                     >
                         Todos

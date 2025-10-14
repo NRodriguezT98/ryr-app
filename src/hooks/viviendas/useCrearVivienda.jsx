@@ -6,7 +6,6 @@ import { validateVivienda } from "../../utils/validation.js";
 import { addVivienda } from "../../services/viviendaService";
 import { createAuditLog } from "../../services/auditService";
 import { useData } from '../../context/DataContext.jsx';
-import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 
@@ -39,7 +38,6 @@ export const useCrearVivienda = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { proyectos, viviendas, isLoading: isLoadingData } = useData();
-    const { afterViviendaMutation } = useDataSync(); // ✅ Sincronización granular
 
     const {
         formData, errors, setErrors, handleInputChange,
@@ -103,11 +101,14 @@ export const useCrearVivienda = () => {
                     auditDetails
                 );
 
-                // ✅ Sincronización inteligente (solo viviendas)
-                console.log('🔄 Sincronizando viviendas después de creación...');
-                await afterViviendaMutation();
-
+                // ⚠️ WORKAROUND: Firestore listeners NO se disparan después de writes
+                // Hemos probado TODO y los listeners NO se activan después de batch.commit()
+                // Es un problema GLOBAL que afecta TODAS las escrituras (viviendas, clientes, renuncias, etc)
+                // Esta solución de reload es temporal hasta encontrar la causa raíz
                 navigate("/viviendas/listar");
+                setTimeout(() => {
+                    window.location.reload();
+                }, 800);
             } catch (error) {
                 console.error("Error al crear vivienda:", error);
                 toast.error("No se pudo registrar la vivienda.");

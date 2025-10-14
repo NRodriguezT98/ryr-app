@@ -41,9 +41,12 @@ export const useGestionarDevolucion = (renuncia, onSave, onClose) => {
         onSubmit: async (data) => {
             try {
                 await marcarDevolucionComoPagada(renuncia.id, data);
+
                 toast.success('Devolución registrada con éxito.');
                 onSave();
                 onClose();
+
+                // ✅ Firestore sincronizará automáticamente
             } catch (error) {
                 toast.error('No se pudo registrar la devolución.');
                 console.error("Error al registrar devolución:", error);

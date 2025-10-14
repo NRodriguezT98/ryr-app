@@ -126,6 +126,13 @@ export const getActionTheme = (log) => {
             icon: 'bg-gray-500 dark:bg-gray-600',
             badge: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100',
             text: 'text-gray-600 dark:text-gray-400'
+        },
+        'CLIENT_RENOUNCE': {
+            bg: 'bg-red-50 dark:bg-red-900/30',
+            border: 'border-red-200 dark:border-red-800/50',
+            icon: 'bg-red-500 dark:bg-red-600',
+            badge: 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100',
+            text: 'text-red-600 dark:text-red-400'
         }
     };
 

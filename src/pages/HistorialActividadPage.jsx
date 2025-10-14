@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../context/DataContext';
+import { useLoadCollections } from '../components/withCollections';
 import { useDashboardStats } from '../hooks/useDashboardStats';
 import AnimatedPage from '../components/AnimatedPage';
 import {
@@ -214,6 +215,9 @@ const ActivityCard = ({ item, clientes, viviendas, showDetails, toggleDetails })
 
 const HistorialActividadPage = () => {
     const navigate = useNavigate();
+
+    // ✅ Cargar colecciones necesarias
+    const { isReady: collectionsReady } = useLoadCollections(['viviendas', 'clientes', 'abonos', 'renuncias']);
     const { viviendas, clientes, abonos, renuncias } = useData();
     const { actividadReciente } = useDashboardStats({ viviendas, clientes, abonos, renuncias });
 
@@ -273,6 +277,23 @@ const HistorialActividadPage = () => {
 
         return { total, abonos, clientes, renuncias };
     }, [actividadReciente]);
+
+    // ✅ Mostrar loader si las colecciones no están listas
+    if (!collectionsReady) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center">
+                <div className="text-center">
+                    <Activity className="w-16 h-16 text-blue-600 animate-pulse mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+                        Cargando Historial
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        Preparando actividad reciente...
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <AnimatedPage>

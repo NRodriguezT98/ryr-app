@@ -305,7 +305,26 @@ export class ClientHistoryAuditInterpreter {
     }
 
     static interpretClientRenounce(context, actionData, auditLog) {
-        const { motivo, fechaRenuncia, montoDevolucion } = actionData;
+        // Si tiene actionData completo, usar componente estructurado (FASE 2)
+        if (actionData && actionData.motivo && actionData.viviendaInfo) {
+            return {
+                __renderAsComponent: 'RenounceMessage',
+                motivo: actionData.motivo,
+                observacion: actionData.observacion,
+                fechaRenuncia: actionData.fechaRenuncia,
+                viviendaInfo: actionData.viviendaInfo,
+                totalAbonado: actionData.totalAbonado || 0,
+                penalidadMonto: actionData.penalidadMonto || 0,
+                penalidadMotivo: actionData.penalidadMotivo || '',
+                totalADevolver: actionData.totalADevolver || 0,
+                estadoDevolucion: actionData.estadoDevolucion || 'Pendiente',
+                historialAbonos: actionData.historialAbonos || [],
+                documentosArchivados: actionData.documentosArchivados || []
+            };
+        }
+
+        // Fallback para logs antiguos sin actionData completo (FASE 1)
+        const { motivo, fechaRenuncia, montoDevolucion } = actionData || {};
 
         let message = `${auditLog.userName} registró tu renuncia al proyecto`;
 

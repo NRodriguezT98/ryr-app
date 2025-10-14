@@ -1,5 +1,5 @@
 import { db } from '../firebase/config';
-import { collection, addDoc, doc, updateDoc, getDoc, writeBatch, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, getDoc, writeBatch, query, where, getDocs, serverTimestamp } from "firebase/firestore";
 import { toSentenceCase } from '../utils/textFormatters';
 import { createAuditLog } from './auditService';
 
@@ -20,7 +20,10 @@ export const addVivienda = async (viviendaData) => {
         totalAbonado: 0,
         saldoPendiente: valorTotalFinal,
         valorFinal: valorTotalFinal,
-        descuentoMonto: 0, // 🔥 FIX: Inicializar campo para consistencia
+        descuentoMonto: 0,
+        // ✅ FIX: Añadir timestamps del servidor para garantizar sincronización en tiempo real
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
     };
     const docRef = await addDoc(collection(db, "viviendas"), nuevaVivienda);
     return docRef;
@@ -35,7 +38,8 @@ export const archiveVivienda = async (vivienda, nombreProyecto) => {
 
     await updateDoc(viviendaRef, {
         status: 'archivada',
-        fechaArchivado: new Date().toISOString()
+        fechaArchivado: serverTimestamp(),
+        updatedAt: serverTimestamp()
     });
 
     const nombreVivienda = `Mz ${vivienda.manzana} - Casa ${vivienda.numeroCasa}`;
@@ -78,7 +82,8 @@ export const restoreVivienda = async (vivienda, nombreProyecto) => {
     // Actualizamos el estado de la vivienda a 'disponible'
     await updateDoc(viviendaRef, {
         status: 'disponible',
-        fechaRestaurado: new Date().toISOString()
+        fechaRestaurado: serverTimestamp(),
+        updatedAt: serverTimestamp()
     });
 
     // Creamos el registro de auditoría
@@ -130,7 +135,11 @@ export const updateVivienda = async (id, datosActualizados, auditContext) => {
 
     // --- INICIO DE LA REFRACTORIZACIÓN ---
     // 1. Preparamos un único objeto 'datosFinales' con todas las transformaciones.
-    let datosFinales = { ...datosActualizados };
+    let datosFinales = {
+        ...datosActualizados,
+        // ✅ FIX: Timestamp del servidor para sincronización en tiempo real
+        updatedAt: serverTimestamp()
+    };
 
     // Regla de negocio: Protección de campos financieros si ya tiene un cliente.
     if (viviendaOriginal.clienteId) {

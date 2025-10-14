@@ -1,5 +1,6 @@
 import React from 'react';
 import { useListarRenuncias } from '../../hooks/renuncias/useListarRenuncias';
+import { useLoadCollections } from '../../components/withCollections';
 import RenunciaCard from './components/RenunciaCard';
 import ListPageLayout from '../../layout/ListPageLayout';
 import ModalGestionarDevolucion from './components/ModalGestionarDevolucion';
@@ -24,8 +25,10 @@ const getSelectStyles = (isDarkMode) => ({
 });
 
 const ListarRenuncias = () => {
+    // ✅ Cargar colecciones necesarias
+    const { isReady: collectionsReady } = useLoadCollections(['renuncias', 'clientes', 'viviendas']);
+
     const {
-        isLoading,
         renunciasFiltradas,
         filters,
         modals,
@@ -143,7 +146,8 @@ const ListarRenuncias = () => {
             </div>
         </div>
     )
-    if (isLoading) {
+
+    if (!collectionsReady) {
         return <div className="text-center p-10 animate-pulse">Cargando renuncias...</div>;
     }
 
@@ -153,9 +157,7 @@ const ListarRenuncias = () => {
             title="Gestión de Renuncias"
             filterControls={filterControls}
         >
-            {isLoading ? (
-                <div className="text-center p-10">Cargando renuncias...</div>
-            ) : renunciasFiltradas.length > 0 ? (
+            {renunciasFiltradas.length > 0 ? (
                 <div className="space-y-4">
                     {renunciasFiltradas.map(renuncia => (
                         <RenunciaCard

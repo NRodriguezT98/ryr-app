@@ -8,7 +8,7 @@ import { updateProyecto } from "../../services/proyectoService";
 import toast from 'react-hot-toast';
 
 export const useEditarProyecto = (proyectoAEditar, isOpen, onSaveSuccess) => {
-    const { proyectos, recargarDatos } = useData();
+    const { proyectos } = useData();
     const [initialData, setInitialData] = useState({});
 
     const {
@@ -44,8 +44,8 @@ export const useEditarProyecto = (proyectoAEditar, isOpen, onSaveSuccess) => {
                 });
 
                 toast.success('¡Proyecto actualizado con éxito!');
-                await recargarDatos();
-                onSaveSuccess(); // Llama a la función para cerrar el modal
+                // Firestore sincronizará automáticamente
+                onSaveSuccess();
             } catch (error) {
                 console.error("Error al actualizar el proyecto:", error);
                 toast.error('No se pudo actualizar el proyecto.');

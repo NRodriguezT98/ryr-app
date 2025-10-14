@@ -6,7 +6,7 @@ import { updateProyecto, deleteProyecto } from "../../services/proyectoService";
 import toast from 'react-hot-toast';
 
 export const useListarProyectos = () => {
-    const { proyectos, viviendas, recargarDatos } = useData();
+    const { proyectos, viviendas } = useData();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [proyectoAEditar, setProyectoAEditar] = useState(null);
     const [proyectoAEliminar, setProyectoAEliminar] = useState(null);
@@ -16,7 +16,7 @@ export const useListarProyectos = () => {
         try {
             await updateProyecto(proyectoAEditar.id, datosEditados);
             toast.success("Proyecto actualizado con éxito.");
-            await recargarDatos();
+            // Firestore sincronizará automáticamente
             setProyectoAEditar(null);
         } catch (error) {
             toast.error("No se pudo actualizar el proyecto.");
@@ -32,7 +32,7 @@ export const useListarProyectos = () => {
         try {
             await deleteProyecto(proyectoAEliminar.id, viviendas);
             toast.success("Proyecto eliminado con éxito.");
-            await recargarDatos();
+            // Firestore sincronizará automáticamente
             setProyectoAEliminar(null);
         } catch (error) {
             if (error.message === 'PROYECTO_CON_VIVIENDAS') {

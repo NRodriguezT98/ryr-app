@@ -16,7 +16,6 @@ export const useDetalleCliente = () => {
         abonos,
         renuncias,
         isLoading: isDataContextLoading,
-        recargarDatos: recargarDatosGlobales,
         loadCollection,
         hasLoaded
     } = useData();
@@ -35,7 +34,7 @@ export const useDetalleCliente = () => {
     }, [hasLoaded.clientes, loadCollection]);
 
     const recargarDatos = async (mostrarToast = true) => {
-        await recargarDatosGlobales();
+        // Firestore sincronizará automáticamente
         if (historialRef.current && typeof historialRef.current.fetchHistorial === 'function') {
             historialRef.current.fetchHistorial();
         }

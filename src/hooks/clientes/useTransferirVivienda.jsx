@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect, useReducer } from 'react';
 import { useData } from '../../context/DataContext';
-import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 import toast from 'react-hot-toast';
 import { transferirViviendaCliente } from '../../services/clientes';
 import { toTitleCase, formatCurrency } from '../../utils/textFormatters';
@@ -37,7 +36,6 @@ function financieroReducer(state, action) {
 
 const useTransferirVivienda = (cliente, onTransferSuccess) => {
     const { viviendas, proyectos, abonos, isLoading } = useData();
-    const { afterClienteMutation } = useDataSync(); // ✅ Sincronización granular
 
     const [step, setStep] = useState(1);
     const [motivo, setMotivo] = useState('');
@@ -122,9 +120,7 @@ const useTransferirVivienda = (cliente, onTransferSuccess) => {
 
             toast.success('¡Cliente transferido con éxito!');
 
-            // ✅ Sincronización inteligente (solo clientes y viviendas)
-            await afterClienteMutation();
-
+            // Firestore sincronizará automáticamente
             if (onTransferSuccess) {
                 onTransferSuccess();
             }

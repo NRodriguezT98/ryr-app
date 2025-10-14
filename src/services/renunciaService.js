@@ -79,18 +79,29 @@ export const cancelarRenuncia = async (renuncia) => {
             clienteId: renuncia.clienteId,
             clienteNombre: renuncia.clienteNombre,
             totalAbonado: renuncia.totalAbonadoOriginal,
-            saldoPendiente: viviendaDoc.data().valorFinal - renuncia.totalAbonadoOriginal
+            saldoPendiente: viviendaDoc.data().valorFinal - renuncia.totalAbonadoOriginal,
+            updatedAt: serverTimestamp()
         });
         transaction.update(clienteRef, {
             viviendaId: renuncia.viviendaId,
             status: 'activo',
             financiero: renuncia.financieroArchivado,
-            proceso: renuncia.procesoArchivado || {}
+            proceso: renuncia.procesoArchivado || {},
+            updatedAt: serverTimestamp()
         });
         renuncia.historialAbonos.forEach(abono => {
-            transaction.update(doc(db, "abonos", abono.id), { estadoProceso: 'activo' });
+            transaction.update(doc(db, "abonos", abono.id), {
+                estadoProceso: 'activo',
+                updatedAt: serverTimestamp()
+            });
         });
-        transaction.delete(renunciaRef);
+
+        // En lugar de eliminar, marcar como cancelada
+        transaction.update(renunciaRef, {
+            estadoDevolucion: 'Cancelada',
+            fechaCancelacion: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
     });
 
     // ===============================================================

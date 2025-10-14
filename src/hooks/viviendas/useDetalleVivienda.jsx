@@ -9,7 +9,7 @@ import { useData } from '../../context/DataContext';
 export const useDetalleVivienda = () => {
     const { viviendaId } = useParams();
     const navigate = useNavigate();
-    const { viviendas, clientes, abonos, proyectos, isLoading, recargarDatos } = useData();
+    const { viviendas, clientes, abonos, proyectos, isLoading } = useData();
     const [activeTab, setActiveTab] = useState('info');
     const [datosDetalle, setDatosDetalle] = useState(null);
     const [fuenteACondonar, setFuenteACondonar] = useState(null);
@@ -89,11 +89,11 @@ export const useDetalleVivienda = () => {
         }
     }, [viviendaId, viviendas, clientes, abonos, proyectos, isLoading, navigate]);
 
-    const handleGuardado = useCallback(() => {
-        recargarDatos();
+    const handleGuardado = useCallback(async () => {
         setFuenteACondonar(null);
         setDesembolsoACrear(null);
-    }, [recargarDatos]);
+        // Firestore sincronizará automáticamente
+    }, []);
 
     const handleRegistrarDesembolso = useCallback(() => {
         if (datosDetalle) {
@@ -109,7 +109,6 @@ export const useDetalleVivienda = () => {
         datosDetalle,
         activeTab,
         setActiveTab,
-        recargarDatos,
         navigate,
         fuenteACondonar,
         setFuenteACondonar,

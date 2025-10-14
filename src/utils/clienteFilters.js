@@ -150,5 +150,5 @@ export const OPCIONES_ESTADO_CLIENTES = [
     { value: 'todos', label: 'Todos los Estados' },
     { value: 'activo', label: 'Activos' },
     { value: 'inactivo', label: 'Inactivos' },
-    { value: 'renuncia', label: 'En Renuncia' }
+    { value: 'enProcesoDeRenuncia', label: 'En Renuncia' }
 ];

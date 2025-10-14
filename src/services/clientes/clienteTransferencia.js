@@ -5,7 +5,7 @@
  * Maneja la actualización de cliente, viviendas (original y nueva) y abonos asociados.
  */
 
-import { doc, getDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { createClientAuditLog } from '../unifiedAuditService';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
@@ -193,7 +193,8 @@ export const transferirViviendaCliente = async ({
         batch.update(clienteRef, {
             viviendaId: nuevaViviendaId,
             financiero: planFinancieroNormalizado,
-            proceso: nuevoProceso
+            proceso: nuevoProceso,
+            updatedAt: serverTimestamp()
         });
 
         // Desasignar vivienda original (si existe)
@@ -201,19 +202,24 @@ export const transferirViviendaCliente = async ({
             const viviendaOriginalRef = doc(db, 'viviendas', viviendaOriginalId);
             batch.update(viviendaOriginalRef, {
                 clienteId: null,
-                clienteNombre: ""
+                clienteNombre: "",
+                updatedAt: serverTimestamp()
             });
         }
 
         // Asignar nueva vivienda al cliente
         batch.update(nuevaViviendaRef, {
             clienteId: clienteId,
-            clienteNombre: nombreCliente
+            clienteNombre: nombreCliente,
+            updatedAt: serverTimestamp()
         });
 
         // Sincronizar todos los abonos activos con la nueva vivienda
         abonosASincronizar.forEach((abonoDoc) => {
-            batch.update(abonoDoc.ref, { viviendaId: nuevaViviendaId });
+            batch.update(abonoDoc.ref, {
+                viviendaId: nuevaViviendaId,
+                updatedAt: serverTimestamp()
+            });
         });
 
         await batch.commit();

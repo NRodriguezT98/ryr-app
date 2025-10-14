@@ -10,6 +10,7 @@ import { getActionIcon, getActionTheme, getActionLabel } from './utils/actionHel
 import { interpretAuditForClientHistory } from '@/utils/clientHistoryAuditInterpreter';
 import { ParsedMessage } from './ParsedMessage';
 import { TransferMessage } from './messages/TransferMessage';
+import { RenounceMessage } from './messages/RenounceMessage';
 
 // Componente para renderizar mensajes
 const SmartMessage = ({ log }) => {
@@ -29,17 +30,19 @@ const SmartMessage = ({ log }) => {
             // Si el intérprete devuelve un objeto con __renderAsComponent, renderizar el componente correspondiente
             if (typeof detailedMessage === 'object' && detailedMessage.__renderAsComponent) {
                 const componentType = detailedMessage.__renderAsComponent;
+                const { __renderAsComponent, ...props } = detailedMessage;
 
                 if (componentType === 'TransferMessage') {
-                    const { __renderAsComponent, ...props } = detailedMessage;
                     return <TransferMessage {...props} />;
+                }
+
+                if (componentType === 'RenounceMessage') {
+                    return <RenounceMessage {...props} />;
                 }
 
                 // Aquí se pueden agregar más componentes estructurados en el futuro
                 console.warn('Componente estructurado no reconocido:', componentType);
-            }
-
-            // Si es string, renderizar mensaje con formato (soporta saltos de línea y markdown básico)
+            }            // Si es string, renderizar mensaje con formato (soporta saltos de línea y markdown básico)
             return <FormattedMessage message={detailedMessage} />;
         } catch (error) {
             console.error('Error interpretando mensaje:', error);

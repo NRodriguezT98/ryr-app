@@ -8,6 +8,9 @@ export const addProyecto = async (proyectoData) => {
     const proyectoParaGuardar = {
         nombre: toTitleCase(proyectoData.nombre),
         fechaCreacion: serverTimestamp(),
+        // ✅ FIX: Timestamps para sincronización en tiempo real
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
     };
 
     // 1. Se crea el documento del proyecto en Firestore
@@ -34,7 +37,8 @@ export const updateProyecto = async (proyectoId, datosNuevos) => {
 
     // 2. Actualizamos el documento con el nuevo nombre.
     await updateDoc(proyectoRef, {
-        nombre: toTitleCase(nombre)
+        nombre: toTitleCase(nombre),
+        updatedAt: serverTimestamp()
     });
 
     // 3. Creamos el registro de auditoría con los cambios.

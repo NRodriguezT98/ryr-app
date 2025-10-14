@@ -1,13 +1,11 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useData } from '../../context/DataContext';
-import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 import { cancelarRenuncia } from "../../services/renunciaService";
 import toast from 'react-hot-toast';
 import { useDebounce } from '../useDebounce';
 
 export const useListarRenuncias = () => {
-    const { isLoading, renuncias } = useData();
-    const { afterRenunciaMutation } = useDataSync(); // ✅ Sincronización granular
+    const { renuncias } = useData();
 
     const [statusFilter, setStatusFilter] = useState('Pendiente');
     const [searchTerm, setSearchTerm] = useState('');
@@ -23,7 +21,18 @@ export const useListarRenuncias = () => {
     });
 
     const renunciasFiltradas = useMemo(() => {
-        let itemsProcesados = [...renuncias].sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+        // ✅ Verificar que las renuncias estén cargadas
+        if (!renuncias || renuncias.length === 0) return [];
+
+        let itemsProcesados = [...renuncias]
+            .filter(r => r.estadoDevolucion !== 'Cancelada') // Excluir canceladas siempre
+            .sort((a, b) => {
+                // Manejar tanto Timestamps de Firestore como strings ISO
+                const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : new Date(a.timestamp || 0).getTime();
+                const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : new Date(b.timestamp || 0).getTime();
+                return timeB - timeA;
+            });
+
         if (statusFilter !== 'Todas') {
             if (statusFilter === 'Cerrada') {
                 itemsProcesados = itemsProcesados.filter(r => r.estadoDevolucion === 'Cerrada' || r.estadoDevolucion === 'Pagada');
@@ -43,10 +52,9 @@ export const useListarRenuncias = () => {
 
     // --- HANDLERS (Manejadores de eventos y acciones) ---
     const handleSave = useCallback(async () => {
-        // ✅ Sincronización inteligente (renuncias, clientes, viviendas)
-        await afterRenunciaMutation();
+        // ✅ Cerrar modal - Firestore sincronizará automáticamente
         setModals(prev => ({ ...prev, renunciaADevolver: null }));
-    }, [afterRenunciaMutation]);
+    }, []);
 
     const iniciarCancelacion = (renuncia) => {
         setModals(prev => ({ ...prev, renunciaACancelar: renuncia }));
@@ -62,8 +70,7 @@ export const useListarRenuncias = () => {
             await cancelarRenuncia(modals.renunciaACancelar, motivo);
             toast.success("La renuncia ha sido cancelada exitosamente.");
 
-            // ✅ Sincronización inteligente (renuncias, clientes, viviendas)
-            await afterRenunciaMutation();
+            // ✅ Firestore sincronizará automáticamente
         } catch (error) {
             if (error.message === 'VIVIENDA_NO_DISPONIBLE') {
                 toast.error("No se puede cancelar la renuncia: la vivienda ya ha sido asignada a otro cliente.");
@@ -75,10 +82,9 @@ export const useListarRenuncias = () => {
             // Reseteamos el estado de forma limpia
             setModals(prev => ({ ...prev, renunciaACancelar: null, isSubmitting: false }));
         }
-    }, [modals.renunciaACancelar, afterRenunciaMutation]);
+    }, [modals.renunciaACancelar]);
 
     return {
-        isLoading,
         renunciasFiltradas,
         filters: {
             statusFilter, setStatusFilter,

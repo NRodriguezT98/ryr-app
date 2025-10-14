@@ -56,6 +56,8 @@ export const useAbonoForm = ({ fuente, titulo, saldoPendiente, montoPactado, viv
                 toast.success("Abono registrado y proceso actualizado con éxito.");
                 form.resetForm();
                 onAbonoRegistrado(true);
+
+                // ✅ FIX: La sincronización en tiempo real ahora funciona usando serverTimestamp()
             } catch (error) {
                 if (error.message === 'SOLICITUD_PENDIENTE') {
                     toast.error("El paso de solicitud de desembolso aún no está completado en el proceso.");

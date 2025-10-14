@@ -1,13 +1,15 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useData } from '../../context/DataContext';
-import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
+import { useLoadCollections } from '../../components/withCollections';
 import { revertirAnulacionAbono } from "../../services/abonoService"; // Ya no se importa anularAbono
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 
 export const useGestionarAbonos = (clienteIdDesdeUrl) => {
+    // ✅ Cargar colecciones dentro del hook
+    const { isReady: collectionsReady } = useLoadCollections(['clientes', 'viviendas', 'abonos', 'proyectos']);
+
     const { isLoading: isDataLoading, clientes, viviendas, abonos, proyectos } = useData();
-    const { afterAbonoMutation } = useDataSync(); // ✅ Sincronización granular
     const { user } = useAuth();
     const userName = user?.displayName || 'Usuario desconocido';
     const [selectedClienteId, setSelectedClienteId] = useState(clienteIdDesdeUrl || null);
@@ -24,7 +26,8 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
     }, [clienteIdDesdeUrl]);
 
     const datosClienteSeleccionado = useMemo(() => {
-        if (!selectedClienteId || isDataLoading) return null;
+        // ✅ Solo procesar si las colecciones están cargadas
+        if (!selectedClienteId || isDataLoading || !collectionsReady) return null;
 
         const cliente = clientes.find(c => c.id === selectedClienteId);
         if (!cliente) return null;
@@ -78,7 +81,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         return {
             data: { cliente, vivienda, proyecto, historial, fuentes: fuentesValidas, isPagada: vivienda.saldoPendiente <= 0 }
         };
-    }, [selectedClienteId, clientes, viviendas, abonos, proyectos, isDataLoading]);
+    }, [selectedClienteId, clientes, viviendas, abonos, proyectos, isDataLoading, collectionsReady]);
 
     // Añadimos el cálculo para los abonos activos, que depende de los datos ya calculados
     const abonosActivos = useMemo(() =>
@@ -106,27 +109,42 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
         return { totalAbonos, sumaTotal };
     }, [abonosActivos]);
 
-    const clientesParaLaLista = useMemo(() =>
-        clientes.filter(c => c.vivienda && c.status === 'activo')
-            .sort((a, b) => {
-                const manzanaComp = a.vivienda.manzana.localeCompare(b.vivienda.manzana);
-                if (manzanaComp !== 0) return manzanaComp;
-                return a.vivienda.numeroCasa - b.vivienda.numeroCasa;
-            }),
-        [clientes]
-    );
+    const clientesParaLaLista = useMemo(() => {
+        // ✅ Solo procesar si las colecciones están cargadas
+        if (!collectionsReady) {
+            return [];
+        }
+
+        // Enriquecer clientes con datos de vivienda
+        const clientesConVivienda = clientes
+            .filter(c => c.viviendaId && c.status === 'activo')
+            .map(cliente => {
+                const vivienda = viviendas.find(v => v.id === cliente.viviendaId);
+                return {
+                    ...cliente,
+                    vivienda: vivienda || null
+                };
+            })
+            .filter(c => c.vivienda !== null); // Solo clientes con vivienda válida
+
+        // Ordenar por manzana y número de casa
+        return clientesConVivienda.sort((a, b) => {
+            const manzanaComp = a.vivienda.manzana.localeCompare(b.vivienda.manzana);
+            if (manzanaComp !== 0) return manzanaComp;
+            return a.vivienda.numeroCasa - b.vivienda.numeroCasa;
+        });
+    }, [clientes, viviendas, collectionsReady]);
 
     const handleGuardado = useCallback(async () => {
-        // ✅ Sincronización inteligente (abonos, clientes, viviendas)
-        await afterAbonoMutation();
         setAbonoAEditar(null);
         setFuenteACondonar(null);
         setDesembolsoARegistrar(null);
-    }, [afterAbonoMutation]);
-
+        // Firestore sincronizará automáticamente
+    }, []);
 
     return {
         isLoading: isDataLoading,
+        isReady: collectionsReady,
         clientesParaLaLista,
         selectedClienteId,
         setSelectedClienteId,
@@ -140,7 +158,7 @@ export const useGestionarAbonos = (clienteIdDesdeUrl) => {
             desembolsoARegistrar, setDesembolsoARegistrar
         },
         handlers: {
-            handleGuardado,
+            handleGuardado
         }
     };
 };

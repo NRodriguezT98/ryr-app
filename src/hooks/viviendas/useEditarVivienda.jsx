@@ -4,7 +4,6 @@ import { useForm } from "../useForm.jsx";
 import { validateVivienda } from "../../utils/validation.js"; // <-- RUTA ACTUALIZADA
 import { updateVivienda } from "../../services/viviendaService";
 import { useData } from "../../context/DataContext.jsx";
-import { useDataSync } from '../useDataSync'; // ✅ Sistema de sincronización inteligente
 
 const GASTOS_NOTARIALES_FIJOS = 5000000;
 
@@ -28,7 +27,6 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
     const isProyectoLocked = !!vivienda?.clienteId;
 
     const { proyectos } = useData();
-    const { afterViviendaMutation } = useDataSync(); // ✅ Sincronización granular
     const initialState = useMemo(() => ({
         proyectoId: vivienda?.proyectoId || "",
         manzana: vivienda?.manzana || "",
@@ -83,14 +81,9 @@ export const useEditarVivienda = (vivienda, todasLasViviendas, isOpen, onSave, o
             try {
                 // 3. Pasamos tanto los datos como el contexto a la función de storage
                 await updateVivienda(vivienda.id, datosActualizados, auditContext);
-
-                // 🔥 Mostrar éxito inmediatamente (Optimistic)
                 toast.success("¡Vivienda actualizada con éxito!");
 
-                // ✅ Sincronización inteligente (solo viviendas)
-                console.log('🔄 Sincronizando viviendas después de actualización...');
-                await afterViviendaMutation();
-
+                // Firestore sincronizará automáticamente
                 onSave();
                 onClose();
             } catch (error) {

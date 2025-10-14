@@ -5,7 +5,7 @@
  * Permite añadir y editar notas de auditoría asociadas a clientes.
  */
 
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { createAuditLog } from '../auditService';
 import { toTitleCase } from '../../utils/textFormatters';
@@ -73,8 +73,9 @@ export const updateNotaHistorial = async (notaOriginal, nuevoTexto, userName) =>
     await updateDoc(notaRef, {
         message: nuevoTexto,
         editado: true,
-        fechaEdicion: new Date(),
-        editadoPor: userName
+        fechaEdicion: serverTimestamp(),
+        editadoPor: userName,
+        updatedAt: serverTimestamp()
     });
 
     const clienteNombre = notaOriginal.details.clienteNombre || '[Cliente no encontrado]';

@@ -5,7 +5,7 @@
  * Soporta ambos sistemas de auditoría (legacy y unificado).
  */
 
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase/config';
 import { createAuditLog } from '../../auditService';
 import { detectarCambiosProceso } from './cambiosDetector';
@@ -67,7 +67,8 @@ export const updateClienteProceso = async (clienteId, nuevoProceso, options = {}
 
     // 2. Actualizar el proceso en Firestore
     await updateDoc(clienteRef, {
-        proceso: nuevoProceso
+        proceso: nuevoProceso,
+        updatedAt: serverTimestamp()
     });
 
     // 3. Detectar cambios usando el detector unificado

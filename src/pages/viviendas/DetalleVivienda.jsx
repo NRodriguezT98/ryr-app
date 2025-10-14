@@ -18,7 +18,6 @@ const DetalleVivienda = () => {
         datosDetalle,
         activeTab,
         setActiveTab,
-        recargarDatos,
         navigate,
         fuenteACondonar,
         setFuenteACondonar,
@@ -100,7 +99,6 @@ const DetalleVivienda = () => {
                                 proyecto={proyecto}
                                 fuentes={fuentes}
                                 historialAbonos={historialAbonos}
-                                onAbonoRegistrado={recargarDatos}
                                 onCondonarSaldo={setFuenteACondonar}
                                 onRegistrarDesembolso={handleRegistrarDesembolso}
                             />

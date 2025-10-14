@@ -15,7 +15,8 @@ import {
     query,
     where,
     getDocs,
-    collection
+    collection,
+    serverTimestamp
 } from "firebase/firestore";
 import { toTitleCase } from '../../utils/textFormatters';
 import { PROCESO_CONFIG } from '../../utils/procesoConfig';
@@ -35,7 +36,10 @@ export const addClienteAndAssignVivienda = async (clienteData, auditMessage, aud
         id: newClienteRef.id,
         status: 'activo',
         fechaCreacion: clienteData.datosCliente.fechaIngreso,
-        fechaInicioProceso: clienteData.datosCliente.fechaIngreso
+        fechaInicioProceso: clienteData.datosCliente.fechaIngreso,
+        // ✅ FIX: Timestamps del servidor para sincronización en tiempo real
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
     };
 
     // Preparar datos del cliente para auditoría
@@ -397,7 +401,12 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
         }
     });
 
-    const datosFinales = { ...clienteActualizado, proceso: procesoSincronizado };
+    const datosFinales = {
+        ...clienteActualizado,
+        proceso: procesoSincronizado,
+        // ✅ FIX: Timestamp del servidor para sincronización en tiempo real
+        updatedAt: serverTimestamp()
+    };
 
     // Actualizar viviendas
     const batch = writeBatch(db);
@@ -410,18 +419,21 @@ export const updateCliente = async (clienteId, clienteActualizado, viviendaOrigi
         if (viviendaOriginalId) {
             batch.update(doc(db, "viviendas", String(viviendaOriginalId)), {
                 clienteId: null,
-                clienteNombre: ""
+                clienteNombre: "",
+                updatedAt: serverTimestamp()
             });
         }
         if (nuevaViviendaId) {
             batch.update(doc(db, "viviendas", String(nuevaViviendaId)), {
                 clienteId: clienteId,
-                clienteNombre: nombreCompleto
+                clienteNombre: nombreCompleto,
+                updatedAt: serverTimestamp()
             });
         }
-    } else if (nuevaViviendaId) {
+    } else {
         batch.update(doc(db, "viviendas", String(nuevaViviendaId)), {
-            clienteNombre: nombreCompleto
+            clienteNombre: nombreCompleto,
+            updatedAt: serverTimestamp()
         });
     }
 
@@ -587,7 +599,8 @@ export const deleteCliente = async (clienteId) => {
 export const inactivarCliente = async (clienteId, clienteNombre) => {
     await updateDoc(doc(db, "clientes", String(clienteId)), {
         status: 'inactivo',
-        fechaInactivacion: new Date().toISOString()
+        fechaInactivacion: serverTimestamp(),
+        updatedAt: serverTimestamp()
     });
 
     await createAuditLog(
@@ -615,7 +628,8 @@ export const restaurarCliente = async (clienteId) => {
     const nombreCompleto = `${clienteData.datosCliente.nombres} ${clienteData.datosCliente.apellidos}`;
 
     await updateDoc(doc(db, "clientes", String(clienteId)), {
-        status: 'renunciado'
+        status: 'renunciado',
+        updatedAt: serverTimestamp()
     });
 
     await createAuditLog(
